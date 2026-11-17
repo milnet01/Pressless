@@ -392,11 +392,17 @@ def _restore_look(folder: Path, fetched: dict[str, str],
 def _restore_other_kinds(folder: Path, state: State,
                          reversals: list[Callable[[], None]]) -> None:
     """Every other kind the fetched state holds is written where it differs or is
-    absent, the superseded version going to the bin first. Every file the fetched
-    state does NOT hold is kept untouched (§ 4.4), so an undo removes nothing of
-    his from the Store."""
+    absent, the superseded version going to the bin first. A fixed page the
+    fetched state does NOT hold comes off the site as its waiting copy; every
+    other file it does not hold is kept untouched (§ 4.4), so an undo removes
+    nothing of his from the Store."""
+    live = set(store.list_html(folder, store.PAGES_FOLDER))
     for name, html in sorted(state.pages.items()):
+        if name not in live:
+            _bin_demoted_page(folder, name, html, reversals)
         _restore_html(folder, store.PAGES_FOLDER, name, html, reversals)
+    for name in sorted(live - set(state.pages)):
+        _demote_page(folder, name, reversals)
     for name, html in sorted(state.furniture.items()):
         _restore_html(folder, store.FURNITURE_FOLDER, name, html, reversals)
 
@@ -446,6 +452,35 @@ def _restore_html(folder: Path, kind: str, name: str, html: str,
     path = store.html_path_for(folder, kind, name)
     _restore_one(folder, path, store.read_html(path) if path.is_file() else None,
                  html, lambda h: store.write_html(folder, kind, name, h), reversals)
+
+
+def _demote_page(folder: Path, name: str, reversals: list[Callable[[], None]]) -> None:
+    """A fixed page the Store publishes and the fetched state does not hold
+    comes off the site and is kept as its waiting copy, as an entry is kept as
+    a draft (§ 4.4). A waiting copy he already has is his and stays, and the
+    published version goes to the bin (docs/design.md § What undo actually does)."""
+    live = store.html_path_for(folder, store.PAGES_FOLDER, name)
+    html = store.read_html(live)
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=True)
+    if not waiting.is_file():
+        store.write_html(folder, store.PAGES_FOLDER, name, html, waiting=True)
+        reversals.append(lambda: store.move_to_bin(folder, waiting))
+    store.move_to_bin(folder, live)
+    reversals.append(lambda: store.write_html(folder, store.PAGES_FOLDER, name, html))
+
+
+def _bin_demoted_page(folder: Path, name: str, html: str,
+                      reversals: list[Callable[[], None]]) -> None:
+    """The page counterpart of INV-13. A page the Store does not publish, whose
+    waiting copy equals the page the fetched state puts back, is the copy a
+    first press demoted, and a second press bins it: nothing of his differs
+    from what is published. A page holds no mark, so its text is the test."""
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=True)
+    if not waiting.is_file() or store.read_html(waiting) != html:
+        return
+    store.move_to_bin(folder, waiting)
+    reversals.append(
+        lambda: store.write_html(folder, store.PAGES_FOLDER, name, html, waiting=True))
 
 
 def _restore_one(folder: Path, path: Path, remembered: _T | None, wanted: _T | None,

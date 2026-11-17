@@ -557,8 +557,8 @@ then mutation-probed once the code lands, one mutation per route its
 - `docs/specs/PRESS-0012-editor.md` § 4.5 — the list gains the pages section.
 - `docs/specs/PRESS-0013-publish.md` § 4.1 — it already names this item as a
   caller of `publish` with `entry=None`; no change.
-- `docs/specs/PRESS-0015-undo.md` — no change. A waiting copy is not under
-  `content/`, so undo leaves it alone, as it leaves a draft.
+- `docs/specs/PRESS-0015-undo.md` — a waiting copy is not under `content/`,
+  so undo never fetches one. What undo does with one is its § 4.4.
 - `docs/standards/versioning-overrides.md` § The writer's own files — the two
   waiting folders become part of where the Store keeps things. Adding them
   breaks nothing an upgrade relies on. PRESS-0138 owes them a check.

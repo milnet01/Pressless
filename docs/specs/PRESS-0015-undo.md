@@ -9,6 +9,9 @@ failure says the site is unchanged, and emptying the fetch area at the end
 never fails an undo. That changes direction, so the gate re-armed.
 **Amended 2026-10-12 by the user's decision** (PRESS-0249): the list labels a
 demoted draft and its working copy (§ 3 decision 9, § 4.6, INV-15).
+**Amended 2026-11-17 by the user's decision** (PRESS-0399): a fixed page the
+fetched state lacks comes off the site as its waiting copy (§ 4.4, INV-7,
+INV-16).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0015 (`docs/design.md` § What undo actually does;
 discovery S9).
@@ -25,10 +28,10 @@ does not put the trouble straight back.
 After this ships, a press of **Undo the last press** fetches the state
 before the last publish, writes its `content/` back into the Store, rebuilds
 and publishes. The site and his own files then agree. Nothing of his is
-deleted: an entry the fetched state does not hold becomes a draft, and a
-version of his that undo writes over is kept beside it, unless it is a draft
-a first undo demoted, unchanged since (INV-13). A definite failure
-puts his files back as they were before the press.
+deleted: an entry or fixed page the fetched state does not hold becomes a
+draft, and a version of his that undo writes over is kept beside it, unless
+it is a draft a first undo demoted, unchanged since (INV-13, INV-16). A
+definite failure puts his files back as they were before the press.
 
 ## 2. Problem
 
@@ -235,6 +238,7 @@ succeeded.
    | wrote a file that was absent | `store.move_to_bin` |
    | created a kept draft | `store.move_to_bin` |
    | binned a draft to free its slug | writes the remembered draft back |
+   | binned a page or a waiting copy | writes the remembered file back |
    | demoted an entry | writes the remembered entry over the demoted draft, then `store.publish` |
 
    **A reversal never bins a file it is putting back.** Nothing moves a file
@@ -333,10 +337,22 @@ carrying `publishing.UNDONE` (§ 4.5).
 absent, the superseded version going to the bin first with
 `store.move_to_bin`.
 
-**Every file the fetched state does not hold, other than an entry, is kept
-untouched.** `docs/design.md` says so, and adds the consequence: being kept,
-it is built and published again, so an undo removes nothing of his from the
-Store.
+**A fixed page the Store publishes and the fetched state does not hold**
+comes off the site and is kept as its waiting copy (PRESS-0014 § 4.1), the
+page's draft. Where it has a waiting copy already, that copy is his and
+stays, and the published version goes to the bin. Decided by the user
+2026-11-17 (PRESS-0399).
+
+**A page the fetched state publishes, which the Store does not, and whose
+waiting copy equals the fetched page,** is the page a first press demoted
+and a second press puts back (§ 3 decision 6). Its waiting copy goes to the
+bin, as INV-13's draft does. A page carries no mark, so equal text is the
+test. Any other waiting copy stays that page's draft.
+
+**Every other file the fetched state does not hold is kept untouched.**
+`docs/design.md` says so, and adds the consequence: being kept, it is built
+and published again, so an undo removes nothing of his from the Store. A
+template and a furniture file are kept so, never demoted.
 
 **Photograph originals are never touched.** They never reach the site folder,
 so the fetched state cannot hold one.
@@ -485,13 +501,29 @@ does.
   copy of the entry just put back — which § 3 decision 7 rules out and
   `editor.TooManyCopies` would then refuse.
 
-- **INV-7** — A fixed page, template or furniture file the fetched state does
-  not hold is kept untouched.
+- **INV-7** — A template or furniture file the fetched state does not hold
+  is kept untouched. A fixed page it does not hold comes off the site and is
+  kept as its waiting copy, or beside the waiting copy it already has.
   *Test:* `test_a_file_the_previous_state_lacks_is_kept`. After the undo the
-  file is still in its own folder, reads back unchanged, and the folder the
-  Builder wrote carries its page.
+  template reads back unchanged. A page without a waiting copy has one
+  holding its published text, a page with one keeps it unchanged, the bin
+  holds both published versions, and the folder the Builder wrote carries
+  neither page.
   *Breaks when:* undo treats the fetched state as the whole truth and bins
-  what it does not name.
+  what it does not name, keeps a page on the site, or writes over a waiting
+  copy.
+
+- **INV-16** — A waiting copy equal to the page a second undo puts back, of a
+  page the Store did not publish, goes to the bin; every other waiting copy
+  stays.
+  *Test:* `test_a_second_undo_keeps_no_waiting_copy_of_the_page_it_puts_back`.
+  Three pages the fetched state publishes: one only waiting, its copy equal
+  to the fetched page; one only waiting, its copy different; one published,
+  its waiting copy equal to the fetched page. After undo all three are
+  published, only the first has no waiting copy, and the bin holds only that
+  copy.
+  *Breaks when:* equal text alone bins a waiting copy of a page still on the
+  site, or a waiting copy he changed since is binned.
 
 - **INV-8** — Undo's publish is not refused by the no-published-entry guard.
   *Test:* `test_undoing_to_an_empty_site_is_not_refused`. Against a fetched
@@ -604,7 +636,7 @@ nothing catches a reader who expects a history.
 ## 7. Tests
 
 `tests/test_undo.py` — new, in CI. It carries INV-1, INV-2, INV-6, INV-7,
-INV-8, INV-9, INV-10, INV-11, INV-12, INV-13 and INV-14.
+INV-8, INV-9, INV-10, INV-11, INV-12, INV-13, INV-14 and INV-16.
 
 `tests/test_publishing.py` gains INV-3, INV-4 and INV-5.
 
@@ -667,6 +699,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-13 | `tests/test_undo.py::test_a_second_undo_keeps_no_copy_of_the_demoted_draft` |
 | INV-14 | `tests/test_undo.py::test_an_unforeseen_failure_says_the_site_is_unchanged` and `::test_a_failed_final_empty_keeps_the_outcome` |
 | INV-15 | `tests/test_editor.py::test_the_list_says_which_draft_undo_took_off` |
+| INV-16 | `tests/test_undo.py::test_a_second_undo_keeps_no_waiting_copy_of_the_page_it_puts_back` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | A fetch area that cannot be emptied stops the undo (§ 4.3 step 1) | `tests/test_undo.py::test_a_fetch_area_that_cannot_be_emptied_stops_the_undo` |
 | A kept address is none the fetched state writes (§ 4.4) | `tests/test_undo.py::test_a_kept_address_is_not_one_the_fetched_state_publishes` and `::test_a_kept_address_is_not_one_the_fetched_forwards_send_on` |
@@ -700,6 +733,9 @@ mutation-probed once the code lands, one mutation per route each invariant's
   not assume `into` is whole is met by § 4.3 step 1; the section points here.
 - `docs/specs/PRESS-0005-store.md` — no change. Undo uses the calls it already
   offers.
+- `docs/specs/PRESS-0195-add-remove-rename-pages.md` § 4.6 and
+  `docs/specs/PRESS-0014-fixed-pages.md` § 11 — each points here for what
+  undo does with a page the fetched state lacks and with a waiting copy.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log

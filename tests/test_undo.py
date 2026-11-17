@@ -109,7 +109,8 @@ def _files_under(folder: Path) -> dict[str, bytes]:
     a test can see a file that appeared as well as one that changed."""
     found = {}
     for name in (store.PUBLISHED_FOLDER, store.DRAFTS_FOLDER, store.PAGES_FOLDER,
-                 store.FURNITURE_FOLDER, store.TEMPLATES_FOLDER, store.COMMENTS_FOLDER):
+                 store.FURNITURE_FOLDER, store.TEMPLATES_FOLDER, store.COMMENTS_FOLDER,
+                 *store.WAITING_FOLDERS.values()):
         subfolder = folder / name
         if not subfolder.is_dir():
             continue
@@ -275,11 +276,16 @@ def test_a_second_undo_keeps_no_copy_of_the_demoted_draft(tmp_path):
 
 
 def test_a_file_the_previous_state_lacks_is_kept(tmp_path):
-    """A fixed page, template or furniture file the fetched state does not hold
-    is kept untouched -- an undo removes nothing of his from the Store."""
+    """A template or furniture file the fetched state does not hold is kept
+    untouched, and a fixed page it does not hold is kept as its waiting copy
+    -- an undo removes nothing of his from the Store (PRESS-0399)."""
     folder = _folder(tmp_path)
     store.write(folder, _entry("seaside"), draft=False)
     store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About me.</p>")
+    # A page with a waiting copy already: the copy is his, and stays.
+    store.write_html(folder, store.PAGES_FOLDER, "notes", "<p>Published notes.</p>")
+    store.write_html(folder, store.PAGES_FOLDER, "notes", "<p>His unpublished notes.</p>",
+                     waiting=True)
     store.write_template(folder, _entry("poem", body="A template."))
     # A page the fetched state DOES hold, so the same run covers both
     # directions: what is not named is kept, what is named is put back. Without
@@ -296,8 +302,14 @@ def test_a_file_the_previous_state_lacks_is_kept(tmp_path):
 
     _undo(folder, _previous(files))
 
-    assert store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, "about")) == (
-        "<p>About me.</p>")
+    def waiting(name: str) -> str:
+        return store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, name,
+                                                   waiting=True))
+
+    # The pages come off the site and are kept as drafts, as an entry is.
+    assert store.list_html(folder, store.PAGES_FOLDER) == ("colophon",)
+    assert waiting("about") == "<p>About me.</p>"
+    assert waiting("notes") == "<p>His unpublished notes.</p>"
     assert store.read(store.template_path_for(folder, "poem")).body == "A template."
     assert store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, "colophon")) == (
         "<p>The older colophon.</p>")
@@ -306,10 +318,40 @@ def test_a_file_the_previous_state_lacks_is_kept(tmp_path):
     assert [one.identifier for one in restored] == ["1"]
     # The superseded version goes to the bin first, so nothing of his is lost
     # (§ 4.4). Every removal the reconcile makes is a move_to_bin (§ 4.7).
-    assert _binned(folder) == ["colophon.html", "seaside.json", "sonnet.txt"]
+    # The published "about" is in its waiting copy, and "notes" in the bin.
+    assert _binned(folder) == ["about.html", "colophon.html", "notes.html",
+                               "seaside.json", "sonnet.txt"]
     site = _settings(folder).site_folder
-    assert (site / "pages" / "about.html").is_file(), sorted(
-        str(p.relative_to(site)) for p in site.rglob("*.html"))
+    built = sorted(str(p.relative_to(site)) for p in site.rglob("*.html"))
+    assert "pages/colophon.html" in built, built
+    assert "pages/about.html" not in built and "pages/notes.html" not in built, built
+
+
+# ----------------------------------------------------------------- INV-16 ---
+
+
+def test_a_second_undo_keeps_no_waiting_copy_of_the_page_it_puts_back(tmp_path):
+    """The page counterpart of INV-13: a waiting copy equal to the page the
+    fetched state publishes, where the Store publishes no page by that name,
+    is the one a first undo made, and goes to the bin. One he has changed
+    since is kept, and so is any waiting copy of a page still on the site."""
+    folder = _folder(tmp_path)
+    for name, text in (("gallery", "<p>Gallery.</p>"), ("studio", "<p>His newer studio.</p>"),
+                       ("about", "<p>About.</p>")):
+        store.write_html(folder, store.PAGES_FOLDER, name, text, waiting=True)
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About.</p>")
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, pages=(("gallery", "<p>Gallery.</p>"),
+                                         ("studio", "<p>The older studio.</p>"),
+                                         ("about", "<p>About.</p>")))}
+
+    _undo(folder, _previous(files))
+
+    assert store.list_html(folder, store.PAGES_FOLDER) == ("about", "gallery", "studio")
+    assert store.list_html(folder, store.PAGES_FOLDER, waiting=True) == ("about", "studio")
+    assert store.read_html(store.html_path_for(
+        folder, store.PAGES_FOLDER, "studio", waiting=True)) == "<p>His newer studio.</p>"
+    assert _binned(folder) == ["gallery.html"]
 
 
 # ------------------------------------------------------------------ INV-8 ---
@@ -358,6 +400,12 @@ def test_a_definite_failure_puts_the_files_back(tmp_path, monkeypatch):
         store.write(folder, _entry("harbour", body="Newer."), draft=False)
         store.write(folder, _entry("tideline", body="His draft."), draft=True)
         store.write_html(folder, store.PAGES_FOLDER, "about", "<p>His about.</p>")
+        # PRESS-0399: pages the fetched state lacks come off the site, one
+        # with a waiting copy already and one without.
+        store.write_html(folder, store.PAGES_FOLDER, "gallery", "<p>His gallery.</p>")
+        store.write_html(folder, store.PAGES_FOLDER, "notes", "<p>Notes.</p>")
+        store.write_html(folder, store.PAGES_FOLDER, "notes", "<p>Newer notes.</p>",
+                         waiting=True)
         return folder
 
     files = {**_furnished(tmp_path),
@@ -395,6 +443,7 @@ def test_a_definite_failure_puts_the_files_back(tmp_path, monkeypatch):
     assert store.read(store.path_for(folder, "seaside", draft=False)).body == (
         "The older words.")
     assert "harbour" in store.list_slugs(folder, draft=True)
+    assert "gallery" in store.list_html(folder, store.PAGES_FOLDER, waiting=True)
 
 
 # ----------------------------------------------------------------- INV-11 ---
@@ -489,6 +538,13 @@ def test_a_failure_at_any_step_of_the_reconcile_puts_everything_back(tmp_path, m
         store.write(folder, _entry("harbour", body="Newer."), draft=False)
         store.write(folder, _entry("tideline", body="His draft."), draft=True)
         store.write_html(folder, store.PAGES_FOLDER, "about", "<p>His about.</p>")
+        store.write_html(folder, store.PAGES_FOLDER, "studio", "<p>Studio.</p>", waiting=True)
+        # PRESS-0399: pages the fetched state lacks come off the site, one
+        # with a waiting copy already and one without.
+        store.write_html(folder, store.PAGES_FOLDER, "gallery", "<p>His gallery.</p>")
+        store.write_html(folder, store.PAGES_FOLDER, "notes", "<p>Notes.</p>")
+        store.write_html(folder, store.PAGES_FOLDER, "notes", "<p>Newer notes.</p>",
+                         waiting=True)
         return folder
 
     files = {**_furnished(tmp_path),
@@ -496,7 +552,8 @@ def test_a_failure_at_any_step_of_the_reconcile_puts_everything_back(tmp_path, m
                         published=(_entry("seaside", body="The older words."),
                                    _entry("tideline", body="The older tideline.")),
                         pages=(("about", "<p>The older about.</p>"),
-                               ("contact", "<p>A page he no longer has.</p>")))}
+                               ("contact", "<p>A page he no longer has.</p>"),
+                               ("studio", "<p>Studio.</p>")))}
 
     real = {name: getattr(store, name) for name in _STORE_CALLS}
     calls = []

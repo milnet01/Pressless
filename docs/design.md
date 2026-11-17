@@ -301,7 +301,7 @@ unfinished poem or a half-built page can never be lost to one. **An
 entry's draft on a slug the fetched state publishes** moves to a slug of
 its own, so one slug never names two entries — except the draft the
 toggle below produced, which is published again. A page's draft stays
-that page's draft. **Nor is an edit the user has not published yet.**
+that page's draft, with the same exception. **Nor is an edit the user has not published yet.**
 Where an entry in the Store differs from the fetched one, undo keeps
 their version before writing over it, as a new draft under a slug of its
 own, which the Face chooses. Anything with drafts holds no unpublished

@@ -262,10 +262,11 @@ Store holds it.
 `undo.read_state` recognises `content/forwards/pages.json` and reconciles it
 as PRESS-0182 §4.4 reconciles `forwards.json`. Pages themselves are
 already restored by `undo._restore_html`: a removed page comes back with
-the menu that linked it. **An undo keeps a page the fetched state does
-not hold** (PRESS-0015 §4.4), so undoing a new page's first press
-leaves the page on the site with no menu link, and undoing a rename
-leaves both names, the menu pointing at the old one.
+the menu that linked it. **An undo takes a page the fetched state does
+not hold off the site, as its waiting copy** (PRESS-0015 §4.4). So
+undoing a new page's first press leaves the page waiting to be pressed,
+and undoing a rename puts the old name back on the site, the menu
+pointing at it, and leaves the new name waiting.
 
 ## 5. Invariants
 
