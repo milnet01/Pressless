@@ -8,6 +8,8 @@ from __future__ import annotations
 import http.client
 import json
 import re
+import threading
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -274,5 +276,40 @@ def test_every_size_has_its_zoom_and_is_applied_without_a_reload(tmp_path: Path)
         served.stop()
     script = "".join(re.findall(r"<script>(.*?)</script>", page, re.S))
     assert "select[data-size-picker]" in script
-    for size in themes.SIZES[1:]:
-        assert f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}' in page, size
+    for size in themes.SIZES:
+        rule = f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}'
+        assert (rule in page) is (size != 100), size
+    assert 'data-no-zoom="100"' in page and "picker.dataset.noZoom" in script
+
+
+def test_the_no_zoom_size_is_named_not_placed(monkeypatch) -> None:
+    """Breaks when the size rules assume the first size is the one with no
+    zoom: a smaller size listed first would get no rule, and 100 one."""
+    monkeypatch.setattr(themes, "SIZES", (90, 100, 125))
+    css = themes.css()
+    assert ':root[data-size="90"] { --face-zoom: 0.9; }' in css
+    assert 'data-size="100"' not in css
+
+
+def test_a_theme_and_a_size_chosen_at_once_are_both_kept(tmp_path: Path, monkeypatch) -> None:
+    """The Face serves each request on its own thread, so /theme and
+    /text-size can write theme.json at the same moment. Breaks when the
+    read-merge-write is unlocked and one choice is lost. The read is slowed
+    so the two overlap every run."""
+    real_read = themes._read
+
+    def slow_read(folder):
+        held = real_read(folder)
+        time.sleep(0.2)
+        return held
+
+    monkeypatch.setattr(themes, "_read", slow_read)
+    key = next(theme.key for theme in themes.THEMES)
+    both = [threading.Thread(target=themes.write_choice, args=(tmp_path, key)),
+            threading.Thread(target=themes.write_size, args=(tmp_path, 150))]
+    for thread in both:
+        thread.start()
+    for thread in both:
+        thread.join(5)
+    monkeypatch.setattr(themes, "_read", real_read)
+    assert (themes.read_choice(tmp_path), themes.read_size(tmp_path)) == (key, 150)

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import html
 import json
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from pressless.safe_write import write_whole
 from pressless.words import say
 
 FILE_NAME = "theme.json"
+_LOCK = threading.Lock()  # one read-merge-write of FILE_NAME at a time
 FOLLOW = "follow"  # no theme of its own: light or dark as the computer is set
 
 # The custom properties every theme sets, in the order Theme.colours holds them.
@@ -161,9 +163,11 @@ def _read(folder: Path) -> dict:
 
 
 def _write(folder: Path, **choice: str | int) -> None:
-    """Replace the file whole, keeping the choices `choice` does not name."""
-    data = {**_read(folder), "version": 1, **choice}
-    write_whole(Path(folder) / FILE_NAME, json.dumps(data), prefix=f".{FILE_NAME}.")
+    """Replace the file whole, keeping the choices `choice` does not name.
+    Locked: /theme and /text-size are answered on threads of their own."""
+    with _LOCK:
+        data = {**_read(folder), **choice, "version": 1}
+        write_whole(Path(folder) / FILE_NAME, json.dumps(data), prefix=f".{FILE_NAME}.")
 
 
 def read_choice(folder: Path) -> str:
@@ -184,14 +188,15 @@ def write_choice(folder: Path, key: str) -> None:
 # not only its text: an editor page loads the site's stylesheet, which sets the
 # page's root text size, so the Face's rem sizes cannot carry it.
 SIZES = (100, 125, 150, 200)
+NO_ZOOM = 100  # the size the page is drawn at with no zoom, and so no rule
 _SIZE_NAMES = ("themes.size.normal", "themes.size.large", "themes.size.larger",
                "themes.size.largest")
 
 
 def read_size(folder: Path) -> int:
-    """The chosen size; anything not offered reads as 100."""
+    """The chosen size; anything not offered reads as NO_ZOOM."""
     size = _read(folder).get("size")
-    return size if isinstance(size, int) and size in SIZES else 100
+    return size if isinstance(size, int) and size in SIZES else NO_ZOOM
 
 
 def write_size(folder: Path, size: int) -> None:
@@ -228,17 +233,18 @@ def css() -> str:
         rules.append(f':root[data-theme="{theme.key}"] {{ color-scheme: {scheme}; '
                      f"{values} --shadow: {shadow}; {preview(theme.dark)} }}")
     rules.extend(f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}'
-                 for size in SIZES[1:])
+                 for size in SIZES if size != NO_ZOOM)
     return "\n".join(rules)
 
 
 def size_picker(chosen: int) -> str:
-    """The top bar's text-size select, applied at once like the theme's."""
+    """The top bar's text-size select, applied at once like the theme's. It
+    names NO_ZOOM for the page's script, which drops the zoom for it."""
     options = "".join(
         f'<option value="{size}"{" selected" if size == chosen else ""}>{say(name)}</option>'
         for size, name in zip(SIZES, _SIZE_NAMES, strict=True))
-    return (f'<label class="size">{say("themes.size.label")} <select data-size-picker>'
-            f"{options}</select></label>")
+    return (f'<label class="size">{say("themes.size.label")} '
+            f'<select data-size-picker data-no-zoom="{NO_ZOOM}">{options}</select></label>')
 
 
 def picker(chosen: str) -> str:

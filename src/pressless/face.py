@@ -586,8 +586,10 @@ def _open_folder(folder: Path) -> None:
         raise FolderNotOpened(f"the opener could not open it (it answered {code})")
 
 
-# The buttons' script. It lives in the page, never in a fragment, and it asks
-# for the path only when Copy is clicked, so the path is never in the document.
+# Every Face page's own script: the failure's buttons, the theme and size
+# pickers, More, help, message boxes and the true-colours switch. It lives in
+# the page, never in a fragment, and it asks for the folder's path only when
+# Copy is clicked, so the path is never in the document.
 _SCRIPT = """
 document.addEventListener("click", (event) => {
   const view = event.target.closest("button[data-view-site]");
@@ -628,11 +630,12 @@ document.addEventListener("keydown", (event) => {
     more.querySelector("summary").focus();
   });
 });
-// PRESS-0338: so is a text size.
+// PRESS-0338: a text size, like a theme, is applied the moment it is picked,
+// then remembered.
 document.addEventListener("change", (event) => {
   const picker = event.target.closest("select[data-size-picker]");
   if (!picker) return;
-  if (picker.value === "100") delete document.documentElement.dataset.size;
+  if (picker.value === picker.dataset.noZoom) delete document.documentElement.dataset.size;
   else document.documentElement.dataset.size = picker.value;
   fetch("/text-size", {method: "POST", body: picker.value});
 });
@@ -1138,13 +1141,15 @@ _ICON = "data:image/svg+xml," + urllib.parse.quote(
     '</svg>', safe="")
 
 
-def _page(body: str, theme: str = themes.FOLLOW, name: str = "", size: int = 100,
-          after: str = "") -> str:
+def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
+          size: int = themes.NO_ZOOM, after: str = "") -> str:
+    """The whole document a Face screen is: `body` inside the top bar, whose
+    first link names the open site, or says Sites before there is one."""
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
-    if size != 100:
+    if size != themes.NO_ZOOM:
         chosen += f' data-size="{size}"'
     # PRESS-0353 § 4.2: the parts of a site, led by the open site's name.
-    links = (("/sites", html.escape(name) if name else say("face.sites")),
+    links = (("/sites", html.escape(site_name) if site_name else say("face.sites")),
              ("/", say("face.your_site")), ("/pages", say("face.pages")),
              ("/journal", say("face.journal")), ("/look", say("face.look")),
              ("/files", say("face.files")), ("/visitors", say("face.visitors")),
