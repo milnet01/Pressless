@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import urllib.parse
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from pressless import publisher
@@ -30,9 +31,10 @@ APP_SLUG = "pressless-app"        # its name in github.com/apps/<slug>
 DEVICE_URL = "https://github.com/login/device/code"
 TOKEN_URL = "https://github.com/login/oauth/access_token"  # noqa: S105 -- an address
 INSTALL_URL = "https://github.com/apps/{}/installations/new"
+TYPE_AT = "https://github.com/login/device"   # where a code is typed, whatever GitHub says
 _DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 _DETAIL_LIMIT = 60                # GitHub's error codes are short words
-_PAGES = 10                       # sites() reads at most this many pages of 100
+_PAGES = 10                       # reaches() and sites() read at most this many pages of 100
 
 _FORM = {"Accept": "application/json", "User-Agent": "Pressless",
          "Content-Type": "application/x-www-form-urlencoded"}
@@ -98,8 +100,11 @@ def begin(transport: Transport | None = None) -> DeviceCode:
     if error is not None:
         raise _DEVICE_ERRORS.get(error if isinstance(error, str) else "", PublishError)(
             f"GitHub would not start a sign-in ({_code(error, ())})")
-    return DeviceCode(_text(answer, "device_code"), _text(answer, "user_code"),
-                      _text(answer, "verification_uri"),
+    address = _text(answer, "verification_uri")
+    # Shown as a link on the Face's own page, so only GitHub's https pages.
+    if not address.startswith("https://github.com/"):
+        address = TYPE_AT
+    return DeviceCode(_text(answer, "device_code"), _text(answer, "user_code"), address,
                       _number(answer, "expires_in"), _number(answer, "interval"))
 
 
@@ -137,18 +142,18 @@ def login(token: str, transport: Transport | None = None) -> str:
     return name
 
 
-def installation(token: str, login: str, transport: Transport | None = None
+def installation(token: str, account: str, transport: Transport | None = None
                  ) -> Installation | None:
-    """This app's installation on `login`'s own account, or None. An
+    """This app's installation on `account`'s own account, or None. An
     organisation's installation of the app is never it."""
     answer = _api(transport, "GET", "/user/installations?per_page=100", token)[1]
     for found in answer.get("installations") or ():
         if not isinstance(found, dict) or found.get("app_slug") != APP_SLUG:
             continue
-        account = found.get("account")
-        owner = account.get("login") if isinstance(account, dict) else None
+        holder = found.get("account")
+        owner = holder.get("login") if isinstance(holder, dict) else None
         number = found.get("id")
-        if (isinstance(owner, str) and owner.casefold() == login.casefold()
+        if (isinstance(owner, str) and owner.casefold() == account.casefold()
                 and isinstance(number, int) and not isinstance(number, bool)):
             return Installation(number, found.get("repository_selection") == "all")
     return None
@@ -162,44 +167,47 @@ def create_repository(token: str, name: str, transport: Transport | None = None)
     return status != 422
 
 
-def reaches(token: str, installation: Installation, repository: str,
+def reaches(token: str, found: Installation, repository: str,
             transport: Transport | None = None) -> bool:
     """Whether the installation reaches `owner/name`. Where it reaches every
     repository, nothing is sent. GitHub added the repository Pressless made
     on the 2026-10-05 run; adding one needs a permission the registration
     form does not offer, so where it has not, the person does (§ 4.1)."""
-    if installation.all_repositories:
+    if found.all_repositories:
         return True
-    answer = _api(transport, "GET",
-                  f"/user/installations/{installation.id}/repositories?per_page=100", token)[1]
     wanted = repository.casefold()
-    return any(isinstance(found, dict) and str(found.get("full_name", "")).casefold() == wanted
-               for found in answer.get("repositories") or ())
+    return any(str(listed.get("full_name", "")).casefold() == wanted
+               for listed in _repositories(token, found, transport))
 
 
-def sites(token: str, installation: Installation, login: str,
+def sites(token: str, found: Installation, account: str,
           transport: Transport | None = None) -> tuple[str, ...]:
-    """PRESS-0290: the names of `login`'s own public repositories that the
+    """PRESS-0290: the names of `account`'s own public repositories that the
     installation reaches and GitHub Pages serves, sorted. One the app cannot
     reach is left out, as Pressless could not publish to it."""
     names: list[str] = []
+    for repository in _repositories(token, found, transport):
+        owner = repository.get("owner")
+        name = repository.get("name")
+        if (repository.get("has_pages") is True and repository.get("private") is False
+                and isinstance(name, str) and name and isinstance(owner, dict)
+                and str(owner.get("login", "")).casefold() == account.casefold()):
+            names.append(name)
+    return tuple(sorted(names, key=str.casefold))
+
+
+def _repositories(token: str, found: Installation,
+                  transport: Transport | None) -> Iterator[dict]:
+    """The repositories the installation reaches, a page of 100 at a time
+    until a page holds fewer, at most `_PAGES` pages."""
     for page in range(1, _PAGES + 1):
         answer = _api(transport, "GET",
-                      f"/user/installations/{installation.id}/repositories"
+                      f"/user/installations/{found.id}/repositories"
                       f"?per_page=100&page={page}", token)[1]
-        found = answer.get("repositories") or ()
-        for repository in found:
-            if not isinstance(repository, dict):
-                continue
-            owner = repository.get("owner")
-            name = repository.get("name")
-            if (repository.get("has_pages") is True and repository.get("private") is False
-                    and isinstance(name, str) and name and isinstance(owner, dict)
-                    and str(owner.get("login", "")).casefold() == login.casefold()):
-                names.append(name)
-        if len(found) < 100:
-            break
-    return tuple(sorted(names, key=str.casefold))
+        listed = answer.get("repositories") or ()
+        yield from (repository for repository in listed if isinstance(repository, dict))
+        if len(listed) < 100:
+            return
 
 
 def _form(transport: Transport | None, url: str, fields: dict[str, str], *,
@@ -216,6 +224,9 @@ def _form(transport: Transport | None, url: str, fields: dict[str, str], *,
         raise publisher.Unreachable(
             f"no answer from github.com for {where} ({type(exc).__name__})") from None
     answer = _json(data)
+    if not signed_out and status in (401, 403):
+        # § 4.1, whether or not the answer names an error.
+        raise publisher.SignInRefused(f"GitHub refused {where} ({status})")
     if answer is not None and (status == 200 or isinstance(answer.get("error"), str)):
         return answer
     if signed_out and status in (400, 401):

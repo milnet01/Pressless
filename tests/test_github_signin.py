@@ -190,13 +190,53 @@ def test_reaches_reads_the_installations_repositories_where_they_are_chosen():
     github = _GitHub((200, listed))
     assert github_signin.reaches(ACCESS, chosen, "owner/site", github) is True
     assert [(m, u) for m, u, _b, _h in github.sent] == [
-        ("GET", f"{publisher.API}/user/installations/7/repositories?per_page=100"),
+        ("GET", f"{publisher.API}/user/installations/7/repositories?per_page=100&page=1"),
     ]
     assert github_signin.reaches(ACCESS, chosen, "owner/other", _GitHub((200, listed))) is False
     every = _GitHub()
     assert github_signin.reaches(ACCESS, github_signin.Installation(7, True), "owner/site",
                                  every) is True
     assert every.sent == []
+
+
+def test_reaches_reads_past_the_first_page():
+    """Breaks when `reaches` reads one page, so a repository past the first
+    100 chosen ones reads as not reached and setup asks for it forever."""
+    first = [{"full_name": f"owner/plain-{number}"} for number in range(100)]
+    github = _GitHub((200, {"total_count": 101, "repositories": first}),
+                     (200, {"total_count": 101, "repositories": [{"full_name": "Owner/Site"}]}))
+    assert github_signin.reaches(ACCESS, github_signin.Installation(7, False), "owner/site",
+                                 github) is True
+    assert [url for _m, url, _b, _h in github.sent] == [
+        f"{publisher.API}/user/installations/7/repositories?per_page=100&page=1",
+        f"{publisher.API}/user/installations/7/repositories?per_page=100&page=2",
+    ]
+
+
+@pytest.mark.parametrize("call", ["begin", "poll"])
+@pytest.mark.parametrize("status", [401, 403])
+def test_a_refusal_carrying_an_error_is_a_refused_sign_in(call, status):
+    """§ 4.1: a 403, or a 401 from any request but `refresh`, is SignInRefused,
+    whether or not GitHub's answer carries an `error`. Breaks when the error
+    is read as a device-flow answer instead."""
+    github = _GitHub((status, {"error": "expired_token"}))
+    with pytest.raises(publisher.SignInRefused):
+        if call == "begin":
+            github_signin.begin(github)
+        else:
+            github_signin.poll(_code(), github)
+
+
+@pytest.mark.parametrize("address", [
+    "javascript:alert(1)", "https://github.com.example.org/login/device",
+    "http://github.com/login/device",
+])
+def test_a_code_is_only_typed_at_github(address):
+    """Security: the address is a link on the Face's own page. Breaks when an
+    answer's `verification_uri` that is not GitHub's https page is shown."""
+    github = _GitHub((200, {"device_code": DEVICE, "user_code": "WDJB-MJHT",
+                            "verification_uri": address, "expires_in": 900, "interval": 5}))
+    assert github_signin.begin(github).address == "https://github.com/login/device"
 
 
 @pytest.mark.parametrize("call", ["begin", "poll"])

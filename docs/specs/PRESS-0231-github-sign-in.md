@@ -116,15 +116,17 @@ def begin(transport=None) -> DeviceCode: ...
 def poll(code: DeviceCode, transport=None) -> Tokens: ...
 def refresh(refresh_token: str, transport=None) -> Tokens: ...
 def login(token: str, transport=None) -> str: ...
-def installation(token: str, login: str, transport=None) -> Installation | None: ...
+def installation(token: str, account: str, transport=None) -> Installation | None: ...
 def create_repository(token: str, name: str, transport=None) -> bool: ...
-def reaches(token: str, installation: Installation, repository: str,
+def reaches(token: str, found: Installation, repository: str,
             transport=None) -> bool: ...
-def sites(token: str, installation: Installation, login: str,
+def sites(token: str, found: Installation, account: str,
           transport=None) -> tuple[str, ...]: ...
 ```
 
-- `begin` POSTs `client_id` to `https://github.com/login/device/code`.
+- `begin` POSTs `client_id` to `https://github.com/login/device/code`. A
+  `verification_uri` not starting `https://github.com/` becomes
+  `https://github.com/login/device`: it is a link on the Face's own page.
 - `poll` POSTs `client_id`, `device_code` and `grant_type`
   `urn:ietf:params:oauth:grant-type:device_code` to
   `https://github.com/login/oauth/access_token`. GitHub's `error` field maps
@@ -138,21 +140,20 @@ def sites(token: str, installation: Installation, login: str,
 - Every request to `github.com` sends `Accept: application/json`.
 - `login` reads `GET /user`'s `login`.
 - `installation` reads `GET /user/installations` and returns the one whose
-  `app_slug` is `APP_SLUG` and whose `account.login` is `login`, else
+  `app_slug` is `APP_SLUG` and whose `account.login` is `account`, else
   `None`. An organisation's installation of the app is never it.
 - `create_repository` POSTs `{"name": name, "private": false}` to
   `/user/repos` and returns `True`. A 422 is `False`: the name is taken in
   this account.
-- `reaches`, where `installation.all_repositories` is false, reads
-  `GET /user/installations/{installation.id}/repositories?per_page=100` and
-  answers whether a `full_name` there equals `repository`, ignoring case.
-  Otherwise it sends nothing and answers `True`.
-- `sites` (PRESS-0290) reads
-  `GET /user/installations/{installation.id}/repositories?per_page=100&page=N`
-  from page 1 until a page holds fewer than 100, at most 10 pages. It
-  answers the `name` of each repository whose `has_pages` is true,
-  `private` false and `owner.login` is `login` ignoring case, sorted
-  ignoring case.
+- `reaches` and `sites` read the installation's repositories as
+  `GET /user/installations/{found.id}/repositories?per_page=100&page=N`
+  from page 1 until a page holds fewer than 100, at most 10 pages.
+- `reaches`, where `found.all_repositories` is false, answers whether a
+  `full_name` there equals `repository`, ignoring case. Otherwise it sends
+  nothing and answers `True`.
+- `sites` (PRESS-0290) answers the `name` of each repository whose
+  `has_pages` is true, `private` false and `owner.login` is `account`
+  ignoring case, sorted ignoring case.
   Source: https://docs.github.com/en/rest/apps/installations
 - **No device code, access token or refresh token reaches a message.** Each
   failure's text has them replaced, as `google_signin._scrub` does for

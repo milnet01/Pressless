@@ -1565,6 +1565,7 @@ def test_the_new_repository_is_reached(tmp_path, monkeypatch):
     """INV-8. Breaks when the repository step moves on while the app cannot
     reach the new repository, so the pages step meets a 404."""
     _app(monkeypatch)
+    listed = {}
     for selection, chosen in (("selected", True), ("all", False)):
         folder = tmp_path / selection
         folder.mkdir()
@@ -1573,9 +1574,12 @@ def test_the_new_repository_is_reached(tmp_path, monkeypatch):
         with _setup_page(folder, github, clock=_Clock()) as browser:
             _, done = _walk(browser)
         assert "Setup is done." in done, selection
-        assert (github.sent_to(f"{REACHED}?per_page=100") > 0) is chosen, selection
+        listed[selection] = github.sent_to(f"{REACHED}?per_page=100&page=1")
         # Where the app reaches every repository, the done page says how to narrow it.
         assert ("Only select repositories" in done) is not chosen, selection
+    # The repository list is read for the sites step either way; only a
+    # selected installation reads it again to check the new one is reached.
+    assert listed["selected"] == listed["all"] + 1, listed
 
     folder = tmp_path / "unreached"
     folder.mkdir()
