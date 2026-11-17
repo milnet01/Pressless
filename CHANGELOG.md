@@ -12,7 +12,7 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
-## [1.0.1] - 2026-11-17
+## [1.0.2] - 2026-11-17
 
 **Theme:** Every sign holds, and the format is frozen
 
@@ -36,6 +36,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   waiting changes as links.
 
 ### Fixed
+
+- **On Windows, one file with an impossibly long path no longer stops a bring-in** (PRESS-0385)
+  Bringing in a ZIP, a live site or a WordPress export's media sets that file
+  aside with the reason, and brings in the rest.
 
 - **After Undo, Pressless tells you if a page went back to waiting** (PRESS-0416)
 
@@ -219,6 +223,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - **A WordPress media download writes only into its own folder** (PRESS-0384)
   A crafted export and media ZIP could name a place outside the import folder and
   write a file there. Every file is now checked to land inside it first.
+
+## [1.0.1] - 2026-11-17
+
+Tagged but never released: its release build failed on Windows. Everything
+meant for it is in 1.0.2.
 
 ## [1.0.0] - 2026-11-16
 
