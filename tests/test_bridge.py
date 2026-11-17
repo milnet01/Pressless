@@ -52,6 +52,17 @@ def test_stdout_is_protocol_only(tmp_path, monkeypatch, capsys):
     assert OPEN_WORDS in replies[2]["result"]["content"][0]["text"]
 
 
+def test_a_packaged_bridge_takes_no_folder(tmp_path, monkeypatch):
+    """PRESS-0404: only a source run's bridge is told its folder. A packaged
+    one finds its own, so a settings file naming another folder cannot send
+    an AI app's calls to another door. Breaks when a packaged program takes
+    the folder."""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    with pytest.raises(SystemExit) as stopped:
+        main_module.main(["--assistant", str(tmp_path)])
+    assert stopped.value.code == 2
+
+
 # ------------------------------------------------------------------ INV-8 ---
 
 

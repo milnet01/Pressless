@@ -83,17 +83,21 @@ def main(argv: list[str]) -> int:
     double-click also returns 1 where moving in, an Import's moves or the
     launch failed, 3 where another Pressless holds the folder, and 130 for an
     interrupt before the Face was waiting. An unknown argument exits 2, and
-    `--assistant` returns the bridge's own code. `store: file` is not a
-    failure: this program cannot tell a machine with no store from a bundle
-    that lost its metadata, and PRESS-0022 § 7 decides which by controlling
-    the machine.
+    `--assistant` returns the bridge's own code. A source run's `--assistant`
+    takes the folder its Face uses (PRESS-0337 § 4.4); a packaged one finds
+    its own, so a settings file cannot send its calls to another door.
+    `store: file` is not a failure: this program cannot tell a machine with
+    no store from a bundle that lost its metadata, and PRESS-0022 § 7 decides
+    which by controlling the machine.
     """
-    if argv not in ([], ["--self-check"], ["--assistant"]):
+    told_folder = (len(argv) == 2 and argv[0] == "--assistant"
+                   and not getattr(sys, "frozen", False))
+    if argv not in ([], ["--self-check"], ["--assistant"]) and not told_folder:
         print(_USAGE, file=sys.stderr)
         raise SystemExit(2)
-    if argv == ["--assistant"]:
+    if argv[:1] == ["--assistant"]:
         # PRESS-0337 § 4.4: before the report, since stdout is the protocol's.
-        return bridge.main()
+        return bridge.main(Path(argv[1]) if told_folder else None)
 
     _unbundle_environment()
     print("pressless: ok")

@@ -796,7 +796,7 @@ class _Door:
 
     def setup_page(self, request: Request) -> str:
         on = is_on(self.own)
-        program, arguments = _program()
+        program, arguments = _program(self.own)
         block = json.dumps({"mcpServers": {"pressless": {
             "command": program, "args": arguments}}}, indent=2)
         # The outcome's words are picked from this list, never taken from the address.
@@ -842,7 +842,7 @@ class _Door:
     def connect(self, request: Request) -> Reply:
         """POST /assistant/connect (§ 4.2): Pressless's entry into Claude
         Desktop's settings file, then the screen saying how it went."""
-        said = connect_claude_desktop(claude_desktop_config(), *_program())
+        said = connect_claude_desktop(claude_desktop_config(), *_program(self.own))
         self.face.note(f"assistant: connect Claude Desktop, {said.rsplit('.', 1)[1]}")
         return Reply(b"", "text/plain; charset=utf-8", status=303,
                      location=f"{SETUP}?connect={said.rsplit('.', 1)[1]}")
@@ -951,14 +951,16 @@ def _shown(path: tuple[int, ...], section: blocks.Section) -> dict:
             "parts": len(section.parts)}
 
 
-def _program() -> tuple[str, list[str]]:
+def _program(own: Path) -> tuple[str, list[str]]:
     """What an AI app starts: the packaged program, else this Python running
-    the package, each with --assistant (§ 4.2). On Windows the artefact is
-    the program's folder, and an app starts the Pressless.exe inside it."""
+    the package, each with --assistant (§ 4.2). A source run has no artefact
+    to find its folder beside, so it names `own`, this Face's (§ 4.4). On
+    Windows the artefact is the program's folder, and an app starts the
+    Pressless.exe inside it."""
     try:
         artefact = paths.artefact_path()
     except paths.NotPackaged:
-        return sys.executable, ["-m", "pressless", "--assistant"]
+        return sys.executable, ["-m", "pressless", "--assistant", str(Path(own).absolute())]
     if sys.platform == "win32":
         return sys.executable, ["--assistant"]
     return str(artefact), ["--assistant"]

@@ -945,7 +945,27 @@ def test_the_screen_names_the_program_on_windows(monkeypatch, tmp_path):
     monkeypatch.setattr(assistant.sys, "platform", "win32")
     monkeypatch.setattr(assistant.sys, "frozen", True, raising=False)
     monkeypatch.setattr(assistant.sys, "executable", str(program))
-    assert assistant._program() == (str(program), ["--assistant"])
+    assert assistant._program(tmp_path) == (str(program), ["--assistant"])
+
+
+def test_a_source_run_names_its_folder(monkeypatch, tmp_path, capsys):
+    """PRESS-0404, § 4.4: a source run has no artefact to find its folder
+    beside, so what an AI app starts names the folder this Face uses, and
+    that bridge finds the door there with no PRESSLESS_FOLDER set. Breaks
+    when a source run's bridge looks only where PRESSLESS_FOLDER points."""
+    from pressless import __main__ as main_module
+    monkeypatch.setattr(assistant.sys, "frozen", False, raising=False)
+    with _pressless(tmp_path) as pressless:
+        program, arguments = assistant._program(pressless.own)
+        assert program == sys.executable
+        assert arguments == ["-m", "pressless", "--assistant", str(pressless.own.absolute())]
+        monkeypatch.delenv("PRESSLESS_FOLDER", raising=False)
+        line = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "list_entries", "arguments": {}}}
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(line) + "\n"))
+        assert main_module.main(arguments[2:]) == 0
+    reply = json.loads(capsys.readouterr().out)
+    assert reply["result"]["structuredContent"] == {"entries": []}, reply
 
 
 def test_the_screen_gives_each_app_its_own_line(tmp_path):
@@ -1095,7 +1115,7 @@ def test_the_connect_button(monkeypatch, tmp_path):
         status, headers, _ = pressless.browser.request("POST", "/assistant/connect")
         page = pressless.browser.request("GET", headers["Location"])[2]
         assert "Claude Desktop is connected" in page
-        program, arguments = assistant._program()
+        program, arguments = assistant._program(pressless.own)
         assert json.loads(config.read_text(encoding="utf-8"))["mcpServers"]["pressless"] == {
             "command": program, "args": arguments}
         # The words shown come from a fixed list, never from the address.

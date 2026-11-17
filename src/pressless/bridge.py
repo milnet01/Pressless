@@ -149,16 +149,17 @@ def _call(params: dict, post: Callable[[str, dict], dict | None]) -> _Answer:
                       "isError": True}
 
 
-def door_file() -> Path:
-    return paths.own_folder() / DOOR_NAME
+def door_file(own: Path | None = None) -> Path:
+    """The door file in `own`, a source run's folder, else Pressless's own."""
+    return (own if own is not None else paths.own_folder()) / DOOR_NAME
 
 
-def _post(tool: str, arguments: dict) -> dict | None:
-    """One call to the door, read from the door file now (§ 4.4). None where
-    no Pressless answers there: closed, switched off, or something else on its
-    old port (§ 6)."""
+def _post(tool: str, arguments: dict, own: Path | None = None) -> dict | None:
+    """One call to the door, read from `door_file(own)` now (§ 4.4). None
+    where no Pressless answers there: closed, switched off, or something else
+    on its old port (§ 6)."""
     try:
-        door = json.loads(door_file().read_text(encoding="utf-8"))
+        door = json.loads(door_file(own).read_text(encoding="utf-8"))
         port, token = int(door["port"]), str(door["token"])
     except (OSError, ValueError, KeyError, TypeError, paths.NotPackaged):
         return None
@@ -181,12 +182,14 @@ def _post(tool: str, arguments: dict) -> dict | None:
     return reply if isinstance(reply, dict) else None
 
 
-def main() -> int:
-    """`pressless --assistant`: serve stdin until it ends."""
+def main(own: Path | None = None) -> int:
+    """`pressless --assistant`: serve stdin until it ends. `own` is the folder
+    a source run is told (§ 4.4); a packaged program finds its own."""
     # UTF-8 both ways and bare newlines, whatever the console's own settings.
     for stream in (sys.stdin, sys.stdout):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:
             reconfigure(encoding="utf-8", newline="\n" if stream is sys.stdout else None)
-    run(sys.stdin, sys.stdout)
+    run(sys.stdin, sys.stdout,
+        door=None if own is None else lambda tool, arguments: _post(tool, arguments, own))
     return 0

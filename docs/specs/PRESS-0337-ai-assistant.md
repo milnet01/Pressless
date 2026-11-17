@@ -186,6 +186,12 @@ report is printed: the report goes to stdout, and stdout belongs to the
 protocol. The route calls `bridge.run(sys.stdin, sys.stdout)` and exits 0 at
 end of input.
 
+A source run has no artefact to find its folder beside, so § 4.2's screen
+names `python -m pressless --assistant <folder>`, the folder its Face uses,
+and that bridge reads the door file there. A packaged program refuses a
+folder with exit 2: it finds its own, so a settings file cannot send its
+calls to another door.
+
 The protocol is a subset of MCP over stdio. Source:
 <https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio>,
 `.../basic/versioning`, `.../server/discover`, `.../server/tools`.
@@ -602,6 +608,7 @@ By hand, before release, on Linux and the Windows box:
 | Claude Desktop's file is where § 4.2 says | **Partial:** `::test_claude_desktops_file_on_each_system` checks our reading; only the § 7 check runs the real app, and only on Windows |
 | The home screen after Yes (§ 4.6) | `scripts/by-hand-browser-checks.py`'s PRESS-0356 row, run before a release; nothing in the gate |
 | No failure points a chat "below" (§ 4.3) | `tests/test_assistant.py::test_no_failure_points_an_ai_app_below` |
+| A source run's bridge finds its door (§ 4.4) | `tests/test_assistant.py::test_a_source_run_names_its_folder` and `tests/test_bridge.py::test_a_packaged_bridge_takes_no_folder` |
 | A failure after Yes shows (§ 4.6) | `tests/test_assistant.py::test_only_a_failure_no_press_row_shows_goes_to_the_box` and `::test_a_failure_after_yes_is_shown_on_any_page`, which needs Node; no browser runs it |
 | Names stay stable (§ 4.5) | **nothing** — a renamed tool passes every test; caught only by review |
 | Each app's connection steps (§ 4.2) | **Partial:** the § 7 by-hand check, for the three apps named there |

@@ -11,3 +11,4 @@
 | 0356 | 2026-11-13 | 0, no reviewer dispatched | - | - | - | - | PRESS-0356 fold-back: § 4.6 says what a page shows after Yes; § 10 names the browser row. |
 | 0357 | 2026-11-13 | 0, no reviewer dispatched | - | - | - | - | PRESS-0357 fold-back: § 4.2 gains the Connect Claude Desktop button, INV-14 and its § 10 rows. Unrun here: the real app, until the § 7 Windows check. |
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.2, 4.6: the helper's line and the home screen are Your site. |
+| 0402-0404 | 2026-11-17 | 0, no reviewer dispatched | - | - | - | - | Fold-back: § 4.3 chat words for steps pointing below; § 4.4 a source run names its folder; § 4.6 a failure after Yes shows; § 10 rows. |
