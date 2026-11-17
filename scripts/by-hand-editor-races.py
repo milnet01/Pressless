@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import test_publishing as tp  # noqa: E402
 from playwright.sync_api import sync_playwright  # noqa: E402
 
-from pressless import credentials, editor, face, page_editor, publishing, store  # noqa: E402
+from pressless import credentials, editor, face, page_editor, publishing, store, words  # noqa: E402
 
 RESULTS: list[tuple[str, bool]] = []
 _PUBLISHED_OR_STOPPED = (
@@ -64,6 +64,9 @@ def typing_during_publish(page, url: str, box: str, name: str) -> None:
     page.keyboard.type(" one")
     page.wait_for_timeout(1500)
     page.evaluate(_CLICK_PUBLISH)
+    # PRESS-0345: the press first shows what will change; Publish now starts it.
+    page.locator("dialog.plan").wait_for(state="visible", timeout=15000)
+    page.get_by_role("button", name=words.say("script.plan.go"), exact=True).click()
     page.wait_for_timeout(300)
     field.click()
     page.keyboard.press("End")
@@ -94,12 +97,12 @@ def main() -> int:
                                         headless=True)
             page = browser.new_page()
             page.goto(served.url)
-            typing_during_publish(page, origin + "/edit?slug=seaside",
+            typing_during_publish(page, origin + "/edit?slug=seaside&view=marks",
                                   "textarea[name=body]", "entry editor")
             typing_during_publish(page, origin + "/page?kind=pages&name=about&view=code",
-                                  "textarea", "page editor")
+                                  "textarea[name=text]", "page editor")
 
-            page.goto(origin + "/edit?slug=seaside")
+            page.goto(origin + "/edit?slug=seaside&view=marks")
             # Past the 64 KiB a keepalive request carries (editor.py), so the
             # change cannot be sent as the page goes and the editor asks first.
             page.evaluate("const t = document.querySelector('textarea[name=body]');"
