@@ -34,7 +34,7 @@ After this ships there is one place that holds the facts about *this
 machine and this site* — where the finished site folder is written, the
 site's name and address, which repository it is published to, which tag the
 Builder filters, which paths
-in that repository are not ours to touch, where the two credentials are
+in that repository are not ours to touch, where the credentials are
 kept, and the Analytics property id. Every part reads it except Marks, which is
 pure calculation, and Credentials, which is handed what it needs rather than
 reading (`docs/design.md` rule 10). Settings itself reads nothing else: no
@@ -120,7 +120,7 @@ class Settings:
     site_address: str            # its absolute address, e.g. "https://example.org"
     daily_prompt_filter: str     # fnmatch glob, matched per tag -- see below
     untouchable: tuple[str, ...] # repository-root entries the Publisher leaves alone
-    credentials: Credentials     # where the two secrets are kept -- never the secrets
+    credentials: Credentials     # where each secret is kept -- never the secrets
     analytics_property_id: str | None
 
 @dataclass(frozen=True)
@@ -755,3 +755,4 @@ loading or saving does anything.
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376 § 4.4: `write_whole` syncs the target's folder through `sync_folder`. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: INV-1 names `pressless.words` (PRESS-0242); §4.4 says a key nested in `credentials` is lost only on a downgrade, which is not supported. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0406: § 1 and § 4.1 stop counting the credentials as two. |

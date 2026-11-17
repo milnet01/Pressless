@@ -1,4 +1,4 @@
-# PRESS-0002 — Credentials: where the two secrets are kept, and how they are reached
+# PRESS-0002 — Credentials: where the secrets are kept, and how they are reached
 
 **Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated. That gate found four code defects, filed as PRESS-0100, and reached the spec cap of 2 with an empty tail.
 **Amended 2026-10-03, before implementation** (PRESS-0141): INV-1 lets
@@ -43,7 +43,7 @@ them.
 Four things make this a contract rather than a helper.
 
 1. **Three parts bind to the surface, and one of them reaches it.** Setup
-   writes both secrets. The Publisher and Insights need one each, and
+   writes each secret. The Publisher and Insights need one each, and
    `docs/design.md` rule 10 has the Face fetch it and hand it over as an
    argument — so rules 5 and 8 stay literally true and both parts stay
    testable without a real keyring. §11 records how that was settled.
@@ -80,8 +80,8 @@ the rest were made in session.** §8 carries what each beat.
    that. `docs/design.md` § Where everything sits on disk puts it beside the
    settings file, and PRESS-0001 §4.5 hands the question here rather than
    answering it.
-4. **One fallback file holds both secrets.** Two files would mean two atomic
-   writes and the same permission question asked twice.
+4. **One fallback file holds every secret.** A file per secret would mean an
+   atomic write and the same permission question for each.
 5. **A store's answer is a `str` or it is an error.** The measured non-string
    answer in §4.6 is not a value this module may hand to the Publisher.
 6. **A read of the fallback file checks that the file is ours, and does not
@@ -107,7 +107,7 @@ the rest were made in session.** §8 carries what each beat.
 ```python
 # src/pressless/credentials.py
 
-SERVICE = "Pressless"            # what both secrets are filed under in the store
+SERVICE = "Pressless"            # what every secret is filed under in the store
 PROBE = "pressless-store-probe"  # the account choose() round-trips; never a secret
 FILE_NAME = "credentials.json"   # the fallback file, in Pressless's own folder
 FILE_VERSION = 1
@@ -309,13 +309,13 @@ has gets overwritten.
 { "version": 1, "secrets": { "<account>": "<secret>" } }
 ```
 
-In `folder`, named `FILE_NAME`, UTF-8, one file for both secrets.
+In `folder`, named `FILE_NAME`, UTF-8, one file for every secret.
 
 Written the way PRESS-0001 §4.4 writes settings — a temporary file made by
 `tempfile.mkstemp` beside the target, flushed and `os.fsync`ed, then
 `os.replace`. The sync is part of that mechanism rather than a refinement of
 it, as PRESS-0001 says: without it a power loss can commit the rename ahead
-of the blocks and leave a file holding neither secret. That mechanism is
+of the blocks and leave a file holding no secret. That mechanism is
 chosen twice over here: it is atomic, and `mkstemp` creates its file
 owner-only, a mode `os.replace` carries onto the target (§4.6). So the file is
 private from the instant it exists and no `chmod` follows a write that has
@@ -748,7 +748,7 @@ exit code.
 
 ## 9. Out of scope
 
-- Asking the writer for either secret, and the two-step setup ADR-0005
+- Asking the writer for a secret, and the two-step setup ADR-0005
   requires — PRESS-0021.
 - Finding Pressless's own folder from the running program — PRESS-0022.
 - Carrying the store's backends into the packaged executable, which needs
@@ -831,3 +831,4 @@ exit code.
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: the file store's read, change and replace hold one lock (§ 6, INV-8's test). |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0405: § 4.1 and § 4.3 gain `delete_each`, which a Turn off uses to delete under both names. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0406: the title, § 2, § 3 decision 4, § 4.1, § 4.4 and § 9 stop counting the secrets as two. |
