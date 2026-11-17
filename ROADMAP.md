@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=425 -->
+<!-- ants-roadmap-id-high-water: PRESS=426 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7720,6 +7720,12 @@ does not wait on them.
   DOMParser and is owed a browser check before release. Specs amended:
   PRESS-0216, 0235. Full suite 2333 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-03-page-editor.json.
+  2026-11-17: the owed browser check of the caption field passed in
+  headless Chrome (scratch script): &amp;, &lt; and &gt; show as
+  characters, typing saves them escaped once, a caption with a link or any
+  tag is read-only with its note, and no page errors. Only those three
+  references reach the field: blocks.read keeps any other (&#8217;,
+  &rsquo;, &quot;) as a code section; filed as PRESS-0426.
   **Layman:** Fixes in the screen where you edit pages, the header, the footer and the menu.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -8690,6 +8696,21 @@ does not wait on them.
   Kind: fix.
   Source: PRESS-0422 follow-up 2026-11-17.
   Lanes: Setup.
+
+- 📋 [PRESS-0426] **A picture whose caption holds a character reference other than &amp;, &lt; or &gt; opens as code.**
+  Found by the owed browser check of PRESS-0373's caption field.
+  blocks.read keeps a picture section only where its figcaption's
+  character references are &amp;, &lt; or &gt;; "Jerry&#8217;s",
+  "&rsquo;", "&quot;" and "caf&eacute;" each make it a code section.
+  WordPress's published pages write curly apostrophes as &#8217;;
+  whether an import (WordPress export, folder or fetch) brings such a
+  caption in is unverified, and is the first thing to check. The caption field already reads every
+  reference (DOMParser). Weigh: accept any reference in the reader, or
+  have the import write the characters themselves.
+  **Layman:** A picture whose caption has a curly apostrophe or quote written as a code may open as code in the page editor instead of as a picture.
+  Kind: fix.
+  Source: PRESS-0373 browser check 2026-11-17.
+  Lanes: Editor.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
