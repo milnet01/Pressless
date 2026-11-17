@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Countdowns, the look and keyboard users** (PRESS-0374)
+  A countdown now ends at the time you set, wherever in the world a visitor watches
+  it. Footer links show where the keyboard is on every layout. Picking a layout to
+  start from keeps CSS you have already typed. A contrast warning no longer shows a
+  rounded-up ratio that looks like it passes.
+
 - **Building your site copes with more odd cases** (PRESS-0375)
   A photograph that cannot be converted now stops the build with its name, instead
   of a vague message about the site folder. A site with one entry says "All 1

@@ -7708,10 +7708,22 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Editor.
 
-- 📋 [PRESS-0374] **Review fixes: blocks, the look and templates.**
+- ✅ [PRESS-0374] **Review fixes: blocks, the look and templates.**
   Subject 04 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 5 low. review-readability: 2 medium, 10 low.
   Among them: a raw OSError escaping look.py's typed failures.
+  Ledger: close-findings-2026-11-17/lane-04-blocks-look.json.
+  Shipped 2026-11-17, 4ec1894..5272140. 22 findings: 21 fixed, 0
+  queued, 1 dismissed (templates' face.note writes only to the log;
+  test_words exempts .note calls). Footer links show a focus ring on
+  every layout, and looks saved by 0.10.1 and 1.0.0 still count as made
+  by Pressless; a countdown ends at the writer's local time wherever it
+  is watched; picking a layout keeps typed CSS; a contrast ratio is cut,
+  not rounded; look.digest's read failure is a StoreError. Specs
+  amended: PRESS-0196, 0359, 0217. Merge fixes: the countdown and
+  caption field lines combined in page_editor's panel script; the
+  Store's surface test admits read_look_bytes. Full suite 2363 passed,
+  27 skipped.
   Ledger: close-findings-2026-11-17/lane-04-blocks-look.json.
   **Layman:** Fixes in how page sections, colours and fonts are saved.
   Kind: review-fix.
