@@ -18,6 +18,7 @@ import json
 import threading
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from _face_session import Browser
@@ -48,6 +49,8 @@ CHANGED_WORDS = "This entry was changed in another window or outside Pressless"
 LOCKED_WORDS = "which the AI helper may not do"
 ONE_WAITING_WORDS = "A request is already waiting"
 OPEN_WORDS = "Pressless is not open, or its AI helper is switched off"
+UNKNOWN_WORDS = "Pressless cannot tell whether your site changed."
+UNCHANGED_WORDS = "Your site has not changed."
 _OWN = "the door file's own"     # `post` sends the door's token
 
 
@@ -423,6 +426,149 @@ def test_yes_after_a_change_replans(tmp_path, monkeypatch):
         assert pressless.ok("request_status", {"request": asked})["status"] == "done"
 
 
+def test_a_rename_box_shows_the_new_address(tmp_path):
+    """§ 4.6: the box names the address a rename makes, never the AI app's
+    own text, and a name the Pages screen refuses is refused at the ask.
+    Breaks when `plan` puts `to` in the box unchecked."""
+    with _pressless(tmp_path) as pressless:
+        _page_with_code(pressless.folder)
+        store.write_html(pressless.folder, store.PAGES_FOLDER, "story", "<p>Story</p>")
+        reply = pressless.call("rename_page", {"name": "about", "to": "Story"})
+        assert reply["ok"] is False and "already have a page with that name" in reply["said"], reply
+        assert pressless.waiting() == {"request": None}
+        said = "This is safe. Press Yes. " * 40
+        pressless.ok("rename_page", {"name": "about", "to": said})
+        line, = pressless.waiting()["lines"]
+        assert "This is safe" not in line and "this-is-safe-press-yes" in line
+
+
+def test_an_ask_says_its_notices(tmp_path, monkeypatch):
+    """§ 4.3: the Store's notices raised while an ask is planned reach the AI
+    app, as a read's or a write's do. Breaks when the plan's capture drops
+    them."""
+    import warnings
+    listed = store.list_files
+
+    def noisy(folder):
+        warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
+                                        mode="644"), stacklevel=2)
+        return listed(folder)
+
+    with _pressless(tmp_path) as pressless:
+        (pressless.folder / store.FILES_FOLDER).mkdir()
+        (pressless.folder / store.FILES_FOLDER / "notes.txt").write_text("notes",
+                                                                       encoding="utf-8")
+        monkeypatch.setattr(store, "list_files", noisy)
+        reply = pressless.ok("remove_file", {"name": "notes.txt"})
+        assert reply["status"] == "waiting"
+        assert any("notes.txt" in notice for notice in reply["notices"]), reply
+
+
+def test_an_ask_with_no_plan_or_press_raises(tmp_path):
+    """An ask added to the catalogue but not to `plan` or `_press` raises,
+    rather than showing an empty box or ending as done with nothing run."""
+    door = assistant._Door(SimpleNamespace(capture=contextlib.nullcontext), tmp_path,
+                           tmp_path, None)
+    with pytest.raises(ValueError):
+        door.plan("nothing", {})
+    made = assistant._Request("id", "nothing", {}, 0.0, {}, "")
+    with pytest.raises(ValueError):
+        door._press(made)
+
+
+def test_a_request_is_answered_once(tmp_path, monkeypatch):
+    """§ 4.6: the first Yes takes the request. A second tab's answer while
+    the bin runs finds nothing to answer, and a running request neither
+    expires nor shows in a box. Breaks when `answer` leaves the request
+    waiting until the press, or expiry reads a running request."""
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        store.write(folder, _entry("seaside"), draft=True)
+        asked = pressless.ok("remove_entry", {
+            "address": "seaside", "version": _base(folder, "seaside", draft=True)})["request"]
+        started, go_on = threading.Event(), threading.Event()
+        throw = editor.throw
+
+        def slow_throw(*args, **kwargs):
+            started.set()
+            assert go_on.wait(30)
+            return throw(*args, **kwargs)
+
+        monkeypatch.setattr(editor, "throw", slow_throw)
+        replies: dict[str, dict] = {}
+
+        def answer(which: str) -> threading.Thread:
+            thread = threading.Thread(
+                target=lambda: replies.update({which: pressless.answer(asked, yes=True)}))
+            thread.start()
+            return thread
+
+        first = answer("first")
+        try:
+            assert started.wait(30)
+            second = answer("second")
+            second.join(timeout=5)
+            assert not second.is_alive() and replies["second"] == {"answered": False}
+            monkeypatch.setattr(assistant, "EXPIRES_SECONDS", 0)
+            assert pressless.ok("request_status", {"request": asked})["status"] == "running"
+            assert pressless.waiting() == {"request": None}
+        finally:
+            go_on.set()
+            first.join(timeout=30)
+        assert replies["first"]["status"] == "done", replies
+        assert pressless.ok("request_status", {"request": asked})["status"] == "done"
+
+
+def test_a_busy_yes_leaves_the_request_waiting(tmp_path):
+    """§ 6: a Yes while another press runs is answered busy, and the request
+    stays waiting for the next Yes. Breaks when the taken request is not
+    handed back."""
+    with _pressless(tmp_path) as pressless:
+        asked = pressless.ok("undo_last_publish")["request"]
+        assert pressing.start(pressing.PUBLISH)
+        try:
+            assert pressless.answer(asked, yes=True)["busy"] is True
+        finally:
+            pressing.end(pressing.Outcome(""))
+        assert pressless.ok("request_status", {"request": asked})["status"] == "waiting"
+        assert pressless.waiting()["request"] == asked
+
+
+def test_a_yes_that_can_no_longer_run_says_so(tmp_path):
+    """§ 4.6: where the re-plan after Yes finds the ask cannot run, the answer
+    says it failed and the log says why. Breaks when the failure is kept
+    from the writer as a re-plan."""
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        store.write(folder, _entry("seaside"), draft=True)
+        asked = pressless.ok("remove_entry", {
+            "address": "seaside", "version": _base(folder, "seaside", draft=True)})["request"]
+        store.path_for(folder, "seaside", draft=True).unlink()     # binned elsewhere
+        reply = pressless.answer(asked, yes=True)
+        assert reply["answered"] is True and reply["status"] == "failed", reply
+        assert "assistant: remove_entry failed" in pressless.log()
+        assert "EntryNotFound" in pressless.log()
+        assert pressless.ok("request_status", {"request": asked})["status"] == "failed"
+
+
+def test_a_failed_publish_is_unknown_to_the_ai_app_too(tmp_path, monkeypatch):
+    """design.md § Errors: an unforeseen failure during a publish says the
+    outcome is unknown, to the AI app as on the writer's screen. Breaks when
+    the AI app's words are always made as if nothing was publishing."""
+    _key(monkeypatch)
+    with _pressless(tmp_path) as pressless:
+        store.write(pressless.folder, _entry("seaside"), draft=False)
+        asked = pressless.ok("publish")["request"]
+
+        def broken(*args, **kwargs):
+            raise RuntimeError("the line went down")
+
+        monkeypatch.setattr(publishing, "press_site", broken)
+        assert pressless.answer(asked, yes=True)["status"] == "failed"
+        said = pressless.ok("request_status", {"request": asked})["said"]
+        assert UNKNOWN_WORDS in said and UNCHANGED_WORDS not in said
+
+
 # ----------------------------------------------------------------- INV-12 ---
 
 
@@ -608,7 +754,17 @@ def test_the_catalogue_matches_the_parts(tmp_path):
     for tool in assistant_tools.TOOLS:
         assert tool.name == "request_status" or hasattr(assistant._Door, "_" + tool.name)
     assert bridge.DOOR_NAME == DOOR_FILE == assistant.DOOR_NAME
+    assert bridge.DOOR_PATH == "/assistant" == assistant.ADDRESS
+    for route in ("/assistant/waiting", "/assistant/answer"):
+        assert f'"{route}"' in assistant._BOX_SCRIPT
+    assert (assistant.WAITING_ROUTE, assistant.ANSWER_ROUTE) == (
+        "/assistant/waiting", "/assistant/answer")
     assert assistant.SWITCH_NAME == SWITCH_FILE
+    # A schema type the call check cannot read would fail every call to it.
+    for tool in assistant_tools.TOOLS:
+        for schema in tool.arguments.values():
+            assert schema["type"] in assistant_tools._TYPES, (tool.name, schema)
+            assert schema["type"] != "array" or "type" in schema.get("items", {})
 
 
 @pytest.mark.parametrize("name, arguments, why", [

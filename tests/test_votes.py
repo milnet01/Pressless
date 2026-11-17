@@ -427,7 +427,7 @@ def test_privacy_adds_nothing_to_a_store_with_no_site(tmp_path: Path) -> None:
 
 
 def test_privacy_page_stays_while_votes_on(tmp_path: Path, monkeypatch) -> None:
-    """INV-9. Breaks when `_reshape_hint` still reads `measurement_id` alone."""
+    """INV-9. Breaks when `reshape_hint` still reads `measurement_id` alone."""
     _key(monkeypatch)
     folder = _folder_with_menu(tmp_path)
     store.write_html(folder, "pages", "privacy", "<p>Privacy</p>")

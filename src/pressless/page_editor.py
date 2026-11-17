@@ -1097,7 +1097,7 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
 
 
-def _reshape_hint(folder: Path, name: str, to: str, renaming: bool,
+def reshape_hint(folder: Path, name: str, to: str, renaming: bool,
                   saved: settings.Settings) -> str | None:
     """§ 4.4's refusals, as a words key; None where the change may go ahead."""
     if name == HOME:
@@ -1182,7 +1182,7 @@ def reshape(folder: Path, name: str, to: str, *, renaming: bool,
     gathered = gatherer(capture, gathered_notices)
     try:
         saved = gathered(lambda: settings.load(folder))
-        hint = gathered(lambda: _reshape_hint(folder, name, to, renaming, saved))
+        hint = gathered(lambda: reshape_hint(folder, name, to, renaming, saved))
         if hint is not None:
             raise NameRefused(hint)
         key = github_setup.token(folder, saved.credentials.store,

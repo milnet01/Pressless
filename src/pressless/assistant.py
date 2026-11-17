@@ -69,10 +69,12 @@ from pressless.words import say
 
 SWITCH_NAME = "assistant.json"        # {"on": true|false}; absent means off
 DOOR_NAME = "assistant-door.json"     # the port, the token and the version
+# The door and the screens' routes. bridge.DOOR_PATH copies ADDRESS, and
+# _BOX_SCRIPT writes the box's two out; a test checks each copy matches.
 ADDRESS = "/assistant"
 SETUP = "/assistant/setup"
-WAITING = "/assistant/waiting"
-ANSWER = "/assistant/answer"
+WAITING_ROUTE = "/assistant/waiting"
+ANSWER_ROUTE = "/assistant/answer"
 CONNECT = "/assistant/connect"
 EXPIRES_SECONDS = 30 * 60
 
@@ -91,7 +93,7 @@ _STATUS_WORDS = {
     UNKNOWN: "assistant.status.unknown"}
 _JSON = "application/json"
 _KEEP_FINISHED = 50                   # finished requests kept for request_status
-_PUBLISHING_KEY = "failure.secret.publishing_key"
+_KEY_WORDS = "failure.secret.publishing_key"     # the words naming the key, never the key
 _PRESSES = {"publish": pressing.PUBLISH, "undo_last_publish": pressing.UNDO,
             "remove_page": pressing.PUBLISH, "rename_page": pressing.PUBLISH}
 
@@ -152,11 +154,14 @@ class _Request:
     said: str = ""
 
 
-def _said(failure: BaseException, *, secret: str | None = None) -> str:
-    """A failure as plain text: its sentence's three parts (§ 4.3)."""
+def _said(failure: BaseException, *, publishing: bool = False,
+          secret: str | None = None) -> str:
+    """A failure as plain text: its sentence's three parts (§ 4.3), saying the
+    site's state is unknown where an unforeseen failure struck a publish, as
+    the writer's screen does."""
     if isinstance(failure, Refused):
         return failure.slots["said"]
-    told = sentence_for(failure, publishing=False, secret=secret)
+    told = sentence_for(failure, publishing=publishing, secret=secret)
     # A screen's next step may point "below" at a link; a chat has none.
     following = say(_CHAT_NEXT[type(failure)]) if type(failure) in _CHAT_NEXT else told.next
     return " ".join(part for part in (told.what, told.site.words, following) if part)
@@ -217,7 +222,7 @@ class _Door:
                 self.face.note(f"assistant: {tool} refused {type(exc).__name__}")
                 self.face.fail(exc, publishing=False)     # its details, in the log
                 secret = (say("failure.secret.google_sign_in") if tool == "read_insights"
-                          else say(_PUBLISHING_KEY))
+                          else say(_KEY_WORDS))
                 return _answer({"ok": False, "said": _said(exc, secret=secret)})
         self.face.note(f"assistant: {tool} ok")
         return _answer({"ok": True, "result": result})
@@ -396,12 +401,15 @@ class _Door:
 
     def _save_look(self, version: str, choices: dict) -> dict:
         folder = self.folder
-        # § 4.5: the route and their own CSS the Look screen would post unchanged.
-        styled = look_screen._has_style_code(folder)
-        if look_screen._offers_routes(folder) and not styled:
+        # § 4.5: the save posts the route and the hand-written CSS the Look
+        # screen would post, so neither changes. A site offering both routes
+        # with no Pressless style code stands on its own stylesheets, and a
+        # save of choices would move it to the Pressless look: refused.
+        offers_routes = look_screen._offers_routes(folder)
+        if offers_routes and not look_screen._has_style_code(folder):
             raise Refused("assistant.own_stylesheets")
         form = {"base": version, "extra": look.read_extra(folder),
-                "route": look_screen.PRESSLESS if look_screen._offers_routes(folder) else ""}
+                "route": look_screen.PRESSLESS if offers_routes else ""}
         for name in ("layout", "body_font", "heading_font", "text_size", "width"):
             form[name] = str(choices.get(name, ""))
         for scheme in ("light", "dark"):
@@ -421,7 +429,7 @@ class _Door:
         with self.state:
             if self._still_waiting() is not None:
                 raise Refused("assistant.one_waiting")
-        plan = self._planned(tool, arguments)
+        plan, notices = self._planned(tool, arguments)
         made = _Request(secrets.token_urlsafe(8), tool, arguments, time.monotonic(), plan,
                         self.mark())
         with self.state:
@@ -429,7 +437,10 @@ class _Door:
                 raise Refused("assistant.one_waiting")
             self.waiting = self.requests[made.id] = made
             self._prune()
-        return {"request": made.id, "status": WAITING_STATE}
+        asked = {"request": made.id, "status": WAITING_STATE}
+        if notices:
+            asked["notices"] = notices      # as `run` adds them to a read or a write
+        return asked
 
     def _publish(self, **arguments: str) -> dict:
         return self._ask("publish", arguments)
@@ -452,16 +463,22 @@ class _Door:
     def _remove_file(self, **arguments: str) -> dict:
         return self._ask("remove_file", arguments)
 
-    def _planned(self, tool: str, arguments: dict) -> dict:
-        """`plan`, capturing the Store's notices for every ask but a publish,
-        whose plan builds and so holds no capture (see `run`)."""
+    def _planned(self, tool: str, arguments: dict) -> tuple[dict, list[str]]:
+        """`plan`, and the Store's notices it raised. Captured for every ask
+        but a publish, whose plan builds and so holds no capture (see `run`)."""
         if tool == "publish":
-            return self.plan(tool, arguments)
-        with self.face.capture():
-            return self.plan(tool, arguments)
+            return self.plan(tool, arguments), []
+        with self.face.capture() as notices:
+            plan = self.plan(tool, arguments)
+        return plan, notices
 
     def mark(self) -> str:
         return store.mark(self.folder, settings.path_for(self.folder))
+
+    # An ask lives in five places, each kept by hand: its Tool in
+    # assistant_tools, its `_<name>` method above, a branch in `plan` and in
+    # `_press`, and an entry in _PRESSES where it publishes or undoes. A tool
+    # missing from `plan` or `_press` raises rather than doing nothing.
 
     def plan(self, tool: str, arguments: dict) -> dict:
         """§ 4.6's plan: what the box lists. Checks the ask can run now, so a
@@ -475,10 +492,14 @@ class _Door:
                 raise Refused("assistant.entry_or_page")
             if entry is not None:
                 slug, draft = _entry_file(folder, entry)
+                # § 4.5: an entry with nothing waiting publishes the site as it
+                # stands; `_press` makes the same choice.
                 shown = publishing.plan(folder, entry=slug if draft else None,
                                         transport=self.transport)
             elif page is not None:
                 page_editor._read(folder, _kind(page), page)     # it exists
+                # A page with nothing waiting: publishing.plan falls back to
+                # the whole site, as `_press` does.
                 shown = publishing.plan(folder, page=(_kind(page), page),
                                         transport=self.transport)
             else:
@@ -488,11 +509,17 @@ class _Door:
         if tool == "undo_last_publish":
             lines.append(say("assistant.box.undo"))
         elif tool in ("remove_page", "rename_page"):
-            name = arguments["name"]
+            name, renaming = arguments["name"], tool == "rename_page"
             if not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
                 raise store.EntryNotFound(f"there is no page {name}")
-            lines.append(say("assistant.box.rename", name=name, to=arguments["to"])
-                         if tool == "rename_page" else say("assistant.box.remove", name=name))
+            to = arguments.get("to", "")
+            hint = page_editor.reshape_hint(folder, name, to, renaming, settings.load(folder))
+            if hint is not None:
+                raise page_editor.NameRefused(hint)     # the Pages screen's own refusal
+            # The box names the address the rename makes, never the AI app's
+            # own text (§ 4.6).
+            lines.append(say("assistant.box.rename", name=name, to=editor.name_address(to))
+                         if renaming else say("assistant.box.remove", name=name))
         elif tool == "remove_entry":
             slug, draft = _entry_file(folder, arguments["address"])
             path = store.path_for(folder, slug, draft=draft)
@@ -515,19 +542,30 @@ class _Door:
             lines.append(say("assistant.box.discard", name=named))
         elif tool == "remove_file":
             name = arguments["name"]
-            store.file_path_for(folder, name)
+            store.file_path_for(folder, name)     # refuses a name the Store would not keep
             if name not in store.list_files(folder):
                 raise store.EntryNotFound(f"there is no file {name}")
             lines.append(say("assistant.box.bin", name=name))
+        else:
+            raise ValueError(f"no plan for the ask {tool}")
         return {"pages": [], "added": 0, "removed": 0, "lines": lines}
 
     def _still_waiting(self) -> _Request | None:
-        """The waiting request, after expiring one past its time. The caller
-        holds `state`."""
+        """The one open request: waiting for the writer, or taken by a Yes and
+        running. One waiting past its time expires first; one running never
+        does. The caller holds `state`."""
         waiting = self.waiting
-        if waiting is not None and time.monotonic() - waiting.made >= EXPIRES_SECONDS:
+        if (waiting is not None and waiting.status == WAITING_STATE
+                and time.monotonic() - waiting.made >= EXPIRES_SECONDS):
             waiting.status, self.waiting = EXPIRED, None
         return self.waiting
+
+    def _close(self, made: _Request, status: str, said: str = "") -> None:
+        """`made` has ended with `status`; it stops being the open request
+        only if it still is one. The caller holds `state`."""
+        made.status, made.said = status, said
+        if self.waiting is made:
+            self.waiting = None
 
     def _prune(self) -> None:
         finished = [made for made in self.requests.values() if made is not self.waiting]
@@ -549,67 +587,78 @@ class _Door:
         """GET /assistant/waiting (§ 4.6): the waiting request's plan, or none."""
         with self.state:
             waiting = self._still_waiting()
-        if waiting is None:
-            return _answer({"request": None})
+            if waiting is None or waiting.status != WAITING_STATE:
+                return _answer({"request": None})     # a taken request has no box
         return _answer({"request": waiting.id, "stamp": waiting.mark[:16],
                         "publishing": pressing.state()["running"], **waiting.plan})
 
     def answer(self, request: Request) -> Reply:
-        """POST /assistant/answer (§ 4.6): yes runs the press, not yet refuses."""
+        """POST /assistant/answer (§ 4.6): yes runs the press, not yet refuses.
+        A Yes takes the request before `state` is let go, so an answer from
+        another tab finds nothing waiting until the press ends or the request
+        is handed back to wait."""
         form = editor.form_fields(request)
         with self.state:
             made = self._still_waiting()
-            if made is None or made.id != form.get("request"):
+            if made is None or made.id != form.get("request") or made.status != WAITING_STATE:
                 return _answer({"answered": False})
             if form.get("yes") != "1":
-                made.status, self.waiting = REFUSED, None
+                self._close(made, REFUSED)
                 self.face.note(f"assistant: {made.tool} not yet")
                 return _answer({"answered": True, "status": REFUSED})
+            made.status = RUNNING
         kind = _PRESSES.get(made.tool)
         if kind is None:
             with editor.LOCK:
                 return self._yes(made, None)
 
         def busy(said: str) -> Reply:
+            self._hand_back(made)
             return _answer({"answered": False, "busy": True, "said": said})
 
         return pressing.run(kind, busy, lambda told: self._yes(made, told))
+
+    def _hand_back(self, made: _Request) -> None:
+        """A taken request that did not run waits again."""
+        with self.state:
+            if self.waiting is made:
+                made.status = WAITING_STATE
 
     def _yes(self, made: _Request, told: Callable[[pressing.Outcome], None] | None) -> Reply:
         """§ 4.6 steps 1 to 3, with the press record taken where one is owed.
         The mark is compared under editor.LOCK, so nothing can change between
         it and the press."""
+        kind = _PRESSES.get(made.tool)
+        # Without a press record the caller already holds editor.LOCK, which
+        # is not re-entrant, so taking it again here would hang.
         lock = editor.LOCK if told is not None else contextlib.nullcontext()
         with lock:
-            if self.mark() != made.mark:
-                try:
-                    made.plan = self._planned(made.tool, made.arguments)
-                    made.mark = self.mark()
-                except Exception as exc:  # noqa: BLE001 -- the ask can no longer run
-                    with self.state:
-                        made.status, made.said, self.waiting = FAILED, _said(exc), None
-                if told is not None:
-                    told(pressing.Outcome(""))     # nothing ran, so nothing to say
-                return _answer({"answered": False, "replanned": True})
-            with self.state:
-                made.status = RUNNING
-            kind = _PRESSES.get(made.tool)
+            pressed = False
             try:
-                if kind is not None:
+                if self.mark() != made.mark:
+                    made.plan, _ = self._planned(made.tool, made.arguments)
+                    made.mark = self.mark()
+                    self._hand_back(made)
+                    if told is not None:
+                        told(pressing.Outcome(""))     # nothing ran, so nothing to say
+                    return _answer({"answered": False, "replanned": True})
+                pressed = kind is not None
+                if pressed:
                     self._press(made)      # a press captures step by step itself
                 else:
                     with self.face.capture():
                         self._press(made)
             except Exception as exc:  # noqa: BLE001 -- told to the AI app and the writer
-                failure = self.face.fail(exc, publishing=kind is not None,
-                                         secret=say(_PUBLISHING_KEY))
-                status, said = FAILED, _said(exc, secret=say(_PUBLISHING_KEY))
+                # Unknown only where a press was under way: a failed re-plan
+                # ran nothing.
+                failure = self.face.fail(exc, publishing=pressed, secret=say(_KEY_WORDS))
+                status, said = FAILED, _said(exc, publishing=pressed, secret=say(_KEY_WORDS))
             else:
                 failure, status, said = None, DONE, say(_STATUS_WORDS[DONE])
             if told is not None:
                 told(pressing.ended(kind, status == DONE, failure))
             with self.state:
-                made.status, made.said, self.waiting = status, said, None
+                self._close(made, status, said)
         self.face.note(f"assistant: {made.tool} {status}")
         return _answer({"answered": True, "status": status, "failure": failure})
 
@@ -633,6 +682,8 @@ class _Door:
                         "base": editor.digest(copy), "view": page_editor.CODE, "text": text},
                         **pressed)
                     return
+            # § 4.5: an entry or page with nothing waiting publishes the site
+            # as it stands, as `plan` showed it.
             publishing.press_site(folder, **pressed)
         elif made.tool == "undo_last_publish":
             undo.press_undo(folder, **pressed)
@@ -651,6 +702,8 @@ class _Door:
                 page_editor.discard(folder, _kind(page), page, arguments["version"])
         elif made.tool == "remove_file":
             files_screen.remove(folder, arguments["name"])
+        else:
+            raise ValueError(f"no press for the ask {made.tool}")
 
     # ------------------------------------------------------------ the screen ---
 
@@ -726,8 +779,8 @@ def register(face: Face, folder: Path, *, own: Path,
     face.add_page("GET", SETUP, door.setup_page)
     face.add_page("POST", SETUP, door.set_switch)
     face.add_page("POST", CONNECT, door.connect)
-    face.add_page("GET", WAITING, door.waiting_now)
-    face.add_page("POST", ANSWER, door.answer)
+    face.add_page("GET", WAITING_ROUTE, door.waiting_now)
+    face.add_page("POST", ANSWER_ROUTE, door.answer)
     face.add_piece("site-notices", door.list_line)
     face.add_to_every_page(door.every_page)
     face.at_stop(door.shut)

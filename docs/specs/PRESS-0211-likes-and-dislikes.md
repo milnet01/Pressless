@@ -259,7 +259,7 @@ waiting copy of the page the same way, since pressing that copy replaces the pag
 too. `google_setup`'s own call to `add_privacy` passes what Settings hold. A failure
 keeps the settings, as PRESS-0199 § 4.5 does.
 
-`page_editor._reshape_hint` refuses to remove the Privacy page while Settings
+`page_editor.reshape_hint` refuses to remove the Privacy page while Settings
 hold either.
 
 ### 4.6 Setting it up
@@ -383,7 +383,7 @@ and `tests/test_setup.py` pin what this item adds or changes.
   of Google Analytics; with `recaptcha` it names reCAPTCHA, and without it does not. Each disclosure is added to an existing Privacy page once, and a
   Store holding no site gets no page. The page cannot be removed while `votes` is set.
   *Test:* `tests/test_votes.py::test_privacy_says_only_what_is_on`, `::test_privacy_adds_each_once`, `::test_privacy_page_stays_while_votes_on`.
-  *Breaks when:* `privacy_page` keeps its counting words unconditionally, or `_reshape_hint` still reads `measurement_id` alone.
+  *Breaks when:* `privacy_page` keeps its counting words unconditionally, or `reshape_hint` still reads `measurement_id` alone.
 
 - **INV-10** — Check gives § 4.6's answer for each Google reply, and removes its own
   test vote on every path past the first write.
