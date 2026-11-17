@@ -2700,6 +2700,9 @@ def use(table: dict[str, str]) -> Iterator[None]:
 
 def for_scripts() -> str:
     """Every `script.` entry, gaps unfilled, as a JSON object safe inside
-    <script>. The page's own `say` fills the gaps."""
+    <script>. The page's own `say` fills the gaps.
+
+    Every `<` is written as its JSON escape, so no entry can close the block
+    (`</script>`) or open a comment that hides its close (`<!--<script`)."""
     chosen = {key: _lookup(key) for key in ENGLISH if key.startswith("script.")}
-    return json.dumps(chosen).replace("</", "<\\/")
+    return json.dumps(chosen).replace("<", "\\u003c")

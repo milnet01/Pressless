@@ -113,6 +113,16 @@ def test_scripts_get_every_script_entry_and_nothing_else(entry) -> None:
         assert json.loads(words.for_scripts())["script.test.saved"] == "Enregistré"
 
 
+def test_script_words_cannot_open_a_comment_that_hides_the_close(entry) -> None:
+    """§ 4.1: safe inside <script>. In a script block, `<!--` then `<script`
+    makes the parser skip the block's own `</script>`, and the rest of the
+    page is swallowed. Breaks when only `</` is escaped."""
+    entry("script.test.comment", "<!--<script> words")
+    sent = words.for_scripts()
+    assert "<" not in sent, sent
+    assert json.loads(sent)["script.test.comment"] == "<!--<script> words"
+
+
 def test_the_two_families_come_from_their_sources() -> None:
     """§ 4.1. Breaks when a country or a cheat-sheet row has no entry."""
     for code, name in _flag_data.NAMES.items():
