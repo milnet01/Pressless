@@ -351,7 +351,9 @@ def made_here(folder: Path) -> bool:
     """Whether the style code is exactly what the choices beside it make, the
     words of its notes aside (§ 4.4 state 2): those come from the words table,
     and rewording one must not make a saved look hand-edited (PRESS-0314).
-    False where there are no choices, or they cannot be read."""
+    A rule added since may be absent, so a look an earlier version saved
+    stays made here. False where there are no choices, or they cannot be
+    read."""
     try:
         choices = read(folder)
     except LookUnreadable:
@@ -359,8 +361,13 @@ def made_here(folder: Path) -> bool:
     if choices is None:
         return False
     saved = store.read_style_code(folder)
-    pattern = "".join(_ANY_NOTE if isinstance(piece, _Note) else re.escape(piece)
-                      for piece in _pieces(choices, read_extra(folder)))
+    def matching(piece: str) -> str:
+        if isinstance(piece, _Note):
+            return _ANY_NOTE
+        if isinstance(piece, _Added):
+            return f"(?:{re.escape(piece)})?"
+        return re.escape(piece)
+    pattern = "".join(matching(piece) for piece in _pieces(choices, read_extra(folder)))
     return saved is not None and re.fullmatch(pattern, saved, re.DOTALL) is not None
 
 
@@ -422,6 +429,11 @@ class _Note(str):
 _ANY_NOTE = r"/\* (?:(?!\*/)[^\n])* \*/\n"   # "/* {words} */\n", any one-line words
 
 
+class _Added(str):
+    """A rule added to every layout after looks were saved without it, which
+    made_here accepts absent (PRESS-0314)."""
+
+
 def css(choices: Choices, extra: str) -> str:
     """The style code, in § 4.2's order: the palette, the four measures, the
     layout's rules, the journal's, the effects chosen, and last their own CSS."""
@@ -434,7 +446,8 @@ def _pieces(choices: Choices, extra: str) -> list[str]:
 
     made_here compares a site's saved style code with these, the notes' words
     aside. So changing any rule below makes every saved look read as
-    hand-edited (PRESS-0314); a test in test_look.py says so."""
+    hand-edited (PRESS-0314); a test in test_look.py says so. A new rule goes
+    in as an _Added piece instead, which made_here accepts absent."""
     def declared(colours: dict[str, str]) -> str:
         return " ".join(f"--{name}: {value};" for name, value in colours.items())
     width = _FIXED_WIDTHS.get(choices.width, _OWN_WIDTH[choices.layout])
@@ -445,7 +458,7 @@ def _pieces(choices: Choices, extra: str) -> list[str]:
         f":root {{ --body-font: {FONTS[choices.body_font]};\n"
         f"  --heading-font: {FONTS[choices.heading_font]};\n"
         f"  --text-size: {TEXT_SIZES[choices.text_size]}; --width: {width}; }}\n",
-        _LAYOUT_RULES[choices.layout], "\n",
+        _LAYOUT_RULES[choices.layout], _FOOT_FOCUS, "\n",
         _Note("look.journal_note"), _JOURNAL_RULES,
     ]
     parts += [_EFFECT_RULES[effect] for effect in EFFECTS if effect in choices.effects]
@@ -454,7 +467,11 @@ def _pieces(choices: Choices, extra: str) -> list[str]:
 
 
 # The layout, journal and effect rules below are part of every saved look:
-# see css() before changing one.
+# see _pieces before changing one.
+
+# PRESS-0239's focus ring on a footer link, in a colour TEXT_PAIRS holds to
+# contrast with the footer: `ink`, the ring's own, is some footers' colour.
+_FOOT_FOCUS = _Added("footer.site a:focus-visible { outline-color: var(--foot-link); }\n")
 
 # Rules every layout holds, the same in each (PRESS-0239's underlined links
 # and visible focus ring among them), joined into each layout's rules below.

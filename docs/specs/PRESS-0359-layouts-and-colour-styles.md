@@ -198,8 +198,9 @@ eight. `version` stays 1. `look.from_json` already refuses a layout not in
 - **INV-4** — The three old layouts' style code is unchanged by this item.
   *Test:* the existing
   `tests/test_look.py::test_a_look_saved_by_an_earlier_version_still_reads_as_made_here`
-  already pins the SHA-256 of each old layout's `css` with every effect on
-  (`SAVED_BY_0_10_1`), so no new test is written. It passes today.
+  already pins the SHA-256 of each old layout's `css` with every effect on,
+  the rules added since taken out (`SAVED_BEFORE`), so no new test is
+  written. It passes today.
   *Breaks when:* moving the palettes changes a value or a rule.
 
 - **INV-5** — Changing layout changes no page. Building the starter site
@@ -268,9 +269,9 @@ or with its rule deleted:
 - INV-5: `tests/test_builder.py`.
 - INV-6, INV-7: `tests/test_look_screen.py`.
 - INV-8: `tests/test_setup.py`.
-- `tests/test_look.py`'s two tests reading `SAVED_BY_0_10_1` are
-  parametrized over the three old layouts instead of `look.LAYOUTS`,
-  their hashes unchanged: 0.10.1 had no other layouts.
+- `tests/test_look.py`'s two tests reading `SAVED_BEFORE` keep 0.10.1's
+  hashes for the three old layouts. The five new layouts' hashes are
+  1.0.0's.
 - `tests/test_starter.py::test_each_look_turns_dark_with_the_computer_and_names_no_other_colour`
   is already parametrized over `starter.LOOKS`, so it covers the new
   layouts with no change.

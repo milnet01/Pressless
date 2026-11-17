@@ -8,3 +8,4 @@
 | pointer | 2026-11-15 | none: pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4: Look's place in the bar is PRESS-0353 § 4.2's. |
 | amend | 2026-11-16 | none: amended by PRESS-0359; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1's `layout` row and § 9 point at PRESS-0359's eight layouts. |
 | amend | 2026-11-17 | none: PRESS-0376 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1: `store.LOOK_FILES` names the look's three files. |
+| amend | 2026-11-17 | none: PRESS-0374 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4 state 2: a rule `look.css` gained since a look was saved may be absent. |

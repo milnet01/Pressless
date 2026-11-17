@@ -151,40 +151,59 @@ def test_save_makes_the_style_code_from_what_it_wrote(tmp_path):
 
 # ------------------------------------------------------------- PRESS-0314 ---
 
-# What css() made for each layout's defaults with every effect, in 0.10.1,
-# which had these three layouts and no others (PRESS-0359 INV-4).
-SAVED_BY_0_10_1 = {
+# What css() made for each layout's defaults with every effect: 0.10.1's for
+# the three layouts it had (PRESS-0359 INV-4), 1.0.0's for the five it added.
+SAVED_BEFORE = {
     "sunrise": "149c39acf5d31f03a1b806aefffb4ee44443d86b578728ce05756fe792bba113",
     "meadow": "62b5e8efa6b18d34a71306f116b430e4b627131969beddb1eb603a0b5505a3af",
     "harbour": "6d6b2c7592fc0052976070107d5ff1ba41c4f0f603c4960bcd94b67d3766600e",
+    "studio": "deade1ebe7f27f90a3d6f285742bb74b9af5317db3474db1cfb71974821b34e9",
+    "market": "07521fd964aac7bf0db271f014a75b2e5244098493893ae887a9e1affbe8788d",
+    "stage": "49cb807fe21ea684779df9212c7f55362800f87a213534f32d394d19ef0f6c8a",
+    "commons": "3f3c559025ec6437748cb5483eab7e289ef194137c94bcd04c319d1676a3877b",
+    "letter": "ac2acf20752a38b4a8493b60dd7bfe2586a4086866e861c9652b135419152d59",
 }
+# The rules css() has gained since, each written out: removing them gives
+# back what those versions saved.
+ADDED_SINCE = ("footer.site a:focus-visible { outline-color: var(--foot-link); }\n",)
 
 
-@pytest.mark.parametrize("layout", SAVED_BY_0_10_1)
+def _made_before(choices: starter_look.Choices, extra: str) -> str:
+    made = starter_look.css(choices, extra)
+    for rule in ADDED_SINCE:
+        assert made.count(rule) == 1, rule
+        made = made.replace(rule, "", 1)
+    return made
+
+
+@pytest.mark.parametrize("layout", SAVED_BEFORE)
 def test_a_look_saved_by_an_earlier_version_still_reads_as_made_here(layout):
     """PRESS-0314. made_here compares the saved style code with css(), the
-    notes' words aside, so any change to css()'s rules makes every saved look
-    read as hand-edited: its next save bins a copy and warns. Breaks when
-    css() output other than a note's words changes. Do not update the
-    hashes: make made_here accept the earlier output first."""
+    notes' words aside, and accepts it without the rules added since, so a
+    change to css() leaves every saved look made here. Breaks when css()
+    output other than a note's words and ADDED_SINCE changes. Do not update
+    the hashes: make made_here accept the earlier output first."""
     choices = dataclasses.replace(starter_look.defaults(layout),
                                   effects=starter_look.EFFECTS)
-    made = hashlib.sha256(starter_look.css(choices, "").encode("utf-8")).hexdigest()
-    assert made == SAVED_BY_0_10_1[layout]
+    made = hashlib.sha256(_made_before(choices, "").encode("utf-8")).hexdigest()
+    assert made == SAVED_BEFORE[layout]
 
 
-@pytest.mark.parametrize("layout", SAVED_BY_0_10_1)
+@pytest.mark.parametrize("layout", SAVED_BEFORE)
 def test_rewording_a_note_keeps_a_saved_look_made_here(layout, tmp_path, monkeypatch):
     """PRESS-0196 § 4.4 state 2, PRESS-0314. The style code saved here is
-    0.10.1's, as the hash above proves. Breaks when made_here compares the
-    notes' words, so rewording one turns every saved look hand-edited; or
-    when it ignores more than those words."""
+    the earlier version's, as the hash above proves. Breaks when made_here
+    compares the notes' words, so rewording one turns every saved look
+    hand-edited; when it refuses the earlier output or this version's; or
+    when it ignores more than those words and the added rules."""
     choices = dataclasses.replace(starter_look.defaults(layout),
                                   effects=starter_look.EFFECTS)
     starter_look.save(tmp_path, choices, EXTRA)
-    saved = store.read_style_code(tmp_path)
+    assert starter_look.made_here(tmp_path)
+    saved = _made_before(choices, EXTRA)
+    store.write_style_code(tmp_path, saved)
     assert hashlib.sha256(saved.removesuffix(EXTRA).encode("utf-8")).hexdigest() == (
-        SAVED_BY_0_10_1[layout])
+        SAVED_BEFORE[layout])
     said = starter_look.say
     monkeypatch.setattr(starter_look, "say",
                         lambda key: f"Reworded {key}." if key.endswith("_note") else said(key))
@@ -194,6 +213,17 @@ def test_rewording_a_note_keeps_a_saved_look_made_here(layout, tmp_path, monkeyp
     assert not starter_look.made_here(tmp_path)
     store.write_style_code(tmp_path, saved.replace("*/\n", "*/\np{}\n", 1))
     assert not starter_look.made_here(tmp_path)
+
+
+@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+def test_a_footer_link_shows_its_focus_ring_on_the_footer(layout):
+    """PRESS-0239: a visible focus ring. Breaks when a footer link's ring
+    takes `ink`, which three styles paint their footer in, instead of
+    `foot-link`, which TEXT_PAIRS holds to contrast with the footer."""
+    assert ("foot-link", "foot") in starter_look.TEXT_PAIRS
+    css = starter_look.css(starter_look.defaults(layout), "")
+    assert re.search(r"footer\.site a:focus-visible \{[^}]*"
+                     r"outline-color: var\(--foot-link\)", css)
 
 
 # ------------------------------------------------------------- PRESS-0359 ---
