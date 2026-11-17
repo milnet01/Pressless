@@ -469,7 +469,8 @@ The order means an interruption leaves two copies, never none. The reply is
 ### 4.10 Throwing away a working copy
 
 Fields: `slug`, `base`. Under the lock, `ChangedElsewhere` unless `slug` is a
-working copy whose digest equals `base`, answered as § 4.8's failures are.
+working copy whose digest equals `base`. The button is a form, so a failure
+answers a whole Face page, with its notices and the failure's sentence.
 Then `store.move_to_bin` on it. The published entry is not touched.
 
 ### 4.11 What the editor never does
