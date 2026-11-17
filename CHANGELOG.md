@@ -33,6 +33,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A site you bring in waits for your first publish before it counts as on the web** (PRESS-0422)
+  After bringing in a site from WordPress or a folder, Finish setting up waits for
+  your first publish from Pressless before ticking Put your site on the web. When a
+  publish an AI app asked for fails unexpectedly, Pressless says your site has not
+  changed, as its own Publish screen does.
+
 - **A new blank site's getting-started list claims nothing it hasn't done** (PRESS-0419)
   On a site started without the ready-made pages, the Finish setting up list no
   longer ticks Home, the menu or putting your site on the web before they happen.

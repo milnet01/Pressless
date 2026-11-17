@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=424 -->
+<!-- ants-roadmap-id-high-water: PRESS=425 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8613,19 +8613,26 @@ does not wait on them.
   Source: PRESS-0393/0415 follow-up 2026-11-17.
   Lanes: AI helper.
 
-- 📋 [PRESS-0421] **PRESS-0003 still says "either secret".**
+- ✅ [PRESS-0421] **PRESS-0003 still says "either secret".**
   Surfaced by PRESS-0406, which fixed PRESS-0001 and PRESS-0002 the
   same way. docs/specs/PRESS-0003-log.md counts the secrets as two.
+  Shipped 2026-11-17: PRESS-0003 § 2 and design.md § Logging say "any
+  secret".
   **Layman:** A design document describes the saved sign-ins correctly.
   Kind: doc-fix.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
   Lanes: Setup.
 
-- 📋 [PRESS-0422] **An imported site Pressless never published ticks Put your site on the web.**
+- ✅ [PRESS-0422] **An imported site Pressless never published ticks Put your site on the web.**
   Surfaced by PRESS-0419. A site brought in from WordPress or a folder
   has live content and no starter marker, so the checklist ticks the
   web step before any Pressless publish. Same rule as PRESS-0393: the
   tick means a Pressless publish has landed.
+  Shipped 2026-11-17: both import wizards write import/unpublished
+  (publishing.mark_imported) before bringing a site in; the checklist
+  leaves the web step to do while it exists, and a landed publish
+  removes it. A take-in from GitHub is not marked. PRESS-0126 § 4.4
+  amended. Filed: PRESS-0425.
   **Layman:** After bringing in a site, the getting-started list waits for your first publish before ticking the web step.
   Kind: fix.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
@@ -8643,17 +8650,33 @@ does not wait on them.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
   Lanes: Editor.
 
-- 📋 [PRESS-0424] **An AI-asked publish and the writer's own screen word an unforeseen failure differently.**
+- ✅ [PRESS-0424] **An AI-asked publish and the writer's own screen word an unforeseen failure differently.**
   Surfaced by PRESS-0417. Every screen passes publishing=False to
   publishing.press_failure ("site unchanged"), as PRESS-0013, 0015 and
   0172 set, since the Publisher raises OutcomeUnknown itself where an
   upload may be unknown. The AI door passes True ("site unknown"), and
   test_a_failed_publish_is_unknown_to_the_ai_app_too pins it.
   Recommendation: the door follows the specs, like the screens.
+  Shipped 2026-11-17, as recommended: the AI door calls
+  publishing.press_failure as the screens do, so an unforeseen failure
+  says "site unchanged" and OutcomeUnknown still says "unknown"
+  (test_a_failed_publish_reads_as_on_the_writers_screen, which replaces
+  the old test). The unused publishing keyword is gone. PRESS-0337
+  §§ 4.6 and 10 amended. Full suite 2455 passed, 27 skipped.
   **Layman:** An AI app tells you the same thing about a failed publish as Pressless's own screen does.
   Kind: fix.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
   Lanes: AI helper, Publishing.
+
+- 📋 [PRESS-0425] **A saved site file drops the imported-site marker.**
+  Surfaced by PRESS-0422. Its marker lives at import/unpublished, and a
+  saved site file leaves import/ out, so an imported site saved to a
+  file before its first publish and opened elsewhere ticks the web step.
+  Carry the marker in the site file, or keep it where the file reaches.
+  **Layman:** A site you bring in and move to another computer before publishing still waits for its first publish.
+  Kind: fix.
+  Source: PRESS-0422 follow-up 2026-11-17.
+  Lanes: Setup.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
