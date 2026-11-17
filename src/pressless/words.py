@@ -1797,6 +1797,10 @@ _WORDS: dict[str, str] = {
     "import.folder.why.kind": "it is not a kind of file Pressless keeps",
     "import.folder.front": "with no index page, {path} became the front page",
     "import.folder.not_carried": "a link to {path}, which did not come across",
+    "import.folder.carried_link": (
+        "a link to {path}, which came across only inside the pages that use it, "
+        "not as a file a link can reach"
+    ),
     "import.folder.base": (
         "it has a base element, which changes what its links mean, so they were left as written"
     ),

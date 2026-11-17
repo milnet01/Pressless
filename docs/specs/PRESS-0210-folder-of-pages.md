@@ -242,6 +242,11 @@ An address naming an `.svg` file, in an `<img>`'s `src` or a CSS `url(...)`, is
 written as a `data:image/svg+xml;base64,` address. A browser runs no script in
 an image. An SVG over `SVG_LARGEST`, or named in any other way, is `left`.
 
+A script or SVG carried for one page is carried even where another address
+names it some other way, such as an `<a href>` or a module script. That address
+is written as § 4.5's last row writes it, and listed as a link to a file that
+came across only inside pages. § 4.11 names it.
+
 ### 4.7 The style code
 
 Every stylesheet the folder's pages link, by a `<link>` or an `@import` in a
@@ -414,7 +419,8 @@ builds a site from, and no write is sent. Otherwise the answers gain
 - what the next publish will change on GitHub, which is every root entry not on
   the list Finish will save: the old pages become forwards, and the rest there is
   replaced or removed, staying in the repository's history. Each `left` path among
-  them is named, and each page link to one;
+  them is named, and each page link to one or to a file carried inside pages
+  (§ 4.6);
 - what stays on GitHub untouched: each entry on that list, such as `CNAME` or
   `README.md`.
 

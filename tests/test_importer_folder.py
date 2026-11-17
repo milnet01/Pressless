@@ -719,6 +719,27 @@ def test_scripts_and_svgs_are_carried_inside_pages(tmp_path):
     assert not [name for name in held if name.endswith((".js", ".svg"))]
 
 
+def test_a_file_carried_and_also_linked_is_carried_and_the_link_listed(tmp_path):
+    """PRESS-0396, § 4.6: an SVG a page shows and a script a page runs are
+    carried even where another page links to them, by an `<a href>` or a
+    module script. Each such link is listed as pointing at a carried file,
+    and named before Finish (§ 4.11), since no file is there for it. Breaks
+    when the link is said not to have come across, or is never named."""
+    svg = "<svg xmlns='http://www.w3.org/2000/svg'><circle r='1'/></svg>"
+    files = {"index.html": _page('<img src="logo.svg" alt="Logo"><script src="run.js"></script>'),
+             "about.html": _page('<a href="logo.svg">Logo</a>'
+                                 '<script type="module" src="run.js"></script>'),
+             "logo.svg": svg, "run.js": "var a = 1;"}
+    found = pressless_import.read_folder(_laid_out(tmp_path / "read", files))
+    assert set(found.inside_pages) == {"logo.svg", "run.js"} and found.left == ()
+    assert set(found.left_links) == {("about.html", "logo.svg"), ("about.html", "run.js")}
+    _, brought = _brought(tmp_path, files)
+    said = _said(brought)
+    for path in ("logo.svg", "run.js"):
+        assert f"pages/about: {say('import.folder.carried_link', path=path)}" in said, said
+        assert say("import.folder.not_carried", path=path) not in said
+
+
 def test_a_large_svg_is_left(tmp_path, monkeypatch):
     """§ 4.6: SVG_LARGEST."""
     monkeypatch.setattr("pressless_import._folder.SVG_LARGEST", 10)

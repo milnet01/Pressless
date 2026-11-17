@@ -99,7 +99,9 @@ class Found:
     left: tuple[tuple[str, str], ...]  # (path, why it will not come across)
     roots: tuple[str, ...]           # root entries holding a path not in left
     built_by_a_tool: bool            # § 4.3
-    left_links: tuple[tuple[str, str], ...] = ()  # (page, a left path it links to) (§ 4.11)
+    # (page, a path it links to with no file there): a left path, or one carried
+    # inside pages (§ 4.6, § 4.11)
+    left_links: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -689,7 +691,8 @@ def read_folder(folder: Path) -> Found:
 @dataclass
 class _Uses:
     """What every page's addresses reach."""
-    all: list[tuple[str, str]] = field(default_factory=list)   # (page or sheet, file)
+    # (page or sheet, file, named as an image): an image may be a carried SVG
+    all: list[tuple[str, str, bool]] = field(default_factory=list)
     links: dict[str, str] = field(default_factory=dict)        # a sheet: its first `media`
     sheet_pages: dict[str, set[str]] = field(default_factory=dict)
     scripts: set[str] = field(default_factory=set)
@@ -712,7 +715,7 @@ def _survey(root: Path, folder: _Folder, pages: dict[str, tuple[str, bool]],
         def noted(address: str, image: bool, path: str = path) -> None:
             target = folder.target(address, path)
             if target is not None:
-                uses.all.append((path, target))
+                uses.all.append((path, target, image))
                 if image and is_kind(target, ".svg"):
                     uses.pictures.add(target)
 
@@ -750,7 +753,12 @@ def _read_folder(root: Path) -> _Read:
         if path not in carried and path not in style:
             left[path] = say("import.folder.why.deep", most=_IMPORTS_DEEPEST) if (
                 path in uses.too_deep) else say(_why_left(path))
-    left_links = list(dict.fromkeys((own, target) for own, target in uses.all if target in left))
+    # A carried file named any way but the one it is carried for is a link with
+    # no file behind it (§ 4.6). A carried script's own uses never reach `all`.
+    left_links = list(dict.fromkeys(
+        (own, target) for own, target, image in uses.all
+        if target in left or (target in carried and not (
+            image and target.casefold().endswith(".svg")))))
     built = ".nojekyll" not in names and (
         "_config.yml" in names or "_layouts" in folder.folders
         or any(_opens_with_a_rule(text) for text, _older in pages.values()))
@@ -815,13 +823,13 @@ def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> l
                         and depth < _IMPORTS_DEEPEST):
                     walk(target, seen, pages, depth + 1)
                 elif target is not None:
-                    uses.all.append((path, target))
+                    uses.all.append((path, target, _ELSEWHERE))
                     if target in rest and target.casefold().endswith(".css"):
                         uses.too_deep.add(target)
             elif (address := _token_address(found)):
                 target = folder.target(address, path)
                 if target is not None:
-                    uses.all.append((path, target))
+                    uses.all.append((path, target, _IN_IMAGE))
                     if target in rest and target.casefold().endswith(".svg"):
                         uses.pictures.add(target)
 
@@ -943,7 +951,8 @@ class _Writer:
             self.named.add(target)
             return up + self.places[target] + tail
         place = target if target is not None else _place_from(path, own)
-        listed.append(say("import.folder.not_carried", path=place))
+        listed.append(say("import.folder.carried_link" if target in self.held.carried
+                          else "import.folder.not_carried", path=place))
         trailing = "/" if path.endswith("/") and place else ""
         return up + quote(place, safe="/") + trailing + tail
 
