@@ -8030,6 +8030,11 @@ does not wait on them.
   up its test vote. Specs amended: PRESS-0275, 0211, 0213. Full suite
   2327 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-16-votes-jxl.json.
+  2026-11-17, pre-release browser run: the votes rows still read the old
+  shared note name and crashed; fa4626f reads the project's own and adds
+  a row for § 4.3 step 3's fallback to the older shared note. The page
+  script itself behaved as specified. by-hand-browser-checks.py: 173
+  passed, 0 failed in headless Chrome.
   **Layman:** Fixes in the Like buttons' setup and the JPEG XL picture support.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -8116,6 +8121,10 @@ does not wait on them.
   by-hand-browser-checks.py and by-hand-editor-races.py (owed before
   release). Full suite 2370 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-20-by-hand-checks.json.
+  2026-11-17, pre-release browser run: by-hand-editor-races.py had
+  fallen behind the visual views and PRESS-0345's plan box and timed out;
+  fixed in a follow-up commit (the races script opens the marks and code
+  views and answers Publish now). 3 passed, 0 failed.
   **Layman:** Fixes in the scripts that check Pressless in a real browser before each release.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
