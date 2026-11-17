@@ -2712,3 +2712,131 @@ def test_a_named_path_is_compared_by_presence(tmp_path):
     assert "photographs/shore.jpg" in planned.uploaded
     assert "gone.html" not in planned.removed and "gone.html" not in planned.uploaded
 
+
+
+# ------------------------------------------------- 2026-11-16 review fixes ---
+
+
+def _unreadable_mode(path: Path) -> bool:
+    """Mode 000 on `path`; False where this user reads it anyway (root, or a
+    filesystem ignoring modes), so the case cannot be reached here."""
+    path.chmod(0o000)
+    if os.access(path, os.R_OK):
+        path.chmod(0o755)
+        return False
+    return True
+
+
+def test_an_unreadable_folder_in_the_site_is_a_typed_failure(tmp_path):
+    """§4.1 and §6: a folder in the site folder that cannot be read is a file
+    that cannot be read. Breaks when the walk lets the bare OSError out, which
+    the press reads as an upload whose outcome is unknown, though nothing was
+    sent."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    (locked / "page.html").write_text("<html>locked</html>", encoding="utf-8")
+    if not _unreadable_mode(locked):
+        pytest.skip("this user can read a mode-000 folder")
+    transport = _Transport(reads=_reads(_listing([])), writes=_writes())
+    try:
+        with pytest.raises(PublishError) as caught:
+            publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    finally:
+        locked.chmod(0o755)
+    assert "locked" in str(caught.value)
+    assert _no_writes(transport)
+
+
+def test_nothing_on_the_untouchable_list_is_read(tmp_path):
+    """§4.4: an entry there is neither written nor removed, so it is not read.
+    Breaks when a protected file or folder is hashed, so one the writer cannot
+    read fails the publish."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (tmp_path / "CNAME").write_text("www.example.org\n", encoding="utf-8")
+    vendor = tmp_path / "vendor"
+    vendor.mkdir()
+    (vendor / "lib.js").write_text("// kept", encoding="utf-8")
+    if not (_unreadable_mode(tmp_path / "CNAME") and _unreadable_mode(vendor)):
+        (tmp_path / "CNAME").chmod(0o644)
+        pytest.skip("this user can read a mode-000 file")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    try:
+        sent = publish(_settings(), tmp_path, "a-token", "message",
+                       transport=_Transport(reads=_reads(listing), writes=_writes()))
+    finally:
+        (tmp_path / "CNAME").chmod(0o644)
+        vendor.chmod(0o755)
+    assert sent.uploaded == ("index.html",)
+
+
+def test_a_secondary_limit_naming_no_interval_is_waited_out(tmp_path):
+    """§4.3: GitHub answers a secondary limit with a 403 whose message names
+    it, sometimes with no header at all, and asks for at least a minute. Breaks
+    when that 403 is read as a refusal, which tells the writer to replace a
+    key that is fine."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(
+        reads=_reads(listing), writes=_writes(), rate_limited_writes=1,
+        rate_limit_answer=(403, {}, b'{"message": "You have exceeded a secondary '
+                                    b'rate limit. Please wait a few minutes."}'))
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    assert transport.waits and transport.waits[0] >= 60.0, transport.waits
+
+
+def test_a_plain_refusal_is_still_a_refusal(tmp_path):
+    """§4.3: a 403 naming no rate limit is an ordinary refusal, never retried."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(
+        reads=_reads(listing), writes=_writes(), rate_limited_writes=-1,
+        rate_limit_answer=(403, {}, b'{"message": "Resource not accessible by integration"}'))
+    with pytest.raises(Refused):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    assert transport.waits == []
+
+
+def test_the_head_of_an_empty_repository_is_missing_not_moved():
+    """§6: the branch-moved row excludes a read GitHub answers as an empty
+    repository. Breaks when head_commit reads without empty_ok, so the 409
+    becomes Conflict."""
+    with pytest.raises(RemoteStateMissing):
+        publisher_module.head_commit(_settings(), "a-token",
+                                     transport=_EmptyRepository(_listing([])))
+
+
+def test_a_refused_pages_change_is_not_a_moved_branch():
+    """§6: Conflict is the branch moving. Breaks when a 422 to PUT pages, a
+    domain GitHub will not take, is told as the branch having moved."""
+    transport = _Transport(
+        reads=[("/contents/CNAME", (404, {}, b'{"message": "Not Found"}'))],
+        writes=[("/contents/", (201, {}, b'{"commit": {"sha": "c"}}')),
+                ("/pages", (422, {}, b'{"message": "Validation Failed"}'))])
+    with pytest.raises(PublishError) as caught:
+        publisher_module.set_domain("owner/name", "a-token", "www.example.org",
+                                    transport=transport)
+    assert not isinstance(caught.value, Conflict), caught.value
+
+
+def test_a_rename_a_scanner_holds_is_tried_again(tmp_path, monkeypatch):
+    """§4.5, on Windows: a scanner briefly holding a fetched file refuses its
+    move into place. Breaks when that first refusal ends the fetch as
+    FetchNotWritten, whose answer is to free space."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", True)
+    real = os.replace
+    refused: list[str] = []
+
+    def held_once(source, target):
+        if not refused:
+            refused.append(str(target))
+            raise PermissionError(13, "The process cannot access the file")
+        real(source, target)
+
+    monkeypatch.setattr(publisher_module.os, "replace", held_once)
+    transport = _Transport(reads=_reads(_listing([("index.html", "some-blob-sha")]),
+                                        blob=b"<html>before</html>"))
+    fetched = fetch_previous(_settings(), "a-token", tmp_path / "into", transport=transport)
+    assert fetched.paths == ("index.html",) and refused
+    assert (tmp_path / "into" / "index.html").read_bytes() == b"<html>before</html>"
+    assert transport.waits, "the second try did not wait on the transport's clock"

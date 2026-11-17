@@ -1,10 +1,13 @@
-"""The one HTTPS client the Publisher, Insights and usage reports share.
+"""The one HTTPS client the parts that reach a web service share.
 
-Each of those modules once held its own copy, and a fix to one was owed to
-the others (PRESS-0331). Each subclasses `Client` as its own `_Urllib`,
-adding the clock its seam promises, so a test double still replaces that one
-name. The Updater keeps its own: it refuses any redirect off https, and its
-seam streams a body rather than returning one (PRESS-0023 § 4.5).
+Each part once held its own copy, and a fix to one was owed to the others
+(PRESS-0331). They hold it three ways, so a change to `Client` is checked
+against all three. The Publisher and Insights subclass it as their own
+`_Urllib`, adding the clock their seam promises, so a test double still
+replaces that one name; the GitHub sign-in borrows the Publisher's. Usage
+reports and the votes setup make a `Client` directly. The Updater keeps its
+own: it refuses any redirect off https, and its seam streams a body rather
+than returning one (PRESS-0023 § 4.5).
 
 It is not a part of Pressless: it imports no pressless module, so a module
 allowed to import it reaches nothing else through it, as safe_write does
@@ -31,8 +34,8 @@ class NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     urllib copies every header but the content ones onto a redirect target,
     a different host included, and follows up to ten hops -- so a redirect
     would hand the Authorization header to whoever answered (PRESS-0052).
-    Neither service Pressless talks to legitimately redirects across
-    origins; a same-origin redirect keeps the header, so a renamed
+    No service this client reaches is expected to redirect across origins;
+    a same-origin redirect keeps the header, so a renamed
     repository still resolves for a read. A write is not followed: GitHub
     redirects one with 307, which urllib does not follow for POST or PATCH,
     so it returns as status 307 and the Publisher reads it as RepositoryMoved

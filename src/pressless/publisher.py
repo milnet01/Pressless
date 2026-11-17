@@ -5,10 +5,12 @@ PRESS-0009 and PRESS-0010. This module imports no other part of Pressless
 than Settings (§5 INV-1): it is handed the publishing key as an argument and
 never reaches Credentials, which is what keeps docs/design.md rule 10 true.
 
-It answers three requests and nothing else — make the repository match this
-folder, report what sits at the repository root, and fetch back the state
-before the current one. It writes no prose for the writer, keeps no state
-between calls, and cannot tell an entry from a stylesheet.
+Its core is three requests: make the repository match this folder, report
+what sits at the repository root, and fetch back an earlier state. Beside
+them sit setup's reads of an account and a repository, and the GitHub Pages
+reads and switches that setup, the takeover and a custom domain make. It
+writes no prose for the writer, keeps no state between calls, and cannot
+tell an entry from a stylesheet.
 
 Every failure is one of the typed exceptions below, and none of them carries
 the key (§5 INV-7). The Face turns each into the three-part sentence
@@ -107,8 +109,9 @@ class Unreachable(PublishError):
 
 
 class OutcomeUnknown(PublishError):
-    """A write that may have moved the branch (the reference update, the start
-    file or `.nojekyll`) was attempted and its result is unknown."""
+    """A write that may have moved the branch (the reference update, or a
+    Contents API write: the start file, `.nojekyll` or `CNAME`) was attempted
+    and its result is unknown."""
 
 
 class Refused(PublishError):
@@ -139,12 +142,13 @@ class NoPreviousState(PublishError):
     """Nothing before the current commit."""
 
 
-# Each of the five below is its own type because `docs/design.md` § Errors
-# requires every message to end with what to do next, and for these five
-# that differs (§4.1, PRESS-0116). SiteFolderMissing: fix the setting.
-# StrayFile: remove the file. SiteWouldBeEmptied: rebuild the site.
-# FetchNotWritten: free space. RemoteStateMissing: retry. UnfetchablePath:
-# rename that file on the site (PRESS-0160).
+# Each type below is its own because `docs/design.md` § Errors requires
+# every message to end with what to do next, and for these that differs
+# (§4.1, PRESS-0116). SiteFolderMissing: fix the setting. StrayFile: remove
+# the file. SiteWouldBeEmptied: rebuild the site. FetchNotWritten: free
+# space. RemoteStateMissing: retry. UnfetchablePath: rename that file on the
+# site (PRESS-0160). RepositoryMoved: enter the repository's new name
+# (PRESS-0167).
 
 
 class SiteFolderMissing(PublishError):
@@ -243,36 +247,12 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     branch = _default_branch(session, settings.repository)
     head_url = _repo_url(settings.repository, f"commits/{_segment(branch)}")
     untouchable = settings.untouchable
-    local: dict[str, _Local] | None = None
-    started = start_commit = ""
+    started: _Started | None = None
     head = session.read(head_url, empty_ok=True)
     if head is None:
-        # The Git Data API cannot write a first commit (PRESS-0127 §2), so one
-        # file goes through the Contents API first. The folder is read before
-        # that write, so every refusal leaves the repository still empty.
-        local = _local_files(folder, untouchable)
-        started = next(
-            (path for path in sorted(local) if not _is_protected(path, untouchable)),
-            "",
-        )
-        if not started:
+        started = _start(session, settings.repository, folder, untouchable, message)
+        if started is None:
             return Outcome(commit="", uploaded=(), removed=())
-        answer = session.write(
-            "PUT",
-            _repo_url(settings.repository, f"contents/{_segment(started)}"),
-            {"message": message,
-             "content": base64.b64encode(
-                 _read_again(started, local[started])).decode("ascii")},
-            outcome_unknown=True,
-        )
-        written = answer.get("commit")
-        start_commit = written.get("sha") if isinstance(written, dict) else None
-        if not start_commit:
-            # GitHub acted and did not say how, so the start commit may
-            # exist (§6, PRESS-0166).
-            raise OutcomeUnknown(
-                "GitHub took the start file without naming its commit, so "
-                "whether the site moved is unknown")
         head = session.read(head_url, empty_ok=True)
         if head is None:
             # The start is made once (PRESS-0127 INV-6), never retried.
@@ -284,8 +264,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     listing = _tree(session, settings.repository, base_commit)
     remote = _blobs_in(listing)
 
-    if local is None:
-        local = _local_files(folder, untouchable)
+    local = started.local if started else _local_files(folder, untouchable)
 
     uploaded, removed, unprotected = _compare(local, remote, untouchable)
 
@@ -293,7 +272,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         # Nothing differed, so nothing is written at all (§5 INV-4) -- unless
         # the start commit already was, and then it is what was published.
         if started:
-            return Outcome(commit=start_commit, uploaded=(started,), removed=())
+            return Outcome(commit=started.commit, uploaded=(started.path,), removed=())
         return Outcome(commit="", uploaded=(), removed=())
 
     if not uploaded and len(removed) == len(unprotected):
@@ -344,9 +323,49 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
                   {"sha": commit, "force": False},
                   outcome_unknown=True)
 
-    return Outcome(commit=commit,
-                   uploaded=tuple(sorted({*uploaded, started} - {""})),
-                   removed=tuple(removed))
+    # The start file went up in its own commit, so the listing holds it and
+    # _compare does not; the Outcome still names it (PRESS-0127 INV-8).
+    sent = {*uploaded, *([started.path] if started else [])}
+    return Outcome(commit=commit, uploaded=tuple(sorted(sent)), removed=tuple(removed))
+
+
+@dataclass(frozen=True)
+class _Started:
+    """An empty repository's first commit (PRESS-0127 §4.3): the folder as
+    read before it, the one file it wrote, and that commit's sha."""
+    local: dict[str, _Local]
+    path: str
+    commit: str
+
+
+def _start(session: _Session, repository: str, folder: Path,
+           untouchable: tuple[str, ...], message: str) -> _Started | None:
+    """Start an empty repository with one file of `folder`; None, writing
+    nothing, where the folder holds nothing unprotected.
+
+    The Git Data API cannot write a first commit (PRESS-0127 §2), so one file
+    goes through the Contents API. The folder is read before that write, so
+    every refusal leaves the repository still empty."""
+    local = _local_files(folder, untouchable)
+    path = next((path for path in sorted(local) if not _is_protected(path, untouchable)), "")
+    if not path:
+        return None
+    answer = session.write(
+        "PUT",
+        _repo_url(repository, f"contents/{_segment(path)}"),
+        {"message": message,
+         "content": base64.b64encode(_read_again(path, local[path])).decode("ascii")},
+        outcome_unknown=True,
+    )
+    written = answer.get("commit")
+    commit = written.get("sha") if isinstance(written, dict) else None
+    if not commit:
+        # GitHub acted and did not say how, so the start commit may exist
+        # (§6, PRESS-0166).
+        raise OutcomeUnknown(
+            "GitHub took the start file without naming its commit, so "
+            "whether the site moved is unknown")
+    return _Started(local, path, commit)
 
 
 @dataclass(frozen=True)
@@ -565,10 +584,13 @@ def _write_cname(session: _Session, repository: str, domain: str) -> None:
 
 
 def head_commit(settings: Settings, token: str, transport: Transport | None = None) -> str:
-    """The commit the default branch stands at."""
+    """The commit the default branch stands at. A repository with no commits
+    raises RemoteStateMissing, as fetch_state does."""
     session = _Session(transport or _Urllib(), token)
-    return _required(session.read(_repo_url(settings.repository, "commits/HEAD")),
-                     "sha", "the head commit")
+    head = session.read(_repo_url(settings.repository, "commits/HEAD"), empty_ok=True)
+    if head is None:
+        raise RemoteStateMissing("the repository has no commits to read")
+    return _required(head, "sha", "the head commit")
 
 
 def can_push(repository: str, token: str, transport: Transport | None = None) -> bool:
@@ -723,13 +745,31 @@ def _fetch(session: _Session, repository: str, commit: str,
             for path in written:
                 (into / path).parent.mkdir(parents=True, exist_ok=True)
             for path in written:
-                os.replace(staging / path, into / path)
+                _replace_patiently(session, staging / path, into / path)
         except OSError as exc:
             raise not_written(exc) from exc
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 
     return Fetched(commit=commit, paths=tuple(sorted(written)))
+
+
+# On Windows a scanner briefly holding a newly written file refuses its rename
+# with a sharing error, which is no reason to free space. safe_write.patiently
+# answers the same way, and INV-1 forbids importing it.
+_WINDOWS_TRIES = 10
+_WINDOWS_PAUSE = 0.1
+
+
+def _replace_patiently(session: _Session, source: Path, target: Path) -> None:
+    for attempt in range(_WINDOWS_TRIES):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if not _ON_WINDOWS or attempt == _WINDOWS_TRIES - 1:
+                raise
+            session.pause(_WINDOWS_PAUSE)
 
 
 class _Session:
@@ -747,6 +787,10 @@ class _Session:
         """GET `url`. With `empty_ok`, a repository with no commits answers
         None rather than a failure (PRESS-0127 §4.1)."""
         return self._call("GET", url, None, empty_ok=empty_ok)
+
+    def pause(self, seconds: float) -> None:
+        """Wait on the transport's clock, which a test records."""
+        self._client.wait(seconds)
 
     def write(self, method: str, url: str, payload: dict, *,
               outcome_unknown: bool = False, no_content: bool = False,
@@ -784,15 +828,16 @@ class _Session:
                 )
             except OSError as exc:
                 # A write that may have moved the branch (the reference
-                # update, the start file, `.nojekyll`) leaves the site's
-                # state genuinely unknown when it fails (§6).
+                # update, or a Contents API write: the start file,
+                # `.nojekyll`, `CNAME`) leaves the site's state genuinely
+                # unknown when it fails (§6).
                 failure = OutcomeUnknown if outcome_unknown else Unreachable
                 raise failure(
                     f"no answer from GitHub for {method} {_without_account(url)}"
                     f" ({type(exc).__name__})"
                 ) from None  # a substituted transport's error may carry the key
 
-            hint = _retry_hint(status, response_headers)
+            hint = _retry_hint(status, response_headers, data)
             if hint is not None:
                 if hint > MAX_WAIT_SECONDS:
                     # Honouring it would block for as long as GitHub asked,
@@ -975,17 +1020,34 @@ def _is_link(path: Path) -> bool:
     return path.is_symlink() or path.is_junction()
 
 
-def _entries(folder: Path) -> list[Path]:
-    """Every path under `folder`, sorted, never descending into a link: rglob
-    walks into a junction before anything could refuse it (§4.4, PRESS-0135)."""
+def _entries(folder: Path, untouchable: tuple[str, ...]) -> list[Path]:
+    """Every path under `folder` that the untouchable list does not name,
+    sorted, never descending into a link: rglob walks into a junction before
+    anything could refuse it (§4.4, PRESS-0135). A folder that cannot be read
+    is a file that cannot be read (§6)."""
     found: list[Path] = []
     pending = [folder]
     while pending:
-        for path in pending.pop().iterdir():
+        here = pending.pop()
+        try:
+            children = list(here.iterdir())
+        except OSError as exc:
+            if here == folder:
+                raise PublishError(f"the site folder could not be read: {_why(exc)}") from exc
+            raise _unreadable(here.relative_to(folder).as_posix(), exc) from exc
+        for path in children:
+            relative = path.relative_to(folder).as_posix()
+            if _is_protected(relative, untouchable):
+                continue
             found.append(path)
-            if not _is_link(path) and path.is_dir():
+            try:
+                descend = not _is_link(path) and path.is_dir()
+            except OSError as exc:
+                raise _unreadable(relative, exc) from exc
+            if descend:
                 pending.append(path)
     return sorted(found)
+
 
 
 def _refuse_if_stray(relative: str, path: Path) -> None:
@@ -1083,20 +1145,21 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, _Local
     """Every file under `folder`, keyed by repository-relative path.
 
     A stray refuses the publish rather than being skipped or sent (§4.4,
-    INV-10). Nothing on the untouchable list is judged: an entry there is
-    neither written nor removed whatever the folder holds, so refusing over
-    one would fail a publish on a file already decided to be left alone.
+    INV-10). Nothing on the untouchable list is judged or read: an entry there
+    is neither written nor removed whatever the folder holds, so refusing
+    over one, or failing to read one, would fail a publish on a file already
+    decided to be left alone. That also leaves a protected symlink unfollowed
+    (PRESS-0069).
     """
     files = {}
-    for path in _entries(folder):
+    for path in _entries(folder, untouchable):
         relative = path.relative_to(folder).as_posix()
-        if not _is_protected(relative, untouchable):
+        try:
             _refuse_if_stray(relative, path)
-        if _is_link(path) or not path.is_file():
-            # A protected symlink is left where it is rather than read:
-            # reading follows the link (PRESS-0069). A directory carries no
-            # bytes of its own.
-            continue
+            if not path.is_file():
+                continue    # a directory carries no bytes of its own
+        except OSError as exc:
+            raise _unreadable(relative, exc) from exc
         files[relative] = _Local(path, _hash_file(relative, path))
     return files
 
@@ -1222,23 +1285,27 @@ def _content_of(blob: dict) -> bytes:
         ) from exc
 
 
-def _retry_hint(status: int, headers: dict[str, str]) -> float | None:
+def _retry_hint(status: int, headers: dict[str, str], body: bytes = b"") -> float | None:
     """The wait GitHub asked for, or None where it asked for none.
 
     A breach of the write pace is answered with a hint rather than a plain
-    refusal (§4.3), so it is honoured rather than raised. GitHub sends it two
-    ways. A SECONDARY limit answers 429, or 403 carrying a Retry-After. The
-    PRIMARY limit sends no Retry-After at all -- it reports a spent budget as
+    refusal (§4.3), so it is honoured rather than raised. GitHub sends it
+    three ways. A SECONDARY limit answers 429, or 403 carrying a Retry-After,
+    or a 403 whose message names the rate limit and carries no header at all,
+    which GitHub asks to be waited out for at least a minute. The PRIMARY
+    limit sends no Retry-After -- it reports a spent budget as
     x-ratelimit-remaining: 0 and names the reset in x-ratelimit-reset, so
     reading only Retry-After made it fall through to Refused and tell the
     writer to re-enter a key that is fine (PRESS-0046).
 
-    A 403 carrying neither is an ordinary refusal and must not be retried.
+    A 403 carrying none of the three is an ordinary refusal and must not be
+    retried.
     """
     header = {key.lower(): value for key, value in headers.items()}
     after = header.get("retry-after")
     spent = str(header.get("x-ratelimit-remaining", "")).strip() == "0"
-    if status != 429 and not (status == 403 and (after is not None or spent)):
+    if status != 429 and not (status == 403 and (
+            after is not None or spent or "rate limit" in _message(body).casefold())):
         return None
     if after is not None:
         try:
@@ -1291,10 +1358,12 @@ def _failure(status: int, method: str, url: str, *, signed_in: bool = False) -> 
             f"GitHub has no {where} -- the repository is there, but what was "
             f"asked for inside it is not"
         )
-    if status in (409, 422) and method != "POST":
-        # Only the reference update, the start file and a read concern the
-        # branch. A POST writes a blob, tree or commit, which touch none, so
-        # its refusal falls to the base type below (§6, PRESS-0135).
+    if status in (409, 422) and method != "POST" and not _names_pages(url):
+        # Only the reference update, a Contents API write (the start file,
+        # `.nojekyll`, `CNAME`) and a read concern the branch. A POST writes a
+        # blob, tree, commit or Pages build, and a PUT to `pages` changes a
+        # setting; none touches the branch, so their refusal falls to the
+        # base type below (§6, PRESS-0135).
         return Conflict(
             f"the branch moved since it was read, so {where} was refused"
         )
@@ -1303,14 +1372,24 @@ def _failure(status: int, method: str, url: str, *, signed_in: bool = False) -> 
     return PublishError(f"GitHub answered {status} for {where}")
 
 
+def _names_pages(url: str) -> bool:
+    """Whether `url` is the repository's GitHub Pages setting."""
+    return urllib.parse.urlsplit(url).path.rstrip("/").endswith("/pages")
+
+
 def _says_empty(data: bytes) -> bool:
     """Whether an error answer's `message` names an empty repository."""
+    return "empty" in _message(data).casefold()
+
+
+def _message(data: bytes) -> str:
+    """An answer's `message`, or "" where it carries none."""
     try:
         parsed = json.loads(data or b"{}")
     except ValueError:
-        return False
+        return ""
     message = parsed.get("message") if isinstance(parsed, dict) else None
-    return isinstance(message, str) and "empty" in message.casefold()
+    return message if isinstance(message, str) else ""
 
 
 def _parse(data: bytes) -> dict:
