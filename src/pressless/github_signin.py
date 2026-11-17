@@ -259,7 +259,7 @@ def _api(transport: Transport | None, method: str, path: str, token: str,
         return status, publisher._parse(data)
     if status in allow:
         return status, {}
-    if publisher._retry_hint(status, answer_headers) is not None:
+    if publisher._retry_hint(status, answer_headers, data) is not None:
         raise publisher.RateLimited(f"GitHub asked us to wait on {where}")
     raise publisher._failure(status, method, url, signed_in=True)
 

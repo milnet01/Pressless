@@ -137,7 +137,7 @@ def _site(monkeypatch: pytest.MonkeyPatch, pages: dict[str, bytes] | None = None
             return super().connect(address, host, port, secure)
 
     network = Live({HOST: [GLOBAL]}, answers)
-    monkeypatch.setattr(fetch, "_resolve", network.resolve)
+    monkeypatch.setattr(fetch, "addresses", network.resolve)
     monkeypatch.setattr(fetch, "_connect", network.connect)
     return network
 

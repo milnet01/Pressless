@@ -197,11 +197,11 @@ def test_a_fetch_that_dribbles_stops(tmp_path, monkeypatch):
 
 
 def test_a_stand_in_for_the_network_reaches_every_fetch(tmp_path, monkeypatch):
-    """PRESS-0333's tests patch `fetch._resolve`; `fetch` and `fetch_all` read
+    """PRESS-0333's tests patch `fetch.addresses`; `fetch` and `fetch_all` read
     it when called, as `fetch_site` does."""
     network = _Network({"old.example.org": [GLOBAL]},
                        {"old.example.org/a.jpg": _Answer(200, b"jpeg")})
-    monkeypatch.setattr(fetch, "_resolve", network.resolve)
+    monkeypatch.setattr(fetch, "addresses", network.resolve)
     monkeypatch.setattr(fetch, "_connect", network.connect)
     target = tmp_path / "a.jpg"
     assert fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12) is None

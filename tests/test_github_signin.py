@@ -177,6 +177,15 @@ def test_create_repository_makes_a_public_one():
         github_signin.create_repository(ACCESS, "site", _GitHub((403, {"message": "no"})))
 
 
+def test_a_rate_limit_named_only_in_the_message_is_a_wait_not_a_refusal():
+    """A secondary rate limit can answer 403 with no header, naming the limit
+    in its message. Breaks when it reads as a refused sign-in, which tells him
+    to sign in again when he only has to wait."""
+    github = _GitHub((403, {"message": "You have exceeded a secondary rate limit."}))
+    with pytest.raises(publisher.RateLimited):
+        github_signin.login(ACCESS, github)
+
+
 def test_a_refused_sign_in_request_is_a_refused_sign_in():
     """PRESS-0233. Breaks when github.com refusing a sign-in form raises the
     publishing key's refusal, which tells him to re-enter a key."""

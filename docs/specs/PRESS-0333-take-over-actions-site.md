@@ -158,7 +158,7 @@ reads it without importing `importing`. It answers `read_folder`'s `Found`
 and the commit.
 
 A `resolve` or `connect` left `None` is read from the module when called, so
-`tests/test_takeover.py` patches `fetch._resolve` and `fetch._connect`.
+`tests/test_takeover.py` patches `fetch.addresses` and `fetch._connect`.
 
 **What it follows.** `fetch_site` starts at `address`. An `address` it cannot read
 ends the crawl with nothing kept. Otherwise it takes addresses first found first:

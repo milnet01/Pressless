@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import dataclasses
 import html
+import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 
-from pressless import _public_suffixes, github_setup, publisher, settings, takeover, wizard
+from pressless import _public_suffixes, publisher, publishing, settings, takeover, wizard
 from pressless.face import Face, Request, render_notices
 from pressless.words import say
 from pressless_import import fetch
@@ -31,17 +32,22 @@ _OWN_NAMES = ("github.io", "github.com")   # GitHub's, so never a person's own d
 
 def clean(typed: str) -> str | None:
     """The domain in what was typed, however it was pasted, or None. A name in another
-    alphabet becomes the form GitHub and the seller's records use."""
+    alphabet becomes the form GitHub and the seller's records use. One that Python's
+    older IDNA rules would turn into a different name, such as `faß` into `fass`, is
+    refused rather than changed."""
     name = typed.strip().lower().removeprefix("https://").removeprefix("http://")
-    name = name.split("/", 1)[0].rstrip(".")
+    name = unicodedata.normalize("NFC", name.split("/", 1)[0].rstrip("."))
     try:
+        if not all(label.isascii() or label.encode("idna").decode("idna") == label
+                   for label in name.split(".")):
+            return None
         name = name.encode("idna").decode("ascii")
     except UnicodeError:
         return None
     labels = name.split(".")
     if (len(labels) < 2 or len(name) > _NAME_LONGEST
             or not all(_good_label(label) for label in labels)
-            or labels[-1].isdigit()
+            or labels[-1].isdigit()   # an IP address, which bought() would accept
             or any(name == own or name.endswith(f".{own}") for own in _OWN_NAMES)
             or bought(name) is None):
         return None
@@ -119,14 +125,11 @@ def _state(domain: str, resolve: fetch.Resolve) -> str:
 
 def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
            resolve: fetch.Resolve) -> tuple[wizard.Step, ...]:
-    def signed_in() -> tuple[settings.Settings, str]:
-        saved = settings.load(folder)
-        return saved, github_setup.token(folder, saved.credentials.store,
-                                         saved.credentials.github_account)
+    def settings_and_key() -> tuple[settings.Settings, str]:
+        return publishing.settings_and_key(folder, lambda step: step())
 
     def stopped(exc: Exception) -> wizard.Stop:
-        return wizard.Stop(face.fail(exc, publishing=False,
-                                     secret=say("failure.secret.publishing_key")))
+        return wizard.Stop(publishing.press_failure(face, exc))
 
     def repository() -> str:
         return settings.load(folder).repository
@@ -142,7 +145,7 @@ def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
         if takeover.owed(folder):
             return wizard.Hint("", say("domain.hint.takeover"))
         try:
-            saved, key = signed_in()
+            saved, key = settings_and_key()
             shown = publisher.pages(saved.repository, key, transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
             return stopped(exc)
@@ -163,7 +166,7 @@ def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
     def check_change(answers: wizard.Answers):
         domain = answers.get("domain", "")
         try:
-            saved, key = signed_in()
+            saved, key = settings_and_key()
             publisher.set_domain(saved.repository, key, domain, transport)
             settings.save(folder, dataclasses.replace(
                 saved, site_address=f"https://{domain}/",
@@ -185,7 +188,7 @@ def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
     def check_secure(answers: wizard.Answers):
         domain = answers.get("domain", "")
         try:
-            saved, key = signed_in()
+            saved, key = settings_and_key()
             shown = publisher.pages(saved.repository, key, transport)
             if not shown.https_enforced:
                 if shown.certificate in _CERTIFICATE_FAILED:
@@ -216,7 +219,8 @@ def _finished(domain: str) -> str:
 
 def register(face: Face, folder: Path, *, transport: publisher.Transport | None = None,
              resolve: Callable[[str, int], list[str]] | None = None) -> None:
-    flow = wizard.Wizard("domain", _steps(face, Path(folder), transport, resolve or fetch._resolve),
+    flow = wizard.Wizard("domain",
+                         _steps(face, Path(folder), transport, resolve or fetch.addresses),
                          Path(folder), ADDRESS)
 
     def page(request: Request) -> str:

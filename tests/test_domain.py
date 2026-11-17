@@ -119,6 +119,18 @@ def test_what_is_not_a_domain_is_refused(typed):
     assert domain.clean(typed) is None
 
 
+@pytest.mark.parametrize("typed", ["faß.de", "ςa.gr", "a\u200db.com", "a\u200cb.com"])
+def test_a_name_the_old_rules_would_change_is_refused(typed):
+    """Breaks when Python's IDNA 2003 codec turns the name into a different one,
+    `faß.de` into `fass.de`, which someone else can own: GitHub would be given
+    that name and the person shown its records."""
+    assert domain.clean(typed) is None
+
+
+def test_a_name_typed_in_its_decomposed_form_is_still_found():
+    assert domain.clean("mu\u0308nchen.de") == "xn--mnchen-3ya.de"
+
+
 # ------------------------------------------------------------------ the records ---
 
 

@@ -75,7 +75,9 @@ Connect = Callable[[str, str, int, bool], http.client.HTTPConnection]
 _clock = time.monotonic
 
 
-def _resolve(host: str, port: int) -> list[str]:
+def addresses(host: str, port: int) -> list[str]:
+    """The addresses `host` resolves to: the resolver `fetch` uses when handed none,
+    and the domain wizard's (PRESS-0222)."""
     return [info[4][0] for info in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
 
 
@@ -142,7 +144,7 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
     made; `answered` gains the address that answered, and its content type.
     `resolve` and `connect` are read from the module when called, so a test
     can stand in for the network."""
-    resolve, connect = resolve or _resolve, connect or _connect
+    resolve, connect = resolve or addresses, connect or _connect
     if room() < 0:
         return NO_ROOM
     for _hop in range(_REDIRECTS + 1):
