@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from _mode_support import TOO_DEEP
 
 from pressless import __version__, builder
 from pressless_import import fetch
@@ -554,7 +555,7 @@ def test_a_landing_this_computer_cannot_make_is_left_and_the_rest_come(tmp_path)
     """PRESS-0333 § 4.2: a path that fails is `left`. A name past 255 bytes is
     refused on every system; a whole path past the system's limit fails here."""
     long_name = "%C3%A9" * 128 + ".html"
-    deep = "/".join(["d" * 250] * 20) + "/a.html"
+    deep = TOO_DEEP
     network = _live({"sites.example.org": [GLOBAL]}, {
         "sites.example.org/": _html(f'<a href="{long_name}">L</a> <a href="{deep}">D</a> '
                                     '<a href="Blog/a.html">A</a> <a href="blog/b.html">B</a> '

@@ -155,3 +155,10 @@ def _require_distinct_case(folder) -> None:
             "differing only in case -- the fixture cannot be built and the "
             "assertion would hold whatever the code did (PRESS-0109)"
         )
+
+
+# A relative path no system can make: past Linux's 4096-byte PATH_MAX and
+# Windows's 32,767-character limit, which holds even where long paths are
+# enabled, as on GitHub's Windows runners. A path past only the old
+# 260-character limit is made there.
+TOO_DEEP = "/".join(["d" * 250] * 140) + "/a.html"

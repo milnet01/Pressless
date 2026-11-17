@@ -18,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 
 import pytest
 from _face_session import Browser
+from _mode_support import TOO_DEEP
 from PIL import Image
 from test_builder import _settings
 
@@ -200,7 +201,7 @@ def test_a_member_no_system_can_hold_is_left_not_the_zip(tmp_path):
     system; a path this computer cannot make is left as well, and neither
     refuses the rest of the ZIP."""
     long_name = "é" * 128 + ".html"             # 261 bytes in UTF-8
-    deep = "/".join(["d" * 250] * 20) + "/a.html"  # past every system's whole-path limit
+    deep = TOO_DEEP
     into = tmp_path / "folder"
     left = dict(pressless_import.unpack_folder(
         _zip(tmp_path, {"index.html": "<p>Home</p>", long_name: "x", deep: "y"}),
