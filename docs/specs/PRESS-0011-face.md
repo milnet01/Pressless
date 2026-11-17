@@ -248,6 +248,13 @@ notice is not a failure: the call it came from completes.
 path of the file that called it — measured — and while another request holds a
 capture, it lands on that request's list.
 
+**Two reads raise no notice, so they run outside `capture`:** `site_name`'s
+`store.read_identity` and `live_address`'s `settings.load`. Every page makes
+them, and `capture`'s lock is held through a publish's build, so wrapping them
+would hold every page behind a publish (PRESS-0397).
+`tests/test_face.py::test_the_top_bar_reads_raise_no_notice` fails if either
+starts raising one; it then moves inside `capture`.
+
 ### 4.5 The server and its boundary
 
 - `http.server.ThreadingHTTPServer` bound to `("127.0.0.1", port)`, `port`

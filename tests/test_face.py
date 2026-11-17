@@ -23,6 +23,7 @@ import stat
 import subprocess
 import sys
 import urllib.parse
+import warnings
 from pathlib import Path
 
 import pytest
@@ -40,6 +41,7 @@ from pressless import (
     overview,
     page_editor,
     publisher,
+    settings,
     store,
     themes,
     usage,
@@ -455,6 +457,43 @@ def test_a_notice_is_shown_and_the_call_completes(tmp_path: Path) -> None:
     assert UNCHANGED_WORDS not in updated
     assert NOTICE_NEXT_WORDS in updated
 
+
+def test_the_top_bar_reads_raise_no_notice(tmp_path: Path) -> None:
+    """PRESS-0397: § 4.4 exempts the two reads every page makes outside
+    `capture` -- `site_name` and `live_address` -- because they raise no
+    notice. Taking the capture lock there would hold every page behind a
+    publish. Breaks when either read raises a Store or Settings notice in
+    any state the site folder can be in: not set up, unreadable, set up, a
+    file readable by others, an identity present or broken."""
+    served = face.serve(tmp_path)
+
+    def raised() -> list[str]:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            served.live_address()
+            served.site_name()
+        return [str(each.message) for each in caught
+                if issubclass(each.category, (store.StoreNotice, settings.SettingsNotice))]
+
+    identity = store.identity_path_for(tmp_path)
+    try:
+        seen = {"not set up": raised()}
+        settings.path_for(tmp_path).write_text("{", encoding="utf-8")
+        seen["unreadable settings"] = raised()
+        settings.path_for(tmp_path).unlink()   # setup refuses to save over it
+        _saved(tmp_path)
+        seen["set up"] = raised()
+        store.write_identity(tmp_path, store.Identity("Seaside"))
+        seen["identity"] = raised()
+        for each in (settings.path_for(tmp_path), identity):
+            each.chmod(0o644)
+        seen["readable by others"] = raised()
+        identity.write_text("[]", encoding="utf-8")
+        seen["broken identity"] = raised()
+    finally:
+        served.stop()
+    assert served.site_name() == ""   # the broken identity was read
+    assert {state: notices for state, notices in seen.items() if notices} == {}
 
 def test_the_secret_is_never_printed_or_logged(
     tmp_path: Path, capfd: pytest.CaptureFixture[str]
