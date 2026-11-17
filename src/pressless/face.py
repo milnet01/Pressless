@@ -297,15 +297,22 @@ def sentence_for(
     The sentence returned holds words, its keys looked up now.
     """
     entry = SENTENCES.get(type(failure))
+    unforeseen = Sentence(say("failure.unforeseen.what"),
+                          Site.UNKNOWN if publishing else Site.UNCHANGED,
+                          say("failure.unforeseen.next"))
     if entry is None:
-        site = Site.UNKNOWN if publishing else Site.UNCHANGED
-        return Sentence(say("failure.unforeseen.what"), site, say("failure.unforeseen.next"))
+        return unforeseen
     link = (entry.link[0], say(entry.link[1])) if entry.link else None
     # A failure may carry the words for its sentence's gaps. The secret is the
     # one the Face names, else the failure's own, else "that secret".
     slots = dict(getattr(failure, "slots", {}))
     slots["secret"] = secret or slots.get("secret") or say("failure.unnamed_secret")
-    return Sentence(say(entry.what, **slots), entry.site, say(entry.next, **slots), link)
+    try:
+        return Sentence(say(entry.what, **slots), entry.site, say(entry.next, **slots), link)
+    except KeyError:
+        # A gap the failure left unfilled. This runs in the last-resort
+        # catch, so raising here would leave him with no answer at all.
+        return unforeseen
 
 
 def details_for(failure: BaseException) -> str:
@@ -1219,9 +1226,22 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _send_page(self, face: Face, status: int, body: str) -> None:
-        """`body` wrapped in the Face's frame, carrying the frames policy."""
-        after = "".join(render() for render in face._every_page)
-        self._send(status, _page(body, face._theme, face.site_name(), face._size, after),
+        """`body` wrapped in the Face's frame, carrying the frames policy.
+
+        Failure pages come through here too, so what a part adds, or the
+        site's name, failing costs only that piece: the page still goes."""
+        after = []
+        for render in face._every_page:
+            try:
+                after.append(render())
+            except Exception as exc:  # noqa: BLE001 -- the page outranks one part
+                face.note(f"a part failed on every page: {type(exc).__name__}")
+        try:
+            name = face.site_name()
+        except Exception as exc:  # noqa: BLE001 -- the bar then says Sites
+            face.note(f"the site's name could not be read: {type(exc).__name__}")
+            name = ""
+        self._send(status, _page(body, face._theme, name, face._size, "".join(after)),
                    "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int,

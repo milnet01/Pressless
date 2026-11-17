@@ -133,6 +133,42 @@ def test_a_failure_may_carry_a_secret_slot(monkeypatch) -> None:
     assert named.what == "Pressless does not have the named key yet."
 
 
+class _LeavesAGap(Exception):
+    """A failure whose sentence has a gap it does not fill."""
+
+
+def test_a_sentence_with_an_unfilled_gap_says_the_unforeseen_one(monkeypatch) -> None:
+    """§ Errors' last-resort path runs sentence_for, so a KeyError there left
+    the connection closed with no answer. Breaks when a gap the failure does
+    not fill raises instead of falling back to the unforeseen sentence."""
+    monkeypatch.setitem(face.SENTENCES, _LeavesAGap,
+                        face.Sentence("failure.log", face.Site.UNCHANGED, "failure.again"))
+    sentence = face.sentence_for(_LeavesAGap(), publishing=True)
+    assert sentence == face.sentence_for(RuntimeError(), publishing=True)
+
+
+def test_a_part_failing_on_every_page_still_lets_the_page_through(tmp_path: Path,
+                                                                  monkeypatch) -> None:
+    """PRESS-0337 § 4.6: what a part adds to every page is drawn for every
+    page, failure pages included. Breaks when one part raising, or reading
+    the site's name, loses the page itself, and the browser gets a closed
+    connection."""
+    served = face.serve(tmp_path)
+
+    def broken() -> str:
+        raise RuntimeError("a part's own failure")
+
+    monkeypatch.setattr(served, "site_name", broken)
+    try:
+        served.add_to_every_page(broken)
+        served.add_to_every_page(lambda: "<p>still here</p>")
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        status, _, body = _Client(served).request("GET", "/words")
+    finally:
+        served.stop()
+    assert status == 200 and "<p>Words</p>" in body and "still here" in body
+
+
 def test_a_refused_sign_in_sends_him_to_sign_in_again() -> None:
     """PRESS-0233. Breaks when GitHub refusing a sign-in tells him to enter a
     publishing key again, which a signed-in person never made."""
