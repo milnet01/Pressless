@@ -13,6 +13,7 @@ import io
 import json
 import os
 import tempfile
+import traceback
 import warnings
 from pathlib import Path
 
@@ -118,7 +119,7 @@ def _calls(module) -> set[str]:
 def test_settings_imports_nothing_forbidden():
     """INV-1: settings.py imports no network module and no other pressless
     module but pressless.safe_write, which imports neither, so the rule holds
-    through it. settings.py calls neither tempfile.mkstemp nor os.fsync
+    through it, and pressless.words (PRESS-0242). settings.py calls neither tempfile.mkstemp nor os.fsync
     itself, so §4.4's steps are not copied back (PRESS-0141).
 
     Walks each module's AST, as test_marks_is_pure does. Reads the source from
@@ -618,6 +619,47 @@ def test_saving_over_an_undecodable_file_is_a_typed_failure(tmp_path):
 
     with pytest.raises(SettingsError):
         save(tmp_path, settings)
+
+
+def test_no_failure_chains_what_it_caught(tmp_path):
+    """docs/design.md § Logging: no full path in anything Pressless shows or
+    writes down. A stock OSError's words quote the path it failed on, so a
+    SettingsError raised in its place must not carry it as its cause or its
+    context, where a formatted traceback prints it. Credentials holds the
+    same rule as PRESS-0002 INV-13.
+
+    Breaks when a raise inside an `except` keeps `from exc`."""
+    a_folder = tmp_path / "a-folder"
+    (a_folder / FILE_NAME).mkdir(parents=True)          # read: not a file
+    undecodable = tmp_path / "undecodable"
+    undecodable.mkdir()
+    (undecodable / FILE_NAME).write_bytes(b'{"version": 1, "site_folder": "caf\xe9"}')
+    not_json = tmp_path / "not-json"
+    not_json.mkdir()
+    (not_json / FILE_NAME).write_text("{not json", encoding="utf-8")
+    valid = Settings(
+        site_folder=tmp_path / "site", repository="owner/name",
+        site_address="https://example.org", daily_prompt_filter="",
+        untouchable=(), credentials=Credentials(store="keyring",
+                                                github_account="publishing-key",
+                                                google_account=None),
+        analytics_property_id=None)
+    calls = {
+        "read fails": lambda: load(a_folder),
+        "not UTF-8": lambda: load(undecodable),
+        "not JSON": lambda: load(not_json),
+        "saving over what is not JSON": lambda: save(not_json, valid),
+        "write fails": lambda: save(tmp_path / "no-such-folder", valid),
+    }
+    printed = []
+    for name, call in calls.items():
+        with pytest.raises(SettingsError) as caught:
+            call()
+        shown = "".join(traceback.format_exception(caught.value))
+        if (caught.value.__cause__ is not None or not caught.value.__suppress_context__
+                or str(tmp_path) in shown):
+            printed.append(name)
+    assert not printed, f"a traceback would print what these caught: {printed!r}"
 
 
 # ------------------------------------------------------------ PRESS-0053 ----

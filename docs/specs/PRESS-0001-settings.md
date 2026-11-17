@@ -368,8 +368,9 @@ the mount grants; the suppression patches the helper and rests on nothing.
 
 Keys `load()` did not recognise are carried through unchanged, **at the top
 level only**: `credentials` is rebuilt from the dataclass, so a stranger key
-nested inside it is not preserved. A later Pressless adding a key puts it at
-the top level. `save()` therefore reads the existing file before writing. A save over one it
+nested inside it is not preserved. `youtube_account` (PRESS-0081) sits
+inside it all the same: only an older build drops it, and installing an
+older Pressless is not supported. `save()` therefore reads the existing file before writing. A save over one it
 cannot parse raises rather than discarding what it could not read — and so
 does a save over one whose `version` is not this build's — **by §4.2's test,
 not a looser one**, or a file `load()` refuses is the file `save()` accepts —
@@ -410,7 +411,8 @@ which is the writer's choice of somewhere else and is stored absolute.
 
 - **INV-1** — `src/pressless/settings.py` imports no network module and no
   other `pressless` module but `pressless.safe_write`, which carries §4.4's
-  temporary-file, sync and replace steps (§4.4).
+  temporary-file, sync and replace steps (§4.4), and `pressless.words`,
+  which gives `SettingsNotice` its words (PRESS-0242 § 4.2).
   `safe_write.py` itself imports no network module and no `pressless`
   module, so the rule holds through it. The descriptor check and the
   `SettingsError` wording stay in `settings.py`, and `settings.py` calls
@@ -749,3 +751,4 @@ loading or saving does anything.
 | amend | 2026-11-12 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0351 § 4.4: `patiently` returns what `step` returns; the wizard reads its progress file through it. |
 | amend | 2026-11-16 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0365 § 4.4 and § 11: the Builder's folder swap calls `patiently`. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376 § 4.4: `write_whole` syncs the target's folder through `sync_folder`. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: INV-1 names `pressless.words` (PRESS-0242); §4.4 says a key nested in `credentials` is lost only on a downgrade, which is not supported. |

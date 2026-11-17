@@ -1,8 +1,9 @@
 """Settings — what is true of this machine and this site, and nothing else.
 
 The contract is docs/specs/PRESS-0001-settings.md. Settings depends on
-nothing: no Store, no network, no other part of Pressless. It is handed its
-folder and never derives one (§3 decision 2).
+nothing: no Store, no network, no other part of Pressless. It takes its words
+from the words table, which touches no disk and no network (PRESS-0242). It
+is handed its folder and never derives one (§3 decision 2).
 
 Every read and write names UTF-8. JSON is UTF-8 by definition, and Python's
 default text encoding is the locale's — cp1252 on Windows — so a site_folder
@@ -41,9 +42,13 @@ _NAME_CHARS = frozenset(
 
 _MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")   # PRESS-0199 § 4.1
 
-# PRESS-0211 § 4.1: what makes the page's code safe to write without escaping.
-YOUTUBE_ADDRESS = "/youtube"   # the screen, which setup.py links to
+# The YouTube screen's address: youtube_screen.py builds its pages from it,
+# and setup.py links to it.
+YOUTUBE_ADDRESS = "/youtube"
+
+# PRESS-0081 § 4.1: a channel is "@handle" or a "UC..." id.
 _YOUTUBE_CHANNEL = re.compile(r"\A(?:@[^\s/?#&<>\"']{1,100}|UC[A-Za-z0-9_-]{22})\Z")
+# PRESS-0211 § 4.1: what makes the page's code safe to write without escaping.
 _VOTES_TOKEN = re.compile(r"\A[A-Za-z0-9_-]{20,100}\Z")
 _VOTES_SHAPES = {
     "api_key": _VOTES_TOKEN,
@@ -63,7 +68,7 @@ _SITE_ADDRESS = re.compile(
 
 @dataclass(frozen=True)
 class Credentials:
-    """Where the two secrets are kept — never the secrets (§4.5)."""
+    """Where the secrets are kept — never the secrets (§4.5)."""
 
     store: str                    # "keyring" or "file" -- ADR-0003's two paths
     github_account: str           # the keyring account name, or the file's key name
@@ -90,7 +95,7 @@ class Settings:
     site_address: str             # its absolute address, joined into the sitemap
     daily_prompt_filter: str      # fnmatch glob, matched per tag (§4.2)
     untouchable: tuple[str, ...]  # repository-root entries the Publisher leaves alone
-    credentials: Credentials      # where the two secrets are kept -- never the secrets
+    credentials: Credentials      # where the secrets are kept -- never the secrets
     analytics_property_id: str | None  # the NUMERIC property id, not the G-... tag
     # PRESS-0199 § 4.1: the G-... id the counting code carries; optional on
     # load, so a file written before it loads as None.
@@ -149,7 +154,8 @@ def _why(exc: OSError) -> str:
 
     Copied rather than shared: §5 INV-1 lets this module import no
     `pressless` module but `safe_write`, whose contract is the file-writing
-    steps alone, so a shared copy would need INV-1 changed first.
+    steps alone, and `words`, so a shared copy would need INV-1 changed
+    first.
     """
     return exc.strerror or type(exc).__name__
 
@@ -194,11 +200,11 @@ def _read(target: Path, *, saving: bool) -> dict | None:
         raise SettingsError(
             "the settings file is not readable as UTF-8, so it cannot be parsed: "
             f"{exc}"
-        ) from exc
+        ) from None
     except OSError as exc:
         raise SettingsError(
             f"the settings file could not be read: {_why(exc)}"
-        ) from exc
+        ) from None
 
     try:
         raw = json.loads(text)
@@ -209,8 +215,8 @@ def _read(target: Path, *, saving: bool) -> dict | None:
             raise SettingsError(
                 "the settings file is not valid JSON, so saving over it would discard "
                 f"what could not be parsed: {exc}"
-            ) from exc
-        raise SettingsError(f"the settings file is not valid JSON: {exc}") from exc
+            ) from None
+        raise SettingsError(f"the settings file is not valid JSON: {exc}") from None
     if not isinstance(raw, dict):
         raise SettingsError(f"the settings file holds {type(raw).__name__}, not an object")
 
@@ -324,8 +330,7 @@ def check(settings: Settings) -> None:
             "site_folder is not an absolute path", "site_folder"
         )
     owner, _, name = settings.repository.partition("/")
-    # The character check subsumes the second-slash one that stood here: "/"
-    # is not a name character either (PRESS-0066).
+    # "/" is not a name character, so a second slash is refused too.
     # "." and ".." are made of name characters, but in the API URL they are dot
     # segments, which resolve to a different path than the one typed
     # (PRESS-0171).
@@ -349,7 +354,7 @@ def check(settings: Settings) -> None:
             f"{' or '.join(repr(s) for s in _STORES)}",
             "credentials",
         )
-    # Shape, like the three above. §4.2 fixes this as the numeric property id
+    # Shape, like those above. §4.2 fixes this as the numeric property id
     # and says the G-... tag is a different identifier that fails every fetch,
     # so a pasted tag reached Google as a 404 the writer could not read
     # (PRESS-0056). isascii() as well, because isdigit() is true of full-width
@@ -432,7 +437,7 @@ def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> N
     except OSError as exc:
         raise SettingsError(
             f"the settings file could not be written: {_why(exc)}"
-        ) from exc
+        ) from None
 
 
 def _is_windows() -> bool:
