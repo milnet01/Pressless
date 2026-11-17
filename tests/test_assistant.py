@@ -283,7 +283,10 @@ def test_the_door_file_is_the_owners_alone_on_windows(tmp_path):
     shown = text.value
     kernel32.LocalFree(text)
     kernel32.LocalFree(described)
-    assert shown == "D:P(A;;FA;;;OW)", shown
+    # "P": inherits nothing. Windows may add "AI", which marks how the list
+    # was set and grants no one anything.
+    flags, aces = shown[2:shown.index("(")], shown[shown.index("("):]
+    assert shown.startswith("D:") and "P" in flags and aces == "(A;;FA;;;OW)", shown
     assert json.loads((tmp_path / DOOR_FILE).read_text(encoding="utf-8"))["token"] == door.token
 
 
