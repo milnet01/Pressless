@@ -322,7 +322,7 @@ def test_a_file_the_previous_state_lacks_is_kept(tmp_path):
     assert _binned(folder) == ["about.html", "colophon.html", "notes.html",
                                "seaside.json", "sonnet.txt"]
     site = _settings(folder).site_folder
-    built = sorted(str(p.relative_to(site)) for p in site.rglob("*.html"))
+    built = sorted(p.relative_to(site).as_posix() for p in site.rglob("*.html"))
     assert "pages/colophon.html" in built, built
     assert "pages/about.html" not in built and "pages/notes.html" not in built, built
     # PRESS-0416: the reply names the pages it took off the site.
