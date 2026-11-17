@@ -13,3 +13,4 @@
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.2, 4.6: the helper's line and the home screen are Your site. |
 | 0402-0404 | 2026-11-17 | 0, no reviewer dispatched | - | - | - | - | Fold-back: § 4.3 chat words for steps pointing below; § 4.4 a source run names its folder; § 4.6 a failure after Yes shows; § 10 rows. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0417: § 4.6 a press's failure after Yes is made by `publishing.press_failure`, so a refusal carries its link. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0418: § 4.4 a packaged program that cannot find itself names no program; the screen says why and Connect writes nothing. |

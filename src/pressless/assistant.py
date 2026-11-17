@@ -798,7 +798,22 @@ class _Door:
 
     def setup_page(self, request: Request) -> str:
         on = is_on(self.own)
-        program, arguments = _program(self.own)
+        return (f'<h1>{say("assistant.title")}</h1><p>{say("assistant.about")}</p>'
+                f'<form method="post" action="{SETUP}" class="switch-row">'
+                f'<div class="states"><p>{say("assistant.on" if on else "assistant.off")}</p>'
+                f'</div><span class="states"><button name="on" value="{"0" if on else "1"}">'
+                f'{say("assistant.switch_off" if on else "assistant.switch_on")}</button>'
+                f"</span></form>"
+                f'<h2>{say("assistant.connect")}</h2>{self._connecting(request)}'
+                f"<script>{_COPY_SCRIPT}</script>")
+
+    def _connecting(self, request: Request) -> str:
+        """The program an AI app starts and each app's steps, or why there is
+        none (PRESS-0418)."""
+        try:
+            program, arguments = _program(self.own)
+        except paths.NotPackaged:
+            return f'<p>{say("assistant.no_program")}</p>'
         block = json.dumps({"mcpServers": {"pressless": {
             "command": program, "args": arguments}}}, indent=2)
         # The outcome's words are picked from this list, never taken from the address.
@@ -819,18 +834,11 @@ class _Door:
                  f'<p><button type="button" data-copy="assistant-claude-code">'
                  f'{say("assistant.copy")}</button></p>'
                  f'<h3>{say("assistant.app.other")}</h3><p>{say("assistant.steps.other")}</p>')
-        return (f'<h1>{say("assistant.title")}</h1><p>{say("assistant.about")}</p>'
-                f'<form method="post" action="{SETUP}" class="switch-row">'
-                f'<div class="states"><p>{say("assistant.on" if on else "assistant.off")}</p>'
-                f'</div><span class="states"><button name="on" value="{"0" if on else "1"}">'
-                f'{say("assistant.switch_off" if on else "assistant.switch_on")}</button>'
-                f"</span></form>"
-                f'<h2>{say("assistant.connect")}</h2><p>{say("assistant.program")}</p>'
+        return (f'<p>{say("assistant.program")}</p>'
                 f'<pre id="assistant-program">{e(command)}</pre>'
                 f'<p>{say("assistant.block")}</p><pre id="assistant-block">{e(block)}</pre>'
                 f'<p><button type="button" data-copy="assistant-block">'
-                f'{say("assistant.copy")}</button></p>{steps}'
-                f"<script>{_COPY_SCRIPT}</script>")
+                f'{say("assistant.copy")}</button></p>{steps}')
 
     def set_switch(self, request: Request) -> Reply:
         on = editor.form_fields(request).get("on") == "1"
@@ -844,7 +852,12 @@ class _Door:
     def connect(self, request: Request) -> Reply:
         """POST /assistant/connect (§ 4.2): Pressless's entry into Claude
         Desktop's settings file, then the screen saying how it went."""
-        said = connect_claude_desktop(claude_desktop_config(), *_program(self.own))
+        try:
+            program = _program(self.own)
+        except paths.NotPackaged:
+            # The screen says why there is no program to connect (PRESS-0418).
+            return Reply(b"", "text/plain; charset=utf-8", status=303, location=SETUP)
+        said = connect_claude_desktop(claude_desktop_config(), *program)
         self.face.note(f"assistant: connect Claude Desktop, {said.rsplit('.', 1)[1]}")
         return Reply(b"", "text/plain; charset=utf-8", status=303,
                      location=f"{SETUP}?connect={said.rsplit('.', 1)[1]}")
@@ -958,10 +971,14 @@ def _program(own: Path) -> tuple[str, list[str]]:
     the package, each with --assistant (§ 4.2). A source run has no artefact
     to find its folder beside, so it names `own`, this Face's (§ 4.4). On
     Windows the artefact is the program's folder, and an app starts the
-    Pressless.exe inside it."""
+    Pressless.exe inside it. A packaged program that cannot find itself
+    raises NotPackaged: it cannot run `-m pressless`, and its bridge would
+    not find its folder either (PRESS-0418)."""
     try:
         artefact = paths.artefact_path()
     except paths.NotPackaged:
+        if getattr(sys, "frozen", False):
+            raise
         return sys.executable, ["-m", "pressless", "--assistant", str(Path(own).absolute())]
     if sys.platform == "win32":
         return sys.executable, ["--assistant"]

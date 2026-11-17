@@ -1946,6 +1946,10 @@ _WORDS: dict[str, str] = {
     "assistant.connect": "Connecting an AI app",
     "assistant.program": "The AI app starts this program, with this argument:",
     "assistant.block": "Or, where the app asks for its settings as text:",
+    "assistant.no_program": (
+        "Pressless cannot tell where its program is, so there is nothing for an AI app "
+        "to start. If Pressless was moved or removed while it was open, start it again "
+        "from where it is now."),
     "assistant.copy": "Copy",
     "assistant.app.claude_desktop": "Claude Desktop",
     "assistant.app.claude_code": "Claude Code",

@@ -990,6 +990,25 @@ def test_a_source_run_names_its_folder(monkeypatch, tmp_path, capsys):
     assert reply["result"]["structuredContent"] == {"entries": []}, reply
 
 
+def test_a_packaged_run_that_cannot_find_itself_offers_no_program(monkeypatch, tmp_path):
+    """PRESS-0418: a frozen Linux program whose $APPIMAGE names no file
+    cannot be started as `-m pressless`, and a packaged bridge refuses a
+    folder, so the screen says why it names no program and Connect writes
+    nothing. Breaks when a frozen run is offered the source run's line."""
+    config = tmp_path / "claude" / "claude_desktop_config.json"
+    monkeypatch.setattr(assistant, "claude_desktop_config", lambda: config)
+    with _pressless(tmp_path) as pressless:
+        monkeypatch.setattr(assistant.sys, "platform", "linux")
+        monkeypatch.setattr(assistant.sys, "frozen", True, raising=False)
+        monkeypatch.delenv("APPIMAGE", raising=False)
+        page = pressless.browser.request("GET", "/assistant/setup")[2]
+        status, headers, _ = pressless.browser.request("POST", "/assistant/connect")
+    assert "-m pressless" not in page and "--assistant" not in page
+    assert "Pressless cannot tell where its program is" in page
+    assert (status, headers["Location"]) == (303, "/assistant/setup")
+    assert not config.exists()
+
+
 def test_the_screen_gives_each_app_its_own_line(tmp_path):
     """§ 4.2: Claude Code's line adds Pressless for every folder and has its
     own Copy button; only the apps checked by hand (§ 7) are named."""
