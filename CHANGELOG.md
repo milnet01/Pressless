@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Pressless's screens are sturdier and more private** (PRESS-0371)
+  A file too big to bring in is refused before it is written to the drive, and a
+  full drive now says so. The log and uploaded files can be read only by you on
+  Linux. A browser that stalls mid-request no longer ties Pressless up, and a stray
+  cookie from another program no longer locks you out.
+
 - **A WordPress post with an unreadable date no longer stops the import** (PRESS-0392)
   It takes the next date the export holds for it, and the Report lists the post with
   the date it took.

@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=396 -->
+<!-- ants-roadmap-id-high-water: PRESS=398 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7640,7 +7640,7 @@ does not wait on them.
   Source: verify-delivery-2026-11-16.
   Lanes: Publishing.
 
-- 📋 [PRESS-0371] **Review fixes: the Face core (server, log, themes, choices, report).**
+- ✅ [PRESS-0371] **Review fixes: the Face core (server, log, themes, choices, report).**
   Subject 01 of the 2026-11-16 full review, closed with close-findings.
   review-code: 3 medium, 7 low. review-readability: 1 high, 5 medium,
   9 low, plus leads. Among them: themes.py writes with no lock on the
@@ -7653,6 +7653,15 @@ does not wait on them.
   upload route copies a body to disk before checking its size, so the
   limit should move into Face.add_upload. The harm is a temporary file,
   bounded by free disk space and deleted afterwards.
+  Shipped 2026-11-17, fb19bf5..1d0b533. 29 findings: 26 fixed, 2 queued
+  (PRESS-0397, PRESS-0398), 1 dismissed (downgrade only). The log and
+  uploads are owner-only on Linux; theme.json writes are locked; an
+  upload over its route's limit is refused before it is written
+  (PRESS-0384's upload half), and a full drive says so; a stalled
+  connection lets go after a minute; served files stream. The 60 KB
+  claim is gone from face.py. PRESS-0224 § 4.5 amended. Full suite
+  2220 passed, 26 skipped.
+  Ledger: close-findings-2026-11-17/lane-01-face-core.json.
   **Layman:** Tidy-ups and small bug fixes in the part of Pressless that serves its screens to your browser.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -8015,6 +8024,31 @@ does not wait on them.
   Kind: investigate.
   Source: review-code-2026-11-16 (PRESS-0385 sweep).
   Lanes: Import.
+
+- 📋 [PRESS-0397] **Read the site name and address inside capture without stalling pages.**
+  Queued from PRESS-0371 (review-code lane-01-face-core, ledger cite
+  :47). The review's fix takes the process-wide capture lock on every
+  page render; a publish holds that lock through its whole build, so
+  every page would wait behind a build. Needs a decision: amend PRESS-0011
+  § 4.4 to exempt reads that raise no notice, or change capture so it
+  does not serialise. Checked 2026-11-17: neither read raises a notice
+  today, so nothing leaks now.
+  **Layman:** A behind-the-scenes safety rule for how screens read your site's name, without making screens wait while you publish.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 (PRESS-0371 close-findings).
+  Lanes: Face.
+
+- 📋 [PRESS-0398] **One shared helper for the versioned-JSON readers and writers.**
+  Queued from PRESS-0371 (review-readability lane-01-face-core :44).
+  Themes, choices, backups, sites and the updater each read and write a
+  versioned JSON file by hand. Subject 01's part is fixed (theme lock,
+  version written last). Do it after PRESS-0381 merges, since it edits
+  updater.py. Keep the name
+  choices.remember, which PRESS-0285 uses.
+  **Layman:** Five copies of the same file-saving code become one, so a fix to one is a fix to all.
+  Kind: refactor.
+  Source: review-code-2026-11-16 (PRESS-0371 close-findings).
+  Lanes: Face, Sites, Updates, Store.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
