@@ -18,6 +18,8 @@ module level, so a packaged `--self-check` proves each one loads in the bundle.
 """
 from __future__ import annotations
 
+import _thread
+import ctypes
 import errno
 import os
 import signal
@@ -25,6 +27,7 @@ import sys
 import threading
 import urllib.parse
 import webbrowser
+from collections.abc import Callable
 from pathlib import Path
 from typing import BinaryIO
 
@@ -203,9 +206,13 @@ def _serve(own: Path) -> int:
             print(stopped)
             return 1
         kept = _stop_on_close()
+        stopped = threading.Event()
+        unwatch = _watch_console(stopped)
         try:
             return _serve_held(own)
         finally:
+            stopped.set()   # the stop steps have run: a closing console may end us
+            unwatch()
             for number, handler in kept.items():
                 signal.signal(number, handler)
     finally:
@@ -232,6 +239,50 @@ def _interrupt(number: int, frame: object) -> None:
     for each in _CLOSE_SIGNALS:
         signal.signal(each, signal.SIG_IGN)
     raise KeyboardInterrupt
+
+
+# The console events that end the process once their handler returns
+# (PRESS-0407): CTRL_CLOSE_EVENT, CTRL_LOGOFF_EVENT and CTRL_SHUTDOWN_EVENT.
+_CLOSE_EVENTS = frozenset({2, 5, 6})
+# Windows ends the process itself a few seconds after a close; this bound only
+# frees the handler's thread where the stop never finishes.
+_CLOSE_WAIT = 30.0
+# Every handler given to Windows, kept for the life of the process: Windows
+# may still be running one after it is removed.
+_ROUTINES: list[object] = []
+
+
+def _watch_console(stopped: threading.Event) -> Callable[[], None]:
+    """Windows' closed console (PRESS-0407). It sends no SIGHUP: it calls a
+    console handler on a thread of its own and ends the process once that
+    returns. So the handler takes Ctrl+C's way out, as _interrupt does, and
+    returns only once `stopped` is set, after the stop steps. Ctrl+C itself
+    is left to Python. Returns the handler's removal."""
+    closing = threading.Event()
+
+    def on_event(kind: int) -> bool:
+        if kind not in _CLOSE_EVENTS:
+            return False
+        if not closing.is_set():   # a second event must not cut the stop short
+            closing.set()
+            _thread.interrupt_main()
+        stopped.wait(_CLOSE_WAIT)
+        return True
+
+    return _console_handler(on_event)
+
+
+def _console_handler(on_event: Callable[[int], bool]) -> Callable[[], None]:
+    """Give `on_event` to Windows as a console handler; return its removal.
+    Chosen by whether the system has the call, never by sys.platform, as
+    _lock_now is. Elsewhere it does nothing."""
+    windll = getattr(ctypes, "windll", None)
+    if windll is None:
+        return lambda: None
+    routine = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_uint)(on_event)
+    _ROUTINES.append(routine)
+    windll.kernel32.SetConsoleCtrlHandler(routine, True)
+    return lambda: windll.kernel32.SetConsoleCtrlHandler(routine, False)
 
 
 def _serve_held(own: Path) -> int:
@@ -341,9 +392,13 @@ def _refresh_shortcuts(served: face.Face) -> None:
 
 def _wait(restart: threading.Event) -> bool:
     """Block until `restart` is set, then return True. An interrupt raises,
-    a closed terminal included (_stop_on_close), so it never returns False.
-    Its own function so the tests can replace it (PRESS-0013 § 4.5 step 6)."""
-    restart.wait()
+    a closed terminal or console included (_stop_on_close, _watch_console),
+    so it never returns False. It waits in short spells because on Windows
+    one long wait takes no interrupt until it ends (PRESS-0407, measured on
+    the box). Its own function so the tests can replace it (PRESS-0013 § 4.5
+    step 6)."""
+    while not restart.wait(0.25):
+        pass
     return True
 
 

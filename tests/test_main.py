@@ -532,3 +532,48 @@ def test_a_closed_window_stops_pressless_as_ctrl_c_does(monkeypatch, tmp_path, c
     finally:
         for name, handler in before.items():
             signal.signal(getattr(signal, name), handler)
+
+
+_REAL_WAIT = main_module._wait   # before any test replaces it
+
+
+def test_a_closed_windows_console_waits_for_the_stop(monkeypatch, tmp_path, capsys):
+    """PRESS-0407: Windows has no SIGHUP. Closing the console sends
+    CTRL_CLOSE_EVENT to a console handler on a thread of its own, and ends the
+    process once that handler returns. So the handler starts Ctrl+C's way out
+    and returns only once the stop steps have run: the AI helper's door file
+    is gone by then. Ctrl+C itself is left to Python. The system's call is
+    stood in for here; the box check proves the real one."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    _Opened(monkeypatch)
+    monkeypatch.setattr(main_module, "_wait", _REAL_WAIT)   # the real wait, interrupted
+    own = artefact.parent / _FOLDER_NAME
+    own.mkdir(parents=True, exist_ok=True)
+    (own / "assistant.json").write_text('{"on": true}', encoding="utf-8")
+    door = own / "assistant-door.json"
+    handlers, removed, seen = [], [], {}
+
+    def install(on_event):
+        handlers.append(on_event)
+        return lambda: removed.append(on_event)
+
+    monkeypatch.setattr(main_module, "_console_handler", install)
+
+    def windows():
+        """What Windows does when the window is closed: call the handler on a
+        thread of its own, then end the process once it returns."""
+        while not door.exists():
+            threading.Event().wait(0.01)
+        seen["ctrl_c"] = handlers[0](0)        # CTRL_C_EVENT: Python's own
+        seen["close"] = handlers[0](2)         # CTRL_CLOSE_EVENT
+        seen["door"] = door.exists()
+
+    closer = threading.Thread(target=windows, daemon=True)
+    closer.start()
+    assert main_module.main([]) == 0
+    closer.join(timeout=10)
+    assert seen == {"ctrl_c": False, "close": True, "door": False}
+    assert removed == handlers
+
