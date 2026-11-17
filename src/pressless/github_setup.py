@@ -15,13 +15,14 @@ under one lock: two renewals at once would leave one of them signed out.
 
 from __future__ import annotations
 
+import dataclasses
 import html
 import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
 
-from pressless import credentials, github_signin, publisher
+from pressless import credentials, github_signin, publisher, settings, sites
 from pressless.face import Face, Reply, Request, loaded_settings, message_box
 from pressless.github_signin import DeviceCode, Tokens
 from pressless.words import say
@@ -53,8 +54,10 @@ _state: _State | None = None
 
 def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None,
-             clock: Callable[[], float] = time.time) -> None:
-    """Add `/setup/github` to `face`, and hold the pass for this launch."""
+             clock: Callable[[], float] = time.monotonic) -> None:
+    """Add `/setup/github` to `face`, and hold the pass for this launch. The
+    clock only measures how long a pass or a code has left, so it is one a
+    change to the computer's time cannot move back."""
     global _state
     state = _State(face, folder, transport, clock)
     _state = state
@@ -102,11 +105,21 @@ def token(folder: Path, store: str, account: str) -> str:
         return renewed.access
 
 
-def hold(tokens: Tokens, account: str) -> None:
-    """A sign-in's first pass, just stored under `account`, so the next
-    `token` for that name needs no renewal."""
+def own_name(saved: settings.Settings, folder: Path) -> settings.Settings:
+    """`saved` with its GitHub secret filed under this site's own name
+    (PRESS-0223 § 4.5), never a name another site shares (PRESS-0347)."""
+    return dataclasses.replace(saved, credentials=dataclasses.replace(
+        saved.credentials, github_account=sites.account("github", folder)))
+
+
+def replace(store: str, folder: Path, tokens: Tokens) -> None:
+    """A fresh sign-in stored under this site's own name and its first pass
+    held, so the next `token` needs no renewal. Under the lock `token` takes,
+    or a renewal at the same moment writes its older token over this one."""
+    account = sites.account("github", folder)
     state = _need()
     with state.lock:
+        credentials.write(store, Path(folder), account, tokens.refresh)
         state.held[account] = (tokens.access, state.clock() + tokens.expires_in)
         # The sign-in just stored replaces any renewed token never saved.
         state.unsaved.pop(account, None)
@@ -197,14 +210,15 @@ def _page(state: _State, request: Request) -> str | Reply:
                     pressed = say("github_setup.cannot_write", repository=saved.repository,
                                   signed_in=github_signin.login(pressed.access, state.transport))
                 else:
-                    credentials.write(saved.credentials.store, state.folder,
-                                      saved.credentials.github_account, pressed.refresh)
-                    hold(pressed, saved.credentials.github_account)
+                    replace(saved.credentials.store, state.folder, pressed)
+                    filed = own_name(saved, state.folder)
+                    if filed != saved:
+                        settings.save(state.folder, filed)
                     return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
             above = message_box("step-hint", html.escape(pressed))
         except publisher.PublishError as exc:
             above = message_box("failure", state.face.fail(exc, publishing=False))
-        except credentials.FAILURES as exc:
+        except (*credentials.FAILURES, OSError) as exc:
             above = message_box("failure", state.face.fail(
                 exc, publishing=False, secret=say("failure.secret.github_sign_in")))
     return (shown + above + how() + state.again.shown()

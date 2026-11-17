@@ -181,9 +181,10 @@ for one launch.
 ```python
 def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None,
-             clock: Callable[[], float] = time.time) -> None: ...
+             clock: Callable[[], float] = time.monotonic) -> None: ...
 def token(folder: Path, store: str, account: str) -> str: ...
-def hold(tokens: github_signin.Tokens, account: str) -> None: ...   # a sign-in's first pass
+def replace(store: str, folder: Path, tokens: github_signin.Tokens) -> None: ...  # a new sign-in
+def own_name(saved: Settings, folder: Path) -> Settings: ...  # filed under this site's name
 ```
 
 `token` takes the arguments `credentials.read` takes and replaces that call
@@ -204,10 +205,16 @@ works once, so two renewals at once would leave one of them signed out.
 The held token and a renewed refresh token not yet written are kept per
 `account`: one launch can reach two sign-ins (§ 4.3, *Continue as*).
 
-`register` runs at launch, as `google_setup.register` does. `token`, `hold`,
+`register` runs at launch, as `google_setup.register` does. `token`, `replace`,
 the *signin* step and `/setup/github` use its transport and its clock, and
-turn each `expires_in` into a time with that clock. Tests pass a recording
-transport and a fake clock there.
+turn each `expires_in` into a time with that clock. It defaults to
+`time.monotonic`, which a change to the computer's time cannot move back.
+Tests pass a recording transport and a fake clock there.
+
+`replace` writes a new sign-in's refresh token under
+`sites.account("github", folder)` and holds its pass, under the same lock
+as steps 1 to 4, so a renewal at that moment cannot write over it.
+`own_name` gives Settings naming that same entry.
 
 A `SignedOut` reaches `Face.fail` like any `PublishError`. Its sentence says
 GitHub has signed Pressless out, the site has not changed, and to sign in
@@ -265,10 +272,8 @@ the progress file (PRESS-0212 § 4.2).
    there stores nothing. A `login` other than `account`, ignoring case, is a
    `Hint` naming both, and nothing is stored; the next Next starts a new
    code. Then `credentials.choose()` where the answers hold
-   no `store`, then
-   `credentials.write(store, folder, GITHUB_ACCOUNT, tokens.refresh)`. A
-   credential failure is a `Stop`, as on PRESS-0212's *key* step. Then
-   `github_setup.hold(tokens, <the name written>)`.
+   no `store`, then `github_setup.replace(store, folder, tokens)`. A
+   credential failure is a `Stop`, as on PRESS-0212's *key* step.
 4. The answers gain `store`, `store_name` and `account`, `login`'s answer.
 
 **repository.** The joined `account/repository` must pass `settings.check`'s
@@ -303,8 +308,10 @@ in to GitHub, typing a key replaces the sign-in, and a link to
 `/setup/github`, GET and POST, runs the *signin* step's sequence on its own,
 with the saved store and no `account` box. A sign-in whose account cannot
 write to Settings' `repository` is refused, named, and nothing is stored
-(PRESS-0334). Success replaces the stored secret and the held token,
-and shows Settings. It is registered behind the Face's boundary like every
+(PRESS-0334). Success is `replace`, so the sign-in goes under this site's
+own name and never over one another site shares (PRESS-0347). Where
+Settings named another entry, `own_name`'s Settings are saved. Then it
+shows Settings. It is registered behind the Face's boundary like every
 other page.
 
 ## 5. Invariants

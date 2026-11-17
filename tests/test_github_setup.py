@@ -9,7 +9,10 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
+import inspect
 import json
+import time
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
@@ -208,10 +211,10 @@ def test_a_new_sign_in_is_never_overwritten_by_an_unsaved_one(tmp_path, monkeypa
         with pytest.raises(credentials.CredentialError):
             _token(tmp_path)
         keyring = _Store(monkeypatch, SECOND_REFRESH)
-        github_setup.hold(github_signin.Tokens("ghu_signed-in-again", SECOND_REFRESH, 8 * 3600),
-                          "github")
+        github_setup.replace("keyring", tmp_path, github_signin.Tokens(
+            "ghu_signed-in-again", SECOND_REFRESH, 8 * 3600))
         assert _token(tmp_path) == "ghu_signed-in-again"
-    assert keyring.writes == []
+    assert keyring.writes == [("keyring", "github", SECOND_REFRESH)]
 
 
 def test_a_pass_is_handed_out_only_for_the_name_it_was_bought_for(tmp_path, monkeypatch):
@@ -274,6 +277,50 @@ def test_signing_in_again_replaces_the_pass(tmp_path, monkeypatch):
         assert keyring.saved == SECOND_REFRESH
         assert _token(tmp_path) == SECOND_ACCESS
     assert github.refreshes() == 1
+
+
+def test_signing_in_again_never_replaces_another_sites_sign_in(tmp_path, monkeypatch):
+    """PRESS-0347, routed from PRESS-0378. Breaks when /setup/github stores the new
+    sign-in under the name this site shares with another, which signs that site
+    in as whoever signed in here."""
+    _saved(tmp_path)
+    settings.save(tmp_path, dataclasses.replace(settings.load(tmp_path), credentials=(
+        settings.Credentials(store="keyring", github_account="github-site-5",
+                             google_account=None))))
+    github = _GitHub()
+    keyring = _Store(monkeypatch, REFRESH)
+    with _served(tmp_path, github, _Clock()) as browser:
+        browser.request("POST", PAGE)
+        status, _, _ = browser.request("POST", PAGE)
+        assert status == 303
+        assert keyring.writes == [("keyring", "github", SECOND_REFRESH)]
+        assert settings.load(tmp_path).credentials.github_account == "github"
+        assert _token(tmp_path) == SECOND_ACCESS
+
+
+def test_signing_in_again_stores_under_the_lock_token_takes(tmp_path, monkeypatch):
+    """PRESS-0231 § 4.2. Breaks when the new sign-in is stored outside the lock,
+    so a renewal running at that moment writes its older token over it."""
+    _saved(tmp_path)
+    keyring = _Store(monkeypatch, REFRESH)
+    stored = credentials.write
+    locked: list[bool] = []
+
+    def write(kind, folder, account, secret):
+        locked.append(github_setup._state.lock.locked())
+        stored(kind, folder, account, secret)
+
+    monkeypatch.setattr(credentials, "write", write)
+    with _served(tmp_path, _GitHub(), _Clock()) as browser:
+        browser.request("POST", PAGE)
+        assert browser.request("POST", PAGE)[0] == 303
+    assert keyring.saved == SECOND_REFRESH and locked == [True]
+
+
+def test_a_pass_ends_by_a_clock_that_never_goes_back():
+    """Breaks when a held pass's end is judged by the wall clock, which a
+    time change can move backwards, so an expired pass is handed out."""
+    assert inspect.signature(github_setup.register).parameters["clock"].default is time.monotonic
 
 
 def test_signing_in_again_to_an_account_that_cannot_write_keeps_the_old_pass(

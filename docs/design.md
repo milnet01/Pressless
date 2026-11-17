@@ -614,12 +614,15 @@ one: a cache of the user's writing would be a second copy that can
 disagree with the first, and which one is true is exactly the question
 S3 exists to make unaskable.
 
-**Two parts hold something in memory, and they are the exceptions.**
+**Three parts hold something in memory, and they are the exceptions.**
 Updating holds a newer version found at start, and the user's Later, for
 as long as the process (PRESS-0023 § 4.9). The AI helper's door holds
-the one request waiting for the user's yes (PRESS-0337 § 4.6). Nothing
-of theirs is in either. Losing them costs one check at the next start,
-or one question the AI app asks again.
+the one request waiting for the user's yes (PRESS-0337 § 4.6). The Face's
+GitHub and Google sign-in pages hold a pass, a code typed on GitHub, or
+a sign-in under way, for one launch (PRESS-0231 § 4.2, PRESS-0122
+§ 4.2). Nothing of theirs is in any of them. Losing them costs one check
+at the next start, one question the AI app asks again, or one renewal
+or sign-in started again.
 
 ### Persistence
 

@@ -339,11 +339,10 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     # Step 4: store the key, only when he typed one. It goes under this
     # site's own name, never over a sign-in another site shares (PRESS-0347).
     if typed_key:
-        own_name = sites.account("github", folder)
-        candidate = dataclasses.replace(candidate, credentials=dataclasses.replace(
-            candidate.credentials, github_account=own_name))
+        candidate = github_setup.own_name(candidate, folder)
         try:
-            credentials.write(candidate.credentials.store, folder, own_name, typed_key)
+            credentials.write(candidate.credentials.store, folder,
+                              candidate.credentials.github_account, typed_key)
         except credentials.FAILURES as exc:
             return _credential_failure(face, exc)
 
@@ -1294,11 +1293,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if not kept.get("store"):
                 choice = credentials.choose()
                 kept.update(store=choice.store, store_name=choice.name)
-            credentials.write(kept["store"], folder, sites.account("github", folder),
-                              pressed.refresh)
+            github_setup.replace(kept["store"], folder, pressed)
         except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
-        github_setup.hold(pressed, sites.account("github", folder))
         kept["account"] = account
         return kept
 
