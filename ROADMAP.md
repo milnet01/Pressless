@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=416 -->
+<!-- ants-roadmap-id-high-water: PRESS=418 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8167,6 +8167,11 @@ does not wait on them.
   granular location off, so the policy must say "country and region,
   never the city", not "country only". The Hub's sentence needs the same
   correction.
+  2026-11-17: Windows check done. The box is Windows 10 (build 19045)
+  and usage.system() returns "Windows 10" there; Python 3.13, which CI
+  and releases use, maps build 22000 and later to "11", and a faked
+  build 22631 returned "Windows 11". No fix. PRIVACY.md is done
+  (4344d51); the Hub drop-in text remains, sent with the release.
   **Layman:** The privacy policy in the app's files and the one on the website should say exactly the same, true things about usage reports.
   Kind: doc-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
@@ -8200,7 +8205,7 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0385 sweep).
   Lanes: Import.
 
-- 📋 [PRESS-0397] **Read the site name and address inside capture without stalling pages.**
+- ✅ [PRESS-0397] **Read the site name and address inside capture without stalling pages.**
   Queued from PRESS-0371 (review-code lane-01-face-core, ledger cite
   :47). The review's fix takes the process-wide capture lock on every
   page render; a publish holds that lock through its whole build, so
@@ -8208,6 +8213,11 @@ does not wait on them.
   § 4.4 to exempt reads that raise no notice, or change capture so it
   does not serialise. Checked 2026-11-17: neither read raises a notice
   today, so nothing leaks now.
+  Shipped 2026-11-17, 1c09229, as decided: no capture lock on every
+  page. PRESS-0011 § 4.4 exempts the two reads (site_name's
+  store.read_identity, live_address's settings.load) by name, and
+  test_the_top_bar_reads_raise_no_notice fails if either ever raises a
+  notice, in six states.
   **Layman:** A behind-the-scenes safety rule for how screens read your site's name, without making screens wait while you publish.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0371 close-findings).
@@ -8281,31 +8291,44 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
   Lanes: Store, Builder, Publishing, Setup.
 
-- 📋 [PRESS-0402] **Failures passed to an AI app point at "the details below", which a chat lacks.**
+- ✅ [PRESS-0402] **Failures passed to an AI app point at "the details below", which a chat lacks.**
   Surfaced by PRESS-0382's sweep. When a failure is handed to the AI
   app, most failure types still tell the writer to look at "the details
   below". DanglingReply, BuildStopped, InsightsError, SettingsError,
   TooLarge, ImportStopped and unforeseen failures do; only
   WouldReplaceASite has chat wording.
+  Shipped 2026-11-17, 5c7b413. Every failure the AI door can meet
+  that said "below" has chat words (assistant._CHAT_NEXT), pointing to
+  the place in Pressless or naming the log. test_no_failure_points_an_
+  ai_app_below checks every registered sentence. PRESS-0337 § 4.3.
   **Layman:** When something goes wrong while an AI app is working on your site, the message makes sense in a chat.
   Kind: fix.
   Source: PRESS-0382 close-findings sweep 2026-11-17.
   Lanes: AI helper.
 
-- 📋 [PRESS-0403] **The Yes box shows nothing when remove or discard fails after Yes.**
+- ✅ [PRESS-0403] **The Yes box shows nothing when remove or discard fails after Yes.**
   Surfaced by PRESS-0382's sweep. The box script ignores the failure in
   its answer, so a remove_entry, discard_changes or remove_file that
   fails after Yes shows the writer nothing. Publish and undo already
   show theirs on the press row; do the same for these.
+  Shipped 2026-11-17, e18d480. A remove_entry, discard_changes or
+  remove_file that fails after Yes puts its failure in the answer, and
+  the box opens it over any page (pressing.SCRIPT presslessFailed);
+  publish and undo keep their press row. PRESS-0337 § 4.6. Filed:
+  PRESS-0417.
   **Layman:** If you say Yes to an AI app's request and it fails, Pressless tells you.
   Kind: fix.
   Source: PRESS-0382 close-findings sweep 2026-11-17.
   Lanes: AI helper.
 
-- 📋 [PRESS-0404] **A source run of the AI bridge cannot find the door without PRESSLESS_FOLDER.**
+- ✅ [PRESS-0404] **A source run of the AI bridge cannot find the door without PRESSLESS_FOLDER.**
   Surfaced by PRESS-0382 (out of scope there). python -m pressless
   --assistant finds the door only when PRESSLESS_FOLDER is set, and AI
   apps do not set it. Developers only; the packaged app is unaffected.
+  Shipped 2026-11-17, bbe72fc. A source run offers the AI app
+  python -m pressless --assistant <the Face's folder>; a packaged
+  program refuses a folder argument and keeps finding its own.
+  PRESS-0337 § 4.4. Filed: PRESS-0418.
   **Layman:** A developer-only fix for running the AI bridge from source.
   Kind: fix.
   Source: PRESS-0382 close-findings sweep 2026-11-17.
@@ -8331,12 +8354,19 @@ does not wait on them.
   Source: PRESS-0378 close-findings sweep 2026-11-17.
   Lanes: Setup.
 
-- 📋 [PRESS-0407] **Closing the Windows console skips Pressless's stop steps.**
+- ✅ [PRESS-0407] **Closing the Windows console skips Pressless's stop steps.**
   Queued from PRESS-0381 (review-code lane-11-update-entry :43).
   Windows-only, so it outranks other work. To settle: on the Windows
   box, close the console window and check whether the AI door file is
   removed. Likely fix: a SetConsoleCtrlHandler that blocks while the
   stop runs.
+  Shipped 2026-11-17, afd5664. Measured first on the Windows box
+  (Windows 10, build 19045): closing the console killed Pressless with
+  0xC000013A and left assistant-door.json. A console handler now
+  interrupts the main thread on close, logoff or shutdown and returns
+  only after the stop steps; _wait waits in short slices. Proven on the
+  box: the stop ran and the door file was gone. Test:
+  test_a_closed_windows_console_waits_for_the_stop.
   **Layman:** Closing Pressless's window on Windows tidies up properly.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
@@ -8346,6 +8376,14 @@ does not wait on them.
   Queued from PRESS-0381 (review-code lane-11-update-entry :34).
   Which terminal to reopen in is a design choice; needs a PRESS-0023
   § 4.7 amendment and a check in a real desktop session.
+  2026-11-17: what is lost, measured by the round-2 helper: Pressless
+  reopens with no terminal, output to /dev/null, in its own session; the
+  tab works, but a closed tab cannot get back in (one-use link, unknown
+  port), and a new launch says "already running ... close its window".
+  User decision 2026-11-17: reopen in the same window by replacing the
+  old process after the stop (os.execve), reversing PRESS-0023 § 8's
+  rejected alternative; prove it with § 7.1's real-AppImage check, and
+  fall back to not reopening (the "start it again" words) if it fails.
   **Layman:** After updating on Linux, Pressless comes back the way you started it.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
@@ -8361,11 +8399,17 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
   Lanes: Updates.
 
-- 📋 [PRESS-0410] **Does a plain stop cut a publish off part way?**
+- ✅ [PRESS-0410] **Does a plain stop cut a publish off part way?**
   Surfaced by PRESS-0381. A plain stop does not wait for editor.LOCK,
   and the Face's threads are daemon threads, so a stop during a publish
   may end it mid-way. Establish whether that is safe (PRESS-0009's
   outcome-unknown path) or the stop should wait.
+  Closed 2026-11-17, 19fbffa: safe, no code change. A plain stop can
+  cut a publish part way, but the branch moves only at the last request
+  (PRESS-0009 INV-3), so the site is never half-sent; a later publish
+  sends what was missed. Test:
+  test_a_publish_a_stop_cuts_short_leaves_the_site_whole. PRESS-0013
+  § 4.5 step 6 and § 6 amended.
   **Layman:** Check that closing Pressless during a publish can't leave your site half-sent.
   Kind: investigate.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
@@ -8433,6 +8477,26 @@ does not wait on them.
   Kind: fix.
   Source: PRESS-0399 follow-up 2026-11-17.
   Lanes: Store.
+
+- 📋 [PRESS-0417] **A publish an AI app asked for shows no Replace or Switch link when it fails.**
+  Surfaced by PRESS-0403. When an AI-asked publish fails with
+  WouldReplaceASite or TakeoverOwed, the press row lacks the "Replace
+  the site" or "Switch your site" link: _Door._yes calls face.fail,
+  not publishing.press_failure, which adds replace_link.
+  **Layman:** If a publish an AI app asked for is refused, the page offers the same way forward as your own publish.
+  Kind: fix.
+  Source: PRESS-0402/0403 follow-up 2026-11-17.
+  Lanes: AI helper.
+
+- 📋 [PRESS-0418] **A frozen Linux build with no APPIMAGE offers an AI app a program line that cannot work.**
+  Surfaced by PRESS-0404 (older than it). assistant._program() in a
+  frozen Linux build where $APPIMAGE is unset offers
+  sys.executable -m pressless, which a frozen program cannot run. Offer
+  sys.executable alone, or refuse with a sentence.
+  **Layman:** Connecting an AI app works however Pressless was started on Linux.
+  Kind: fix.
+  Source: PRESS-0402/0403 follow-up 2026-11-17.
+  Lanes: AI helper.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

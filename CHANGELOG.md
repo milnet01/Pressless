@@ -29,6 +29,16 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Closing Pressless's window on Windows shuts it down properly** (PRESS-0407)
+  Pressless now runs its stop steps when you close its window on Windows, so the AI
+  helper's connection file is removed instead of left behind.
+
+- **An AI app's request that fails after you say Yes tells you why** (PRESS-0403)
+  If you agree to an AI app removing an entry or file, or throwing away changes, and
+  it fails, Pressless now shows the reason on whatever page you have open. When
+  something goes wrong, the message the AI app passes on says where in Pressless to
+  look, instead of pointing at details "below" that a chat does not have.
+
 - **The entry editor saves cleanly and explains failures** (PRESS-0372)
   Saving an entry with an empty body no longer adds a blank line each time. When a
   save, upload or throw-away fails, Pressless now shows what went wrong and lets you
