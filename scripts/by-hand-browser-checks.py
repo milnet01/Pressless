@@ -93,7 +93,9 @@ from pressless import (  # noqa: E402
 
 RESULTS: list[tuple[str, bool, str]] = []
 RESTARTS: list[int] = []
-OPTIONS = argparse.Namespace(browser="chrome", cdp=None, port=0, site_port=0)
+# Filled by main's parser, which holds the defaults: parse_args keeps any value
+# a namespace already has, so a default set here would override the parser's.
+OPTIONS = argparse.Namespace()
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
@@ -223,11 +225,11 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         # remembered from here on; the entry's visual view has rows of its own.
         page.goto(f"{origin}/edit?slug=seaside&view=marks", wait_until="networkidle")
 
-        # The inline rows down to PRESS-0182's keep coming back to one
-        # entry, seaside, and change it in order: a draft, then pressed
-        # (PRESS-0013), proofed and its proof binned (PRESS-0185), then the
-        # undo (PRESS-0015). Each row starts from the state the row above
-        # left, so a new row goes where that state is the one it needs.
+        # The rows down to PRESS-0182's keep coming back to one entry,
+        # seaside, and change it in order: a draft here, then pressed,
+        # proofed and its proof binned, and the undo, in pressed_entry. Each
+        # row starts from the state the row above left, so a new row goes
+        # where that state is the one it needs.
 
         # ---- PRESS-0012 s4.7: the page's shape -------------------------------
         box = page.locator("textarea[name=body]")
@@ -338,159 +340,12 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
               len(posts) > before, f"before={before} after={len(posts)}")
 
         # ---- PRESS-0012 s10: the policy blocks Google's script ---------------
-        csp = google_blocked(page, origin, folder)
-        check("PRESS-0012 s10 (Chrome): the preview policy blocks Google's script, the player "
+        blocked, detail = probe_preview_policy(page, origin, folder)
+        check("PRESS-0012 s10: the preview policy blocks Google's script, the player "
               "and every script of the page's own, opened outside the frame (PRESS-0268)",
-              csp[0], csp[1])
+              blocked, detail)
 
-        # ---- PRESS-0013 s4.4: the Press to site button, its message and the switch --
-        page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
-        # Exact text: "Press to site" and "Undo the last press" both hold "press", so a
-        # has-text selector matches both and the count says nothing.
-        publish = page.get_by_role("button", name="Press to site", exact=True)
-        check("PRESS-0013 s4.4: the editor page carries a Press to site button",
-              publish.count() >= 1, f"count={publish.count()}")
-
-        if publish.count() >= 1:
-            btn = publish.first
-            # ---- PRESS-0345: the box before a press, and Not yet --------------
-            btn.click()
-            box = page.locator("dialog.plan")
-            box.wait_for(state="visible", timeout=15000)
-            said = box.inner_text()
-            page.get_by_role("button", name="Not yet", exact=True).click()
-            page.wait_for_timeout(300)
-            check("PRESS-0345: Press to site first lists what will change, and Not yet "
-                  "publishes nothing",
-                  "Before your site changes" in said and "Seaside" in said
-                  and box.count() == 0 and not btn.is_disabled()
-                  and "seaside" in store.list_slugs(folder, draft=True), said[:160])
-            # Sample from the click until the reply lands. The transport is a
-            # double, so the in-flight window is short; a single poll can miss
-            # it entirely and that is a fact about the probe, not the page.
-            # A MutationObserver on the status element rather than a timer:
-            # the in-flight window against a transport double can be shorter
-            # than any sampling interval, so polling misses a message that was
-            # genuinely shown. This records every value it ever held.
-            page.evaluate(
-                """() => {
-                     window.__seen = [];
-                     const said = document.getElementById("publish-status");
-                     const b = [...document.querySelectorAll("button")]
-                       .find(x => x.textContent.trim() === "Press to site");
-                     const grab = () => window.__seen.push(
-                       said.textContent + "||" +
-                       (b && b.disabled ? "DISABLED" : "enabled"));
-                     new MutationObserver(grab).observe(
-                       said, {childList: true, characterData: true, subtree: true});
-                     window.__grab = grab;
-                   }""")
-            press(page, btn)
-            samples = page.evaluate("() => window.__seen")
-            waiting = [x for x in samples
-                       if "this can take a few minutes the first time" in x]
-            disabled_while_waiting = [x for x in waiting if x.endswith("DISABLED")]
-            check("PRESS-0013 s4.4: it shows the waiting message while publishing",
-                  bool(waiting),
-                  f"{len(waiting)} of {len(samples)} samples carried it")
-            check("PRESS-0235: it no longer says to keep the page open",
-                  bool(waiting) and not any("Keep this page open" in x for x in waiting))
-            check("PRESS-0013 s4.4: the button is disabled while that shows",
-                  bool(disabled_while_waiting),
-                  f"{len(disabled_while_waiting)} of {len(waiting)} waiting samples")
-            after = page.inner_text("body")
-            check("PRESS-0013 s4.4: it then shows the published message",
-                  "Published." in after and "Your site shows it within a few minutes"
-                  in after, repr(_snip(after, "Published")))
-            check("PRESS-0013 s4.4: the address bar carries the slug",
-                  "slug=seaside" in page.url, page.url.split("?")[-1][:60])
-
-        # ---- PRESS-0128: throwing away a published entry asks first ----------
-        check("PRESS-0128: pressed without a reload, the button says entry, not draft",
-              page.get_by_role("button", name="Throw this entry away", exact=True).count() == 1)
-        # ---- PRESS-0185: and the line above the form stops calling it a draft --
-        pressed = page.inner_text("body")
-        check("PRESS-0185: pressed without a reload, the page no longer says a draft",
-              "A draft. It is not on your site." not in pressed
-              and "This entry is on your site." in pressed,
-              repr(_snip(pressed, "on your site")))
-        # The page is a published entry's from here: its next save makes a proof.
-        page.locator("textarea[name=body]").type(" More.", delay=10)
-        page.wait_for_timeout(2500)
-        proofed = page.inner_text("body")
-        check("PRESS-0185: the next save on that page shows a proof's line and no address",
-              editor.working_copy(folder, "seaside") is not None
-              and "These changes are not on your site yet." in proofed
-              and "A draft. It is not on your site." not in proofed
-              and page.locator("#address").is_hidden(),
-              repr(_snip(proofed, "on your site")))
-        bin_proof = page.get_by_role("button", name="Bin this proof", exact=True)
-        if bin_proof.count() == 1:
-            bin_proof.click()
-            page.wait_for_load_state("networkidle")
-        check("PRESS-0185: Bin this proof on that page bins the proof",
-              editor.working_copy(folder, "seaside") is None)
-        page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
-        asked: list[str] = []
-
-        def say_no(dialog) -> None:
-            asked.append(dialog.message)
-            dialog.dismiss()
-
-        page.once("dialog", say_no)
-        page.get_by_role("button", name="Throw this entry away", exact=True).click()
-        page.wait_for_timeout(500)
-        check("PRESS-0128: a published entry's question says it leaves the site",
-              len(asked) == 1 and "leaves your site" in asked[0], repr(asked))
-        check("PRESS-0128: saying no throws nothing away",
-              "seaside" in store.list_slugs(folder, draft=False) and "/edit" in page.url)
-
-        # ---- PRESS-0015 s 4.6: the Undo button on both pages ---------------
-        undo_here = page.get_by_role("button", name="Undo the last press",
-                                     exact=True)
-        check("PRESS-0015 s4.6: the editor page carries an Undo button",
-              undo_here.count() == 1, f"count={undo_here.count()}")
-
-        page.goto(f"{origin}/", wait_until="networkidle")
-        undo_list = page.get_by_role("button", name="Undo the last press",
-                                     exact=True)
-        check("PRESS-0015 s4.6: the list page carries an Undo button, always shown",
-              undo_list.count() == 1, f"count={undo_list.count()}")
-
-        if undo_list.count() == 1:
-            page.evaluate(
-                """() => {
-                     window.__undo = [];
-                     const said = document.getElementById("undo-status");
-                     new MutationObserver(
-                       () => window.__undo.push(said.textContent)
-                     ).observe(said, {childList: true, characterData: true,
-                                      subtree: true});
-                   }""")
-            undo_list.click()
-            page.wait_for_timeout(4000)
-            said = page.evaluate("() => window.__undo")
-            check("PRESS-0015 s4.6: it shows the putting-back message",
-                  any("Putting your site back" in x
-                      for x in said),
-                  f"{len(said)} status changes: {said!r}"[:180])
-            result = page.inner_text("#undo-result")
-            check("PRESS-0015 s4.6: the reply replaces the box and links back",
-                  words.say("script.undo.back") in result
-                  and page.locator("#listing").is_hidden(),
-                  repr(result[:140]))
-            check("PRESS-0015 s4.6: the page did not reload itself",
-                  page.evaluate("() => window.__undo !== undefined"))
-
-            # PRESS-0235 decision 6: the refusal stays shown, in its box with
-            # OK (PRESS-0236), on every page until a save. Close it, then save.
-            page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
-            check("PRESS-0235: the next page still shows how the undo ended",
-                  page.locator("dialog.message[open]").count() == 1)
-            page.locator("dialog.message[open]").get_by_role(
-                "button", name="OK", exact=True).click()
-            page.locator("textarea[name=body]").type(" Again.", delay=10)
-            page.wait_for_timeout(2500)
+        pressed_entry(page, origin, folder)
 
         # ---- PRESS-0182: a published entry changes address, asked first ------
         # A fresh entry, so the seaside rows above keep their state.
@@ -568,8 +423,8 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
               "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
               f"{binned!r} {page.url}")
 
-        # Order matters here: code_colours and true_colours_kept open the
-        # page "visual", which only visual_editor writes.
+        # Order matters here: code_colours, true_colours_kept and text_sizes
+        # open the page "visual", which only visual_editor writes.
         visual_editor(page, origin, folder)
         entry_visual_editor(page, origin, folder)
         code_colours(page, origin)
@@ -605,6 +460,163 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
             page.close()  # the browser is the person's; leave it running
         else:
             browser.close()
+
+
+def pressed_entry(page, origin: str, folder: Path) -> None:
+    """The seaside rows that need it pressed: pressed (PRESS-0013, PRESS-0345),
+    proofed and its proof binned (PRESS-0185), then the undo (PRESS-0015).
+    Each row starts from the state the row above left."""
+    # ---- PRESS-0013 s4.4: the Press to site button, its message and the switch --
+    page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+    # Exact text: "Press to site" and "Undo the last press" both hold "press", so a
+    # has-text selector matches both and the count says nothing.
+    publish = page.get_by_role("button", name="Press to site", exact=True)
+    check("PRESS-0013 s4.4: the editor page carries a Press to site button",
+          publish.count() >= 1, f"count={publish.count()}")
+
+    # Every row below needs the press, so none runs without the button;
+    # the check above has already failed.
+    if publish.count() == 0:
+        return
+    btn = publish.first
+    # ---- PRESS-0345: the box before a press, and Not yet --------------
+    btn.click()
+    plan = page.locator("dialog.plan")
+    plan.wait_for(state="visible", timeout=15000)
+    said = plan.inner_text()
+    page.get_by_role("button", name="Not yet", exact=True).click()
+    page.wait_for_timeout(300)
+    check("PRESS-0345: Press to site first lists what will change, and Not yet "
+          "publishes nothing",
+          "Before your site changes" in said and "Seaside" in said
+          and plan.count() == 0 and not btn.is_disabled()
+          and "seaside" in store.list_slugs(folder, draft=True), said[:160])
+    # Sample from the click until the reply lands. The transport is a
+    # double, so the in-flight window is short; a single poll can miss
+    # it entirely and that is a fact about the probe, not the page.
+    # A MutationObserver on the status element rather than a timer:
+    # the in-flight window against a transport double can be shorter
+    # than any sampling interval, so polling misses a message that was
+    # genuinely shown. This records every value it ever held.
+    page.evaluate(
+        """() => {
+             window.__seen = [];
+             const said = document.getElementById("publish-status");
+             const b = [...document.querySelectorAll("button")]
+               .find(x => x.textContent.trim() === "Press to site");
+             const grab = () => window.__seen.push(
+               said.textContent + "||" +
+               (b && b.disabled ? "DISABLED" : "enabled"));
+             new MutationObserver(grab).observe(
+               said, {childList: true, characterData: true, subtree: true});
+             window.__grab = grab;
+           }""")
+    press(page, btn)
+    samples = page.evaluate("() => window.__seen")
+    waiting = [x for x in samples
+               if "this can take a few minutes the first time" in x]
+    disabled_while_waiting = [x for x in waiting if x.endswith("DISABLED")]
+    check("PRESS-0013 s4.4: it shows the waiting message while publishing",
+          bool(waiting),
+          f"{len(waiting)} of {len(samples)} samples carried it")
+    check("PRESS-0235: it no longer says to keep the page open",
+          bool(waiting) and not any("Keep this page open" in x for x in waiting))
+    check("PRESS-0013 s4.4: the button is disabled while that shows",
+          bool(disabled_while_waiting),
+          f"{len(disabled_while_waiting)} of {len(waiting)} waiting samples")
+    after = page.inner_text("body")
+    check("PRESS-0013 s4.4: it then shows the published message",
+          "Published." in after and "Your site shows it within a few minutes"
+          in after, repr(_snip(after, "Published")))
+    check("PRESS-0013 s4.4: the address bar carries the slug",
+          "slug=seaside" in page.url, page.url.split("?")[-1][:60])
+
+    # ---- PRESS-0128: throwing away a published entry asks first ----------
+    check("PRESS-0128: pressed without a reload, the button says entry, not draft",
+          page.get_by_role("button", name="Throw this entry away", exact=True).count() == 1)
+    # ---- PRESS-0185: and the line above the form stops calling it a draft --
+    pressed = page.inner_text("body")
+    check("PRESS-0185: pressed without a reload, the page no longer says a draft",
+          "A draft. It is not on your site." not in pressed
+          and "This entry is on your site." in pressed,
+          repr(_snip(pressed, "on your site")))
+    # The page is a published entry's from here: its next save makes a proof.
+    page.locator("textarea[name=body]").type(" More.", delay=10)
+    page.wait_for_timeout(2500)
+    proofed = page.inner_text("body")
+    check("PRESS-0185: the next save on that page shows a proof's line and no address",
+          editor.working_copy(folder, "seaside") is not None
+          and "These changes are not on your site yet." in proofed
+          and "A draft. It is not on your site." not in proofed
+          and page.locator("#address").is_hidden(),
+          repr(_snip(proofed, "on your site")))
+    bin_proof = page.get_by_role("button", name="Bin this proof", exact=True)
+    if bin_proof.count() == 1:
+        bin_proof.click()
+        page.wait_for_load_state("networkidle")
+    check("PRESS-0185: Bin this proof on that page bins the proof",
+          editor.working_copy(folder, "seaside") is None)
+    page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+    asked: list[str] = []
+
+    def say_no(dialog) -> None:
+        asked.append(dialog.message)
+        dialog.dismiss()
+
+    page.once("dialog", say_no)
+    page.get_by_role("button", name="Throw this entry away", exact=True).click()
+    page.wait_for_timeout(500)
+    check("PRESS-0128: a published entry's question says it leaves the site",
+          len(asked) == 1 and "leaves your site" in asked[0], repr(asked))
+    check("PRESS-0128: saying no throws nothing away",
+          "seaside" in store.list_slugs(folder, draft=False) and "/edit" in page.url)
+
+    # ---- PRESS-0015 s 4.6: the Undo button on both pages ---------------
+    undo_here = page.get_by_role("button", name="Undo the last press",
+                                 exact=True)
+    check("PRESS-0015 s4.6: the editor page carries an Undo button",
+          undo_here.count() == 1, f"count={undo_here.count()}")
+
+    page.goto(f"{origin}/", wait_until="networkidle")
+    undo_list = page.get_by_role("button", name="Undo the last press",
+                                 exact=True)
+    check("PRESS-0015 s4.6: the list page carries an Undo button, always shown",
+          undo_list.count() == 1, f"count={undo_list.count()}")
+
+    if undo_list.count() == 1:
+        page.evaluate(
+            """() => {
+                 window.__undo = [];
+                 const said = document.getElementById("undo-status");
+                 new MutationObserver(
+                   () => window.__undo.push(said.textContent)
+                 ).observe(said, {childList: true, characterData: true,
+                                  subtree: true});
+               }""")
+        undo_list.click()
+        page.wait_for_timeout(4000)
+        said = page.evaluate("() => window.__undo")
+        check("PRESS-0015 s4.6: it shows the putting-back message",
+              any("Putting your site back" in x
+                  for x in said),
+              f"{len(said)} status changes: {said!r}"[:180])
+        result = page.inner_text("#undo-result")
+        check("PRESS-0015 s4.6: the reply replaces the box and links back",
+              words.say("script.undo.back") in result
+              and page.locator("#listing").is_hidden(),
+              repr(result[:140]))
+        check("PRESS-0015 s4.6: the page did not reload itself",
+              page.evaluate("() => window.__undo !== undefined"))
+
+        # PRESS-0235 decision 6: the refusal stays shown, in its box with
+        # OK (PRESS-0236), on every page until a save. Close it, then save.
+        page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+        check("PRESS-0235: the next page still shows how the undo ended",
+              page.locator("dialog.message[open]").count() == 1)
+        page.locator("dialog.message[open]").get_by_role(
+            "button", name="OK", exact=True).click()
+        page.locator("textarea[name=body]").type(" Again.", delay=10)
+        page.wait_for_timeout(2500)
 
 
 # PRESS-0260: a page whose code section would set the frame's title if a
@@ -905,7 +917,12 @@ def settings_pictures(page, origin: str, folder: Path) -> None:
 
 
 def visual_editor(page, origin: str, folder: Path) -> None:
-    """PRESS-0260 s10: the rows no test without a browser reaches."""
+    """PRESS-0260 s10: the rows no test without a browser reaches.
+
+    The rows form a chain: each acts on what the rows above picked, added or
+    changed. The heading becomes an h3 partway down, and the columns are the
+    third section because the picture lands under the heading. A row added
+    in the middle changes what the rows below it find."""
     store.write_html(folder, store.PAGES_FOLDER, "visual", VISUAL_PAGE)
     waiting = store.html_path_for(folder, store.PAGES_FOLDER, "visual", waiting=True)
     errors: list[str] = []
@@ -944,7 +961,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.keyboard.press("Shift+Enter")
     page.keyboard.type("line")
     wait_for_save(page)
-    texts = [words for kind, words in sections() if kind == "text"]
+    texts = [html for kind, html in sections() if kind == "text"]
     check("PRESS-0260 s4.4: Enter splits, Shift+Enter writes a br",
           texts == ["First paragraph. More <strong>bold</strong>", "Second<br>line"], str(texts))
 
@@ -967,7 +984,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.once("dialog", lambda dialog: dialog.accept("https://example.org/"))
     page.keyboard.press("Control+k")
     wait_for_save(page)
-    texts = [words for kind, words in sections() if kind == "text"]
+    texts = [html for kind, html in sections() if kind == "text"]
     check("PRESS-0260 INV-9: pasting takes the plain text, and Ctrl+K links",
           texts[1:] == ['Second<br>line pasted words<a href="https://example.org/">'
                         'https://example.org/</a>'], str(texts))
@@ -981,7 +998,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     }""")
     page.keyboard.press("Backspace")
     wait_for_save(page)
-    joined = [words for kind, words in sections() if kind == "text"]
+    joined = [html for kind, html in sections() if kind == "text"]
     check("PRESS-0260 s4.4: Backspace at the start joins it to the text above",
           joined == ["".join(texts)], str(joined))
 
@@ -1206,9 +1223,9 @@ def code_colours(page, origin: str) -> None:
       const area = document.querySelector('textarea[name=text]');
       const copy = area.previousElementSibling;
       const a = getComputedStyle(area), c = getComputedStyle(copy);
-      const same = ['fontFamily', 'fontSize', 'lineHeight', 'paddingLeft', 'paddingTop',
+      const differing = ['fontFamily', 'fontSize', 'lineHeight', 'paddingLeft', 'paddingTop',
                     'borderLeftWidth', 'whiteSpace', 'overflowWrap'].filter(n => a[n] !== c[n]);
-      return {text: copy.textContent.replace(/ $/, '') === area.value, same,
+      return {text: copy.textContent.replace(/ $/, '') === area.value, differing,
               width: [area.clientWidth, copy.clientWidth],
               height: [area.scrollHeight, copy.scrollHeight],
               top: [area.scrollTop, copy.scrollTop],
@@ -1222,7 +1239,7 @@ def code_colours(page, origin: str) -> None:
     check("PRESS-0261: the copy holds the box's text, coloured, as he types",
           seen["text"] and seen["tags"] > 4 and seen["attrs"] > 0, str(seen))
     check("PRESS-0261: the copy wraps and scrolls with the box",
-          not seen["same"] and seen["width"][0] == seen["width"][1]
+          not seen["differing"] and seen["width"][0] == seen["width"][1]
           and seen["height"][0] == seen["height"][1] and seen["top"][0] == seen["top"][1] > 0,
           str(seen))
     check("PRESS-0261: the box's own letters are transparent over the copy",
@@ -1284,6 +1301,7 @@ def text_sizes(page, origin: str) -> None:
               grid: getComputedStyle(document.querySelector('main')).display === 'grid',
               proof: document.getElementById('proof').getBoundingClientRect().height,
               window: innerHeight})""")
+            # face.py's `@container (min-width: 1120px)`: two columns from there.
             shape["columns"] = viewport["width"] * 100 / size >= 1120
             shapes.append(shape)
         page.set_viewport_size(first)
@@ -1425,7 +1443,7 @@ def helper_publish(page, origin: str, folder: Path, own: Path) -> None:
         answer = f"{answer} {type(exc).__name__}"
     finally:
         page.goto(f"{origin}{assistant.SETUP}", wait_until="networkidle")
-        page.click("button[name=on]")
+        page.click("button[name=on]")  # the button toggles: the helper's door off again
 
     def count(listed: list[str], key: str) -> int:
         named = words.say(key)
@@ -1483,8 +1501,8 @@ def _overflows(page, address: str) -> bool:
 def _column_page(*columns: str, after: str) -> str:
     text = "<!-- pressless:text --><p>{}</p><!-- /pressless:text -->".format
     held = ('<!-- pressless:columns --><div class="pressless-columns">' + "".join(
-        f'<!-- pressless:column --><div class="pressless-column">{text(words)}</div>'
-        "<!-- /pressless:column -->" for words in columns) + "</div><!-- /pressless:columns -->")
+        f'<!-- pressless:column --><div class="pressless-column">{text(column)}</div>'
+        "<!-- /pressless:column -->" for column in columns) + "</div><!-- /pressless:columns -->")
     return VISUAL_PAGE.replace(VISUAL_PAGE[VISUAL_PAGE.index("<!-- pressless:heading"):
                                           VISUAL_PAGE.index("<!-- /pressless:page")],
                                held + "\n" + text(after) + "\n")
@@ -1502,8 +1520,8 @@ def move_between_columns(page, origin: str, folder: Path) -> None:
         return [[[c.fields["html"] for c in part] for part in s.parts] if s.parts
                 else s.fields.get("html") for s in read.sections]
 
-    def move(words: str, choice: str) -> list[str]:
-        page.frame_locator("#preview").locator("p", has_text=words).click()
+    def move(text: str, choice: str) -> list[str]:
+        page.frame_locator("#preview").locator("p", has_text=text).click()
         offered = page.locator("#move-to option").all_text_contents()
         if choice:
             page.select_option("#move-to", label=choice)
@@ -1544,9 +1562,9 @@ def drag_sections(page, origin: str, folder: Path) -> None:
         return [[[c.fields["html"] for c in part] for part in s.parts] if s.parts
                 else s.fields.get("html") for s in read.sections]
 
-    def drag(words: str, onto: str) -> bool:
-        """Drag `words` onto the upper half of `onto`; whether the line showed."""
-        frame.locator("p", has_text=words).click()
+    def drag(text: str, onto: str) -> bool:
+        """Drag `text` onto the upper half of `onto`; whether the line showed."""
+        frame.locator("p", has_text=text).click()
         grip = page.locator("#drag-handle").bounding_box()
         target = frame.locator("p", has_text=onto).bounding_box()
         page.mouse.move(grip["x"] + grip["width"] / 2, grip["y"] + grip["height"] / 2)
@@ -2122,6 +2140,8 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
               there and again and kept(), f"code={there} back={again}")
 
     page.goto(f"{origin}/page?kind=pages&name=switch&view=code", wait_until="networkidle")
+    # The file changes on disk behind the open editor, so its next save is
+    # refused (the window's copy is out of date): INV-7's refused save.
     store.write_html(folder, store.PAGES_FOLDER, "switch", SWITCH_PAGE, waiting=True)
     box.fill(box.input_value().replace("Before words.", "Refused words."))
     asked = page.locator("a[data-switch=visual]")
@@ -2138,13 +2158,17 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
     page.goto(f"{origin}/page?kind=pages&name=switch&view=visual", wait_until="networkidle")
 
 
-def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
+def probe_preview_policy(page, origin: str, folder: Path) -> tuple[bool, str]:
     """A PREVIEW page carrying Google's script and a player, loaded as the frame
     loads it, so FILES_POLICY is the policy under test (not the editor page's
     frames-only policy). PRESS-0012 s10 row: "the policies block Google's
     script, the players and a followed outside link in a browser". Since
     PRESS-0268 the page's own scripts are blocked too: a same-origin file, one
-    under /preview/assets/ (the live site's copied assets), and an inline one."""
+    under /preview/assets/ (the live site's copied assets), and an inline one.
+    The followed outside link is not checked here; it stays a check by hand.
+
+    It writes the probe files, leaves the shared page on the probe, removes
+    the files, and returns whether everything was blocked, with what was seen."""
     from pressless import paths
 
     preview = folder / editor.PREVIEW_FOLDER
@@ -2164,10 +2188,13 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
     (assets / "ran-assets.js").write_text("window.__assets = true;", encoding="utf-8")
 
     page.goto("about:blank")
+    # An init script stays on the page for every later load, so it listens on
+    # the probe page alone.
     page.add_init_script(
-        "window.__v = [];"
-        "document.addEventListener('securitypolicyviolation',"
-        " e => window.__v.push(e.violatedDirective + ' <- ' + e.blockedURI));")
+        "if (location.pathname.endsWith('/policycheck.html')) {"
+        " window.__v = [];"
+        " document.addEventListener('securitypolicyviolation',"
+        " e => window.__v.push(e.violatedDirective + ' <- ' + e.blockedURI)); }")
     response = page.goto(f"{origin}{editor.PREVIEW_ADDRESS}policycheck.html",
                          wait_until="load")
     page.wait_for_timeout(1200)
