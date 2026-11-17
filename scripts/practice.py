@@ -3,8 +3,8 @@
 
 Made-up writing in a practice folder outside the repository, served by the
 launcher's own start-up, so it shows every page the real program shows. It
-never publishes and never reaches Google: both connections are replaced by
-ones that refuse. The update check runs only in a packaged copy
+never publishes and reaches no network: `disarm` makes every connection
+Pressless can open refuse. The update check runs only in a packaged copy
 (`updating.register`), so it never runs here.
 
 `run.sh` starts this for the local web-server manager, which sets PORT and
@@ -19,7 +19,6 @@ from __future__ import annotations
 import os
 import signal
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -31,18 +30,21 @@ from pressless import (  # noqa: E402
     face,
     github_signin,
     google_signin,
-    insights,
-    publisher,
+    https,
     settings,
     sites,
     store,
     updater,
 )
+from pressless_import import fetch  # noqa: E402
 
 FOLDER_NAME = "pressless-practice"
 ACCOUNT = "github"
 NOT_A_KEY = "practice-copy-not-a-real-key"
 REFUSED = "this is a practice copy, which never connects to anything"
+# Network modules disarm leaves alone. The AI helper's bridge is a separate
+# program that reaches only this computer's Face (PRESS-0337 § 4.4).
+LOCAL_ONLY = ("pressless.bridge",)
 
 HEADER = "<header>{{NAVIGATION}}</header>"
 NAVIGATION = ('<nav><a href="{{UP}}index.html" data-nav="Home">Home</a> '
@@ -116,32 +118,28 @@ def seed(folder: Path) -> None:
     store.write_identity(folder, store.Identity("Practice Notes"))
 
 
-class _Refuse:
-    """Every request is "no answer", the way each transport signals it."""
-
-    def request(self, method: str, url: str, body: bytes | None,
-                headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
-        raise OSError(REFUSED)
-
-    def open(self, url: str) -> object:
-        raise OSError(REFUSED)
-
-    def wait(self, seconds: float) -> None:
-        pass
-
-    def now(self) -> float:
-        return time.time()
+def _refuse(*args: object, **kwargs: object) -> None:
+    """Every request is "no answer", the OSError each transport's caller expects."""
+    raise OSError(REFUSED)
 
 
 def disarm(set_attribute=setattr) -> None:
-    """Replace every connection Pressless makes with one that refuses.
+    """Make every connection Pressless can open refuse.
+
+    Three modules open connections. `https.Client` carries every GitHub,
+    Google, YouTube, votes and usage-report request. The Updater has its own
+    client. Import's fetch looks names up and connects by itself, and the
+    domain wizard uses its look-up. tests/test_practice.py finds those modules
+    by what they import, and fails on one this leaves out. Both sign-ins also
+    report that this copy carries no registered app.
 
     `set_attribute` is there so a test can pass monkeypatch.setattr and have
     the replacements undone.
     """
-    set_attribute(publisher, "_Urllib", _Refuse)
-    set_attribute(updater, "_Urllib", _Refuse)
-    set_attribute(insights, "_own_client", _Refuse)
+    set_attribute(https.Client, "request", _refuse)
+    set_attribute(updater._Urllib, "open", _refuse)
+    set_attribute(fetch, "addresses", _refuse)
+    set_attribute(fetch, "_connect", _refuse)
     set_attribute(google_signin, "available", lambda: False)
     set_attribute(github_signin, "available", lambda: False)
 
