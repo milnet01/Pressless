@@ -475,6 +475,11 @@ _WORDS: dict[str, str] = {
     "script.press.not_published": "Not published. The reason is below.",
     "script.press.undone": "Your site was put back.",
     "script.press.not_undone": "Your site was not put back. The reason is below.",
+    # PRESS-0235 decision 5: a page that can no longer ask stops asking.
+    "script.press.unreachable": (
+        "Pressless could not reach itself, so this page cannot tell how the press ended. "
+        "Check Pressless is still running."
+    ),
     # The Face's frame, on every screen.
     "face.running": "Pressless is running.",
     "face.view_site": "View your site",

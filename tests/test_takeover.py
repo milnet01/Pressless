@@ -39,6 +39,7 @@ from pressless import (
     editor,
     face,
     overview,
+    pressing,
     publisher,
     publishing,
     settings,
@@ -701,3 +702,73 @@ def test_the_takeover_says_publishing_the_instant_it_is_pressed(tmp_path, monkey
                          check=True, timeout=30)
     assert json.loads(run.stdout) == {"said": "<script.press.publishing>", "disabled": True}
 
+
+
+# ------------------------------------------------- 2026-11-16 review fixes ---
+
+PUBLISHED_WORDS = "Published. Your site shows it within a few minutes."
+
+
+def test_the_press_row_says_why_a_takeover_stopped(tmp_path, monkeypatch):
+    """PRESS-0235 § 4.3: a failed press's line says the reason is below, so the
+    reason must be there. Breaks when a build file still there ends the press
+    with no failure, so other pages show "the reason is below" over nothing."""
+    _site(monkeypatch)
+    github = _Built()
+    folder = _finished(tmp_path, monkeypatch, github)
+    _press(folder, github)
+    assert "still in the repository" in (pressing.state()["failure"] or "")
+
+
+def test_a_takeover_that_publishes_nothing_never_says_published(tmp_path, monkeypatch):
+    """PRESS-0235 § 4.3. Breaks when a takeover that only marks the switch as
+    made, or finds it already made, tells other pages "Published."."""
+    _site(monkeypatch)
+    github = _Built(cname="www.example.org")
+    folder = _finished(tmp_path, monkeypatch, github)
+    github.remove()
+    github.build = "legacy"
+    github.commit_files({**github.holds(), "CNAME": b"www.example.org\n"})
+    assert "already been changed" in _press(folder, github)
+    assert pressing.state()["said"] != PUBLISHED_WORDS
+    _press(folder, github)   # nothing owed now
+    assert pressing.state()["said"] != PUBLISHED_WORDS
+
+
+def test_a_stale_cname_in_small_letters_is_reported(tmp_path, monkeypatch):
+    """§ 4.5 step 6. Breaks when the report compares the removed path exactly,
+    while the list it was dropped from folds case."""
+    _site(monkeypatch)
+    github = _Built({**SOURCE, "cname": b"old.example.org\n"})
+    folder = _finished(tmp_path, monkeypatch, github)
+    github.remove()
+    pressed = _press(folder, github)
+    assert "cname" not in github.holds()
+    assert "CNAME, which named a domain this site does not use" in pressed
+
+
+def test_a_takeover_refused_for_a_site_shows_the_way_on(tmp_path, monkeypatch):
+    """§ 4.5: the takeover's publish runs the starter's check. Breaks when its
+    WouldReplaceASite failure is shown without the link to the replace page."""
+    _site(monkeypatch)
+    github = _Built({**SOURCE, "index.html": b"<html>theirs</html>"})
+    folder = _finished(tmp_path, monkeypatch, github)
+    github.remove()
+    (folder / "starter-unpublished").write_bytes(b"")
+    pressed = _press(folder, github)
+    assert f'href="{publishing.REPLACE_ADDRESS}"' in pressed
+
+
+def test_an_undo_refused_for_the_takeover_links_to_it(tmp_path, monkeypatch):
+    """§ 4.5: replace_link supplies the way on beside a TakeoverOwed. Breaks
+    when the undo route shows the failure without it."""
+    from test_publishing import _key
+    github, folder = _publishable(tmp_path)
+    settings.save(folder, _settings(folder))
+    _key(monkeypatch)
+    served = face.serve(folder)
+    try:
+        reply = undo._undo(served, folder, face.Request("POST", "/undo", {}, b""), github)
+    finally:
+        served.stop()
+    assert f'href="{publishing.TAKEOVER_ADDRESS}"' in json.loads(reply.body)["failure"]

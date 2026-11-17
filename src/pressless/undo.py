@@ -22,7 +22,6 @@ from typing import NamedTuple, TypeVar
 from pressless import (
     builder,
     editor,
-    github_setup,
     look,
     pressing,
     publisher,
@@ -527,8 +526,7 @@ def press_undo(folder: Path, *,
     """§ 4.2's press: `undo` with the key fetched here, so it never reaches the
     caller. The caller holds editor.LOCK (PRESS-0337 § 4.7)."""
     gathered = notices if notices is not None else []
-    saved = gatherer(capture, gathered)(lambda: settings.load(folder))
-    key = github_setup.token(folder, saved.credentials.store, saved.credentials.github_account)
+    saved, key = publishing.settings_and_key(folder, gatherer(capture, gathered))
     return undo(folder, saved, key, capture=capture, notices=gathered, transport=transport)
 
 
@@ -544,8 +542,7 @@ def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
             # Steps 1 to 5 change nothing on GitHub and step 6 raises OutcomeUnknown
             # for every failure an upload can leave unknown, so an unforeseen
             # failure here left the site unchanged (§ 4.2).
-            failure: str | None = face.fail(exc, publishing=False,
-                                            secret=say("failure.secret.publishing_key"))
+            failure: str | None = publishing.press_failure(face, exc)
             summary: str | None = None
         else:
             failure = None

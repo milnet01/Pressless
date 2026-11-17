@@ -793,3 +793,42 @@ def test_the_plan_route_answers_titles_and_counts(tmp_path, monkeypatch):
     assert forged["failure"] and "pages" not in forged
     assert not any(method != "GET" for method, _u, _b, _h in github.requests)
     assert store.list_slugs(folder, draft=True) == ("seaside",)
+
+
+# ------------------------------------------------- 2026-11-16 review fixes ---
+
+
+def test_the_preview_refuses_a_kept_folder_the_build_fills(tmp_path):
+    """PRESS-0345 § 4.2: the preview raises as the press would. Breaks when it
+    skips PRESS-0197 § 4.7's check, so the box offers Publish now for a press
+    that then refuses."""
+    page = ("<html><body><main><!-- pressless:page -->\n"
+            '<!-- pressless:download --><p class="pressless-download">'
+            '<a href="files/a.pdf" download>A</a></p><!-- /pressless:download -->\n'
+            "<!-- /pressless:page --></main></body></html>\n")
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_html(folder, store.PAGES_FOLDER, "index", page)
+    kept_file = store.file_path_for(folder, "a.pdf")
+    kept_file.parent.mkdir()
+    kept_file.write_bytes(b"%PDF- made up")
+    saved = dataclasses.replace(_settings(folder), untouchable=("CNAME", "Files"))
+    with pytest.raises(publishing.KeptFolderBuilt):
+        publishing.preview(folder, saved, KEY, transport=_github())
+
+
+def test_the_plan_route_holds_the_editor_lock(tmp_path, monkeypatch):
+    """PRESS-0013 § 4.1: every write, preview and publish runs under
+    editor.LOCK. Breaks when the plan route builds while another tab's press
+    or undo moves the Store's files."""
+    folder = _folder(tmp_path)
+    held: list[bool] = []
+
+    def planned(*args, **kwargs) -> publishing.Preview:
+        held.append(editor.LOCK.locked())
+        return publishing.Preview({}, 0, 0)
+
+    monkeypatch.setattr(publishing, "plan", planned)
+    with _pressless(folder, _github()) as browser:
+        browser.request("POST", publishing.PLAN_ADDRESS, {})
+    assert held == [True]

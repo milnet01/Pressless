@@ -57,13 +57,21 @@ MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's addre
 # whose list labels it (PRESS-0015 § 4.6) and which this module imports.
 UNDONE = editor.UNDONE
 
+# The routes `register` adds beside POST /publish.
+REPLACE_ADDRESS = "/publish/replace"
+TAKEOVER_ADDRESS = "/publish/takeover"
+PLAN_ADDRESS = "/publish/plan"
+SITE_ADDRESS = "/publish/site"
+
+
+# Each failure type below is registered in SENTENCES beside its class, here
+# rather than in face.py, which cannot import this module back.
 
 
 class NothingToPublish(Exception):
     """No published entry would remain (docs/design.md rule 9)."""
 
 
-# Added here rather than in face.py, which cannot import this module back.
 SENTENCES[NothingToPublish] = Sentence(
     "failure.publishing.NothingToPublish.what",
     Site.UNCHANGED,
@@ -81,12 +89,17 @@ SENTENCES[JournalOff] = Sentence(
     "failure.publishing.JournalOff.next",
 )
 
+
 class WouldReplaceASite(Exception):
     """The starter site's first publish met a repository already holding a
     site (PRESS-0126 § 4.5)."""
 
 
-REPLACE_ADDRESS = "/publish/replace"
+SENTENCES[WouldReplaceASite] = Sentence(
+    "failure.publishing.WouldReplaceASite.what",
+    Site.UNCHANGED,
+    "failure.publishing.WouldReplaceASite.next",
+)
 
 
 class TakeoverOwed(Exception):
@@ -94,21 +107,12 @@ class TakeoverOwed(Exception):
     the web, and the build would run over it (PRESS-0333 § 4.5)."""
 
 
-TAKEOVER_ADDRESS = "/publish/takeover"
-PLAN_ADDRESS = "/publish/plan"
-SITE_ADDRESS = "/publish/site"
-
 SENTENCES[TakeoverOwed] = Sentence(
     "failure.publishing.TakeoverOwed.what",
     Site.UNCHANGED,
     "failure.publishing.TakeoverOwed.next",
 )
 
-SENTENCES[WouldReplaceASite] = Sentence(
-    "failure.publishing.WouldReplaceASite.what",
-    Site.UNCHANGED,
-    "failure.publishing.WouldReplaceASite.next",
-)
 
 class KeptFolderBuilt(Exception):
     """The built site fills a folder or file Settings keeps on GitHub, which a
@@ -136,6 +140,13 @@ def replace_link(failure: BaseException) -> str:
     if not isinstance(failure, WouldReplaceASite):
         return ""
     return f'<p><a href="{REPLACE_ADDRESS}">{say("publishing.replace")}</a></p>'
+
+
+def press_failure(face: Face, failure: BaseException) -> str:
+    """A press's failure as every press screen shows it: the sentence, naming
+    the publishing key, and the way on where the failure has one."""
+    return (face.fail(failure, publishing=False, secret=say("failure.secret.publishing_key"))
+            + replace_link(failure))
 
 
 @dataclass(frozen=True)
@@ -175,18 +186,11 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         if not emptying:
             _guard(folder, settings)
         builder.build(folder, settings, settings.site_folder)
-        # PRESS-0197 § 4.7: the Publisher leaves a kept folder alone, so a
-        # build filling one would be dropped in silence.
-        kept = {name.rstrip("/").casefold(): name.rstrip("/") for name in settings.untouchable}
-        produced = {name.casefold() for name in builder.roots_produced(folder)}
-        for child in sorted(settings.site_folder.iterdir()):
-            if child.name.casefold() in produced and child.name.casefold() in kept:
-                folder_name = kept[child.name.casefold()]
-                raise KeptFolderBuilt(f"the build fills {folder_name}, which Settings keeps",
-                                      folder_name)
+        _refuse_kept(folder, settings, settings.site_folder)
 
-    def bin_copy_failed() -> bool:
-        """Bin the working copy the move left; True where that failed."""
+    def bin_the_copy() -> bool:
+        """Bin the working copy the move left. True where that failed, so the
+        copy is kept."""
         if moved is None or not moved.copy:
             return False
         try:
@@ -213,7 +217,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             interrupted = True
             raise
     except publisher.OutcomeUnknown:
-        if bin_copy_failed():
+        if bin_the_copy():
             gathered.append(Notice(say("notice.publishing.kept_copy_unknown"), Site.UNKNOWN))
         raise
     except BaseException:
@@ -228,7 +232,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             warnings.warn(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
 
     captured(forget_the_starter)
-    return Published(outcome, bin_copy_failed())
+    return Published(outcome, bin_the_copy())
 
 
 @dataclass
@@ -250,6 +254,18 @@ def _refuse(folder: Path, settings: settings.Settings, key: str,
             name.rstrip("/").casefold() in A_SITE
             for name in publisher.root_entries(settings, key, transport)):
         raise WouldReplaceASite("the repository already holds a site")
+
+
+def _refuse_kept(folder: Path, settings: settings.Settings, built: Path) -> None:
+    """PRESS-0197 § 4.7: the Publisher leaves a kept folder alone, so a build
+    into `built` filling one would be dropped in silence."""
+    kept = {name.rstrip("/").casefold(): name.rstrip("/") for name in settings.untouchable}
+    produced = {name.casefold() for name in builder.roots_produced(folder)}
+    for child in sorted(built.iterdir()):
+        if child.name.casefold() in produced and child.name.casefold() in kept:
+            folder_name = kept[child.name.casefold()]
+            raise KeptFolderBuilt(f"the build fills {folder_name}, which Settings keeps",
+                                  folder_name)
 
 
 def _guard(folder: Path, settings: settings.Settings) -> None:
@@ -291,6 +307,7 @@ def preview(folder: Path, settings: settings.Settings, key: str, *,
     try:
         into = scratch / "site"
         built = builder.build(folder, settings, into, change=change, photographs=False)
+        _refuse_kept(folder, settings, into)
         planned = publisher.plan(settings, into, key, transport,
                                  named=frozenset(built.named))
         # The source copy holds HTML too, but no page a reader opens.
@@ -410,9 +427,10 @@ def register(face: Face, folder: Path, *,
                   lambda request: _take_over(face, folder, transport))
 
 
-def _signed_in(folder: Path, gathered: Callable) -> tuple[settings.Settings, str]:
-    """Settings and the publishing key, fetched where the press runs so the key
-    never reaches its caller (PRESS-0337 § 4.7)."""
+def settings_and_key(folder: Path, gathered: Callable) -> tuple[settings.Settings, str]:
+    """Settings, loaded through `gathered`, and the publishing key, fetched
+    where the press runs so the key never reaches its caller (PRESS-0337
+    § 4.7). Every press reads them through here."""
     saved = gathered(lambda: settings.load(folder))
     return saved, github_setup.token(folder, saved.credentials.store,
                                      saved.credentials.github_account)
@@ -423,7 +441,7 @@ def plan(folder: Path, *, entry: str | None = None, page: tuple[str, str] | None
     """PRESS-0345 § 4.3: the preview of pressing the entry `entry`, or the page
     or part `page` (kind, name) as its waiting copy holds it, or the site as it
     stands. Writes nothing."""
-    saved, key = _signed_in(folder, lambda step: step())
+    saved, key = settings_and_key(folder, lambda step: step())
     if entry is not None:
         return preview(folder, saved, key, entry=entry, transport=transport)
     held = None
@@ -438,20 +456,21 @@ def _plan(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
     """PRESS-0345 § 4.3: `plan` for the entry `slug`, or the page or part
     `kind` and `name`, or the site where the form names neither (PRESS-0353
-    § 4.3). The editor saves first, so the Store holds what would be pressed."""
+    § 4.3). The editor saves first, so the Store holds what would be pressed.
+    It builds under editor.LOCK, as a press does (PRESS-0013 § 4.1)."""
     form = {name: values[0]
             for name, values in request.form(blanks=True, strict=True).items()}
     try:
-        if "slug" in form:
-            shown = plan(folder, entry=form["slug"], transport=transport)
-        elif "kind" in form or "name" in form:
-            shown = plan(folder, page=(form.get("kind", ""), form.get("name", "")),
-                         transport=transport)
-        else:
-            shown = plan(folder, transport=transport)
+        with editor.LOCK:
+            if "slug" in form:
+                shown = plan(folder, entry=form["slug"], transport=transport)
+            elif "kind" in form or "name" in form:
+                shown = plan(folder, page=(form.get("kind", ""), form.get("name", "")),
+                             transport=transport)
+            else:
+                shown = plan(folder, transport=transport)
     except Exception as exc:  # noqa: BLE001 -- every failure is shown as a press's is
-        failure = (face.fail(exc, publishing=False,
-                             secret=say("failure.secret.publishing_key")) + replace_link(exc))
+        failure = press_failure(face, exc)
         return Reply(json.dumps({"failure": failure}).encode("utf-8"), "application/json")
     return Reply(json.dumps({
         "failure": None, "pages": sorted(shown.pages.values()),
@@ -493,9 +512,7 @@ def _publish_site(face: Face, folder: Path,
                 result = press_site(folder, capture=face.capture, notices=notices,
                                     transport=transport)
             except Exception as exc:  # noqa: BLE001 -- every failure is shown on the screen
-                failure: str | None = (face.fail(exc, publishing=False,
-                                                 secret=say("failure.secret.publishing_key"))
-                                       + replace_link(exc))
+                failure: str | None = press_failure(face, exc)
             else:
                 failure = None
                 if result.copy_kept:
@@ -527,7 +544,7 @@ def _press_written(folder: Path, written: store.Entry, *,
                    notices: list, transport: publisher.Transport | None) -> Published:
     """`press_entry` after its save, which the screen's press splits from the
     save to answer each failure differently."""
-    saved, key = _signed_in(folder, gatherer(capture, notices))
+    saved, key = settings_and_key(folder, gatherer(capture, notices))
     return publish(folder, saved, key, entry=written.slug, capture=capture,
                    notices=notices, transport=transport)
 
@@ -539,7 +556,7 @@ def press_site(folder: Path, *,
     """The whole site as the Store holds it, published with the key fetched
     here. The caller holds editor.LOCK (PRESS-0337 § 4.7)."""
     gathered = notices if notices is not None else []
-    saved, key = _signed_in(folder, gatherer(capture, gathered))
+    saved, key = settings_and_key(folder, gatherer(capture, gathered))
     return publish(folder, saved, key, entry=None, capture=capture, notices=gathered,
                    transport=transport)
 
@@ -564,9 +581,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             result = _press_written(folder, written, capture=face.capture, notices=notices,
                                     transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
-            failure: str | None = (face.fail(exc, publishing=False,
-                                             secret=say("failure.secret.publishing_key"))
-                                   + replace_link(exc))
+            failure: str | None = press_failure(face, exc)
             published = False
         else:
             failure = None
@@ -666,15 +681,13 @@ def _takeover_page(face: Face, folder: Path, transport: publisher.Transport | No
                 f'<a href="/">{say("face.your_site")}</a></p>')
     e = html.escape
     try:
-        saved = settings.load(folder)
-        key = github_setup.token(folder, saved.credentials.store,
-                                 saved.credentials.github_account)
+        saved, key = settings_and_key(folder, lambda step: step())
         shown = publisher.pages(saved.repository, key, transport)
         files = takeover.build_files(folder, saved, key, shown, transport)
         branch = publisher.default_branch(saved.repository, key, transport)
         entries = publisher.root_entries(saved, key, transport)
     except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
-        return face.fail(exc, publishing=False, secret=say("failure.secret.publishing_key"))
+        return press_failure(face, exc)
     stale = any(entry.casefold() == publisher.CNAME.casefold() for entry in entries)
     rows = takeover.change_rows(takeover.named(folder) or files, saved.site_address, shown,
                                 stale and not shown.domain)
@@ -725,27 +738,24 @@ def _take_over(face: Face, folder: Path, transport: publisher.Transport | None) 
 def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport | None,
                       told: Callable[[pressing.Outcome], None]) -> str:
     if not takeover.owed(folder):
-        told(pressing.ended(pressing.PUBLISH, True))
+        told(pressing.quiet())      # nothing was owed, so nothing was published
         return _takeover_page(face, folder, transport)
     notices: list[str | Notice] = []
     gathered = gatherer(face.capture, notices)
-    stage = ""
+    left_undone = ""    # the sentence a failure after the publish adds
 
     def stopped(exc: BaseException) -> str:
-        failed = (face.fail(exc, publishing=False, secret=say("failure.secret.publishing_key"))
-                  + stage)
+        failed = press_failure(face, exc) + left_undone
         told(pressing.ended(pressing.PUBLISH, False, failed))
         return render_notices(notices) + failed
 
     with editor.LOCK:
         try:
-            saved = gathered(lambda: settings.load(folder))
-            key = github_setup.token(folder, saved.credentials.store,
-                                     saved.credentials.github_account)
+            saved, key = settings_and_key(folder, gathered)
             shown = publisher.pages(saved.repository, key, transport)                 # step 1
             if takeover.build_files(folder, saved, key, shown, transport):
-                told(pressing.ended(pressing.PUBLISH, False))
                 hint = message_box("takeover-hint", say("publishing.takeover.still_there"))
+                told(pressing.ended(pressing.PUBLISH, False, hint))
                 return _takeover_page(face, folder, transport, hint)
             final = dataclasses.replace(                                              # step 3
                 saved, untouchable=publisher.kept_on_a_branch(saved.untouchable, shown.domain))
@@ -753,21 +763,22 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
                 gathered(lambda: settings.save(folder, final))
             if not shown.built_elsewhere:
                 gathered(lambda: takeover.done(folder))
-                told(pressing.ended(pressing.PUBLISH, True))
+                told(pressing.quiet())      # the switch was made elsewhere
                 return f"<p>{say(_already_key(shown))}</p>"
             published = publish(folder, final, key, entry=None, taking_over=True,     # step 4
                                 capture=face.capture, notices=notices, transport=transport)
-            stage = f"<p>{say('publishing.takeover.not_switched')}</p>"
+            left_undone = f"<p>{say('publishing.takeover.not_switched')}</p>"
             publisher.switch_pages_to_branch(final.repository, key, shown.domain,     # step 5
                                              transport)
-            stage = ""
+            left_undone = ""
             files = takeover.named(folder)
-            stale = publisher.CNAME in published.outcome.removed
+            # kept_on_a_branch folds case, so the removed CNAME may be lower case.
+            stale = any(path.casefold() == publisher.CNAME.casefold()
+                        for path in published.outcome.removed)
             gathered(lambda: takeover.done(folder))                                   # step 6
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
             return stopped(exc)
     told(pressing.ended(pressing.PUBLISH, True))
-    pressing.forget()
     return render_notices(notices) + _takeover_report(final, shown, files, stale,
                                                       published.outcome)
 

@@ -13,3 +13,4 @@
 | impl | 2026-11-06 | none — amendment for PRESS-0339; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: Publishing shows at once, before the wait for a save in flight. |
 | impl | 2026-11-06 | none — pointer for PRESS-0345; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: a click lists what will change first, per PRESS-0345. |
 | impl | 2026-11-13 | none — amendment for PRESS-0358; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3 and INV-6: the guard passes a site with no entries to lose; `preview` runs it too. |
+| fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0377 amended § 4.2: the failure fragment is `publishing.press_failure`. § 4.6: the press never passes `change` to the build; PRESS-0345's preview does. No direction changed, so no gate. |

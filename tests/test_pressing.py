@@ -12,6 +12,8 @@ from __future__ import annotations
 import contextlib
 import json
 import re
+import shutil
+import subprocess
 import threading
 import urllib.parse
 from collections.abc import Iterator
@@ -329,3 +331,41 @@ def test_ok_and_other_changes_forget_the_outcome(folder, monkeypatch, tmp_path):
         status, page = browser.post(_answers(key=""))
     assert status == 200, page
     assert pressing.state()["failure"] is None, "a Settings save keeps the outcome"
+
+
+# ------------------------------------------------------------ decision 5 ---
+
+# The asker runs in a browser; Node runs it against a stand-in line and button,
+# with a fetch that never reaches Pressless and a clock that does not wait.
+_NODE = shutil.which("node")
+_ASKER_HARNESS = """const window = globalThis;
+const line = {textContent: "", dataset: {}};
+const button = {disabled: false};
+const document = {
+  getElementById: (id) => (id === "publish-status" ? line : null),
+  querySelectorAll: () => [button],
+  querySelector: () => null,
+};
+let asked = 0;
+const fetch = () => { asked += 1; return Promise.reject(new TypeError("Failed to fetch")); };
+const setTimeout = (run) => { if (asked > 1000) process.exit(3); run(); };
+const say = (key) => "<" + key + ">";
+%s
+(async () => {
+  await window.presslessPress.ask();
+  process.stdout.write(JSON.stringify({said: line.textContent, disabled: button.disabled}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_page_stops_asking_once_pressless_has_gone(tmp_path):
+    """Decision 5: no page asks forever. Breaks when a page whose Pressless has
+    stopped asks every two seconds for ever, with its buttons off and nothing
+    said."""
+    harness = tmp_path / "asker.js"
+    harness.write_text(_ASKER_HARNESS % pressing.SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=False, timeout=30)
+    assert run.returncode == 0, "the page was still asking after a thousand tries"
+    assert json.loads(run.stdout) == {"said": "<script.press.unreachable>", "disabled": False}

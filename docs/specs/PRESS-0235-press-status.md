@@ -86,7 +86,9 @@ record. `start` checks and marks running in one step, so two presses arriving
 together cannot both start. `Outcome` holds the line's words, the failure's
 HTML (`face.fail`'s output, or None), and `done`, whether the press
 succeeded. `pressing.ended(kind, done, failure)` makes one with the
-press kind's own words. `forget` does nothing while a press
+press kind's own words. `pressing.quiet()` makes one with no words, for a
+press that published nothing and failed at nothing, such as a takeover
+finding the switch already made; pages then show their standing words. `forget` does nothing while a press
 runs, since every publish saves first. Nothing is written to disk; a restart
 starts with no record.
 
@@ -120,6 +122,7 @@ so each sentence has one home:
 | A publish failed | "Not published. The reason is below." |
 | Undone | "Your site was put back." |
 | An undo failed | "Your site was not put back. The reason is below." |
+| A page's asks go unanswered (§ 4.5) | "Pressless could not reach itself, so this page cannot tell how the press ended. Check Pressless is still running." |
 | Refused, a press is running | the running press's words |
 
 "Keep this page open." goes from all three scripts.
@@ -152,7 +155,9 @@ ends what decision 6 shows.
   press-row line, disables Press to site and Undo the last press, and asks
   `GET /press` every two seconds. When `running` turns false it writes `said`
   into the line, or the standing words where `said` is empty, the failure
-  where it shows failures today, and enables both buttons again.
+  where it shows failures today, and enables both buttons again. Five asks
+  in a row with no answer stop it (decision 5): it writes § 4.3's unreachable
+  words into the line and enables both buttons again.
 - **A page that opens after a press ended** carries, from the server, the
   outcome's words in its line in place of the standing words, and its failure
   where it shows failures today, until `forget`.
@@ -226,6 +231,8 @@ ends what decision 6 shows.
   the record already holds the outcome.
 - **A restart or update during a press** waits on `editor.LOCK` as today, so
   the press ends first.
+- **Pressless stops during a press.** Each page's asks go unanswered, and
+  after five it stops asking and says so (§ 4.5).
 - **A press that never ends** (a stuck upload) keeps pages asking, as today's
   page waits on its request. `publisher.TIMEOUT_SECONDS` bounds each
   request the press makes.
@@ -271,6 +278,7 @@ and `tests/test_undo.py` gain the `busy` key.
 | INV-7 | Partial: `tests/test_pressing.py::test_every_page_asks_about_the_press` reads script text; whether the scripts disable, ask and reload correctly is **nothing** — checked by hand in a browser |
 | INV-8 | Partial: `tests/test_pressing.py::test_ok_and_other_changes_forget_the_outcome`; that pressing OK in a browser sends the post is **nothing** — checked by hand |
 | § 4.3 the words | **nothing** — read on the page |
+| § 4.5's asker stopping after unanswered asks | `tests/test_pressing.py::test_a_page_stops_asking_once_pressless_has_gone`, in Node |
 
 ## 11. Cross-doc impact
 

@@ -16,3 +16,4 @@
 | amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.2: the kept draft drops `vote-key`. |
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.6: Undo moved to Your site; the Drafts list to Journal. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376: § 4.1 `FetchAreaInUse` and `undo`'s `saved`; § 4.2 step 2 is `github_setup.token`, outside the capture; § 4.3 step 1 raises `FetchAreaInUse`; § 4.4 kept addresses take a `reserved` set; § 6 and § 10 rows. |
+| fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0377 amended § 4.2: the failure fragment is `publishing.press_failure`, so a TakeoverOwed or WouldReplaceASite carries its link. No direction changed, so no gate. |

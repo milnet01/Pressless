@@ -158,8 +158,9 @@ at step 1 landed and the page needs its new address and `base`:
  "failure": "<fragment>", "notices": "<fragment>"}
 ```
 
-The fragment is `face.fail(failure, publishing=False,
-secret=say("failure.secret.publishing_key"))`.
+The fragment is `publishing.press_failure(face, failure)`: `face.fail(failure,
+publishing=False, secret=say("failure.secret.publishing_key"))`, then the
+way on beside a failure that has one (`replace_link`).
 **`slug`, `draft` and `base` are read from disk after `publish` returns or
 raises**: the working copy of the published entry where one is left, else the
 published entry, else the draft. So the page's next save goes to a file that
@@ -274,7 +275,8 @@ on a click:
 - It never moves an entry after the key has failed to read.
 - It never puts back an entry whose publish outcome is unknown.
 - It never writes the key into a page, the log or the console.
-- It never passes `change` to `builder.build` (PRESS-0008 § 4.1).
+- Its press never passes `change` to `builder.build` (PRESS-0008 § 4.1);
+  only PRESS-0345's preview does.
 
 ## 5. Invariants
 

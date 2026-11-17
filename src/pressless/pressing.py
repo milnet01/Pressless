@@ -3,7 +3,9 @@
 A press is Press to site in either editor, or Undo the last press. It still runs
 inside the request that started it; this module only records it beside that
 request, so any page opened during it can say it is running, and then how it
-ended (docs/specs/PRESS-0235-press-status.md § 4).
+ended (docs/specs/PRESS-0235-press-status.md § 4). Its page script, SCRIPT,
+also carries the box that says what a press would change, which every
+press screen shows before it presses (PRESS-0345 § 4.4).
 """
 from __future__ import annotations
 
@@ -41,6 +43,13 @@ def ended(kind: str, done: bool, failure: str | None = None) -> Outcome:
     if done:
         return Outcome(say(_DONE[kind]), None, done=True)
     return Outcome(say(_FAILED[kind]), failure)
+
+
+def quiet() -> Outcome:
+    """A press that published nothing and failed at nothing, such as a takeover
+    finding the switch already made: no words, so each page shows its own
+    standing words (§ 4.2's nothing to say)."""
+    return Outcome("", None, done=True)
 
 
 # One record per process. _LOCK is held only to read or change it, never for a
@@ -143,7 +152,10 @@ def holding() -> str | None:
 # Every page with a press row carries this, ahead of its own script. The first
 # copy on a page makes the one asker; later copies find it. It asks GET /press
 # every two seconds while a press runs, with Press to site and Undo disabled,
-# then writes how it ended (§ 4.5). A holding page reloads instead.
+# then writes how it ended (§ 4.5). A holding page reloads instead. A page
+# whose asks keep failing stops, says so and gives its buttons back (decision
+# 5). It also defines presslessCheck and presslessPlan, the box saying what a
+# press would change, which POST /publish/plan answers (PRESS-0345 § 4.3).
 SCRIPT = """
 window.presslessPress = window.presslessPress || (() => {
   const line = document.getElementById("publish-status") ||
@@ -154,14 +166,22 @@ window.presslessPress = window.presslessPress || (() => {
     document.querySelectorAll("button[data-editor=publish], button[data-undo]");
   let standing = () => "";
   let asking = false;
+  const MISSED_ASKS = 5;   // ten seconds of no answer: Pressless has stopped
   const ask = async () => {
     if (asking || !line) return;
     asking = true;
     buttons().forEach((button) => { button.disabled = true; });
+    let missed = 0;
     for (;;) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       let now;
-      try { now = await (await fetch("/press")).json(); } catch (error) { continue; }
+      try { now = await (await fetch("/press")).json(); } catch (error) {
+        missed += 1;
+        if (missed < MISSED_ASKS) continue;
+        line.textContent = say("script.press.unreachable");
+        break;
+      }
+      missed = 0;
       if (now.running) { line.textContent = now.said; continue; }
       if (line.dataset.press === "hold") { window.location.reload(); return; }
       line.textContent = now.said || standing();
