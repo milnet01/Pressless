@@ -34,7 +34,7 @@ publishes today. The site never needs a billing account.
 3. **Nothing puts a vote on a page.** `_Build.entry_page` writes the article,
    and `_Build.counted` is the only outside service's code a page gets.
 4. **The Privacy page assumes counting.** `starter.privacy_page` always says the
-   site counts visits with Google Analytics. `setup._privacy` runs only where
+   site counts visits with Google Analytics. `setup.update_privacy` runs only where
    Settings hold a `measurement_id`. A site with votes and no counting would
    carry a false page, or none.
 
@@ -180,9 +180,14 @@ argument, so only `entry_page` can pass it.
    - the button already pressed: `DELETE .../entries/KEY/votes/<uid>`;
    - otherwise: `PATCH .../entries/KEY/votes/<uid>` with `value`.
    On success, update the note, the numbers and `aria-pressed`. Then enable both.
-3. **The note** is one `localStorage` item, `pressless-votes`:
-   `{"refresh": "...", "votes": {"KEY": 1}}`. Nothing is stored before the first
-   press, while `recaptcha_key` is unset.
+3. **The note** is one `localStorage` item per project,
+   `pressless-votes-<project_id>`: `{"refresh": "...", "votes": {"KEY": 1}}`.
+   Every project site of one GitHub account shares one browser origin, and a
+   sign-in belongs to one project. Where the project's own note is absent, a
+   note under the older shared name `pressless-votes` is read; another
+   project's refresh token is refused with a 400 (`PROJECT_NUMBER_MISMATCH`),
+   which signs up anew. Nothing is stored before the first press, while
+   `recaptcha_key` is unset.
 4. **With `recaptcha_key`:** before step 1, import `firebase-app.js` and
    `firebase-app-check.js` from `https://www.gstatic.com/firebasejs/13.1.0/`,
    start App Check with `ReCaptchaEnterpriseProvider`, and send its token as
@@ -255,7 +260,7 @@ paragraphs, since section marks outside an area do not pair: before the first
 `</main>`, else at the end. So each is added once, and a writer's own wording of any stands. It treats a
 waiting copy of the page the same way, since pressing that copy replaces the page.
 
-`setup._privacy` runs where Settings hold either, and the save in § 4.6 calls it
+`setup.update_privacy` runs where Settings hold either, and the save in § 4.6 calls it
 too. `google_setup`'s own call to `add_privacy` passes what Settings hold. A failure
 keeps the settings, as PRESS-0199 § 4.5 does.
 
@@ -295,17 +300,26 @@ and says buttons appear at the next press.
 
 | Step | Answer | Says |
 |---|---|---|
-| sign up | refused | turn on Anonymous sign-in (step 4) |
+| sign up | 403, or 400 with `API key not valid` | the key was refused: paste the text again (step 5) |
+| | any other refusal | turn on Anonymous sign-in (step 4) |
 | write `entries/0000-00-00-pressless-check/votes/<uid>` `value` 1 | 403 | paste the rules (step 3) |
 | | 404 | create the database (step 2) |
 | write it again with `value` 5 | accepted | the rules are not the ones shown (step 3) |
-| count, with no sign-in | refused | the rules are not the ones shown (step 3) |
+| count, as the page does (§ 4.3 step 1, `value` 1), with no sign-in | refused | the rules are not the ones shown (step 3) |
 | delete it | refused | the rules are not the ones shown (step 3) |
 | all passed | | ready |
 | no answer at any step | | could not reach Google; nothing is wrong yet |
 
+Firebase's Auth reference (<https://firebase.google.com/docs/reference/rest/auth>)
+names `API key not valid` and `OPERATION_NOT_ALLOWED` as sign-up answers. That a
+restricted key answers 403 is unmeasured.
+
+Once the first write is sent, the test vote is deleted unless Google refused
+that write with a 403 or 404. A write with no answer may still have landed.
+
 With `recaptcha_key` set, Check does not run and the screen says it cannot be
-checked from this computer. **`POST /votes/off`** clears `votes`.
+checked from this computer: an enforcing project refuses any call without an
+App Check token, which only a browser on the site can get. **`POST /votes/off`** clears `votes`.
 
 **Switching off** removes the buttons at the next press. Votes stay in the
 writer's database, and the Privacy words stay, as PRESS-0199's decision 8 keeps
@@ -386,7 +400,7 @@ and `tests/test_setup.py` pin what this item adds or changes.
   *Breaks when:* `privacy_page` keeps its counting words unconditionally, or `reshape_hint` still reads `measurement_id` alone.
 
 - **INV-10** — Check gives § 4.6's answer for each Google reply, and removes its own
-  test vote on every path past the first write.
+  test vote on every path where the first write was sent and not refused.
   *Test:* `tests/test_votes.py::test_check_answers`, with `https` answered by a double.
   *Breaks when:* a 403 on the first write reads as "could not reach Google", or a
   failure skips the delete.

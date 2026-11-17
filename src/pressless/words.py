@@ -2401,6 +2401,11 @@ _WORDS: dict[str, str] = {
     "votes_setup.check.anonymous": (
         "Google refused an anonymous sign-in. Turn on Anonymous sign-in (step 4)."
     ),
+    "votes_setup.check.key": (
+        "Google refused the project's key. Paste the firebaseConfig text again (step 5). If "
+        "you restricted the key in Google Cloud, this cannot be checked from your computer: "
+        "try the buttons on your published site."
+    ),
     "votes_setup.check.rules": "Google refused a vote. Paste the rules and publish them (step 3).",
     "votes_setup.check.rules_wrong": (
         "The database's rules are not the ones shown. Replace them and publish (step 3)."

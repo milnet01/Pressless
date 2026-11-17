@@ -209,7 +209,7 @@ of your site (optional)", beside `site_name`.
   Its footer writes `{{SITE_NAME}}` where it wrote the name. The homepage's
   and About page's own titles and headings still carry the name as text
   (§ 3 decision 6).
-- **The Privacy page** (`setup._privacy`, `google_setup`) is given
+- **The Privacy page** (`setup.update_privacy`, `google_setup`) is given
   `store.read_identity(folder)`'s name, and "this site" where it is None.
 
 ## 5. Invariants

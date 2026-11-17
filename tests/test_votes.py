@@ -199,6 +199,16 @@ def test_buttons_are_words_with_room_for_a_number() -> None:
     assert 'data-vote="2026-11-01-seaside"' in markup
 
 
+def test_the_visitors_note_is_one_per_project() -> None:
+    """§ 4.3 step 3. Every project page of one GitHub account shares one
+    browser origin, so a note named alike for all would hand one site's
+    sign-in to another's project. Breaks when the note's name loses the
+    project. The script itself runs only in § 7's browser rows."""
+    code = votes.page_code(VOTES)
+    assert "const NOTE = `pressless-votes-${CONFIG.project}`;" in code
+    assert code.count('"pressless-votes"') == 1, "the shared name is only read, as an older note"
+
+
 def test_only_a_chosen_recaptcha_brings_firebase_files() -> None:
     """§ 3 decisions 7 and 8. Breaks when App Check's files load for every site."""
     plain = votes.page_code(VOTES)
@@ -439,7 +449,7 @@ def test_privacy_page_stays_while_votes_on(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_a_settings_save_adds_privacy_for_votes(tmp_path: Path, monkeypatch) -> None:
-    """§ 4.5. Breaks when `setup._privacy` runs on `measurement_id` alone."""
+    """§ 4.5. Breaks when `setup.update_privacy` runs on `measurement_id` alone."""
     _Store(monkeypatch)
     _site(tmp_path)
     _saved(tmp_path, votes=VOTES)
@@ -453,8 +463,8 @@ def test_a_settings_save_adds_privacy_for_votes(tmp_path: Path, monkeypatch) -> 
 
 
 class _Google:
-    """Answers each of Check's steps with `answers[step]`: a status, or an
-    OSError to raise. Every step not named passes."""
+    """Answers each of Check's steps with `answers[step]`: a status, a
+    (status, reply) pair, or an OSError to raise. Every step not named passes."""
 
     PASSES = {"signup": 200, "first": 200, "second": 403, "count": 200, "delete": 200}
 
@@ -462,6 +472,7 @@ class _Google:
         self.answers = {**self.PASSES, **answers}
         self.steps: list[str] = []
         self.count_headers: dict[str, str] = {}
+        self.count_body: dict = {}
         self.paths: list[str] = []
 
     def _step(self, method: str, url: str, body: bytes | None) -> str:
@@ -480,9 +491,12 @@ class _Google:
         self.steps.append(step)
         if step == "count":
             self.count_headers = headers
+            self.count_body = json.loads(body)
         answer = self.answers[step]
         if isinstance(answer, OSError):
             raise answer
+        if isinstance(answer, tuple):
+            return answer[0], {}, json.dumps(answer[1]).encode("utf-8")
         if step == "signup" and answer == 200:
             reply = {"idToken": "sentinel-id-token", "localId": "sentinel-visitor"}
         elif step == "count" and answer == 200:
@@ -509,17 +523,26 @@ NO_RULES = "votes_setup.check.rules"
 WRONG_RULES = "votes_setup.check.rules_wrong"
 NO_DATABASE = "votes_setup.check.database"
 UNREACHABLE = "votes_setup.check.unreachable"
+KEY_REFUSED = "votes_setup.check.key"
+# The shape Google's Auth answers in (firebase.google.com/docs/reference/rest/auth).
+BAD_KEY = (400, {"error": {"code": 400, "message": "API key not valid. Please pass a valid "
+                                                   "API key."}})
+ANONYMOUS_OFF = (400, {"error": {"code": 400, "message": "OPERATION_NOT_ALLOWED : Anonymous "
+                                                         "user sign-in is disabled."}})
 
 
 @pytest.mark.parametrize(("answers", "said", "delete_sent"), [
     ({}, READY, True),
     ({"signup": 400}, ANONYMOUS, False),
+    ({"signup": ANONYMOUS_OFF}, ANONYMOUS, False),
+    ({"signup": BAD_KEY}, KEY_REFUSED, False),
+    ({"signup": 403}, KEY_REFUSED, False),
     ({"signup": NO_ANSWER}, UNREACHABLE, False),
     ({"signup": 503}, UNREACHABLE, False),
     ({"first": 403}, NO_RULES, False),
     ({"first": 404}, NO_DATABASE, False),
-    ({"first": NO_ANSWER}, UNREACHABLE, False),
-    ({"first": 500}, UNREACHABLE, False),
+    ({"first": NO_ANSWER}, UNREACHABLE, True),
+    ({"first": 500}, UNREACHABLE, True),
     ({"second": 200}, WRONG_RULES, True),
     ({"second": NO_ANSWER}, UNREACHABLE, True),
     ({"second": 500}, UNREACHABLE, True),
@@ -532,15 +555,17 @@ UNREACHABLE = "votes_setup.check.unreachable"
 ])
 def test_check_answers(tmp_path: Path, answers: dict, said: str, delete_sent: bool) -> None:
     """INV-10: § 4.6's answer for each reply, and the test vote removed on every
-    path past the first write. Breaks when a 403 on the first write reads as
-    "could not reach Google", or a failure skips the delete."""
+    path where the first write was sent and not refused. Breaks when a 403 on
+    the first write reads as "could not reach Google", or a failure skips the
+    delete."""
     _saved(tmp_path, votes=VOTES)
     google = _Google(**answers)
     with _screen(tmp_path, google) as browser:
         status, _, page = browser.request("POST", "/votes/check")
     assert status == 200, page
     assert say(said) in page, (answers, page)
-    others = {READY, ANONYMOUS, NO_RULES, WRONG_RULES, NO_DATABASE, UNREACHABLE} - {said}
+    others = {READY, ANONYMOUS, NO_RULES, WRONG_RULES, NO_DATABASE, UNREACHABLE,
+              KEY_REFUSED} - {said}
     for other in others:
         assert say(other) not in page, other
     assert ("delete" in google.steps) is delete_sent, google.steps
@@ -556,6 +581,10 @@ def test_check_order_and_where_it_writes(tmp_path: Path) -> None:
     assert f"projects/{PROJECT}/databases/(default)/documents/{CHECK_ENTRY}sentinel-visitor" in (
         google.paths[0])
     assert "Authorization" not in google.count_headers
+    # The page's own count (votes._SCRIPT's `counted`), for the test vote's value.
+    assert google.count_body["structuredAggregationQuery"]["structuredQuery"]["where"] == {
+        "fieldFilter": {"field": {"fieldPath": "value"}, "op": "EQUAL",
+                        "value": {"integerValue": "1"}}}
 
 
 def test_check_does_not_run_with_recaptcha(tmp_path: Path) -> None:

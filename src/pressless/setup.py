@@ -384,7 +384,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                     failed = face.fail(exc, publishing=False)
             notices += reversing
         return render_notices(fill.notices) + render_notices(notices) + failed
-    privacy, privacy_failure = _privacy(face, folder, final)
+    privacy, privacy_failure = update_privacy(face, folder, final)
     try:
         empty = not store.holds_a_site(folder)
     except StoreError:
@@ -468,7 +468,7 @@ def _fill(face: Face, folder: Path, candidate: settings.Settings,
     return _Filled(captured, failure, starter=filled)
 
 
-def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, str]:
+def update_privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, str]:
     """PRESS-0199 § 4.5 and PRESS-0211 § 4.5: after a save holding a measurement
     id or a votes project, the Privacy page and its footer link where absent,
     and any words the page lacks. Returns what to say, and a failure fragment;

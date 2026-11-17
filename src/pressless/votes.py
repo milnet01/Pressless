@@ -69,12 +69,16 @@ _NO_APP_CHECK = "const guarded = async (sent) => sent;\n"
 
 # §§ 4.3 and 6. The numbers and the pressed mark change only on success, so a
 # failed press has nothing to put back. Any failure ends in the last catch: no
-# message, and nothing outside the box is touched.
+# message, and nothing outside the box is touched. `page_code` puts `CONFIG`
+# and `guarded` (from _APP_CHECK or _NO_APP_CHECK) before it. votes_setup's
+# Check makes the same calls to Google: change one, change both.
 _SCRIPT = """
 const box = document.querySelector(".votes[data-vote]");
 const buttons = [...box.querySelectorAll("button.vote")];
 const KEY = box.dataset.vote;
-const NOTE = "pressless-votes";
+// One note per project: every project site of one GitHub account shares the
+// browser's storage, and a sign-in belongs to one project.
+const NOTE = `pressless-votes-${CONFIG.project}`;
 const GATE = `?key=${CONFIG.key}`;
 const ENTRY = `https://firestore.googleapis.com/v1/projects/${CONFIG.project}` +
   `/databases/(default)/documents/entries/${encodeURIComponent(KEY)}`;
@@ -119,7 +123,9 @@ function canRemember() {
 
 function readNote() {
   try {
-    const held = JSON.parse(localStorage.getItem(NOTE));
+    // The note's older, shared name is read until this project writes its own.
+    // Another project's refresh token is refused with a 400, so it signs up anew.
+    const held = JSON.parse(localStorage.getItem(NOTE) ?? localStorage.getItem("pressless-votes"));
     if (typeof held.refresh === "string" && typeof held.votes === "object" && held.votes) {
       return held;
     }

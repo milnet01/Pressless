@@ -22,7 +22,8 @@ PAGE = votes.ADDRESS
 TIMEOUT_SECONDS = 30.0
 _STEPS = ("votes_setup.step.1", "votes_setup.step.2", "votes_setup.step.3",
           "votes_setup.step.4", "votes_setup.step.5")
-# Check's own vote, on an entry no date on a site can name.
+# Check's own vote, on an entry no date on a site can name. It must still pass
+# votes.RULES' two `entry` clauses, or Check reads its own refusal as missing rules.
 _CHECK_ENTRY = "0000-00-00-pressless-check"
 _SIGN_UP = "https://identitytoolkit.googleapis.com/v1/accounts:signUp"
 
@@ -31,6 +32,7 @@ _ANONYMOUS = "votes_setup.check.anonymous"
 _NO_RULES = "votes_setup.check.rules"
 _WRONG_RULES = "votes_setup.check.rules_wrong"
 _NO_DATABASE = "votes_setup.check.database"
+_KEY_REFUSED = "votes_setup.check.key"
 _UNREACHABLE = "votes_setup.check.unreachable"
 
 # The Copy button. It says so in a place that moves nothing.
@@ -127,7 +129,7 @@ def _save(face: Face, folder: Path, client: Transport | None, request: Request) 
     candidate = dataclasses.replace(saved, votes=value)
     with face.capture() as notices:
         settings.save(folder, candidate)
-    said, failure = setup._privacy(face, folder, candidate)
+    said, failure = setup.update_privacy(face, folder, candidate)
     return (shown + render_notices(notices) + f"<h1>{say('votes_setup.saved.title')}</h1>"
             + said + failure + f"<p>{say('votes_setup.saved')}</p>"
             + f"<p>{say(_verdict(value, client))}</p>"
@@ -158,12 +160,16 @@ def _off(face: Face, folder: Path) -> str:
 
 def _verdict(value: settings.Votes, client: Transport | None) -> str:
     """§ 4.6's table: the words key for what Google answered."""
+    # A project enforcing App Check refuses any call without its token, which
+    # only a browser on the site can get: Check would report false failures.
     if value.recaptcha_key is not None:
         return "votes_setup.check.recaptcha"
     return _check(value, client if client is not None else https.Client(TIMEOUT_SECONDS))
 
 
 def _check(value: settings.Votes, client: Transport) -> str:
+    """The page's own calls, as votes._SCRIPT makes them: change one, change
+    both, or Check tests calls no page sends."""
     gate = f"?key={value.api_key}"
     entry = (f"https://firestore.googleapis.com/v1/projects/{value.project_id}"
              f"/databases/(default)/documents/entries/{_CHECK_ENTRY}")
@@ -173,7 +179,7 @@ def _check(value: settings.Votes, client: Transport) -> str:
                                           json.dumps({"returnSecureToken": True}).encode("utf-8"),
                                           json_type)
         if 400 <= status < 500:
-            return _ANONYMOUS
+            return _refused_sign_up(status, reply)
         made = json.loads(reply)
         if status != 200 or not isinstance(made, dict):
             return _UNREACHABLE
@@ -184,8 +190,19 @@ def _check(value: settings.Votes, client: Transport) -> str:
             body = {"fields": {"value": {"integerValue": str(number)}}}
             return client.request("PATCH", vote, json.dumps(body).encode("utf-8"), signed_in)[0]
 
-        status = write(1)
     except (OSError, ValueError, KeyError):
+        return _UNREACHABLE
+
+    def delete() -> int:
+        return client.request("DELETE", vote, None, signed_in)[0]
+
+    try:
+        status = write(1)
+    except OSError:
+        status = None
+    if status is None or status >= 500:
+        # Sent, with no answer that says whether it landed: remove it anyway.
+        _asked(delete)
         return _UNREACHABLE
     if status == 403:
         return _NO_RULES
@@ -196,19 +213,37 @@ def _check(value: settings.Votes, client: Transport) -> str:
 
     def count() -> int:
         query = {"structuredAggregationQuery": {
-            "structuredQuery": {"from": [{"collectionId": "votes"}]},
+            "structuredQuery": {
+                "from": [{"collectionId": "votes"}],
+                "where": {"fieldFilter": {"field": {"fieldPath": "value"}, "op": "EQUAL",
+                                          "value": {"integerValue": "1"}}}},
             "aggregations": [{"alias": "n", "count": {}}]}}
         return client.request("POST", f"{entry}:runAggregationQuery{gate}",
                               json.dumps(query).encode("utf-8"), json_type)[0]
 
-    # Past the first write, the test vote goes whatever came between.
-    found = _rules_hold(write, count)
-    deleted = _asked(lambda: client.request("DELETE", vote, None, signed_in)[0])
+    # The first write landed: the test vote goes whatever came between.
+    found = _rules_fault(write, count)
+    deleted = _asked(delete)
     return found or deleted or _READY
 
 
-def _rules_hold(write: Callable[[int], int], count: Callable[[], int]) -> str | None:
-    """A value of 5 must be refused, and a count with no sign-in allowed."""
+def _refused_sign_up(status: int, reply: bytes) -> str:
+    """Sign-up refused: the key itself, or Anonymous sign-in left off.
+    Firebase's Auth reference names "API key not valid" and
+    OPERATION_NOT_ALLOWED as answers. A 403 is Google's answer to a key
+    restricted from this call or an API turned off; that is not measured."""
+    try:
+        message = json.loads(reply)["error"]["message"]
+    except (ValueError, KeyError, TypeError):
+        message = ""
+    if status == 403 or (isinstance(message, str) and message.startswith("API key not valid")):
+        return _KEY_REFUSED
+    return _ANONYMOUS
+
+
+def _rules_fault(write: Callable[[int], int], count: Callable[[], int]) -> str | None:
+    """None where the rules hold: a value of 5 refused, and a count with no
+    sign-in allowed. Else the words key for what is wrong."""
     try:
         status = write(5)
     except OSError:

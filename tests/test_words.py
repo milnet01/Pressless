@@ -293,7 +293,11 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "RULES": "Firestore's rules language", "_SCRIPT": "a script reading no words",
         "_APP_CHECK": "a script reading no words", "const CONFIG =": "a script reading no words",
     },
-    "votes_setup.py": dict.fromkeys(("Content-Type", "Authorization", "Bearer"), _HTTP_HEADERS),
+    "votes_setup.py": {
+        **dict.fromkeys(("Content-Type", "Authorization", "Bearer"), _HTTP_HEADERS),
+        "API key not valid": "Google's own message for a key it does not know, matched "
+                             "against its answer",
+    },
     "usage.py": {
         **dict.fromkeys(("Windows", "Linux", "Linux (", "an unknown system"),
                         "the system's name, sent in a report and the issue form"),
