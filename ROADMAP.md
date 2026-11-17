@@ -8626,6 +8626,7 @@ does not wait on them.
   gain a Home page or a menu through Pressless. PRESS-0419 now leaves
   both off a blank site's checklist rather than show steps that cannot
   be done.
+  User decision 2026-11-17: 1.1.0, not a blocker for 1.0.1.
   **Layman:** On a site started blank, you can add a home page and a menu.
   Kind: feature.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
