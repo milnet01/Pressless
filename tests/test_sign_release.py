@@ -154,3 +154,136 @@ def test_an_installed_copy_reads_the_real_changelog():
     found = updater.read_changes(_signer().changes_text("0.15.0", log), "0.15.0", "0.14.0")
     assert [version for version, _ in found] == ["0.15.0"], found
     assert "An AI helper can drive Pressless" in found[0][1], found
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the signer runs on Linux only")
+def test_git_output_is_read_as_utf_8_whatever_the_locale(tmp_path):
+    """The changes file is UTF-8 (PRESS-0023 § 4.12), and `git show` hands it
+    over as bytes. Read in the locale's encoding, a non-UTF-8 locale garbled
+    it or raised. Breaks when _run decodes in anything but UTF-8."""
+    import sys
+
+    probe = tmp_path / "probe.py"
+    probe.write_text(
+        "import sys\n"
+        "sys.path.insert(0, sys.argv[1])\n"
+        "from _scripts import load_script\n"
+        "said = load_script('sign-release.py')._run(sys.executable, '-c',\n"
+        "    \"import sys; sys.stdout.buffer.write('caf\\\\u00e9'.encode('utf-8'))\")\n"
+        "sys.stdout.buffer.write(said.encode('utf-8'))\n", encoding="utf-8")
+    plain = {**os.environ, "LC_ALL": "C", "LANG": "C", "PYTHONCOERCECLOCALE": "0",
+             "PYTHONIOENCODING": "utf-8"}
+    done = subprocess.run(  # noqa: S603 -- this interpreter, our own probe
+        (sys.executable, "-X", "utf8=0", str(probe), str(Path(__file__).parent)),
+        capture_output=True, env=plain, check=False)
+    assert done.returncode == 0, done.stderr.decode("utf-8", "replace")
+    assert done.stdout.decode("utf-8") == "café"
+
+
+def test_a_malformed_trusted_is_refused_in_words(monkeypatch):
+    """review-code: a TRUSTED that is not base64 keys, or is a bare annotation,
+    raised a traceback rather than a refusal."""
+    signer = _signer()
+    key = Ed25519PrivateKey.generate()
+    for trusted in (("not base64!",), (base64.b64encode(b"short").decode(),), (5,)):
+        with pytest.raises(signer.Refused):
+            signer.require_trusted(b"text", key.sign(b"text"), trusted)
+    for source in ("TRUSTED: tuple[str, ...]\n", "TRUSTED = load()\n", "TRUSTED = 5\n"):
+        monkeypatch.setattr(signer, "_run", lambda *args, source=source: source)
+        with pytest.raises(signer.Refused):
+            signer._trusted_at("v1.2.3")
+
+
+_SHA = "c" * 40
+
+
+class _GitHub:
+    """`gh` and `git` as sign() calls them, over one draft release.
+
+    `held` is the draft's assets. An upload of a name it already holds fails
+    unless --clobber is passed, as gh's does. `runs` is the release workflow's
+    runs, newest first, and --status and --limit are honoured."""
+
+    def __init__(self, signer, folder: Path, key: Ed25519PrivateKey, held: set[str],
+                 runs: list[str]) -> None:
+        self.signer, self.held, self.runs = signer, set(held), runs
+        self.trusted = f"TRUSTED = ({_public(key)!r},)\n"
+        self.uploads: list[tuple[str, ...]] = []
+        self.published = False
+
+    def __call__(self, *args: str) -> str:
+        import json
+        if args[:3] == ("gh", "release", "view"):
+            fields = args[-1]
+            answer = {"assets": [{"name": name} for name in sorted(self.held)]}
+            if "isDraft" in fields:
+                answer["isDraft"] = not self.published
+            return json.dumps(answer)
+        if args[:2] == ("gh", "api") or "rev-parse" in args:
+            return _SHA + "\n"
+        if args[:3] == ("gh", "run", "list"):
+            runs = self.runs
+            if "--status" in args:
+                runs = [run for run in runs if run == args[args.index("--status") + 1]]
+            runs = runs[:int(args[args.index("--limit") + 1])]
+            return json.dumps([{"headSha": _SHA, "conclusion": run} for run in runs])
+        if "show" in args:
+            return self.trusted if args[-1].endswith("update_key.py") else (
+                "# Changelog\n\n## [1.2.3] - d\n\nthree\n")
+        if args[:3] == ("gh", "release", "download"):
+            folder = Path(args[args.index("--dir") + 1])
+            for index, word in enumerate(args):
+                if word == "--pattern":
+                    (folder / args[index + 1]).write_bytes(b"built")
+            return ""
+        if args[:3] == ("gh", "release", "upload"):
+            names = {Path(arg).name for arg in args[6:] if arg != "--clobber"}
+            if names & self.held and "--clobber" not in args:
+                raise self.signer.Refused("gh release upload failed: asset already exists")
+            self.uploads.append(args)
+            self.held |= names
+            return ""
+        if args[:3] == ("gh", "release", "edit"):
+            self.published = True
+            return ""
+        raise AssertionError(f"not expected: {args}")
+
+
+def _signing(monkeypatch, tmp_path, held=(), runs=("success",)):
+    signer = _signer()
+    key = Ed25519PrivateKey.generate()
+    monkeypatch.setattr(signer, "ROOT", tmp_path / "repository")
+    monkeypatch.setattr(signer, "load_keys", lambda configured: [key])
+    monkeypatch.setattr(signer, "_configured", lambda: "")
+    built = {"Pressless-1.2.3-x86_64.AppImage", "Pressless-1.2.3-windows.zip"}
+    github = _GitHub(signer, tmp_path, key, built | set(held), list(runs))
+    monkeypatch.setattr(signer, "_run", github)
+    return signer, github
+
+
+def test_a_run_that_failed_after_uploading_can_be_run_again(monkeypatch, tmp_path):
+    """review-code: a run failing after its upload left the signed files on the
+    draft, and every rerun then failed at the upload, which never replaced them."""
+    left = {"Pressless-1.2.3-release.txt", "Pressless-1.2.3-release.txt.sig"}
+    signer, github = _signing(monkeypatch, tmp_path, held=left)
+    signer.sign("v1.2.3")
+    assert github.published
+
+
+def test_a_draft_holding_a_stranger_is_refused_before_anything_is_uploaded(
+        monkeypatch, tmp_path):
+    """review-code: the draft's assets were read and never examined, so a stray
+    file was refused only after this run had uploaded its own."""
+    signer, github = _signing(monkeypatch, tmp_path, held={"notes.txt"})
+    with pytest.raises(signer.Refused):
+        signer.sign("v1.2.3")
+    assert github.uploads == []
+    assert not github.published
+
+
+def test_a_success_behind_several_failed_runs_is_found(monkeypatch, tmp_path):
+    """Lead: `--limit 5` was applied before the success filter, so five failed
+    reruns hid the run that built the release."""
+    signer, github = _signing(monkeypatch, tmp_path, runs=["failure"] * 5 + ["success"])
+    signer.sign("v1.2.3")
+    assert github.published

@@ -4,20 +4,23 @@
     python3 scripts/sign-release.py v<X.Y.Z>
 
 Run by hand, on the maintainer's machine, after the release workflow has built
-the draft. CI never signs: the key would live in the repository's secrets,
-and anyone who can change the workflow could sign (scope decision 5).
+the draft. It runs on Linux only. CI never signs: the key would live in the
+repository's secrets, and anyone who can change the workflow could sign
+(scope decision 5).
 
 1. Reads every key path from `git config --get-all ants.pressless.signingKey`.
-2. Refuses unless the release is a draft and the release workflow run that
-   built it was for the tag's own commit (FIBR-0318).
+2. Refuses unless the release is a draft holding both artefacts and nothing
+   but this release's files, and the release workflow run that built it was
+   for the tag's own commit (FIBR-0318).
 3. Downloads the two artefacts, writes the signed list (§ 4.3) and the
    changes file (§ 4.12, from CHANGELOG.md at the tag), and signs each with
    each key.
 4. Verifies every signature against update_key.TRUSTED as committed at the
    tag -- never against the key it just signed with -- and attaches nothing
    if one fails.
-5. Uploads both files and their .sig files, reads the asset list back, and
-   requires exactly those names beside the two artefacts (FIBR-0275).
+5. Uploads both files and their .sig files, replacing any a failed run
+   left, reads the asset list back, and requires exactly those names beside
+   the two artefacts (FIBR-0275).
 6. Publishes the draft.
 
 PRESSLESS_UPDATE_REPOSITORY names another repository for one run, as it does
@@ -61,8 +64,12 @@ def require_trusted(text: bytes, signatures: bytes, trusted: tuple[str, ...]) ->
     """Every signature verifies against some key in `trusted`, the keys the
     tag's own commit ships -- so a release is never signed with a key the
     copies it reaches do not hold."""
-    keys = [Ed25519PublicKey.from_public_bytes(base64.b64decode(k, validate=True))
-            for k in trusted]
+    try:
+        keys = [Ed25519PublicKey.from_public_bytes(base64.b64decode(k, validate=True))
+                for k in trusted]
+    except (ValueError, TypeError):
+        raise Refused("a key in the tag's update_key.TRUSTED is not a base64 "
+                      "Ed25519 public key") from None
     if not keys:
         raise Refused("the tag's update_key.TRUSTED is empty, so no copy could verify this")
     if not signatures or len(signatures) % 64:
@@ -89,7 +96,9 @@ def require_built_from(tag_commit: str, run_commit: str) -> None:
 
 
 def _run(*args: str) -> str:
-    done = subprocess.run(args, check=False, capture_output=True, text=True)  # noqa: S603
+    # UTF-8 whatever the locale: CHANGELOG.md is UTF-8, and so is its changes file.
+    done = subprocess.run(args, check=False, capture_output=True,  # noqa: S603
+                          encoding="utf-8")
     if done.returncode != 0:
         raise Refused(f"{args[0]} {args[1]} failed: {done.stderr.strip()}")
     return done.stdout
@@ -100,7 +109,8 @@ def _configured() -> str:
     prints nothing for a key that is not set; that is load_keys' refusal to
     word, not _run's (PRESS-0184)."""
     args = ("git", "-C", str(ROOT), "config", "--get-all", "ants.pressless.signingKey")
-    done = subprocess.run(args, check=False, capture_output=True, text=True)  # noqa: S603
+    done = subprocess.run(args, check=False, capture_output=True,  # noqa: S603
+                          encoding="utf-8")
     if done.returncode not in (0, 1):
         raise Refused(f"git config failed: {done.stderr.strip()}")
     return done.stdout
@@ -109,17 +119,38 @@ def _configured() -> str:
 def _trusted_at(tag: str) -> tuple[str, ...]:
     source = _run("git", "-C", str(ROOT), "show", f"{tag}:src/pressless/update_key.py")
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.AnnAssign | ast.Assign):
+        if isinstance(node, ast.AnnAssign | ast.Assign) and node.value is not None:
             targets = [node.target] if isinstance(node, ast.AnnAssign) else node.targets
             if any(isinstance(t, ast.Name) and t.id == "TRUSTED" for t in targets):
-                return tuple(ast.literal_eval(node.value))
+                try:
+                    return tuple(ast.literal_eval(node.value))
+                except (ValueError, TypeError):
+                    raise Refused("the tag's update_key.TRUSTED is not a written-out "
+                                  "list of keys") from None
     raise Refused("the tag's update_key.py assigns no TRUSTED")
+
+
+def artefacts(version: str) -> dict[str, str]:
+    """The two files the release workflow builds, by platform, as
+    build-linux.sh and build-windows.sh name them."""
+    return {"linux": f"Pressless-{version}-x86_64.AppImage",
+            "windows": f"Pressless-{version}-windows.zip"}
+
+
+def signed_files(version: str) -> tuple[str, str]:
+    """The list (§ 4.3) and the changes file (§ 4.12) this script signs."""
+    return f"Pressless-{version}-release.txt", f"Pressless-{version}-changes.txt"
+
+
+def release_assets(version: str) -> set[str]:
+    """Everything a signed release holds, and nothing else."""
+    return {*artefacts(version).values(),
+            *(name + ending for name in signed_files(version) for ending in ("", ".sig"))}
 
 
 def _list(version: str, folder: Path) -> bytes:
     lines = ["pressless-release 1", f"version {version}"]
-    for platform, name in (("linux", f"Pressless-{version}-x86_64.AppImage"),
-                           ("windows", f"Pressless-{version}-windows.zip")):
+    for platform, name in artefacts(version).items():
         data = (folder / name).read_bytes()
         lines.append(f"{platform} {name} {len(data)} {hashlib.sha256(data).hexdigest()}")
     return ("\n".join(lines) + "\n").encode("ascii")
@@ -186,12 +217,20 @@ def sign(tag: str) -> None:
                               "--json", "isDraft,assets"))
     if not release["isDraft"]:
         raise Refused("the release is already published; only a draft is signed")
+    held = {asset["name"] for asset in release["assets"]}
+    wanted = release_assets(version)
+    # A failed run may have left this release's own files; anything else is refused.
+    if not set(artefacts(version).values()) <= held or not held <= wanted:
+        raise Refused(f"the draft holds {sorted(held)}; it must hold both artefacts "
+                      f"and nothing but {sorted(wanted)}")
     tag_commit = _run("gh", "api", f"repos/{REPOSITORY}/commits/{tag}", "--jq", ".sha").strip()
     # TRUSTED is read from the LOCAL tag below, so it must be GitHub's commit.
     require_local_tag(_run("git", "-C", str(ROOT), "rev-parse", f"{tag}^{{commit}}").strip(),
                       tag_commit)
+    # Filtered by gh before the limit, so failed reruns cannot hide the success.
     runs = json.loads(_run("gh", "run", "list", "--repo", REPOSITORY, "--workflow", WORKFLOW,
-                           "--branch", tag, "--json", "headSha,conclusion", "--limit", "5"))
+                           "--branch", tag, "--status", "success",
+                           "--json", "headSha,conclusion", "--limit", "1"))
     built = [run["headSha"] for run in runs if run.get("conclusion") == "success"]
     if not built:
         raise Refused("no successful release workflow run is recorded for the tag")
@@ -203,28 +242,25 @@ def sign(tag: str) -> None:
     work = Path(tempfile.mkdtemp(prefix="pressless-sign-", dir=ROOT.parent))
     try:
         _run("gh", "release", "download", tag, "--repo", REPOSITORY, "--dir", str(work),
-             "--pattern", f"Pressless-{version}-x86_64.AppImage",
-             "--pattern", f"Pressless-{version}-windows.zip")
+             *(word for name in artefacts(version).values() for word in ("--pattern", name)))
         changes = changes_text(version, _run("git", "-C", str(ROOT), "show",
                                              f"{tag}:CHANGELOG.md"))
         # Both are signed and proved before either is attached.
         uploads: list[str] = []
-        for name, data in ((f"Pressless-{version}-release.txt", _list(version, work)),
-                           (f"Pressless-{version}-changes.txt", changes)):
+        for name, data in zip(signed_files(version), (_list(version, work), changes),
+                              strict=True):
             signatures = b"".join(key.sign(data) for key in keys)
             require_trusted(data, signatures, trusted)
             (work / name).write_bytes(data)
             (work / f"{name}.sig").write_bytes(signatures)
             uploads += [str(work / name), str(work / f"{name}.sig")]
-        _run("gh", "release", "upload", tag, "--repo", REPOSITORY, *uploads)
+        # --clobber replaces what a run that failed after its upload left.
+        _run("gh", "release", "upload", tag, "--repo", REPOSITORY, "--clobber", *uploads)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
     names = {asset["name"] for asset in json.loads(_run(
         "gh", "release", "view", tag, "--repo", REPOSITORY, "--json", "assets"))["assets"]}
-    wanted = {f"Pressless-{version}-x86_64.AppImage", f"Pressless-{version}-windows.zip",
-              f"Pressless-{version}-release.txt", f"Pressless-{version}-release.txt.sig",
-              f"Pressless-{version}-changes.txt", f"Pressless-{version}-changes.txt.sig"}
     if names != wanted:
         raise Refused(f"the release holds {sorted(names)}, not exactly {sorted(wanted)}")
     _run("gh", "release", "edit", tag, "--repo", REPOSITORY, "--draft=false")
