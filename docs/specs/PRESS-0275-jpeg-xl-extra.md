@@ -101,13 +101,15 @@ PINS = {
 }
 FOLDER_NAME = "extras"               # in Pressless's own folder; a MACHINE_NAMES entry
 DECODE_SECONDS = 120
+MAX_PIXELS = 2 * 89_478_485          # where Pillow refuses any picture (§ 4.4)
 
 class NotInstalled(Exception): ...   # no decoder, or one whose bytes are not the pin's
 class Unreadable(OSError): ...       # no picture; caught where Pillow's errors are
 
 def is_jpeg_xl(head: bytes) -> bool: ...
 def installed(folder: Path, platform: str) -> Path | None: ...
-def program() -> Path | None: ...    # installed(paths.own_folder(), this system)
+def this_system() -> str | None: ... # the PINS key whose decoder runs here
+def find_program() -> Path | None: ...  # installed(paths.own_folder(), this_system())
 def download_url(platform: str) -> str: ...  # the pin's asset on RELEASE
 def decode(program: Path, original: Path, work: Path) -> Path: ...
 
@@ -121,6 +123,13 @@ in its `jxl-x64-windows-static.zip`. Both archives matched the SHA-256
 GitHub records for them. Both programs are statically linked; `file` reports
 the Linux one as such.
 
+**A pin runs on Linux on 64-bit Intel or AMD, and on Windows**, whose ARM
+machines run the x64 program as they run Pressless itself. These are the
+two systems Pressless is built for (`.github/workflows/release.yml`).
+`this_system()` is `None` on any other computer, such as a Mac or an ARM
+Linux machine run from source. There `find_program()` is `None`, `decode`
+raises `NotInstalled`, and § 4.6's line says so.
+
 ### 4.2 Recognising a JPEG XL file
 
 `is_jpeg_xl(head)` is true when `head` starts with `FF 0A` (a bare
@@ -131,8 +140,10 @@ every other format.
 ### 4.3 Installing
 
 `installed(folder, platform)` returns `folder / FOLDER_NAME / PINS[platform].name`
-when that file exists and its size and SHA-256 equal the pin. Otherwise it
-returns `None`. It hashes the whole file on every call.
+when that file exists and its size and SHA-256 equal the pin. On Linux the
+file must also be one this user may run, so a decoder that lost its execute
+bit is offered again. Otherwise it returns `None`. It hashes the whole file
+on every call.
 
 `install` builds an `updater.Offer` from the pin: version `RELEASE`, the URL
 `download_url(platform)`, which is
@@ -144,7 +155,9 @@ any failure and returns it only when size and hash match (PRESS-0023
 §§ 4.5–4.6). `install` then sets mode `0o700` on Linux, and `os.replace`s
 the file onto the pinned name. Any file in `extras/` not named by a pin is
 left alone. A failure raises `updater.DownloadFailed`, `DiskFull` or
-`UpdateRejected` as `download` does, and leaves no file behind.
+`UpdateRejected` as `download` does, and leaves no file behind. A failure of
+`install`'s own steps, making `extras/` or putting the file in place, is
+`DiskFull` for a full disk and `DownloadFailed` otherwise.
 
 **A Pressless release that moves the pin makes the old decoder "not
 installed".** The line in § 4.6 then offers the download again.
@@ -153,24 +166,32 @@ installed".** The line in § 4.6 then offers the download again.
 
 `decode(program, original, work)`:
 
-1. Re-hashes `program` against the pin for this platform. A mismatch raises
-   `NotInstalled` and nothing runs.
-2. Runs, with no shell:
+1. Re-hashes `program` against the pin for this platform. A mismatch, or no
+   pin for this computer, raises `NotInstalled` and nothing runs.
+2. Reads the width and height the file's own size header claims (ISO/IEC
+   18181-1's SizeHeader): at the start of a bare codestream, or inside the
+   container's `jxlc` box or first `jxlp` box. No header, or more than
+   `MAX_PIXELS`, raises `Unreadable` and nothing runs. The decoder holds the
+   whole picture in memory and writes it out in full, so Pillow's limit is
+   applied before it runs, not after.
+3. Copies `original` into `work` as `original.jxl`, and runs, with no shell
+   and `cwd=work`:
 
    ```python
-   [str(program), str(original.resolve()), str(work / "decoded.png")]
+   [str(program), "original.jxl", "decoded.png"]
    ```
 
    `work` is a fresh directory from `tempfile.mkdtemp()`, removed by the
-   caller. Both paths are absolute, so neither can read as an option.
+   caller. The two names are fixed and plain, so no Windows code page can
+   mangle a path, and neither can read as an option.
    stdin, stdout and stderr go to `DEVNULL`. The timeout is
    `DECODE_SECONDS`. On Windows, `creationflags` is `CREATE_NO_WINDOW`, read
    with `getattr(subprocess, ..., 0)`.
-3. A non-zero exit, a timeout (the process is killed) or no
+4. A non-zero exit, a timeout (the process is killed) or no
    `decoded.png` raises `Unreadable`. Nothing from the process's output
    reaches the log.
-4. Returns `work / "decoded.png"`. The caller opens it with Pillow, so
-   Pillow's own decompression-bomb limit applies as it does to any PNG.
+5. Returns `work / "decoded.png"`. The caller opens it with Pillow, whose
+   own decompression-bomb limit applies as it does to any PNG.
 
 ### 4.5 Where photographs are read
 
@@ -178,7 +199,7 @@ installed".** The line in § 4.6 then offers the download again.
 the Builder opens an original. For a JPEG XL file it decodes the file into a
 work directory and yields the PNG opened by Pillow, with `format` reported as
 `"JXL"`. For anything else it yields `Image.open(path)`. It raises
-`jpegxl.NotInstalled` where `jpegxl.program()` is `None`. The three places that
+`jpegxl.NotInstalled` where `jpegxl.find_program()` is `None`. The three places that
 call `Image.open` on an original use it: `photograph_format`, the web copy
 and the site icon.
 
@@ -225,7 +246,8 @@ size in MB. After: *ready*, and no button. The line keeps its place and
 height in both states.
 
 The button posts to `/jpeg-xl`. The route calls `install` and sends the
-browser back to `/`, where the line is drawn again. Once installed, the
+browser back to `/`, where the line is drawn again. One Add runs at a time:
+a second click waits, then finds the decoder in and downloads nothing. Once installed, the
 button is hidden but keeps its place. On a failure the line carries its own
 sentence until the next try: no
 connection, a full disk, and *the download was not the expected file, so it
@@ -297,14 +319,15 @@ published.** The pre-release mark keeps it away from the updater:
   A spy on `updater.download` sees every row reach it. *Breaks when:* the file is renamed onto the pin's
   name before the hash is compared, or `install` re-implements the download
   instead of calling `updater.download`.
-- **INV-3** — The decoder runs with no shell, with absolute paths, a
-  timeout, and no output kept. *Test:*
+- **INV-3** — The decoder runs with no shell, in the work directory with
+  two fixed names, a timeout, and no output kept. *Test:*
   `tests/test_jpegxl.py::test_decode_runs_one_fixed_command` — the argv
-  recorded by a stand-in equals § 4.4's list. A stand-in that sleeps past a
+  recorded by a stand-in equals § 4.4's list, for paths with and without
+  accented letters. A stand-in that sleeps past a
   shortened timeout raises `Unreadable` and leaves no process behind. The
   last half runs on Linux only: on Windows the stand-in is a batch file, and
   the kill does not reach the Python it starts.
-  *Breaks when:* `shell=True`, a relative path, or a missing timeout.
+  *Breaks when:* `shell=True`, a path in the arguments, or a missing timeout.
 - **INV-4** — A JPEG XL file is recognised by its bytes alone. *Test:*
   `tests/test_jpegxl.py::test_recognised_by_bytes` — both signatures named
   `photo.png` are recognised; a PNG named `photo.jxl` is not.
@@ -356,7 +379,8 @@ published.** The pre-release mark keeps it away from the updater:
 | A Pressless update moves the pin | The same |
 | The decoder crashes, fails or runs past `DECODE_SECONDS` | *Could not be read as a picture*, today's sentence |
 | The decoder writes its animation as numbered files, not `decoded.png` | INV-9's animation fixture fails before shipping, and § 4.4 is amended to read the first file, keeping decision 6 |
-| The decoded picture is past Pillow's pixel limit | The same, as for any picture today |
+| The file's header claims more than `MAX_PIXELS`, or has none | *Could not be read as a picture*; the decoder never runs (§ 4.4 step 2) |
+| A computer no pin runs on (§ 4.1) | The line says JPEG XL photographs cannot be read here, with no button; nothing is downloaded or run |
 | A site holding `.jxl` photographs is opened on a machine without the decoder | Previews show no picture (404); a publish stops with § 4.5's sentence |
 | An antivirus program blocks the decoder on Windows | *Could not be read as a picture*; the hand check in § 7 looks for it |
 | The pinned release is deleted from GitHub | Install fails with the no-connection sentence. Restoring it with the same bytes repairs it; nothing else can |
@@ -421,6 +445,8 @@ Each test is seen to fail before the code it locks exists.
 | INV-8 | `tests/test_publish_jpeg_xl.py` |
 | INV-9 | Partial: `tests/test_jpegxl_real.py`, which CI skips; a hand run on each system before a release |
 | The release exists before a Pressless pinning it ships (§ 4.8) | **nothing** — the INV-9 hand run fails without it |
+| The size header is read before the decoder runs (§ 4.4 step 2) | `tests/test_jpegxl.py::test_a_picture_past_the_pixel_limit_never_reaches_the_decoder`, `::test_a_header_that_cannot_be_trusted_never_reaches_the_decoder`, `::test_the_pixel_limit_is_pillows_own` |
+| No pin is used on a computer it cannot run on (§ 4.1) | `tests/test_jpegxl.py::test_only_a_system_a_pin_runs_on_is_given_one`, `::test_a_computer_with_no_pin_runs_nothing`, `::test_a_computer_with_no_pin_says_so_on_the_line` |
 | No network module in `jpegxl.py` | PRESS-0262 INV-9's `tests/test_network_confined.py` |
 | `extras` and `jpeg-xl-views` are named once | PRESS-0223 INV-2's `tests/test_sites.py::test_every_name_is_on_one_side` |
 

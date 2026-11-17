@@ -2011,6 +2011,10 @@ _WORDS: dict[str, str] = {
         "try again."
     ),
     "jpegxl.rejected": "The download was not the expected file, so it was thrown away.",
+    "jpegxl.no_decoder": (
+        "JPEG XL photographs cannot be read on this computer. Pressless's decoder runs on "
+        "Windows, and on Linux on 64-bit Intel or AMD."
+    ),
     # Updating (updating.py): the offer, the switch, Update now's pages and console line.
     "updating.offer": "Pressless {version} is ready to install. Your sites stay where they are.",
     "updating.update_now": "Update now",

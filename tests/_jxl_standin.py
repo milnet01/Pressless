@@ -19,9 +19,12 @@ from PIL import Image
 
 from pressless import jpegxl
 
-# The two signatures of spec § 4.2, followed by bytes no decoder reads.
-CODESTREAM = b"\xff\x0a" + b"not really a picture"
-CONTAINER = b"\x00\x00\x00\x0cJXL \r\n\x87\x0a" + b"not really a picture"
+# The two signatures of spec § 4.2. Each carries a size header claiming 64 by
+# 48 (§ 4.4 step 2 reads it), then bytes no decoder reads.
+CODESTREAM = b"\xff\x0a\xcb\x06" + b"not really a picture"
+CONTAINER = (b"\x00\x00\x00\x0cJXL \r\n\x87\x0a"
+             + b"\x00\x00\x00\x14ftypjxl \x00\x00\x00\x00jxl "
+             + (8 + len(CODESTREAM)).to_bytes(4, "big") + b"jxlc" + CODESTREAM)
 
 _SCRIPT = """\
 import json, os, shutil, sys, time

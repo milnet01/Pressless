@@ -42,7 +42,7 @@ def decoder(tmp_path, monkeypatch) -> Path:
     shutil.copyfile(_GIVEN, program)
     program.chmod(0o700)
     monkeypatch.setenv("PRESSLESS_FOLDER", str(own))
-    assert jpegxl.program() == program
+    assert jpegxl.find_program() == program
     return program
 
 

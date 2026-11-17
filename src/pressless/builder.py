@@ -260,7 +260,7 @@ def open_original(path: Path):
         with Image.open(path) as picture:
             yield picture
         return
-    program = jpegxl.program()
+    program = jpegxl.find_program()
     if program is None:
         raise jpegxl.NotInstalled("JPEG XL support is not added")
     work = Path(tempfile.mkdtemp(prefix="pressless-jxl-"))

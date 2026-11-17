@@ -84,7 +84,7 @@ _FULL = frozenset(code for code in (errno.ENOSPC, getattr(errno, "EDQUOT", None)
 _HANDLE_DISK_FULL = 39
 
 
-def _failed(exc: BaseException, what: str) -> DownloadFailed:
+def failed(exc: BaseException, what: str) -> DownloadFailed:
     """DiskFull for a full disk, else DownloadFailed, naming `what` and the
     error's own words -- `strerror`, never the message, which quotes a path."""
     full = isinstance(exc, OSError) and (
@@ -417,7 +417,7 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
         handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL
                          | getattr(os, "O_BINARY", 0), 0o600)
     except OSError as exc:
-        raise _failed(exc, "no room to download beside the program") from exc
+        raise failed(exc, "no room to download beside the program") from exc
     kept = False
     try:
         try:
@@ -425,7 +425,7 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
                 _stream(offer, transport, out)
         except OSError as exc:
             # Closing flushes, and the close sits outside _stream's mapping.
-            raise _failed(exc, "the download could not be written") from exc
+            raise failed(exc, "the download could not be written") from exc
         kept = True
         return target
     finally:
@@ -468,7 +468,7 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
     except UpdateError:
         raise
     except Exception as exc:  # noqa: BLE001 -- § 4.6: any other error
-        raise _failed(exc, "the download failed") from exc
+        raise failed(exc, "the download failed") from exc
     finally:
         response.close()
 
@@ -504,7 +504,7 @@ def unpack(archive: Path, beside: Path) -> Path:
         # NotImplementedError for an unknown method; either left a half-made
         # folder and escaped the route untyped (PRESS-0162).
         shutil.rmtree(target, ignore_errors=True)
-        raise _failed(exc, "the download could not be unpacked") from exc
+        raise failed(exc, "the download could not be unpacked") from exc
     finally:
         _forget(Path(archive))
     return target
