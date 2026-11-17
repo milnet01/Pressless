@@ -820,35 +820,44 @@ def _held_files(folder: Path, relative: str, text: str,
                   None, ("src", "href"))
 
 
-def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
-    """Each kept file a page names, and the pages naming it (PRESS-0197 § 4.6):
-    the header, the footer and every fixed page, published and waiting, so a
-    page still being edited keeps its files."""
+@dataclass(frozen=True)
+class FileUser:
+    """What names a kept file: a fixed page, a part of every page, or the look,
+    by its Store folder, so a fixed page called `footer` is not the footer."""
+    kind: str   # store.PAGES_FOLDER, store.FURNITURE_FOLDER or store.LOOK_FOLDER
+    name: str   # the page's or part's name; the look's is store.LOOK_FOLDER
+
+
+def files_named(folder: Path) -> dict[str, tuple[FileUser, ...]]:
+    """Each kept file a page names, and what names it (PRESS-0197 § 4.6): the
+    header, the footer, the menu, every fixed page, published and waiting, so
+    a page still being edited keeps its files, and the look."""
     folder = Path(folder)
-    named: dict[str, list[str]] = {}
-    texts: list[tuple[str, str, str]] = []
+    named: dict[str, list[FileUser]] = {}
+    texts: list[tuple[FileUser, str, str]] = []
     for waiting in (False, True):
         for name in store.FURNITURE_NAMES:
             path = store.html_path_for(folder, store.FURNITURE_FOLDER, name, waiting=waiting)
             if path.is_file():
-                texts.append((name, "index.html",
+                texts.append((FileUser(store.FURNITURE_FOLDER, name), "index.html",
                               store.read_html(path).replace("{{UP}}", "")))
         for name in store.list_html(folder, store.PAGES_FOLDER, waiting=waiting):
             path = store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=waiting)
-            relative = page_file(name)
-            texts.append((name, relative, store.read_html(path)))
+            texts.append((FileUser(store.PAGES_FOLDER, name), page_file(name),
+                          store.read_html(path)))
+    look = FileUser(store.LOOK_FOLDER, store.LOOK_FOLDER)
     style_code = store.read_style_code(folder)
     if style_code is not None:
-        texts.append((store.LOOK_FOLDER, STYLE_CODE, style_code))    # PRESS-0210 § 4.13
+        texts.append((look, STYLE_CODE, style_code))    # PRESS-0210 § 4.13
     extra = _extra_css(folder)
     if extra is not None:
-        texts.append((store.LOOK_FOLDER, EXTRA_CSS, extra))          # PRESS-0276 § 4.2
-    for page, relative, text in texts:
+        texts.append((look, EXTRA_CSS, extra))          # PRESS-0276 § 4.2
+    for user, relative, text in texts:
         for held in _held_files(folder, relative, text):
-            pages = named.setdefault(held, [])
-            if page not in pages:
-                pages.append(page)
-    return {held: tuple(pages) for held, pages in named.items()}
+            users = named.setdefault(held, [])
+            if user not in users:
+                users.append(user)
+    return {held: tuple(users) for held, users in named.items()}
 
 
 class _Build:

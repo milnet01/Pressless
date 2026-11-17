@@ -174,7 +174,8 @@ address is `builder.web_file(name)`, with `../` before it on a page in
 # src/pressless/builder.py — added
 ROOT_OUTPUT = (..., "files")
 def web_file(name: str) -> str: ...   # "files/" + quote(name, safe="")
-def files_named(folder: Path) -> dict[str, tuple[str, ...]]: ...  # name -> pages naming it
+class FileUser: kind: str; name: str   # frozen; kind is the Store folder
+def files_named(folder: Path) -> dict[str, tuple[FileUser, ...]]: ...  # name -> what names it
 ```
 
 - **What a page names** is every section's `src` or `href` that, read from
@@ -190,7 +191,9 @@ def files_named(folder: Path) -> dict[str, tuple[str, ...]]: ...  # name -> page
 - **`files_named`** reads the header, the footer and every fixed page, each
   both published and waiting (`store.WAITING_FOLDERS`), so a page still being
   edited keeps its files. `/files` and its removal use it; the build reads
-  the published copies alone.
+  the published copies alone. Each user carries its kind, so `/files` says
+  a part of every page or the look in words and a fixed page by its name,
+  even a page called `footer`.
 
 ### 4.7 A repository's own `files` folder
 

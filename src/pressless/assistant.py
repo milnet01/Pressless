@@ -411,7 +411,8 @@ class _Door:
         named = builder.files_named(folder)
         return {"photographs": [{"name": name, "address": builder.web_photograph(name)}
                                 for name in store.list_photographs(folder)],
-                "files": [{"name": name, "used_by": list(named.get(name, ()))}
+                "files": [{"name": name,
+                           "used_by": [user.name for user in named.get(name, ())]}
                           for name in store.list_files(folder)]}
 
     def _read_look(self) -> dict:

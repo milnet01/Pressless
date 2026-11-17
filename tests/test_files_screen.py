@@ -110,10 +110,10 @@ def test_a_refusal_shows_its_notices(tmp_path, monkeypatch):
     folder = _folder(tmp_path)
     _keep(folder, "used.pdf", PDF)
 
-    def noisy(_folder: Path) -> dict[str, tuple[str, ...]]:
+    def noisy(_folder: Path) -> dict[str, tuple[builder.FileUser, ...]]:
         warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
                                         mode="644"), stacklevel=2)
-        return {"used.pdf": ("gigs",)}
+        return {"used.pdf": (builder.FileUser(store.PAGES_FOLDER, "gigs"),)}
 
     monkeypatch.setattr(builder, "files_named", noisy)
     with _served(folder) as browser:
@@ -135,6 +135,26 @@ def test_the_menu_and_the_look_are_named_in_words(tmp_path):
     rows = {row.split("</td>")[0]: row for row in page.split("<tr><td>")[1:]}
     assert "the menu" in rows["menu.pdf"] and "navigation" not in rows["menu.pdf"]
     assert "the look" in rows["a.woff2"] and ">look<" not in rows["a.woff2"]
+
+
+def test_a_page_named_as_a_part_is_shown_by_its_name(tmp_path):
+    """PRESS-0197 § 4.6: a fixed page called header, footer, navigation or
+    look is shown by its own name, and the part of that name by the part's
+    words. Breaks when a user is told apart by its name alone."""
+    folder = _folder(tmp_path)
+    for part in ("header", "footer", "navigation", "look"):
+        _keep(folder, f"{part}.pdf", PDF)
+        store.write_html(folder, store.PAGES_FOLDER, part,
+                         f'<p><a href="../files/{part}.pdf">x</a></p>')
+    _keep(folder, "real.pdf", PDF)
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer",
+                     '<footer><a href="{{UP}}files/real.pdf">x</a></footer>')
+    with _served(folder) as browser:
+        page = browser.request("GET", "/files")[2]
+    rows = {row.split("</td>")[0]: row.split("</td>")[2] for row in page.split("<tr><td>")[1:]}
+    assert rows == {"footer.pdf": "<td>footer", "header.pdf": "<td>header",
+                    "look.pdf": "<td>look", "navigation.pdf": "<td>navigation",
+                    "real.pdf": "<td>the footer"}, rows
 
 
 def test_an_upload_is_kept_or_refused_in_words(tmp_path):

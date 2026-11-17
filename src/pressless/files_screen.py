@@ -34,10 +34,13 @@ SENTENCES[FileInUse] = Sentence(
     "failure.files_screen.FileInUse.next",
 )
 
-# What builder.files_named calls the furniture and the look, in words; any
-# other name is a fixed page's.
-_PART_WORDS = {"header": "files_screen.header", "footer": "files_screen.footer",
-               "navigation": "files_screen.navigation", store.LOOK_FOLDER: "files_screen.look"}
+# The parts of every page and the look, in words; a fixed page is shown by
+# its name.
+_PART_WORDS = {
+    builder.FileUser(store.FURNITURE_FOLDER, "header"): "files_screen.header",
+    builder.FileUser(store.FURNITURE_FOLDER, "footer"): "files_screen.footer",
+    builder.FileUser(store.FURNITURE_FOLDER, "navigation"): "files_screen.navigation",
+    builder.FileUser(store.LOOK_FOLDER, store.LOOK_FOLDER): "files_screen.look"}
 
 
 def register(face: Face, folder: Path) -> None:
@@ -54,10 +57,10 @@ def register(face: Face, folder: Path) -> None:
                    lambda name: store.file_path_for(folder, name))
 
 
-def _page_words(names: tuple[str, ...]) -> str:
+def _page_words(users: tuple[builder.FileUser, ...]) -> str:
     """The pages and parts builder.files_named gives, as the screen says them."""
-    return ", ".join(say(_PART_WORDS[name]) if name in _PART_WORDS else name
-                     for name in names)
+    return ", ".join(user.name if user.kind == store.PAGES_FOLDER else say(_PART_WORDS[user])
+                     for user in users)
 
 
 def _size(size: int) -> str:
@@ -69,7 +72,8 @@ def _size(size: int) -> str:
 
 
 def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
-    def read() -> tuple[tuple[str, ...], dict[str, tuple[str, ...]], dict[str, int]]:
+    def read() -> tuple[tuple[str, ...], dict[str, tuple[builder.FileUser, ...]],
+                        dict[str, int]]:
         kept = store.list_files(folder)
         sizes = {name: store.file_path_for(folder, name).stat().st_size for name in kept}
         return kept, builder.files_named(folder), sizes
@@ -82,7 +86,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     return render_notices(notices) + _page(kept, named, sizes, said)
 
 
-def _page(kept: tuple[str, ...], named: dict[str, tuple[str, ...]],
+def _page(kept: tuple[str, ...], named: dict[str, tuple[builder.FileUser, ...]],
           sizes: dict[str, int], said: str) -> str:
     e = html.escape
     rows = "".join(
