@@ -538,7 +538,9 @@ once the code exists.
 
 - **INV-8** — Writing one account's secret leaves the other's unchanged.
   *Test:* `tests/test_credentials.py::test_second_write_keeps_the_first` —
-  write two accounts through the file store, then read the first back.
+  write two accounts through the file store, then read the first back;
+  `::test_two_writes_at_once_keep_both` — a write and a delete each meet
+  another thread's write, and both secrets survive.
   *Breaks when:* the file is rebuilt from the one secret in hand, so setting
   up the dashboard discards the publishing key.
 
@@ -649,6 +651,8 @@ once the code exists.
   the warning in the setup instructions.
 - **Two Pressless windows write at once.** The last write wins, whole. §4.4's
   replace is what makes *whole* true; nothing here makes it *both*.
+- **Two requests in one window write at once.** The file store's read,
+  change and replace hold one lock, so each write keeps the other's secret.
 
 ## 7. Tests
 
@@ -757,7 +761,7 @@ exit code.
 | INV-6 | `tests/test_credentials.py::test_no_failure_names_the_secret`, which asserts all three clauses — the secret sentinel, the account, and the folder handed in — against every row of §4.3's table |
 | INV-6 against a store whose own message carries the secret | `tests/test_credentials.py::test_a_backend_that_quotes_the_secret_does_not_leak_it`, on the write side and the read side both |
 | INV-7 | `tests/test_credentials.py::test_choice_names_the_answering_store` |
-| INV-8 | `tests/test_credentials.py::test_second_write_keeps_the_first` |
+| INV-8 | `tests/test_credentials.py::test_second_write_keeps_the_first`, `::test_two_writes_at_once_keep_both` |
 | INV-9 | `tests/test_credentials.py::test_locked_store_is_not_an_absent_one` |
 | INV-10 | `tests/test_credentials.py::test_fallback_read_refuses_what_is_not_ours` |
 | INV-10 where the platform offers no `O_NOFOLLOW` and no owner to compare | **nothing, and nothing can** — §4.4 skips both checks there, so there is no refusal to observe. INV-2 removes the write side of that platform rather than checking it |
@@ -816,3 +820,4 @@ exit code.
 | 8 | 2026-10-03 | 2, cold — genre pinned `spec`; armed by PRESS-0141 (`safe_write`). Packet carried the write code of six modules, the import and retry tests, and PRESS-0001 §4.4 / §11. Windows unrunnable | 0 | 0 | 0 | 0 | **Converged: no finding.** Five open questions resolved clean. One pre-existing one is noted, not filed: whether INV-6's path rule reaches an `OSError` chained under a file-store `CredentialError`. |
 | 9 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0254 (`delete()`). Packet: `credentials.py`, the off handler, PRESS-0122 §4.2, the keyring chain's delete source. User budget: one loop. Lane B read a copy frozen before lane A's fixes landed | 1 | 2 | 1 | 1 | **Five verified, three fixed, two filed to PRESS-0256 as outside the amendment.** Both lanes: §4.2 says the load row drops its cause, and the code chains it (filed). Fixed: the delete table let a refused file and a file with no entry both match, so it now judges the file as `read()` does first; `delete()`'s failures now drop the cause (INV-6); INV-2 now covers `delete()` on Windows. Filed: the file store chains a path-bearing `OSError`. Resolved clean, not counted: KWallet's read raises `KeyringLocked` on a cancelled unlock, so asking first does catch a locked store (executed). The fixes are read by no lane; implementation reads them |
 | 10 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0256 (INV-13). Packet: `credentials.py`, `face.details_for`, `log.note`, the INV-6 test, design.md § Logging, a probe of INV-13's routes. User budget: one loop | 2 | 2 | 0 | 0 | **Four verified, four fixed, none dismissed.** Both lanes: `from None` suppresses the context and does not clear `__context__`, so "carries" overstated what INV-13 tests; the rule now says no traceback prints it. Both: "a bare `raise`" named a harmless re-raise as the defect. One: §7 let INV-13 skip its Windows route. Mine, before dispatch: the rolling log does not print a chain (`log.note` takes a string), so that reason was false. Calm cap; all four inside the armed span. The fixes are read by no lane; implementation reads them |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: the file store's read, change and replace hold one lock (§ 6, INV-8's test). |

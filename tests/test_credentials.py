@@ -562,6 +562,51 @@ def test_second_write_keeps_the_first(tmp_path, monkeypatch):
     assert read("file", tmp_path, "analytics") == "the-google-one"
 
 
+def test_two_writes_at_once_keep_both(tmp_path, monkeypatch):
+    """INV-8 and INV-12 across threads: the Face serves each request on its
+    own thread, so a sign-in's renewal, or a delete, and another account's
+    write can meet.
+
+    The first call's read is held open while a second thread writes another
+    account; the second is given time to finish before the first goes on.
+
+    Breaks when the file's read, change and replace run unlocked, in write()
+    or in delete(): the first call replaces the file with what it read, and
+    the second account's secret is lost.
+    """
+    _require_posix_modes(tmp_path)
+    _not_windows(monkeypatch)
+    real = credentials_module._read_mapping
+    first_calls = {
+        "write": lambda folder: write("file", folder, "publishing-key", "the-renewed-one"),
+        "delete": lambda folder: delete("file", folder, "publishing-key"),
+    }
+    for name, first_call in first_calls.items():
+        folder = tmp_path / name
+        folder.mkdir()
+        write("file", folder, "publishing-key", "the-github-one")
+        others: list[threading.Thread] = []
+
+        def read_while_another_writes(target, folder=folder, others=others):
+            found = real(target)
+            if not others:
+                other = threading.Thread(target=write, daemon=True, args=(
+                    "file", folder, "analytics", "the-google-one"))
+                others.append(other)
+                other.start()
+                other.join(timeout=0.5)
+            return found
+
+        with monkeypatch.context() as patched:
+            patched.setattr(credentials_module, "_read_mapping", read_while_another_writes)
+            first_call(folder)
+            others[0].join(timeout=5)
+        assert not others[0].is_alive(), name
+        assert read("file", folder, "analytics") == "the-google-one", (
+            f"a {name} running beside a write lost that write's secret"
+        )
+
+
 def test_locked_store_is_not_an_absent_one(monkeypatch):
     """INV-9: choose() reads NoKeyringError as 'no store' and every other
     exception as 'a store that cannot be relied on'.

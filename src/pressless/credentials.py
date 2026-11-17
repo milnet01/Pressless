@@ -1,4 +1,4 @@
-"""Credentials — where the two secrets are kept, and how they are reached.
+"""Credentials — where the secrets are kept, and how they are reached.
 
 The contract is docs/specs/PRESS-0002-credentials.md. This module imports no
 other part of Pressless (§5 INV-1): it is handed the store name, the folder
@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,7 +24,7 @@ import keyring.errors
 import pressless.safe_write as safe_write
 from pressless.safe_write import write_whole
 
-SERVICE = "Pressless"            # what both secrets are filed under in the store
+SERVICE = "Pressless"            # what every secret is filed under in the store
 PROBE = "pressless-store-probe"  # the account choose() round-trips; never a secret
 FILE_NAME = "credentials.json"   # the fallback file, in Pressless's own folder
 FILE_VERSION = 1
@@ -34,6 +35,12 @@ _PROBE_VALUE = "pressless-store-probe-value"
 
 _FILE = "file"
 _KEYRING = "keyring"
+
+# The file store's read, change and replace, one at a time. The Face serves
+# each request on its own thread, so without it two writes for different
+# accounts each replace the file with what they read, and one secret is lost
+# (INV-8). Two Pressless windows are §6's case, and this does not reach them.
+_FILE_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -326,6 +333,11 @@ def _secrets(raw: dict, *, writing: bool = False) -> dict:
 
 
 def _delete_file(folder: Path, account: str) -> None:
+    with _FILE_LOCK:
+        _delete_file_unlocked(folder, account)
+
+
+def _delete_file_unlocked(folder: Path, account: str) -> None:
     target = folder / FILE_NAME
     raw = _read_mapping(target)
     if raw is None:
@@ -334,7 +346,7 @@ def _delete_file(folder: Path, account: str) -> None:
     secrets = _secrets(raw)
     if account not in secrets:
         return
-    # Rewriting the file writes the other secret to a file (§3 decision 1).
+    # Rewriting the file writes the other secrets to a file (§3 decision 1).
     if _is_windows():
         raise NoStore(
             "Pressless will not keep a secret in a file on Windows, so it will "
@@ -358,8 +370,12 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
             "readable by anyone on this PC"
         )
 
-    target = folder / FILE_NAME
-    # Read first and replace one entry, so the other secret survives (§4.4).
+    with _FILE_LOCK:
+        _replace_entry(folder / FILE_NAME, account, secret)
+
+
+def _replace_entry(target: Path, account: str, secret: str) -> None:
+    # Read first and replace one entry, so the other secrets survive (§4.4).
     carried = _read_mapping(target) or {}
     # Judged as read() judges it, so a file read() refuses is never saved
     # over: not relabelled (PRESS-0053), nor its `secrets` replaced
