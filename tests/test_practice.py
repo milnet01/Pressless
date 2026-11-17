@@ -18,11 +18,11 @@ from pressless import (
     github_signin,
     google_signin,
     https,
+    insights,
     publisher,
     settings,
     updater,
     usage,
-    youtube,
 )
 from pressless_import import fetch
 
@@ -121,7 +121,8 @@ _URL = "https://example.invalid/"
 _ROUTES = {
     "shared client: GitHub, Google, votes": lambda: https.Client(5).request("GET", _URL, None, {}),
     "Publish": lambda: publisher._Urllib().request("GET", _URL, None, {}),
-    "YouTube": lambda: youtube._own_client().request("GET", _URL, None, {}),
+    "Insights' own client: Analytics, YouTube":
+        lambda: insights.own_client().request("GET", _URL, None, {}),
     "usage reports": lambda: usage._Opener().request("POST", _URL, b"{}", {}),
     "the Updater": lambda: updater._Urllib().open(_URL),
     "Import's name look-up": lambda: fetch.addresses("example.invalid", 443),

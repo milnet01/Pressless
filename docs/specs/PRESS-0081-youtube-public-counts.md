@@ -23,7 +23,7 @@ nothing about writing or publishing depends on them.
 1. **Insights reads one service.** `insights.read` asks Google Analytics alone.
    `docs/design.md` rule 8 already allows a second service, with one cache file
    per service (PRESS-0079).
-2. **The dashboard page needs an Analytics sign-in.** `dashboard._set_up` is false
+2. **The dashboard page needs an Analytics sign-in.** `dashboard.set_up` is false
    without `analytics_property_id` and `google_account`, and `dashboard._show` then
    shows nothing else. A channel must not need either.
 3. **Settings has nowhere for it.** `settings.Credentials` names two secrets, and
@@ -78,11 +78,11 @@ it keeps `votes`.
 
 ### 4.2 The part: `src/pressless/youtube.py`
 
-The second file of Insights (rule 8). It imports `Transport`, `_own_client`,
-`_within`, `_detail`, `DEFAULT_MAX_AGE` and `InsightsError` from `insights`. Its failures
-are its own, because `face.sentence_for` finds a sentence by exact type, and Insights'
-sentences say Google and to sign in. `youtube_screen` adds theirs to `face.SENTENCES`, as
-`sites_screen` does for `sitefile`:
+The second file of Insights (rule 8). It imports `Transport`, `DEFAULT_MAX_AGE`
+and `InsightsError` from `insights`, and calls `insights.own_client`, `within` and
+`detail`. Its failures are its own, because `face.sentence_for` finds a sentence by
+exact type, and Insights' sentences say Google and to sign in. `youtube_screen` adds
+theirs to `face.SENTENCES`, as `sites_screen` does for `sitefile`:
 
 ```python
 class YouTubeError(InsightsError): ...
@@ -156,7 +156,7 @@ raises `YouTubeError`.
 
 **Failures.** No answer raises `Unreachable`. 400, 401 and 403 raise `Refused`, except
 that a 429, or a 403 whose body holds `quotaExceeded`, raises `RateLimited`. The rest raise
-`YouTubeError`. Each carries `insights._detail`. Reading the body breaks that
+`YouTubeError`. Each carries `insights.detail`. Reading the body breaks that
 function's "never parsed for meaning" on purpose: a wrong match still shows YouTube's
 own words, and the writer needs to know whether to fix the key or wait.
 

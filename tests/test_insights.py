@@ -1541,8 +1541,8 @@ def test_detail_is_capped_at_a_held_length(tmp_path):
     constant could be raised and the test would raise with it and stay
     green -- the trap CLAUDE.md records for FILE_NAME in test_settings.py.
 
-    Breaks when insights.py::_detail (line 360) drops "[:DETAIL_LIMIT]" and
-    returns the decoded body whole, or when DETAIL_LIMIT itself (line 56) is
+    Breaks when insights.detail drops "[:DETAIL_LIMIT]" and
+    returns the decoded body whole, or when DETAIL_LIMIT itself is
     raised.
     """
     detail_limit = 500  # a hand-held copy of insights.DETAIL_LIMIT

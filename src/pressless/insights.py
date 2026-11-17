@@ -213,7 +213,7 @@ class _Urllib(https.Client):
         return time.time()
 
 
-def _own_client() -> Transport:
+def own_client() -> Transport:
     """The module's client, or one whose every request is "no answer".
 
     Built only once the cache cannot answer; a packaged program missing its
@@ -259,7 +259,7 @@ def forget(folder: Path) -> None:
     cache_path(folder).unlink(missing_ok=True)
 
 
-def _within(target: Path, folder: Path) -> bool:
+def within(target: Path, folder: Path) -> bool:
     """Whether `target` really sits inside `folder`, itself included.
 
     Both sides resolved, so a symlink compares as what it points at -- the
@@ -296,7 +296,7 @@ def read(settings: Settings, token: str, folder: Path, *,
         )
 
     folder = Path(folder)
-    if _within(folder, Path(settings.site_folder)):
+    if within(folder, Path(settings.site_folder)):
         # The header's rule, enforced rather than asserted. The site folder is
         # published in full, so a cache kept inside it would put country-level
         # readership on a public site (PRESS-0056).
@@ -323,7 +323,7 @@ def read(settings: Settings, token: str, folder: Path, *,
         if 0.0 <= age < max_age_seconds:
             return cached
 
-    transport = client if client is not None else _own_client()
+    transport = client if client is not None else own_client()
 
     try:
         report = _fetch(transport, property_id, token, days)
@@ -450,15 +450,15 @@ def _failure(status: int, data: bytes = b"") -> InsightsError:
     being what Google returns for a valid token pointed at somebody else's
     property.
     """
-    detail = _detail(data)
+    said = detail(data)
     if status in (401, 403):
-        return Refused(f"Google refused the authorisation ({status})", detail)
+        return Refused(f"Google refused the authorisation ({status})", said)
     if status == 429:
-        return RateLimited("Google asked us to slow down", detail)
-    return InsightsError(f"Google answered {status}", detail)
+        return RateLimited("Google asked us to slow down", said)
+    return InsightsError(f"Google answered {status}", said)
 
 
-def _detail(data: bytes) -> str | None:
+def detail(data: bytes) -> str | None:
     """Google's own words about what it rejected, capped.
 
     Never parsed for meaning: an error body is not a contract, and a failure

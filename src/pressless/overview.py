@@ -190,13 +190,13 @@ def _visitors(face: Face, folder: Path) -> str:
         saved = settings.load(folder)
     except (settings.NotSetUp, settings.SettingsError):
         saved = None
-    if saved is None or not dashboard._set_up(saved):
+    if saved is None or not dashboard.set_up(saved):
         figures = say("overview.visitors.not_set_up")
     else:
         kept = insights.kept(folder, dashboard.DEFAULT_DAYS)
         figures = (say("overview.visitors.none_yet") if kept is None else say(
-            "overview.visitors.read", people=dashboard._people(kept.people),
-            window=dashboard._sentence(dashboard.DEFAULT_DAYS)))
+            "overview.visitors.read", people=dashboard.people(kept.people),
+            window=dashboard.sentence(dashboard.DEFAULT_DAYS)))
     return _tile("face.visitors", figures, _link(dashboard.PAGE, "overview.open_visitors"))
 
 

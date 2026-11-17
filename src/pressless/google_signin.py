@@ -96,7 +96,7 @@ def available() -> bool:
 
 def begin(redirect_uri: str, client: Transport | None = None) -> tuple[Attempt, str]:
     """A new attempt and the address of Google's sign-in page. No request."""
-    transport = client if client is not None else insights._own_client()
+    transport = client if client is not None else insights.own_client()
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(
@@ -123,7 +123,7 @@ def finish(attempt: Attempt, query: dict[str, str],
     Every check runs before any request (INV-3): a code that came back for
     some other attempt is never sent to Google.
     """
-    transport = client if client is not None else insights._own_client()
+    transport = client if client is not None else insights.own_client()
     if not hmac.compare_digest(query.get("state", ""), attempt.state):
         raise Expired("the sign-in came back for a different attempt")
     if not 0.0 <= transport.now() - attempt.started < ATTEMPT_SECONDS:
@@ -149,7 +149,7 @@ def access_token(refresh_token: str, client: Transport | None = None, *,
                  clock: Callable[[], float] = time.monotonic) -> AccessToken:
     """A fresh access token for the saved sign-in. Its end is timed by
     `clock`, which a change to the computer's time cannot move back."""
-    transport = client if client is not None else insights._own_client()
+    transport = client if client is not None else insights.own_client()
     asked = clock()
     answer = _post(transport, TOKEN_URL, {
         "client_id": CLIENT_ID,
@@ -167,7 +167,7 @@ def access_token(refresh_token: str, client: Transport | None = None, *,
 def properties(token: str, client: Transport | None = None) -> tuple[Property, ...]:
     """The Analytics properties the signed-in account can see, in Google's
     order, following at most PAGE_LIMIT pages (INV-8)."""
-    transport = client if client is not None else insights._own_client()
+    transport = client if client is not None else insights.own_client()
     found: list[Property] = []
     page_token = ""
     for _ in range(PAGE_LIMIT):
@@ -200,7 +200,7 @@ def measurement_ids(token: str, property_id: str, site_address: str,
     """PRESS-0199 § 4.3: the measurement ids of the property's web streams,
     following at most PAGE_LIMIT pages. Where one stream measures the site's
     own host, ignoring case and a leading www., its id alone."""
-    transport = client if client is not None else insights._own_client()
+    transport = client if client is not None else insights.own_client()
     host = _host(site_address)
     found: list[tuple[str, str]] = []
     page_token = ""
@@ -235,7 +235,7 @@ def _host(address: str) -> str:
 def revoke(refresh_token: str, client: Transport | None = None) -> None:
     """Tell Google to forget the sign-in. A 200 is the whole answer; its body
     is not read."""
-    transport = client if client is not None else insights._own_client()
+    transport = client if client is not None else insights.own_client()
     body = urllib.parse.urlencode({"token": refresh_token}).encode("ascii")
     status, data = _request(transport, "POST", REVOKE_URL, body, dict(_FORM), (refresh_token,))
     if status != 200:

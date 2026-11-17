@@ -57,7 +57,7 @@ class _State:
         self.held: AccessToken | None = None
 
     def transport(self) -> insights.Transport:
-        return self.client if self.client is not None else insights._own_client()
+        return self.client if self.client is not None else insights.own_client()
 
 
 _state: _State | None = None

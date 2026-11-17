@@ -33,7 +33,7 @@ from pressless.words import say
 PAGE = "/visitors"
 
 # (days, the button's key, the sentence's key). 28 is Insights' default,
-# and DEFAULT_DAYS must be one of these: _sentence finds no key otherwise.
+# and DEFAULT_DAYS must be one of these: sentence finds no key otherwise.
 WINDOWS = (
     (7, "dashboard.window.7", "dashboard.window.7.phrase"),
     (28, "dashboard.window.28", "dashboard.window.28.phrase"),
@@ -43,7 +43,7 @@ DEFAULT_DAYS = insights.DEFAULT_DAYS
 
 # Theme colours only, so the page follows whichever look he picked. One
 # movement: the bars grow in once, and not at all where motion is turned down.
-_STYLE = """<style>
+STYLE = """<style>
 .face .windows a, .face .windows strong { margin-right: 1rem; }
 .face .visitors-count { font-size: 1.35rem; margin: .5rem 0 0; display: flex;
   align-items: baseline; flex-wrap: wrap; gap: .2rem .7rem; }
@@ -118,11 +118,11 @@ def _days(raw: str) -> int:
     return days if any(days == window[0] for window in WINDOWS) else DEFAULT_DAYS
 
 
-def _sentence(days: int) -> str:
+def sentence(days: int) -> str:
     return say(next(key for count, _, key in WINDOWS if count == days))
 
 
-def _set_up(saved: settings.Settings) -> bool:
+def set_up(saved: settings.Settings) -> bool:
     return bool(saved.analytics_property_id) and saved.credentials.google_account is not None
 
 
@@ -134,7 +134,7 @@ def figures(folder: Path, days: int, *, client: insights.Transport | None = None
     NotConfigured where the dashboard was never set up."""
     days = _days(str(days))
     saved = settings.load(folder)
-    if not _set_up(saved):
+    if not set_up(saved):
         raise insights.NotConfigured(
             "no Analytics property id or no Google sign-in in Settings")
     token = _token(folder, days)
@@ -174,10 +174,10 @@ def _show(face: Face, folder: Path, request: Request,
           client: insights.Transport | None) -> str:
     days = _days(request.query.get("days", ""))
     saved, shown = loaded_settings(face, folder)
-    head = _STYLE + f'<h1>{say("dashboard.title")}</h1>'
+    head = STYLE + f'<h1>{say("dashboard.title")}</h1>'
     if saved is None:
         return shown + head + f'<p>{say("setup.first")}</p>'
-    if not _set_up(saved):
+    if not set_up(saved):
         return shown + head + f'<p>{say("dashboard.off", page=google_setup.PAGE)}</p>'
     head += _windows(days)
     try:
@@ -214,18 +214,18 @@ def _windows(days: int) -> str:
 
 
 def _report(report: insights.Report, address: str = "") -> str:
-    fetched = _when(report.fetched_at)
+    fetched = when(report.fetched_at)
     if report.stale:
-        when = f'<p>{say("dashboard.stale", when=fetched)}</p>'
+        updated = f'<p>{say("dashboard.stale", when=fetched)}</p>'
     else:
-        when = f'<p>{say("dashboard.updated", when=fetched)}</p>'
-    window = _sentence(report.days)
+        updated = f'<p>{say("dashboard.updated", when=fetched)}</p>'
+    window = sentence(report.days)
     if report.people == 0:
         count = say("dashboard.count.none", window=window)
     else:
         key = "dashboard.count.one" if report.people == 1 else "dashboard.count.many"
         count = say(key, count=f"{report.people:,}", window=window)
-    page = f'<p class="visitors-count">{count}</p>' + _strip(report.daily) + when
+    page = f'<p class="visitors-count">{count}</p>' + _strip(report.daily) + updated
     cards = [_countries(report.countries), _regions(report.regions), _sources(report.sources),
              _pages(report.pages, address)]
     return page + '<div class="reading">' + "".join(cards) + "</div>"
@@ -239,7 +239,7 @@ def _strip(days: tuple[insights.Day, ...]) -> str:
     bars = []
     for i, day in enumerate(days):
         tip = say("dashboard.day", day=_day_name(day.label),
-                  people=_people(day.people) if day.people else say("dashboard.nobody"))
+                  people=people(day.people) if day.people else say("dashboard.nobody"))
         none = ' class="none"' if day.people == 0 else ""
         bars.append(f'<li{none} tabindex="0" data-tip="{html.escape(tip, quote=True)}" '
                     f'aria-label="{html.escape(tip, quote=True)}" '
@@ -265,7 +265,7 @@ def _meter(value: int, top: int) -> str:
     return f'<span class="meter"><i style="--w:{100 * value / (top or 1):.1f}%"></i></span>'
 
 
-def _panel(title: str, head: str, rows: str, cards_when_narrow: bool = False) -> str:
+def panel(title: str, head: str, rows: str, cards_when_narrow: bool = False) -> str:
     """A ranked table in a card. `cards_when_narrow` widens the card and, on a
     narrow screen, turns each row into a card of its own (the `.pages` rules),
     which names each number by its cell's `data-label`: give every number
@@ -284,7 +284,7 @@ def _countries(countries: tuple[insights.Country, ...]) -> str:
         f"<tr><td>{_flag(country.code)}{html.escape(_name(country.code))}"
         f"{_meter(country.people, top)}</td><td class=\"num\">{country.people:,}</td></tr>"
         for country in countries)
-    return _panel(say("dashboard.where"),
+    return panel(say("dashboard.where"),
                  f'<th scope="col">{say("dashboard.country")}</th>'
                  f'<th scope="col" class="num">{say("dashboard.people")}</th>', rows)
 
@@ -297,7 +297,7 @@ def _regions(regions: tuple[insights.Region, ...]) -> str:
         f"<tr><td>{_flag(region.country)}{html.escape(region.name)}"
         f"{_meter(region.people, top)}</td><td class=\"num\">{region.people:,}</td></tr>"
         for region in regions)
-    return _panel(say("dashboard.where_within"),
+    return panel(say("dashboard.where_within"),
                   f'<th scope="col">{say("dashboard.region")}</th>'
                   f'<th scope="col" class="num">{say("dashboard.people")}</th>', rows)
 
@@ -332,7 +332,7 @@ def _sources(sources: tuple[insights.Source, ...]) -> str:
         rows.append(f"<tr><td>{how}{detail}{_meter(source.visits, top)}</td>"
                     f'<td class="num">{source.visits:,}</td>'
                     f'<td class="num">{source.people:,}</td></tr>')
-    return _panel(say("dashboard.how"),
+    return panel(say("dashboard.how"),
                  f'<th scope="col">{say("dashboard.came_from")}</th>'
                  f'<th scope="col" class="num">{say("dashboard.visits")}</th>'
                  f'<th scope="col" class="num">{say("dashboard.people")}</th>', "".join(rows))
@@ -345,7 +345,7 @@ def _pages(pages: tuple[insights.Page, ...], address: str) -> str:
     base = address.rstrip("/")
     rows = []
     views = html.escape(say("dashboard.views"), quote=True)
-    people = html.escape(say("dashboard.people"), quote=True)
+    readers = html.escape(say("dashboard.people"), quote=True)
     spent = html.escape(say("dashboard.time_on_page"), quote=True)
     for page in pages:
         shown = html.escape(page.path)
@@ -353,13 +353,13 @@ def _pages(pages: tuple[insights.Page, ...], address: str) -> str:
                 f'rel="noopener">{shown}</a>' if base and page.path.startswith("/") else shown)
         rows.append(f"<tr><td>{link}{_meter(page.views, top)}</td>"
                     f'<td class="num" data-label="{views}">{page.views:,}</td>'
-                    f'<td class="num" data-label="{people}">{page.people:,}</td>'
+                    f'<td class="num" data-label="{readers}">{page.people:,}</td>'
                     f'<td class="num" data-label="{spent}">'
                     f"{_duration(page.seconds)}</td></tr>")
-    return _panel(say("dashboard.what"),
+    return panel(say("dashboard.what"),
                  f'<th scope="col">{say("dashboard.page")}</th>'
                  f'<th scope="col" class="num">{views}</th>'
-                 f'<th scope="col" class="num">{people}</th>'
+                 f'<th scope="col" class="num">{readers}</th>'
                  f'<th scope="col" class="num">{spent}</th>', "".join(rows),
                   cards_when_narrow=True)
 
@@ -374,13 +374,13 @@ def _duration(seconds: float) -> str:
     return say("dashboard.seconds", seconds=str(rest))
 
 
-def _people(count: int) -> str:
+def people(count: int) -> str:
     if count == 1:
         return say("dashboard.people.one")
     return say("dashboard.people.many", count=f"{count:,}")
 
 
-def _when(moment: float) -> str:
+def when(moment: float) -> str:
     local = time.localtime(moment)
     return say("dashboard.when", date=time.strftime("%d %b %Y", local),
                clock=time.strftime("%H:%M", local))

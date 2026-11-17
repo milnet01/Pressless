@@ -16,7 +16,7 @@ import urllib.parse
 from pathlib import Path
 
 from pressless import insights
-from pressless.insights import DEFAULT_MAX_AGE, InsightsError, Transport, _detail, _own_client
+from pressless.insights import DEFAULT_MAX_AGE, InsightsError, Transport
 from pressless.safe_write import write_whole
 
 API = "https://www.googleapis.com/youtube/v3/"
@@ -96,7 +96,7 @@ def parse_channel(text: str) -> str:
 
 def check(channel: str, key: str, *, client: Transport | None = None) -> str:
     """The channel's title, or the failure a read would give."""
-    return _channel(client if client is not None else _own_client(), channel, key)["title"]
+    return _channel(client if client is not None else insights.own_client(), channel, key)["title"]
 
 
 def read(channel: str, key: str, folder: Path, site_folder: Path, *,
@@ -105,7 +105,7 @@ def read(channel: str, key: str, folder: Path, site_folder: Path, *,
     YouTube, else the kept ones marked stale. A refused key and a lost channel
     raise past the cache, as the writer has something to fix."""
     folder = Path(folder)
-    if insights._within(folder, Path(site_folder)):
+    if insights.within(folder, Path(site_folder)):
         raise YouTubeError("the cache folder is inside the site folder, which is published "
                            "in full, so the cache may not be kept there")
     now = client.now() if client is not None else time.time()
@@ -113,7 +113,7 @@ def read(channel: str, key: str, folder: Path, site_folder: Path, *,
     if held is not None and 0.0 <= now - held.fetched_at < max_age_seconds:
         return held
     try:
-        report = _fetch(client if client is not None else _own_client(), channel, key)
+        report = _fetch(client if client is not None else insights.own_client(), channel, key)
     except (Refused, ChannelNotFound):
         raise
     except InsightsError:
@@ -257,10 +257,10 @@ def _get(transport: Transport, method: str, query: dict[str, str], key: str) -> 
 
 
 def _failure(status: int, data: bytes) -> YouTubeError:
-    """Reading the body breaks `insights._detail`'s rule on purpose: quota and a
+    """Reading the body breaks `insights.detail`'s rule on purpose: quota and a
     bad key are both 403s, and they ask different things of the writer. A wrong
     match still shows YouTube's own words."""
-    detail = _detail(data)
+    detail = insights.detail(data)
     if status == 429 or (status == 403 and b"quotaExceeded" in data):
         return RateLimited("YouTube's allowance for the day is used up", detail)
     if status in (400, 401, 403):

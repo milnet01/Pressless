@@ -51,7 +51,7 @@ def _set_up(saved: settings.Settings) -> bool:
 
 
 def _head() -> str:
-    return dashboard._STYLE + f"<h1>{say('youtube.title')}</h1>"
+    return dashboard.STYLE + f"<h1>{say('youtube.title')}</h1>"
 
 
 def _back() -> str:
@@ -71,7 +71,7 @@ def _card(face: Face, folder: Path) -> str:
         line = say("youtube.card.ask", page=PAGE)
     else:
         line = say("youtube.card.read", title=html.escape(held.title), views=f"{held.views:,}",
-                   when=dashboard._when(held.fetched_at), page=PAGE)
+                   when=dashboard.when(held.fetched_at), page=PAGE)
     return f'<section class="card"><h2>{say("youtube.title")}</h2><p>{line}</p></section>'
 
 
@@ -97,7 +97,7 @@ def _show(face: Face, folder: Path, client: insights.Transport | None) -> str:
 
 def _report(report: youtube.Report) -> str:
     e = html.escape
-    when = dashboard._when(report.fetched_at)
+    when = dashboard.when(report.fetched_at)
     fresh = say("youtube.stale" if report.stale else "youtube.updated", when=when)
     subscribers = (say("youtube.hidden") if report.subscribers is None
                    else say("youtube.about", count=f"{report.subscribers:,}"))
@@ -138,7 +138,7 @@ def _videos(videos: tuple[youtube.Video, ...]) -> str:
     head = (f'<th scope="col">{say("youtube.video")}</th>'
             + "".join(f'<th scope="col" class="num">{labels[name]}</th>'
                       for name in ("published", "views", "likes", "comments")))
-    return dashboard._panel(say("youtube.table"), head, "".join(rows),
+    return dashboard.panel(say("youtube.table"), head, "".join(rows),
                             cards_when_narrow=True)
 
 

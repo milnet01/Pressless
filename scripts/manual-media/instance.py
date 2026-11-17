@@ -78,7 +78,7 @@ def main() -> None:
         seed(sites.open_site(kit.INSTANCE))
     practice.disarm()
     publisher._Urllib = lambda: test_publishing._github()
-    insights._own_client = demo_google.Google
+    insights.own_client = demo_google.Google
     google_signin.CLIENT_ID = "demo.apps.googleusercontent.com"
     google_signin.CLIENT_SECRET = "demo"  # noqa: S105 -- not a secret
     google_signin.available = lambda: True
