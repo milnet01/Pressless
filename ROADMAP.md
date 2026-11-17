@@ -8205,6 +8205,10 @@ does not wait on them.
   says such a page is demoted; PRESS-0015 INV-7 and the code keep it.
   A product decision for the user, then one document or the code
   follows.
+  User decision 2026-11-17: Undo takes a fixed page the fetched state
+  lacks off the site and keeps it as a draft, as it does an entry;
+  design.md is right, and PRESS-0015 § 4.4 and INV-7 change for pages.
+  Templates and furniture files have no drafts and stay as INV-7 says.
   **Layman:** When you undo a publish, decide whether a page that wasn't on the site before should come off it.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
