@@ -96,7 +96,7 @@ _LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
 # ------------------------------------------- the sections (PRESS-0260 § 4.5) ---
 
 
-def _paths(page: blocks.Page) -> dict[tuple[int, ...], blocks.Section]:
+def section_paths(page: blocks.Page) -> dict[tuple[int, ...], blocks.Section]:
     """Every section of `page` by its path: (i,) at the top, (i, c, j) inside."""
     found: dict[tuple[int, ...], blocks.Section] = {}
     for at, section in enumerate(page.sections):
@@ -119,7 +119,7 @@ def outline(page: blocks.Page) -> list[dict]:
     """§ 4.2: every section's path, kind and fields, in order, marked or not. A
     marked code section carries its HTML without its two marks."""
     shown = []
-    for path, section in _paths(page).items():
+    for path, section in section_paths(page).items():
         item = {"path": list(path), "kind": section.kind, "marked": _marked(section),
                 "fields": dict(section.fields), "parts": len(section.parts)}
         # PRESS-0216 § 4.2: words holding a Builder placeholder are shown as
@@ -137,7 +137,7 @@ def outline(page: blocks.Page) -> list[dict]:
 _AREAS = {"header": "header", "footer": "footer"}
 
 
-def _area(kind: str, name: str, text: str) -> str | None:
+def sections_area(kind: str, name: str, text: str) -> str | None:
     """The file with a sections area: as it is, or adopted in memory (§ 4.1
     step 2). None where Blocks finds no area to make; BuildStopped where the
     furniture markers do not pair."""
@@ -149,7 +149,7 @@ def _area(kind: str, name: str, text: str) -> str | None:
     return blocks.adopt(text, builder.furniture_spans(name, text), element)
 
 
-def _is_menu(kind: str, name: str) -> bool:
+def is_menu(kind: str, name: str) -> bool:
     """Whether the file is the menu, whose visual view is its list of links
     (PRESS-0216 § 4.4)."""
     return kind == store.FURNITURE_FOLDER and name == "navigation"
@@ -169,7 +169,7 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
     page = blocks.read(name, text)
     if page is None or not isinstance(posted, list) or not isinstance(removed, list):
         raise SectionsUnreadable(f"the save of {name} does not name its sections")
-    held = _paths(page)
+    held = section_paths(page)
     kept: list[tuple[int, ...]] = []
 
     def built(item: object) -> blocks.Section:
@@ -318,7 +318,7 @@ def _show(folder: Path, kind: str, name: str, asked: str) -> str | None:
     return held[0] if held else None
 
 
-def _read(folder: Path, kind: str, name: str) -> tuple[Path, bool]:
+def current_file(folder: Path, kind: str, name: str) -> tuple[Path, bool]:
     """§ 4.5: the waiting copy where one exists, else the live file."""
     copy = store.html_path_for(folder, kind, name, waiting=True)
     if copy.is_file():
@@ -344,7 +344,7 @@ def _preview(face: Face, folder: Path, kind: str, name: str, text: str,
     return editor.PREVIEW_ADDRESS + relative, None
 
 
-def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
+def write_copy(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     """§ 4.6 steps 1 to 4, and PRESS-0260 § 4.5 for the visual view: write the
     waiting copy, and return the file written and its digest. Takes no lock;
     the caller holds LOCK."""
@@ -361,14 +361,14 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     text = store.read_html(path)
     if _view(form.get("view", "")) == CODE:
         new = put_code(text, form.get("text", ""))
-    elif _is_menu(kind, name):
+    elif is_menu(kind, name):
         try:
             posted = json.loads(form.get("links", ""))
         except ValueError:
             raise menu.Refused("the menu save does not list its links") from None
         new = menu.arranged(text, posted)
     else:
-        adopted = _area(kind, name, text)
+        adopted = sections_area(kind, name, text)
         if adopted is None:
             raise SectionsUnreadable(f"the page {name} has no sections area to save into")
         try:
@@ -411,7 +411,7 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
     """§ 4.5 and PRESS-0285 § 4.1: read the file, decide the view it can have,
     and build its preview. Writes nothing, and raises `store.StoreError`. Takes
     no lock; the caller holds LOCK and captures the notices."""
-    path, waiting = _read(folder, kind, name)
+    path, waiting = current_file(folder, kind, name)
     text = store.read_html(path)
     base = editor.digest(path)
     show = _show(folder, kind, name, asked_show)
@@ -425,7 +425,7 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
         builder.furniture_spans(name, text)
     except builder.BuildStopped as exc:
         view, broken = CODE, face.fail(exc, publishing=False)
-    if view == VISUAL and _is_menu(kind, name):
+    if view == VISUAL and is_menu(kind, name):
         try:
             links = menu.links(text)
         except menu.Unusual:
@@ -433,7 +433,7 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
             notices.append(say("notice.page_editor.menu_code_only"))
     elif view == VISUAL:
         # PRESS-0260 § 4.1: adopted in memory only; nothing is written.
-        shown = _area(kind, name, text)
+        shown = sections_area(kind, name, text)
         if shown is None:
             view, shown = CODE, text
             notices.append(say("notice.page_editor.furniture_code_only"
@@ -531,7 +531,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
     (PRESS-0285 § 4.3)."""
     view, show, waiting, base, held = (opened.view, opened.show, opened.waiting,
                                        opened.base, opened.held)
-    menu_file = _is_menu(kind, name)
+    menu_file = is_menu(kind, name)
 
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
@@ -741,7 +741,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 def _shape(kind: str, name: str, text: str) -> dict:
     """What a visual view's script holds of the file just written: the menu's
     links, or the sections."""
-    if _is_menu(kind, name):
+    if is_menu(kind, name):
         return {"links": menu.links(text)}
     return {"sections": outline(blocks.read(name, text))}
 
@@ -784,7 +784,7 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
     visual = _view(form.get("view", "")) == VISUAL
     with lock, face.capture() as notices:
         try:
-            new, base = _write(folder, form)
+            new, base = write_copy(folder, form)
         except _REFUSED as exc:
             failure: Exception | None = exc
         else:
@@ -854,10 +854,10 @@ def press_page(folder: Path, form: dict[str, str], *,
                notices: list | None = None,
                transport: publisher.Transport | None = None) -> publishing.Published:
     """§ 4.7's press: write the form's waiting copy, then publish it. Raises
-    what `_write` refuses with, or what the publish raises. The caller holds
+    what `write_copy` refuses with, or what the publish raises. The caller holds
     editor.LOCK (PRESS-0337 § 4.7)."""
     gathered = notices if notices is not None else []
-    new, _ = gatherer(capture, gathered)(lambda: _write(folder, form))
+    new, _ = gatherer(capture, gathered)(lambda: write_copy(folder, form))
     return _press_written(folder, form.get("kind", ""), form.get("name", ""), new,
                           capture=capture, notices=gathered, transport=transport)
 
@@ -928,7 +928,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
 
     with editor.LOCK:
         try:
-            new, _ = gathered(lambda: _write(folder, form))
+            new, _ = gathered(lambda: write_copy(folder, form))
         except _REFUSED as exc:
             told(pressing.ended(pressing.PUBLISH, False, face.fail(exc, publishing=False)))
             return editor.failed(face, notices, exc)

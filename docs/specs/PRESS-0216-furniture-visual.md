@@ -63,7 +63,7 @@ Every "(decided here)" is open to the maintainer to overturn.
 ### 4.1 Sections in the header and footer
 
 `blocks.adopt(html, furniture, element="main")` gains the keyword
-`element`. The page editor's `_area` passes `"header"` for the header
+`element`. The page editor's `sections_area` passes `"header"` for the header
 file and `"footer"` for the footer file, and keeps `"main"` for a page.
 Nothing else in `adopt` changes: the area is the first such element's
 content, and a file with none opens in the code view with
@@ -121,7 +121,7 @@ menu that is not plain opens in the code view, with a notice saying
 why.
 
 A save posts `view=visual` and `links`, a JSON list in the new order;
-`page_editor._write` sends a navigation save with `links` to
+`page_editor.write_copy` sends a navigation save with `links` to
 `menu.arranged(text, posted)` rather than to `put_sections`. Each entry
 is `{"at": ..., "words": ..., "href": ...}`: `at` is the link's 0-based
 place in `menu.links(text)` of the file read, `null` for a new link, and

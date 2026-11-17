@@ -146,7 +146,7 @@ runs:
 - **no `Origin` header**. Browsers send one on a cross-site POST; the bridge
   never does;
 - `Authorization: Bearer <token>` matches the door file's token, compared by
-  `face._is_secret`;
+  `face.is_secret`;
 - the switch is on.
 
 Request and reply bodies are JSON:
@@ -254,7 +254,7 @@ does, so the version matches what it returned):
 | `save_entry` | `address`, `version`, any of `title`, `body`, `categories`, `tags` | `editor.save` in the marks view (`view` other than `"visual"`); a published entry gets its working copy, as on screen |
 | `change_entry_address` | `address`, `version`, `to` | `editor.change_address` (§ 4.7) |
 | `new_page` | `name` | `page_editor.new_page` (§ 4.7): a waiting copy only |
-| `save_page` | `name`, `version`, `sections` or `links` | `page_editor._write` with a `view` other than `"code"`; a top-level section not kept is removed; refused if it adds, changes, moves or removes a locked section (§ 4.8) |
+| `save_page` | `name`, `version`, `sections` or `links` | `page_editor.write_copy` with a `view` other than `"code"`; a top-level section not kept is removed; refused if it adds, changes, moves or removes a locked section (§ 4.8) |
 | `add_photograph` | `filename`, `data` (base64) | `photographs.add`; returns its name and `builder.web_photograph` address |
 | `add_file` | `filename`, `data` (base64) | `files.add`, with its own size and kind checks |
 | `save_look` | `version`, `choices` | `look_screen.save` (§ 4.7), with the route and hand-written CSS the Look screen would post unchanged, so neither changes |

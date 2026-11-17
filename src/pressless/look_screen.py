@@ -83,16 +83,16 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", ADDRESS + "/save", route(_save))
 
 
-def _has_style_code(folder: Path) -> bool:
+def has_style_code(folder: Path) -> bool:
     return store.style_code_path(folder).is_file()
 
 
-def _offers_routes(folder: Path) -> bool:
+def offers_routes(folder: Path) -> bool:
     """PRESS-0276 § 4.3: a site with no style code, or whose pages link
     their own stylesheets, chooses between them and a Pressless look. A
     site holding no part of every page yet, before setup, has none of its
     own to keep (PRESS-0368)."""
-    return ((not _has_style_code(folder)
+    return ((not has_style_code(folder)
              and bool(editor.held_html(folder, store.FURNITURE_FOLDER)))
             or builder.own_stylesheets(folder))
 
@@ -101,7 +101,7 @@ def _route(folder: Path, form: dict[str, str]) -> str:
     """The route a post takes, or LookRefused: one of the two where the site
     offers them, else the Pressless look alone."""
     route = form.get("route", "")
-    if _offers_routes(folder):
+    if offers_routes(folder):
         if route not in (OWN, PRESSLESS):
             raise LookRefused("the post names neither of the site's two routes")
         return route
@@ -153,9 +153,9 @@ def _open(face: Face, folder: Path, request: Request) -> str:
     """§ 4.4's three states, PRESS-0276's route choice, and § 6's
     unreadable choices."""
     with editor.LOCK, face.capture() as notices:
-        styled = _has_style_code(folder)
+        styled = has_style_code(folder)
         route = None
-        if _offers_routes(folder):
+        if offers_routes(folder):
             asked = request.query.get("route", "")
             route = asked if asked in (OWN, PRESSLESS) else PRESSLESS if styled else OWN
         try:
@@ -205,12 +205,12 @@ def save(folder: Path, form: dict[str, str]) -> None:
         raise editor.ChangedElsewhere("the site's look changed since this window read it")
     if route == OWN:
         store.write_look_file(folder, store.EXTRA_CSS_NAME, _extra(form))
-        if _has_style_code(folder):
+        if has_style_code(folder):
             store.move_to_bin(folder, store.style_code_path(folder))
     else:
         look.read(folder)
         choices, extra = _posted(form)
-        if _has_style_code(folder) and not look.made_here(folder):
+        if has_style_code(folder) and not look.made_here(folder):
             store.copy_to_bin(folder, store.style_code_path(folder))
         look.save(folder, choices, extra)
 

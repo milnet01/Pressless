@@ -142,7 +142,7 @@ PRESS-0195 § 4.4's Remove and Rename:
 Every other reply carries `"busy": false`. A `PiecesChanged` refusal ends the
 record with its own words (§ 4.3).
 
-`editor.save`, `page_editor._write`, `editor._journal`,
+`editor.save`, `page_editor.write_copy`, `editor._journal`,
 `setup._save_sequence` and PRESS-0195 § 4.3's New page call `pressing.forget()` once they have written, which
 ends what decision 6 shows.
 

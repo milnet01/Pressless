@@ -549,7 +549,7 @@ def _running(request: Request) -> str:
     return f"<h1>{say('face.running')}</h1>"
 
 
-def _is_secret(offered: str, secret: str) -> bool:
+def is_secret(offered: str, secret: str) -> bool:
     """Constant-time, as bytes: compare_digest raises TypeError on a str holding
     a non-ASCII character, and a wrong secret is refused, never dropped
     (§ 4.5, PRESS-0135)."""
@@ -1331,7 +1331,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         the standard parser drops the whole header at one it cannot read."""
         for part in self.headers.get("Cookie", "").split(";"):
             name, _, value = part.strip().partition("=")
-            if name == face._cookie and _is_secret(value, face._session):
+            if name == face._cookie and is_secret(value, face._session):
                 return True
         return False
 
@@ -1400,7 +1400,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         """The link is honoured once: it reached the browser on its command
         line, so it must not stay the key for the whole run (§ 4.5)."""
         with face._link_lock:
-            honoured = not face._link_spent and _is_secret(offered, face._secret)
+            honoured = not face._link_spent and is_secret(offered, face._secret)
             face._link_spent = face._link_spent or honoured
         if honoured:
             cookie = f"{face._cookie}={face._session}; HttpOnly; SameSite=Strict; Path=/"

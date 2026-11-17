@@ -62,7 +62,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
-    _is_secret,
+    is_secret,
     sentence_for,
 )
 from pressless.words import say
@@ -250,7 +250,7 @@ class _Door:
         """§ 4.3: the switch is on and the header carries this door's token."""
         scheme, _, offered = authorization.partition(" ")
         return (scheme == "Bearer" and is_on(self.own)
-                and _is_secret(offered.strip(), self.token))
+                and is_secret(offered.strip(), self.token))
 
     # ------------------------------------------------------------- a call ---
 
@@ -365,17 +365,17 @@ class _Door:
 
     def _read_page(self, name: str) -> dict:
         kind = _kind(name)
-        path, _ = page_editor._read(self.folder, kind, name)
+        path, _ = page_editor.current_file(self.folder, kind, name)
         text = store.read_html(path)
         version = editor.digest(path)
-        if page_editor._is_menu(kind, name):
+        if page_editor.is_menu(kind, name):
             return {"name": name, "version": version,
                     "links": [{"at": at, "words": words, "href": href}
                               for at, (words, href) in enumerate(menu.links(text))]}
         page = _sections_of(kind, name, text)
         return {"name": name, "version": version,
                 "sections": [_shown(at, section) for at, section in
-                             page_editor._paths(page).items()]}
+                             page_editor.section_paths(page).items()]}
 
     def _list_files(self) -> dict:
         folder = self.folder
@@ -423,12 +423,12 @@ class _Door:
     def _save_page(self, name: str, version: str, sections: list | None = None,
                    links: list | None = None) -> dict:
         folder, kind = self.folder, _kind(name)
-        path, waiting = page_editor._read(folder, kind, name)
+        path, waiting = page_editor.current_file(folder, kind, name)
         if editor.digest(path) != version:
             raise editor.ChangedElsewhere(f"the {kind} file {name} changed since it was read")
         form = {"kind": kind, "name": name, "waiting": "1" if waiting else "0",
                 "base": version, "view": page_editor.VISUAL}
-        if page_editor._is_menu(kind, name):
+        if page_editor.is_menu(kind, name):
             if links is None:
                 raise Refused("assistant.links_owed")
             form["links"] = json.dumps(links)
@@ -439,12 +439,12 @@ class _Door:
             kept = {tuple(item["keep"]) for item in sections
                     if isinstance(item, dict) and isinstance(item.get("keep"), list)}
             removed = [[at] for at in range(len(old.sections)) if (at,) not in kept]
-            adopted = page_editor._area(kind, name, store.read_html(path))
+            adopted = page_editor.sections_area(kind, name, store.read_html(path))
             new = blocks.read(name, page_editor.put_sections(name, adopted, sections, removed))
             if _locked(old) != _locked(new):
                 raise Refused("assistant.locked_section")
             form.update(sections=json.dumps(sections), removed=json.dumps(removed))
-        _, new_base = page_editor._write(folder, form)
+        _, new_base = page_editor.write_copy(folder, form)
         return {"name": name, "version": new_base}
 
     def _add_photograph(self, filename: str, data: str) -> dict:
@@ -460,8 +460,8 @@ class _Door:
         # screen would post, so neither changes. A site offering both routes
         # with no Pressless style code stands on its own stylesheets, and a
         # save of choices would move it to the Pressless look: refused.
-        offers_routes = look_screen._offers_routes(folder)
-        if offers_routes and not look_screen._has_style_code(folder):
+        offers_routes = look_screen.offers_routes(folder)
+        if offers_routes and not look_screen.has_style_code(folder):
             raise Refused("assistant.own_stylesheets")
         form = {"base": version, "extra": look.read_extra(folder),
                 "route": look_screen.PRESSLESS if offers_routes else ""}
@@ -552,7 +552,7 @@ class _Door:
                 shown = publishing.plan(folder, entry=slug if draft else None,
                                         transport=self.transport)
             elif page is not None:
-                page_editor._read(folder, _kind(page), page)     # it exists
+                page_editor.current_file(folder, _kind(page), page)     # it exists
                 # A page with nothing waiting: publishing.plan falls back to
                 # the whole site, as `_press` does.
                 shown = publishing.plan(folder, page=(_kind(page), page),
@@ -889,7 +889,7 @@ def _decoded(data: str) -> bytes:
 
 
 def _sections_of(kind: str, name: str, text: str) -> blocks.Page:
-    adopted = page_editor._area(kind, name, text)
+    adopted = page_editor.sections_area(kind, name, text)
     page = blocks.read(name, adopted) if adopted is not None else None
     if page is None:
         raise page_editor.SectionsUnreadable(f"the {kind} file {name} has no sections area")
@@ -909,7 +909,7 @@ def _is_locked(section: blocks.Section) -> bool:
 def _locked(page: blocks.Page) -> list[blocks.Section]:
     """The locked sections in order: equal lists mean none was added, changed,
     moved or removed (§ 4.8)."""
-    return [section for section in page_editor._paths(page).values() if _is_locked(section)]
+    return [section for section in page_editor.section_paths(page).values() if _is_locked(section)]
 
 
 def _shown(path: tuple[int, ...], section: blocks.Section) -> dict:

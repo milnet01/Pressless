@@ -34,7 +34,7 @@ view cannot read leaves the code view showing, with the reason.
    `byPath`; `_MENU_SCRIPT` reads `links` the same way. Nothing builds
    either again from another outline.
 4. **Only `_open` decides which view a file can have.** It reads the
-   file, tries `builder.furniture_spans`, `menu.links` or `_area`, falls
+   file, tries `builder.furniture_spans`, `menu.links` or `sections_area`, falls
    back to `CODE` with a notice, and builds the preview, inline.
 
 ## 3. Scope decisions (agreed with the user)

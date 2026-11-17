@@ -91,7 +91,7 @@ takes the same rule as a page.
 
 **Opening a page in the visual view** (`page_editor._open`):
 
-1. Read the file as today (`_read`).
+1. Read the file as today (`current_file`).
 2. Where `blocks.read(name, text)` finds no area, take
    `blocks.adopt(text, builder.furniture_spans(name, text))` **in
    memory**. Nothing is written at opening.
@@ -216,7 +216,7 @@ path     := [i] | [i, c, j]                      top-level section i; or section
 The form carries `removed` beside `sections`. The panel shows a code
 section's HTML without its two marks, and posts it so.
 
-`page_editor._write`, for the visual view, under `editor.LOCK`:
+`page_editor.write_copy`, for the visual view, under `editor.LOCK`:
 
 1. Check the file against `base`, as today.
 2. Where it has no area, `blocks.adopt` it (§ 4.1 step 2).
@@ -350,7 +350,7 @@ only they used: `page_editor.show_words`, `script.press.paragraphs`,
 - **INV-8** — A save over a file this window did not see writes
   nothing, in the visual view as in the code view.
   *Test:* `tests/test_page_editor.py::test_a_visual_save_over_a_changed_file_writes_nothing`.
-  *Breaks when:* the visual branch of `_write` skips the `base` check.
+  *Breaks when:* the visual branch of `write_copy` skips the `base` check.
 
 - **INV-9** — The words a user types are saved as `<inline>`.
   *Test:* `scripts/by-hand-browser-checks.py`: typing with Ctrl+B,
