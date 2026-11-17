@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=413 -->
+<!-- ants-roadmap-id-high-water: PRESS=415 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7667,13 +7667,24 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Face.
 
-- 📋 [PRESS-0372] **Review fixes: the entry editor and files.**
+- ✅ [PRESS-0372] **Review fixes: the entry editor and files.**
   Subject 02 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 2 low. review-readability: 2 high, 4 medium,
   9 low, plus leads. Among them: an empty body doubles on each save
   (put_blocks); notices rendered empty when a route fails inside
   face.capture; the visual editor's key handling hand-copied from the
   page editor's and drifted (PRESS-0346 § 4.4 names one shared script).
+  Ledger: close-findings-2026-11-17/lane-02-entry-editor.json.
+  Shipped 2026-11-17, 1aef492..a15f929. 29 findings: 22 fixed, 7
+  duplicates, 0 queued, 0 dismissed. An empty body no longer doubles on
+  each save; editor pages fetch nothing from the web (Face policy gains
+  style-src, font-src and img-src); JPEG XL view copies are made one at
+  a time; every upload goes through one editor.UPLOAD_SCRIPT; failing
+  routes show their notices (editor.captured); form failures answer a
+  whole page (editor.failed_page); both editors save through one
+  presslessSend. The key-handling HIGH was fixed by 7737c6e (PRESS-0373).
+  Specs amended: PRESS-0346, 0012, 0011, 0353. Filed: PRESS-0414,
+  PRESS-0415. Full suite 2404 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-02-entry-editor.json.
   **Layman:** Fixes in the screen where you write journal entries, and in uploads.
   Kind: review-fix.
@@ -8050,7 +8061,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0389] **Review fixes: the maintainer's scripts and the practice copy.**
+- ✅ [PRESS-0389] **Review fixes: the maintainer's scripts and the practice copy.**
   Subject 19 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 3 low. review-readability: 1 high, 1 medium,
   5 low. Among them: practice.py's disarm misses four network routes
@@ -8058,6 +8069,19 @@ does not wait on them.
   none is reached.
   User decision 2026-11-16: make-signing-key.py and sign-release.py are
   Linux-only; they say so, and their Windows findings are dismissed.
+  Ledger: close-findings-2026-11-17/lane-19-scripts-python.json.
+  Shipped 2026-11-17, 91bbda6..c19f30d. 27 findings: 26 fixed, 0
+  queued, 1 dismissed (the signing key's Windows ACL: the signing tools
+  are Linux-only, user 2026-11-16; make-signing-key.py now refuses
+  Windows). practice.disarm refuses every network route (https.Client,
+  the updater, Import's fetch), and a test walks the source for
+  socket-opening modules so a new one cannot go undisarmed. The signer
+  reads UTF-8, refuses a stray draft and reruns; the decoder release is
+  a draft until its assets check. Incident: one red test run reached
+  the real gh once (gh release create jpeg-xl-0.12.0) and failed; the
+  release was read back unchanged on 2026-11-17, and every step now
+  takes run. Specs amended: PRESS-0023 § 4.8, PRESS-0275 § 4.8. Full
+  suite 2397 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-19-scripts-python.json.
   **Layman:** Fixes in the tools used to sign releases and to make the manual's pictures.
   Kind: review-fix.
@@ -8158,6 +8182,8 @@ does not wait on them.
   From PRESS-0379 (2026-11-17, review-code lane-09:72): google_setup.py
   uses insights._own_client for its clock; make it public in this
   item's one pass. Its domain.py half is done (fetch.addresses).
+  From PRESS-0389 (2026-11-17): youtube.py binds insights._own_client by
+  name too. practice.disarm no longer depends on it.
   **Layman:** A tidy-up so one part of the program stops reaching into another's private names.
   Kind: review-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
@@ -8362,6 +8388,27 @@ does not wait on them.
   Kind: refactor.
   Source: PRESS-0387 close-findings sweep 2026-11-17.
   Lanes: Words.
+
+- 📋 [PRESS-0414] **The page editor's and templates' form routes lose notices and answer forms with fragments.**
+  Surfaced by PRESS-0372 (out of scope there). page_editor._new
+  (/page/new) answers inside the capture, so it loses notices, and sends
+  a bare fragment to a form; page_editor._discard (/page/discard)
+  answers a form with the 409 fragment; templates._save answers inside
+  the capture. Use editor.captured and editor.failed_page, which
+  PRESS-0372 added for the entry editor's routes.
+  **Layman:** When adding or throwing away a page fails, Pressless shows a proper page explaining why.
+  Kind: fix.
+  Source: PRESS-0372 close-findings sweep 2026-11-17.
+  Lanes: Editor.
+
+- 📋 [PRESS-0415] **A fixed page named header, footer, navigation or look shows as that part on the Files screen.**
+  Surfaced by PRESS-0372. The Files screen now names the menu and the
+  look in words instead of raw file names; a fixed page whose name is
+  header, footer, navigation or look would show under that part's words.
+  **Layman:** A page you named "footer" is not mistaken for the site's footer on the Files screen.
+  Kind: fix.
+  Source: PRESS-0372 close-findings sweep 2026-11-17.
+  Lanes: Editor.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

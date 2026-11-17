@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **The entry editor saves cleanly and explains failures** (PRESS-0372)
+  Saving an entry with an empty body no longer adds a blank line each time. When a
+  save, upload or throw-away fails, Pressless now shows what went wrong and lets you
+  see the details. An upload that is refused says so. Editor screens are now barred
+  from loading styles, fonts or pictures from the internet.
+
 - **"1 file", not "1 files"** (PRESS-0387)
   Bringing in a site and taking over an existing one now say "1 gap" and "1 file"
   where they used to use the plural for one.
