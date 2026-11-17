@@ -43,6 +43,7 @@ from pressless import (
     starter,
     store,
     templates,
+    zip_member,
 )
 from pressless.words import say
 
@@ -210,7 +211,7 @@ def unpack_folder(source: Path, into: Path, room: Callable[[], int]
             for info in infos:
                 # As stored: on Windows, zipfile turns a backslash into `/` in `filename`,
                 # and § 4.1 refuses such a ZIP on every system.
-                if not sitefile.stays_inside(info.orig_filename):
+                if not zip_member.stays_inside(info.orig_filename):
                     raise ImportStopped("the ZIP holds a name outside its folder")
                 if sitefile.is_link(info):
                     raise ImportStopped("the ZIP holds a link")

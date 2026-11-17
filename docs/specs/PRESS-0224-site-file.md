@@ -109,7 +109,7 @@ Pressless left.
 - more than `MEMBERS_MOST` members, or a manifest over 64 KiB, checked
   before it is read;
 - a member name that is absolute or holds a backslash, any part of which
-  is `..`, holds a `:` or ends in a dot or space (`stays_inside`), or
+  is `..`, holds a `:` or ends in a dot or space (`zip_member.stays_inside`), or
   names a Windows device (`store.windows_device`), or whose first part is
   neither `MANIFEST` nor in `KEPT` (`updater._allowed` is the precedent);
 - a member that is a link (`external_attr`'s file type is a link);

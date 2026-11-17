@@ -35,7 +35,7 @@ import certifi
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from pressless import sitefile, update_key
+from pressless import os_reason, update_key, zip_member
 from pressless.installer import UpdateError
 from pressless.safe_write import write_whole
 
@@ -86,11 +86,10 @@ _HANDLE_DISK_FULL = 39
 
 def failed(exc: BaseException, what: str) -> DownloadFailed:
     """DiskFull for a full disk, else DownloadFailed, naming `what` and the
-    error's own words -- `strerror`, never the message, which quotes a path."""
+    error's reason, never its message, which quotes a path."""
     full = isinstance(exc, OSError) and (
         exc.errno in _FULL or getattr(exc, "winerror", None) == _HANDLE_DISK_FULL)
-    words = (exc.strerror if isinstance(exc, OSError) else None) or type(exc).__name__
-    return (DiskFull if full else DownloadFailed)(f"{what}: {words}")
+    return (DiskFull if full else DownloadFailed)(f"{what}: {os_reason.of(exc)}")
 
 
 class UpdateRejected(UpdateError):
@@ -478,9 +477,9 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
 
 def _allowed(name: str) -> bool:
     """`Start Pressless.bat`, or `Pressless/` or a path under it, that stays
-    inside the folder it is unpacked into (§ 4.6): sitefile.stays_inside
+    inside the folder it is unpacked into (§ 4.6): zip_member.stays_inside
     checks every part, so a drive letter or `..` anywhere is refused."""
-    return sitefile.stays_inside(name) and (
+    return zip_member.stays_inside(name) and (
         name == "Start Pressless.bat" or name.startswith("Pressless/"))
 
 

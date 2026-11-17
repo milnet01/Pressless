@@ -103,6 +103,11 @@ A new part, **the Updater**, joins `docs/design.md` § The parts:
 `updater.py`.** "Network module" is the set `tests/test_network_timeouts.py`
 already names in `_NETWORK_MODULES`.
 
+**`updater.py` imports no part of Pressless but `update_key`, `installer`,
+`safe_write`, `os_reason` and `zip_member`.** None of those imports a part
+but `os_reason`, which imports nothing. So the Updater cannot reach the
+Store, Settings or Credentials even by import.
+
 The GitHub repository is a constant in `updater.py`, `REPOSITORY =
 "milnet01/Pressless"`. It is the app's repository, not his site's.
 `PRESSLESS_UPDATE_REPOSITORY` replaces it for one run, which is how § 7.1
@@ -243,7 +248,7 @@ A short download is never reported as tampering (FIBR-0327).
 `Pressless/`, named `Pressless.new-<random>`. Every member must be
 `Start Pressless.bat`, or `Pressless/` or a path under it — directory entries
 included, which the build's `shutil.make_archive` writes — that
-`sitefile.stays_inside` passes: relative, no backslash, and no part that is
+`zip_member.stays_inside` passes: relative, no backslash, and no part that is
 `..`, holds a `:` or ends in a dot or space. Each part is checked, because
 Windows starts a path again at a part such as `D:`. Any other member raises
 `UpdateRejected` before anything is written, and the zip and the folder are
@@ -539,7 +544,7 @@ address. A roadmap id in brackets is left out.
   package being caught. *Breaks when:* `installer.py`, `updating.py` or any
   other module imports one.
 - **INV-9** — A Windows zip with a member outside `Start Pressless.bat` and
-  `Pressless/`, or with a part `sitefile.stays_inside` refuses, writes
+  `Pressless/`, or with a part `zip_member.stays_inside` refuses, writes
   nothing, and a zip made by `build-windows.sh`'s own `shutil.make_archive`
   call unpacks. *Test:* `tests/test_updater.py::test_a_stray_zip_member_writes_nothing`
   and `::test_every_part_of_a_member_is_checked`.
@@ -779,6 +784,7 @@ release.
 | INV-23 | `tests/test_updater.py::test_unproven_changes_are_dropped_and_the_offer_stands` |
 | INV-24 | `tests/test_updating.py::test_the_offer_shows_what_changed` |
 | INV-25 | `tests/test_sign_release.py::test_the_changes_file_starts_at_the_release` |
+| § 4.1 the Updater imports no other part | `tests/test_updater.py::test_the_updater_reaches_no_store_settings_or_credentials` |
 | § 4.7 the new version starts | Partial: `tests/test_installer.py::test_the_windows_helper_runs` runs the Windows helper on the Windows box's gate, over throwaway folders; a real update is § 7.1 by hand, on each system |
 | § 4.8 the release is published only after signing | Partial: INV-19 covers the refusals; the draft flag in `release.yml` is checked by nothing |
 | § 4.12 a real release carries a changes file an installed copy shows | Nothing in the suite: `sign` itself runs only at a release. The first release after 2026-11-13 is its check |

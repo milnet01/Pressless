@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from pressless import credentials, settings, sitefile, sites, store
+from pressless import credentials, settings, sitefile, sites, store, zip_member
 
 MANIFEST = "pressless-site.json"
 SENTINEL_KEY = "a made up secret that must never travel"
@@ -195,9 +195,9 @@ def test_import_keeps_its_own_leaving_out() -> None:
     Breaks when a name that climbs out on Windows passes, or when a device
     name, which Import leaves out by itself, refuses the whole ZIP."""
     for name in ("wp/D:/x.jpg", "wp/a:b", "wp/.. /x", "wp/x.", "wp/x "):
-        assert not sitefile.stays_inside(name), name
+        assert not zip_member.stays_inside(name), name
     for name in ("wp/con/x.txt", "uploads/2012/05/a.jpg", "site/"):
-        assert sitefile.stays_inside(name), name
+        assert zip_member.stays_inside(name), name
 
 
 def _flagged(path: Path, name: str, data: bytes) -> Path:

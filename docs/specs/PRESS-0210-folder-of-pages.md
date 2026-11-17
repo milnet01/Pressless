@@ -110,7 +110,7 @@ class Brought:
     roots: tuple[str, ...]           # root entries something was carried from
 ```
 
-`unpack_folder` checks every member first, by `sitefile.stays_inside` and
+`unpack_folder` checks every member first, by `zip_member.stays_inside` and
 `sitefile.is_link`, and refuses the ZIP on any failure, writing nothing. It
 also refuses a ZIP with more than `MEMBERS_MOST` members, or whose members do
 not fit `room()`. These members are not unpacked:

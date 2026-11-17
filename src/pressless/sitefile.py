@@ -16,7 +16,7 @@ import zipfile
 import zlib
 from pathlib import Path, PurePosixPath
 
-from pressless import credentials, editor, settings, sites, store
+from pressless import credentials, editor, settings, sites, store, zip_member
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -134,25 +134,11 @@ def save_as(site: Path, target: Path) -> None:
         raise
 
 
-def stays_inside(name: str) -> bool:
-    """A zip member name that stays inside the folder it is unpacked into, on
-    every system: relative, with no backslash, and no part that is `..`,
-    holds a `:` or ends in a dot or space. Each part is checked, as Windows
-    starts a path again at a part such as `D:x`, and drops a part's trailing
-    dots and spaces, so `.. ` climbs out. Import's media download and folder
-    ZIP are checked by it too (PRESS-0125 § 4.4, PRESS-0210 § 4.1)."""
-    if name.startswith("/") or "\\" in name:
-        return False
-    parts = PurePosixPath(name).parts
-    return bool(parts) and not any(
-        part == ".." or ":" in part or part[-1] in ". " for part in parts)
-
-
 def _allowed(name: str) -> bool:
     """A member name that stays inside the site, under a kept name or the
     manifest, and names no Windows device, which a write would reach in
     place of a file."""
-    if not stays_inside(name):
+    if not zip_member.stays_inside(name):
         return False
     parts = PurePosixPath(name).parts
     return name == MANIFEST or (parts[0] in KEPT

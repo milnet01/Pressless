@@ -16,8 +16,11 @@ import errno
 import hashlib
 import io
 import json
+import os
 import shutil
 import ssl
+import subprocess
+import sys
 import urllib.request
 import zipfile
 from email.message import Message
@@ -454,7 +457,7 @@ def test_every_part_of_a_member_is_checked(tmp_path):
     """INV-9, PRESS-0383's sweep: the drive test looked only at the start of
     a name, so `Pressless/D:/x` passed. Windows starts a path again at a part
     such as `D:`, and drops a part's trailing dots and spaces, so `.. `
-    climbs out. Members are checked by sitefile.stays_inside, as Import's are.
+    climbs out. Members are checked by zip_member.stays_inside, as Import's are.
 
     Breaks when a name that climbs out on Windows is unpacked."""
     beside = tmp_path / "program"
@@ -465,6 +468,27 @@ def test_every_part_of_a_member_is_checked(tmp_path):
         with pytest.raises(updater.UpdateRejected):
             updater.unpack(archive, beside)
         assert list(beside.iterdir()) == [], (stray, list(beside.iterdir()))
+
+
+def test_the_updater_reaches_no_store_settings_or_credentials():
+    """§ 4.1, PRESS-0409: the Updater may not open the Store, Settings or
+    Credentials, and it does not import them either, even at one remove.
+    Importing it in a fresh interpreter loads no part of Pressless beyond
+    these, each of which imports nothing of Pressless's but `os_reason`.
+
+    Breaks when updater.py, or a module it imports, gains an import of
+    another part -- `sitefile` reaches the Store, Settings and Credentials."""
+    allowed = {"pressless", "pressless.updater", "pressless.update_key",
+               "pressless.installer", "pressless.safe_write", "pressless.os_reason",
+               "pressless.zip_member"}
+    source = Path(updater.__file__).parents[1]
+    loaded = subprocess.run(
+        [sys.executable, "-c", "import sys, pressless.updater; "
+         "print(' '.join(m for m in sys.modules if m.split('.')[0] == 'pressless'))"],
+        capture_output=True, text=True, check=True,
+        env={**os.environ, "PYTHONPATH": str(source)}).stdout.split()
+    assert "pressless.updater" in loaded
+    assert set(loaded) <= allowed, sorted(set(loaded) - allowed)
 
 
 def test_a_held_file_does_not_undo_the_update(tmp_path, monkeypatch):
@@ -586,6 +610,18 @@ def test_a_full_disk_is_named(tmp_path, monkeypatch):
         with pytest.raises(updater.DiskFull):
             updater.unpack(archive, program)
         assert list(program.iterdir()) == [], list(program.iterdir())
+
+
+def test_a_failure_names_its_reason_and_never_its_path():
+    """§ 4.6, PRESS-0401: a failure's words are the error's reason, or its
+    type's name where it has none, never its message, which quotes a path.
+
+    Breaks when `failed` uses str(exc), or drops the type's name."""
+    refused = PermissionError(errno.EACCES, "Permission denied", "/home/someone/program/x")
+    assert str(updater.failed(refused, "the download failed")) == (
+        "the download failed: Permission denied")
+    assert str(updater.failed(ValueError("/home/someone/x"), "the zip")) == (
+        "the zip: ValueError")
 
 
 # ------------------------------------------------- INV-22, INV-23: changes ---

@@ -191,7 +191,7 @@ fills lists that file, and each after it, as having no room.
 
 **The media ZIP** (`pressless_import.unpack_media`) fills gaps by place: a member whose name ends in
 `<YYYY>/<MM>/<name>` matching a missing place is unpacked to it. Members
-are checked first by `sitefile.stays_inside` and `sitefile.is_link`, as a
+are checked first by `zip_member.stays_inside` and `sitefile.is_link`, as a
 site file's are — no absolute name, backslash, `..`, `:` or link — and
 the members taken must fit `room()`.
 Other members are ignored. A place `_place` would refuse is never filled:

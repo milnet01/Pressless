@@ -23,7 +23,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pressless import blocks, builder, look, menu, os_reason, sitefile, starter, store, templates
+from pressless import (
+    blocks,
+    builder,
+    look,
+    menu,
+    os_reason,
+    sitefile,
+    starter,
+    store,
+    templates,
+    zip_member,
+)
 
 from . import (
     _DRAFT_STATUSES,
@@ -345,7 +356,7 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
         with zipfile.ZipFile(source) as held:
             infos = held.infolist()
             for info in infos:
-                if not sitefile.stays_inside(info.filename):
+                if not zip_member.stays_inside(info.filename):
                     raise ImportStopped("the media download holds a name outside its folder")
                 if sitefile.is_link(info):
                     raise ImportStopped("the media download holds a link")

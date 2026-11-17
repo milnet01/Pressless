@@ -875,6 +875,8 @@ _ALLOWED_IMPORTS = {
     "codecs", "lzma",
     # PRESS-0401: an error's reason without its path; imports nothing.
     "pressless.os_reason",
+    # PRESS-0409: whether a ZIP member stays inside; imports nothing.
+    "pressless.zip_member",
 }
 
 
@@ -1303,7 +1305,7 @@ def test_a_media_zip_fills_only_places_import_may_use(tmp_path, place):
     lands outside import/media/ or under a name the Store never reads.
 
     A member whose name holds a `:` is refused with the whole download
-    (sitefile.stays_inside, PRESS-0383), which writes nothing either.
+    (zip_member.stays_inside, PRESS-0383), which writes nothing either.
 
     Breaks when unpack_media joins a place onto media/ without checking it."""
     import zipfile
