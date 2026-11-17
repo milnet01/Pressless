@@ -242,10 +242,14 @@ A short download is never reported as tampering (FIBR-0327).
 `unpack(archive: Path, beside: Path) -> Path`, into a new folder beside
 `Pressless/`, named `Pressless.new-<random>`. Every member must be
 `Start Pressless.bat`, or `Pressless/` or a path under it — directory entries
-included, which the build's `shutil.make_archive` writes — with no absolute path, no
-`..` part and no drive letter; any other member raises `UpdateRejected` before
-anything is written, and the zip and the folder are removed. The zip is removed
-once unpacked. A full disk while unpacking, by the same test as the download's row,
+included, which the build's `shutil.make_archive` writes — that
+`sitefile.stays_inside` passes: relative, no backslash, and no part that is
+`..`, holds a `:` or ends in a dot or space. Each part is checked, because
+Windows starts a path again at a part such as `D:`. Any other member raises
+`UpdateRejected` before anything is written, and the zip and the folder are
+removed. The zip is removed once unpacked. A file that cannot be removed,
+here or in the table above, because a scanner holds it, is left for the
+start-up sweep (§ 4.9); it never replaces the result or the error. A full disk while unpacking, by the same test as the download's row,
 `winerror` 39 included, raises
 `DiskFull`, with the zip and the folder removed.
 
@@ -305,7 +309,8 @@ script:
    rename fails, nothing has moved: it removes the staged folder, logs
    `gave up` and starts nothing.
 3. If the second rename fails, renames `Pressless.old` back and logs
-   `rolled back`. Otherwise it moves the staged `Start Pressless.bat` over the
+   `rolled back`, or `rollback failed` where that rename fails too, which
+   leaves no `program` folder. Otherwise it moves the staged `Start Pressless.bat` over the
    old one where the two differ — `cmd.exe` re-reads a running batch file
    from its old offset — and removes `Pressless.old`. A batch file that
    cannot be read, or still cannot be moved after the same five tries, is
@@ -313,7 +318,9 @@ script:
 4. Starts `Start Pressless.bat` with the working directory set to its folder,
    appends `started`, then removes its own script file.
 
-`CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP`, read with `getattr(..., 0)` so
+The environment is the Linux helper's, so `PYINSTALLER_RESET_ENVIRONMENT=1`
+reaches the new program and it starts afresh rather than as part of the old
+bundle. `CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP`, read with `getattr(..., 0)` so
 the module loads on Linux. Not `DETACHED_PROCESS`: Windows PowerShell given no
 console exits before its first line (measured on the Windows box 2026-10-10;
 `test_the_windows_helper_runs` fails if it comes back). A spawn that fails removes the staged folder and
@@ -321,7 +328,10 @@ raises `InstallFailed`.
 
 **`update.log` is overwritten by each update, not appended**, so it stays one
 update long. It holds fixed words only — `waiting`, `swapped`, `rolled back`,
-`gave up`, `started`, `not started` — each after a timestamp. No path and no error text reach
+`rollback failed`, `gave up`, `started`, `not started` — each after a
+timestamp. Writing it is best effort in all three writers: a log that cannot be
+written never stops an update, and the Windows script, which runs under
+`$ErrorActionPreference = 'Stop'`, catches its own write. No path and no error text reach
 it, because § Logging forbids a full path in anything Pressless writes down.
 
 ### 4.8 Signing a release
@@ -383,9 +393,20 @@ parse or has another shape, and the switch then shows what is actually in force.
 is an exception to § State, which names none today — it calls the Insights
 cache a cache rather than an exception. Nothing of his is
 in them, and losing them costs one check at the next start. Skip is written to
-`updates.json`.
+`updates.json`. A Restart, or opening another site, is the same process:
+`__main__` registers each new Face against the same `Updates`, so the offer
+and a Later stand and the check does not run again.
 
-**Update now**, in order:
+**Before its one check, a packaged start removes what a stopped update left
+beside the program**: any `.pressless-update-*` file, `Pressless.new-*`
+folder and `pressless-update-*.ps1` script. A Pressless stopped during a
+download or an unpack, or a Windows helper that died, leaves one, and each but
+the script is the program's size. A removal that fails is tried at the next
+start.
+
+**Update now**, in order, one at a time: a second, from a double click or a
+second tab, goes home while one is under way, and a failed one lets the next
+start.
 
 1. Download, and on Windows unpack (§ 4.6), without the editor's lock. A failure
    shows its sentence (§ 4.10) and changes nothing.
@@ -506,11 +527,12 @@ address. A roadmap id in brackets is left out.
   package being caught. *Breaks when:* `installer.py`, `updating.py` or any
   other module imports one.
 - **INV-9** — A Windows zip with a member outside `Start Pressless.bat` and
-  `Pressless/`, or with an absolute, `..` or drive-lettered path, writes
+  `Pressless/`, or with a part `sitefile.stays_inside` refuses, writes
   nothing, and a zip made by `build-windows.sh`'s own `shutil.make_archive`
-  call unpacks. *Test:* `tests/test_updater.py::test_a_stray_zip_member_writes_nothing`.
-  *Breaks when:* members are checked while being written, or a directory entry
-  is refused.
+  call unpacks. *Test:* `tests/test_updater.py::test_a_stray_zip_member_writes_nothing`
+  and `::test_every_part_of_a_member_is_checked`.
+  *Breaks when:* members are checked while being written, a directory entry
+  is refused, or a drive letter or `.. ` after the first part passes.
 - **INV-10** — On Linux a failure before `os.replace` leaves the AppImage
   byte-for-byte as it was and removes the staged file; success leaves the new
   bytes at mode 0755. *Test:* `tests/test_installer.py::test_linux_swap`, with
