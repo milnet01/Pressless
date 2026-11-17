@@ -45,12 +45,15 @@ def main():
         if LINK.exists():
             break
         time.sleep(0.5)
+    else:
+        raise SystemExit(f"the frozen program wrote no link to {LINK} in 30 seconds")
     link = LINK.read_text().strip()
     base = kit.origin(link)
     outside = []
 
     def note(request):
-        if not request.url.startswith((base, "data:", "blob:")):
+        # base + "/": the bare origin would also match a longer port, :808 in :8080.
+        if not request.url.startswith((base + "/", "data:", "blob:")):
             outside.append(request.url)
 
     with sync_playwright() as pw:
@@ -82,7 +85,7 @@ def main():
         p.wait_for_timeout(200)
         print("videos:", p.evaluate(PLAY_VIDEOS))
         p.click("details.more summary")
-        p.locator("details.more select").nth(1).select_option(label="Largest")
+        p.locator("details.more select[data-size-picker]").select_option(label="Largest")
         p.wait_for_timeout(1200)
         print("text size:", p.evaluate(TEXT_SIZE))
         p.locator("#publishing").scroll_into_view_if_needed()

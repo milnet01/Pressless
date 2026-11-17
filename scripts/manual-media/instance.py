@@ -34,6 +34,9 @@ from pressless import (  # noqa: E402
     store,
 )
 
+# shots.py and video.py open rain-on-the-quay, and shots.py clicks its "Something
+# about rain"; demo_google.py names the other two's addresses. Change them
+# together.
 ENTRIES = (
     ("first-light-on-the-harbour", "First light on the harbour",
      "The boats go out before the sun. I watched them from the wall.",
@@ -67,6 +70,8 @@ def seed(site) -> None:
 
 def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "site"
+    if mode not in ("site", "fresh"):
+        raise SystemExit(f"the mode is site or fresh, not {mode!r}")
     kit.INSTANCE.mkdir(parents=True)
     sites.move_in(kit.INSTANCE)
     if mode == "site":

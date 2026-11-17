@@ -3,6 +3,10 @@ import json
 import random
 from datetime import date, timedelta
 
+# Made-up figures, one tuple per row of the report insights._fetch asks for:
+# PAGES (path, views, visitors, engagement seconds); SOURCES (channel, source,
+# sessions, visitors); REGIONS (country, region, visitors); COUNTRIES
+# (country, visitors). Two PAGES paths are instance.ENTRIES' entries.
 PAGES = (("/", 412, 260, 9100.0), ("/journal/first-light-on-the-harbour/", 238, 171, 15400.0),
          ("/about/", 96, 80, 2100.0), ("/journal/a-morning-at-the-market/", 74, 61, 5200.0))
 SOURCES = (("Organic Search", "google", 210, 168), ("Direct", "(direct)", 140, 122),
@@ -22,6 +26,8 @@ class Google:
         if url.startswith("https://oauth2.googleapis.com/token"):
             return 200, {}, json.dumps({"access_token": "demo", "expires_in": 3600}).encode()
         if url.endswith(":batchRunReports"):
+            # Read and answered by position, in insights._fetch's order:
+            # countries, the period strip, pages, sources, regions.
             reqs = json.loads(body)["requests"]
             period = reqs[1]["dimensions"][0]["name"]
             start = int(reqs[0]["dateRanges"][0]["startDate"].removesuffix("daysAgo"))

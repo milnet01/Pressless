@@ -43,7 +43,11 @@ SHOW_CHOICES = """() => {
 }"""
 
 
+TAKEN = set()   # every picture's name met in this run, taken or not
+
+
 def want(name):
+    TAKEN.add(name)
     return not ONLY or name in ONLY
 
 
@@ -178,6 +182,10 @@ def main():
         page_editor(p, go)
         other_screens(p, go)
         browser.close()
+    unknown = ONLY - TAKEN
+    if unknown:
+        raise SystemExit(f"no picture is named {', '.join(sorted(unknown))}; "
+                         f"the names are {', '.join(sorted(TAKEN))}")
 
 
 if __name__ == "__main__":

@@ -53,7 +53,10 @@ PREVIEW_WORDS = "() => document.body.innerText.replace(/\\s+/g,' ').slice(0,200)
 
 
 def stamp(seconds):
-    return f"{int(seconds // 60):02d}:{seconds % 60:06.3f}"
+    """WebVTT's mm:ss.ttt. Rounded to whole milliseconds first, so 59.9996 s
+    is 01:00.000 rather than the invalid 00:60.000."""
+    whole = round(seconds * 1000)
+    return f"{whole // 60000:02d}:{whole // 1000 % 60:02d}.{whole % 1000:03d}"
 
 
 def captions(cues, end):
@@ -191,6 +194,10 @@ CLIPS = (
 
 
 def main():
+    unknown = ONLY - {name for name, _, _ in CLIPS}
+    if unknown:
+        raise SystemExit(f"no video is named {', '.join(sorted(unknown))}; "
+                         f"the names are {', '.join(name for name, _, _ in CLIPS)}")
     OUT.mkdir(parents=True, exist_ok=True)
     link = kit.start("site")
     with sync_playwright() as pw:
