@@ -219,6 +219,8 @@ def inline(markup: str) -> str | None:
     return _inline_from(_scan(markup))
 
 
+# Each kind's (required, optional) fields. VIDEO is not here: it takes
+# `youtube` or `src`, one or the other, which _check holds.
 _FIELDS = {
     TEXT: ({"html"}, set()),
     HEADING: ({"level", "html"}, set()),
@@ -329,7 +331,9 @@ def _check_parts(section: Section) -> None:
 # -------------------------------------------------------------- writing ----
 
 
-def _bytes(section: Section) -> str:
+def _written(section: Section) -> str:
+    """The section as text in the page: its source where it was read in an
+    earlier form or is code, else what section_html writes."""
     return section.source or section_html(section)
 
 
@@ -361,7 +365,7 @@ def _write_picture(fields) -> str:
 
 def _write_questions(section: Section) -> str:
     return '<dl class="pressless-questions">' + "".join(
-        f"<dt>{_bytes(asked[0])}</dt><dd>" + "".join(_bytes(part) for part in asked[1:])
+        f"<dt>{_written(asked[0])}</dt><dd>" + "".join(_written(part) for part in asked[1:])
         + "</dd>" for asked in section.parts) + "</dl>"
 
 
@@ -373,25 +377,31 @@ def _write_video(fields) -> str:
 
 
 def _write_parts(css: str, parts) -> str:
-    return f'<div class="{css}">' + "".join(_bytes(part) for part in parts) + "</div>"
+    return f'<div class="{css}">' + "".join(_written(part) for part in parts) + "</div>"
 
+
+# The class of the element holding a holder kind's sections, which its writer
+# writes and _Reading.candidate looks for.
+_HOLDER_CLASS = {PICTURES: "pressless-pictures", SLIDESHOW: "pressless-slideshow",
+                 COLUMNS: "pressless-columns", _COLUMN: "pressless-column"}
 
 # Each kind's HTML between its marks, as this Pressless writes it.
 _WRITERS: dict[str, Callable[[Section], str]] = {
     TEXT: lambda s: f"<p>{s.fields['html']}</p>",
     HEADING: lambda s: f"<h{s.fields['level']}>{s.fields['html']}</h{s.fields['level']}>",
     PICTURE: lambda s: _write_picture(s.fields),
-    PICTURES: lambda s: _write_parts("pressless-pictures", s.parts[0]),
+    PICTURES: lambda s: _write_parts(_HOLDER_CLASS[PICTURES], s.parts[0]),
     BUTTON: lambda s: (f'<p class="pressless-button"><a href="{_attr(s.fields["href"])}">'
                        f"{_text(s.fields['label'])}</a></p>"),
     VIDEO: lambda s: _write_video(s.fields),
     MUSIC: lambda s: f'<audio controls preload="metadata" src="{_attr(s.fields["src"])}"></audio>',
     DOWNLOAD: lambda s: (f'<p class="pressless-download"><a href="{_attr(s.fields["href"])}"'
                          f" download>{_text(s.fields['label'])}</a></p>"),
-    COLUMNS: lambda s: '<div class="pressless-columns">' + "".join(
-        _wrap(_COLUMN, _write_parts("pressless-column", column)) for column in s.parts) + "</div>",
-    _COLUMN: lambda s: _write_parts("pressless-column", s.parts[0]),
-    SLIDESHOW: lambda s: _write_parts("pressless-slideshow", s.parts[0]),
+    COLUMNS: lambda s: f'<div class="{_HOLDER_CLASS[COLUMNS]}">' + "".join(
+        _wrap(_COLUMN, _write_parts(_HOLDER_CLASS[_COLUMN], column)) for column in s.parts)
+        + "</div>",
+    _COLUMN: lambda s: _write_parts(_HOLDER_CLASS[_COLUMN], s.parts[0]),
+    SLIDESHOW: lambda s: _write_parts(_HOLDER_CLASS[SLIDESHOW], s.parts[0]),
     QUESTIONS: _write_questions,
     ENLARGE: lambda s: (f'<figure class="pressless-enlarge">{_img(s.fields)}'
                         f"{_caption(s.fields)}</figure>"),
@@ -589,10 +599,8 @@ class _Reading:
         its writer; None where it finds none."""
         if kind == QUESTIONS:
             return self.questions(start, end)
-        if kind in (PICTURES, SLIDESHOW, COLUMNS, _COLUMN):
-            css = {PICTURES: "pressless-pictures", SLIDESHOW: "pressless-slideshow",
-                   COLUMNS: "pressless-columns", _COLUMN: "pressless-column"}[kind]
-            opening, closing = f'<div class="{css}">', "</div>"
+        if kind in _HOLDER_CLASS:
+            opening, closing = f'<div class="{_HOLDER_CLASS[kind]}">', "</div>"
             inner = self.text[start:end]
             if not (inner.startswith(opening) and inner.endswith(closing)):
                 return None
@@ -656,7 +664,7 @@ def read(name: str, html: str) -> Page | None:
 
 def write(page: Page) -> str:
     """`before`, each gap and its section's bytes, the last gap, `after`."""
-    middle = "".join(gap + _bytes(section)
+    middle = "".join(gap + _written(section)
                      for gap, section in zip(page.gaps[:-1], page.sections, strict=True))
     return page.before + middle + page.gaps[-1] + page.after
 
@@ -696,21 +704,22 @@ def _recognised(events) -> Section | None:
     if (first.kind != "start" or first.attrs or (first.tag != "p" and not heading)
             or len(events) < 2 or events[-1].kind != "end" or events[-1].tag != first.tag):
         return None
-    inline = _inline_from(events[1:-1])
-    if inline is None:
+    words = _inline_from(events[1:-1])
+    if words is None:
         return None
     if heading:
-        return Section(HEADING, {"level": heading.group(1), "html": inline})
-    return Section(TEXT, {"html": inline})
+        return Section(HEADING, {"level": heading.group(1), "html": words})
+    return Section(TEXT, {"html": words})
 
 
 def adopt(html: str, furniture: tuple[tuple[int, int], ...], element: str = "main"
           ) -> str | None:
     """§4.6: the page with its `main`'s content taken into sections; the page
     unchanged where it already has an area; None where there is no `main` to
-    make one in. `furniture` is `builder.furniture_spans(name, html)`.
-    `element` names another element to make the area in: `header` or `footer`
-    for the furniture files (PRESS-0216 § 4.1)."""
+    make one in, or the `main` holds a header or footer span. `furniture` is
+    `builder.furniture_spans(name, html)`. `element` names another element to
+    make the area in: `header` or `footer` for the furniture files
+    (PRESS-0216 § 4.1)."""
     if read("", html) is not None:
         return html
     events = _scan(html)

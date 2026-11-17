@@ -26,6 +26,8 @@ from pressless.words import say
 # first user is partially sighted. The names are the layouts' own, as file
 # names are, and are never shown: the words table holds what setup says about
 # each. They are saved in sites' files, so none is renamed (PRESS-0359 § 4.1).
+# A layout added here needs an entry in OWN_STYLE, _OWN_WIDTH, _HEADING_FONT
+# and _LAYOUT_RULES too.
 LAYOUTS = ("sunrise", "meadow", "harbour", "studio", "market", "stage", "commons", "letter")
 
 # PRESS-0248: the colours by name, the rules below naming no other. The dark
@@ -479,20 +481,25 @@ _LINK_RULES = """\
 a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
 a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 """
-_HEADER_LINK_RULES = """\
-header.site a { color: var(--on-band); }
-header.site a:focus-visible { outline-color: var(--on-band); }
-"""
-_NAV_LINK_RULES = """\
-nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none;
-  border-bottom: 3px solid var(--accent); }
-"""
 _PICTURE_RULE = """\
 img { max-width: 100%; height: auto; border-radius: 0.5rem; }
 """
 _NO_EMPTY_DESCRIPTION = """\
 .site-description:empty { display: none; }
+"""
+
+# Header links on a band: every layout but Studio and Letter, whose header
+# sits on the paper.
+_HEADER_LINK_RULES = """\
+header.site a { color: var(--on-band); }
+header.site a:focus-visible { outline-color: var(--on-band); }
+"""
+# The menu's links: Sunrise, Meadow, Harbour and Market. The others write
+# their own.
+_NAV_LINK_RULES = """\
+nav.primary a { font-weight: 600; }
+nav.primary a[aria-current="page"] { text-decoration: none;
+  border-bottom: 3px solid var(--accent); }
 """
 # A page in one column between the header and the footer, the footer kept
 # at the bottom of a short page.
@@ -649,11 +656,13 @@ footer.site a { color: var(--foot-link); }
 footer.site p { margin: 0; }
 """
 
-# Rules the five later layouts share (PRESS-0359 § 4.1).
+# The main column of Studio, Stage and Commons. Market and Letter write
+# their own.
 _MAIN_COLUMN = """
 main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: var(--width);
   margin: 0 auto; padding: 2.5rem 1.25rem; }
 """
+# The footer of Studio, Market, Stage and Commons. Letter writes its own.
 _FOOT_RULES = """
 footer.site {
   background: var(--foot);

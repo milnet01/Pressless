@@ -36,7 +36,8 @@ SENTENCES[LookRefused] = Sentence(
 )
 
 # Each choice's words keys, in look.py's order. Written out because INV-4's
-# test finds keys only as literals; a test checks they match look.py.
+# test finds keys only as literals; a test checks each list keyed by a
+# look.py choice matches it.
 _COLOUR_WORDS = {
     "paper": "look_screen.colour.paper", "ink": "look_screen.colour.ink",
     "soft": "look_screen.colour.soft", "link": "look_screen.colour.link",
@@ -158,6 +159,8 @@ def _open(face: Face, folder: Path, request: Request) -> str:
         route = None
         if offers_routes(folder):
             asked = request.query.get("route", "")
+            # PRESS-0276 § 4.3: unasked, the route the site is on. Style code
+            # means the Pressless look, since the own route bins it on save.
             route = asked if asked in (OWN, PRESSLESS) else PRESSLESS if styled else OWN
         try:
             base = look.digest(folder)
@@ -209,7 +212,7 @@ def save(folder: Path, form: dict[str, str]) -> None:
         if has_style_code(folder):
             store.move_to_bin(folder, store.style_code_path(folder))
     else:
-        look.read(folder)
+        look.read(folder)   # raises LookUnreadable, so nothing is written over it
         choices, extra = _posted(form)
         if has_style_code(folder) and not look.made_here(folder):
             store.copy_to_bin(folder, store.style_code_path(folder))

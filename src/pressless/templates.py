@@ -17,6 +17,9 @@ from pressless import builder, cheatsheet, editor, photographs, store
 from pressless.face import Face, Reply, Request, render_notices
 from pressless.words import say
 
+# A starter's date is never used: picking a template takes its body,
+# categories and tags alone (PRESS-0017 § 4.3). Fixed, so every install
+# writes the same starters.
 _STARTED = datetime(2026, 9, 27)
 
 

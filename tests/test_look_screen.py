@@ -405,8 +405,8 @@ def test_the_bar_links_to_the_look_screen(tmp_path):
 
 
 def test_the_screen_offers_every_choice_look_makes():
-    """Breaks when look.py gains a colour, font, size, width or effect and
-    the screen's words lists, kept as literals for INV-4, do not."""
+    """Breaks when look.py gains a colour, font, size, width, effect or style
+    and the screen's words lists, kept as literals for INV-4, do not."""
     lists = {
         "colour": (look_screen._COLOUR_WORDS, starter_look.COLOURS),
         "font": (look_screen._FONT_WORDS, starter_look.FONTS),
@@ -418,6 +418,9 @@ def test_the_screen_offers_every_choice_look_makes():
     for kind, (shown, made) in lists.items():
         assert list(shown) == list(made), kind
         assert all(key == f"look_screen.{kind}.{name}" for name, key in shown.items()), kind
+    assert list(look_screen._STYLE_ABOUT) == list(starter_look.STYLES)
+    assert all(key == f"look_screen.style.{name}.about"
+               for name, key in look_screen._STYLE_ABOUT.items())
 
 
 # --------------------------------------------------------------- PRESS-0352 ---
