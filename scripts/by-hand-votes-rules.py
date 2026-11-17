@@ -32,21 +32,29 @@ sys.path.insert(0, str(ROOT / "src"))
 PROJECT = "demo-pressless"
 FIRESTORE_PORT = 18080
 AUTH_PORT = 19099
-DOCUMENTS = (f"http://127.0.0.1:{FIRESTORE_PORT}/v1/projects/{PROJECT}"
+EMULATORS = "http://127.0.0.1:"
+DOCUMENTS = (f"{EMULATORS}{FIRESTORE_PORT}/v1/projects/{PROJECT}"
              "/databases/(default)/documents")
-SIGN_UP = (f"http://127.0.0.1:{AUTH_PORT}/identitytoolkit.googleapis.com/v1/accounts:signUp"
+SIGN_UP = (f"{EMULATORS}{AUTH_PORT}/identitytoolkit.googleapis.com/v1/accounts:signUp"
            "?key=fake")
 ENTRY = "2026-11-01-seaside"
+# votes.RULES allows an entry key of at most this many characters.
+KEY_LIMIT = 200
+KEY_OVER = "2026-11-01-".ljust(KEY_LIMIT + 1, "a")
+KEY_AT = "2026-11-01-".ljust(KEY_LIMIT, "a")
 
 
 def _call(method: str, url: str, body: dict | None = None, token: str | None = None):
+    if not url.startswith(EMULATORS):
+        raise ValueError(f"not an emulator address: {url}")
     data = None if body is None else json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(url, data=data, method=method)
+    request = urllib.request.Request(  # noqa: S310 -- an emulator's http address, checked above
+        url, data=data, method=method)
     request.add_header("Content-Type", "application/json")
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=30) as answer:
+        with urllib.request.urlopen(request, timeout=30) as answer:  # noqa: S310 -- as above
             return answer.status, json.loads(answer.read() or b"null")
     except urllib.error.HTTPError as refused:
         return refused.code, refused.read().decode("utf-8", "replace")[:160]
@@ -54,7 +62,8 @@ def _call(method: str, url: str, body: dict | None = None, token: str | None = N
 
 def _visitor() -> tuple[str, str]:
     status, reply = _call("POST", SIGN_UP, {"returnSecureToken": True})
-    assert status == 200, reply
+    if status != 200:
+        raise SystemExit(f"Signing a visitor up on the Auth emulator failed: {status} {reply}")
     return reply["localId"], reply["idToken"]
 
 
@@ -102,10 +111,9 @@ def probe() -> int:
     show("an extra field is refused",
          _vote(ENTRY, a_uid, {**_value(1), "spam": {"stringValue": "x"}}, a), 403)
     show("an entry key of the wrong shape is refused", _vote("garbage", a_uid, _value(1), a), 403)
-    show("a key one character over the limit is refused",
-         _vote("2026-11-01-" + "a" * 190, a_uid, _value(1), a), 403)
-    show("a key at the limit is allowed", _vote("2026-11-01-" + "a" * 189, a_uid, _value(1), a),
-         200)
+    show("a key one character over the limit is refused", _vote(KEY_OVER, a_uid, _value(1), a),
+         403)
+    show("a key at the limit is allowed", _vote(KEY_AT, a_uid, _value(1), a), 200)
     show("a write elsewhere is refused",
          _call("PATCH", f"{DOCUMENTS}/other/x", {"fields": {}}, a)[0], 403)
     show("a write to the entry itself is refused",
@@ -154,7 +162,9 @@ def main() -> int:
                           "ui": {"enabled": False}, "singleProjectMode": True},
         }), encoding="utf-8")
         inner = shlex.join([sys.executable, str(Path(__file__).resolve()), "--probe"])
-        run = subprocess.run(
+        # A --firebase path is made absolute because the command runs in the
+        # temporary folder, where a relative one would not be found.
+        run = subprocess.run(  # noqa: S603 -- the firebase its runner named; a list, no shell
             [str(Path(firebase).resolve()) if options.firebase else firebase,
              "emulators:exec", "--only", "firestore,auth", "--project", PROJECT, inner],
             cwd=work, check=False)
