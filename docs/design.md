@@ -660,7 +660,7 @@ so the only part left is the one that sees every step and every failure
 already (rule 1).
 
 **Nothing Pressless shows or writes down carries three things: a
-credential, an account name either secret is filed under, or a full
+credential, an account name any secret is filed under, or a full
 filesystem path.** The last two identify the user. **Decided with the
 user 2026-09-07 for what Pressless says on failure, and it binds every
 line of the log for the same reason** — the log is what they send to

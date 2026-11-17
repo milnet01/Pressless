@@ -29,7 +29,7 @@ It reads no other part of Pressless, holds no secret, and touches no network.
 
 `docs/design.md` § Logging says there is one rolling plain-English log beside
 the settings, that the Face writes it, and that nothing shown or written down
-carries a credential, an account name either secret is filed under, or a full
+carries a credential, an account name any secret is filed under, or a full
 filesystem path. It does not say how large the log may grow, what the file is
 called, or what happens when the disk refuses the write.
 
