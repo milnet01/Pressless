@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=411 -->
+<!-- ants-roadmap-id-high-water: PRESS=412 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7718,9 +7718,19 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Look.
 
-- 📋 [PRESS-0375] **Review fixes: marks and the site builder.**
+- ✅ [PRESS-0375] **Review fixes: marks and the site builder.**
   Subject 05 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 5 low. review-readability: 8 medium, 6 low.
+  Ledger: close-findings-2026-11-17/lane-05-marks-builder.json.
+  Shipped 2026-11-17, dd2847c..8fa8a74. 26 findings: 23 fixed, 0
+  queued, 3 dismissed (preview_html's marks= parameter is named by
+  three specs; previews already hold editor.LOCK; the look draft is
+  never written, so one path is right). A photo name ending in a dot
+  and a space is refused; an old address under the build's own folders
+  gets no forward; the site icon carries no colour profile; a Pillow
+  encoder failure stops the build naming the photograph; "All 1 entry".
+  Three redirect copies are one helper. Specs amended: PRESS-0210,
+  0008, 0227. Filed: PRESS-0412. Full suite 2338 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-05-marks-builder.json.
   **Layman:** Fixes in the part that turns your writing into the finished website.
   Kind: review-fix.
@@ -8296,6 +8306,16 @@ does not wait on them.
   Kind: fix.
   Source: PRESS-0379 close-findings sweep 2026-11-17.
   Lanes: Insights.
+
+- 📋 [PRESS-0412] **design.md says the Builder writes the preview stylesheet from the look's draft.**
+  Surfaced by PRESS-0375 (out of scope there). docs/design.md's storage
+  row says so; PRESS-0196 keeps the look draft only in the browser
+  (a style element with id pressless-look-draft) and never writes it,
+  and the Builder reads one path. Correct design.md.
+  **Layman:** A design document describes how the look preview really works.
+  Kind: doc-fix.
+  Source: PRESS-0375 close-findings sweep 2026-11-17.
+  Lanes: Builder.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

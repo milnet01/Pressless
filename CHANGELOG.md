@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Building your site copes with more odd cases** (PRESS-0375)
+  A photograph that cannot be converted now stops the build with its name, instead
+  of a vague message about the site folder. A site with one entry says "All 1
+  entry". Your site's icon no longer carries the original photo's colour data. An
+  old address pointing into Pressless's own folders no longer gets a forward.
+
 - **Menus and the page editor behave as you'd expect** (PRESS-0373)
   Saving a menu with no links is refused instead of emptying it, and a logo or phone
   link already in a menu no longer blocks saving it. After you remove a page you land
