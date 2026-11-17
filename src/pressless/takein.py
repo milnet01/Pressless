@@ -22,8 +22,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pressless_import
-from pressless import builder, photographs, publisher, safe_write, settings, store, undo
+from pressless import builder, photographs, publisher, safe_write, store, undo
 from pressless.face import SENTENCES, Sentence, Site, _room, gatherer, nothing_captured
+from pressless.settings import Settings
 from pressless_import import fetch
 
 # What a take-in fetches: the Store's own files, and what the Builder
@@ -81,19 +82,19 @@ class _Read:
     icon: bool                        # the repository holds site-icon.png
 
 
-def look(folder: Path, settings: settings.Settings, key: str, commit: str = "",
+def look(folder: Path, settings: Settings, key: str, commit: str = "",
          transport: publisher.Transport | None = None) -> Found:
     """§ 4.2: what the state at `commit`, or the branch's current one, holds.
     Writes nothing to the Store; the fetch area is emptied before and after."""
-    fetch = Path(folder) / undo.FETCH_FOLDER
-    undo.empty_fetch(fetch)
+    fetch_area = Path(folder) / undo.FETCH_FOLDER
+    undo.empty_fetch(fetch_area)
     try:
-        return _fetch_and_read(fetch, settings, key, commit, transport).found
+        return _fetch_and_read(fetch_area, settings, key, commit, transport).found
     finally:
-        _empty_quietly(fetch)
+        undo.empty_fetch_quietly(fetch_area)
 
 
-def take_in(folder: Path, settings: settings.Settings, key: str, commit: str, *,
+def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
             capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str] | None = None,
             transport: publisher.Transport | None = None) -> TakenIn:
@@ -108,26 +109,26 @@ def take_in(folder: Path, settings: settings.Settings, key: str, commit: str, *,
     if captured(lambda: store.holds_a_site(folder)):
         raise TakeInStopped("the Store already holds a site")
 
-    fetch = folder / undo.FETCH_FOLDER
-    undo.empty_fetch(fetch)
+    fetch_area = folder / undo.FETCH_FOLDER
+    undo.empty_fetch(fetch_area)
     reversals: list[Callable[[], None]] = []
     try:
-        read = _fetch_and_read(fetch, settings, key, commit, transport, captured)
+        read = _fetch_and_read(fetch_area, settings, key, commit, transport, captured)
         try:
-            captured(lambda: _write(folder, fetch, read, reversals))
+            captured(lambda: _write(folder, fetch_area, read, reversals))
         except BaseException:
             captured(lambda: undo.reverse(reversals))
             raise
     finally:
-        _empty_quietly(fetch)
+        undo.empty_fetch_quietly(fetch_area)
     return TakenIn(read.found, lambda: captured(lambda: undo.reverse(reversals)))
 
 
-def _fetch_and_read(fetch: Path, settings: settings.Settings, key: str, commit: str,
+def _fetch_and_read(fetch_area: Path, settings: Settings, key: str, commit: str,
                     transport: publisher.Transport | None,
                     captured: Callable = lambda step: step()) -> _Read:
-    fetched = publisher.fetch_state(settings, key, fetch, PREFIXES, commit, transport)
-    state = captured(lambda: undo.read_state(fetch, fetched.paths))
+    fetched = publisher.fetch_state(settings, key, fetch_area, PREFIXES, commit, transport)
+    state = captured(lambda: undo.read_state(fetch_area, fetched.paths))
     kept_photographs, refused_photographs = _named(
         fetched.paths, store.PHOTOGRAPHS_FOLDER, store.photograph_path_for)
     kept_files, refused_files = _named(fetched.paths, store.FILES_FOLDER, store.file_path_for)
@@ -162,17 +163,17 @@ def _named(paths: tuple[str, ...], folder_name: str,
     return tuple(kept), tuple(refused)
 
 
-def _write(folder: Path, fetch: Path, read: _Read,
+def _write(folder: Path, fetch_area: Path, read: _Read,
            reversals: list[Callable[[], None]]) -> None:
     """§ 4.3 steps 1 to 3, each write recording its reversal as it lands."""
     undo.reconcile(folder, read.state, reversals)                        # step 1
 
     for name in read.photographs:                                        # step 2
-        placed = _place(fetch / store.PHOTOGRAPHS_FOLDER / name, name,
+        placed = _place(fetch_area / store.PHOTOGRAPHS_FOLDER / name, name,
                         lambda n: store.photograph_path_for(folder, n))
         reversals.append(lambda p=placed: store.unplace_photograph(folder, p))
     for name in read.files:
-        kept = _place(fetch / store.FILES_FOLDER / name, name,
+        kept = _place(fetch_area / store.FILES_FOLDER / name, name,
                       lambda n: store.file_path_for(folder, n))
         reversals.append(lambda k=kept: store.move_to_bin(folder, store.file_path_for(folder, k)))
 
@@ -184,7 +185,7 @@ def _write(folder: Path, fetch: Path, read: _Read,
     # icon either, the name is dropped, or the next build would stop on it.
     icon = ""
     if read.icon:
-        icon = _place(fetch / builder.SITE_ICON, builder.SITE_ICON,
+        icon = _place(fetch_area / builder.SITE_ICON, builder.SITE_ICON,
                       lambda n: store.photograph_path_for(folder, n))
         reversals.append(lambda: store.unplace_photograph(folder, icon))
     store.write_identity(folder, dataclasses.replace(identity, icon=icon))
@@ -195,15 +196,6 @@ def _place(source: Path, name: str, path_for: Callable[[str], Path]) -> str:
     """Keep the fetched file `source` under `name`, which the Builder
     published it as, so the name maps to itself (§ 4.3 step 2)."""
     return photographs.keep(path_for, source.read_bytes(), lambda staged: name)
-
-
-def _empty_quietly(fetch: Path) -> None:
-    """Never raised, for undo's reason: the next fetch empties the area again,
-    and a raise here would replace what the sequence did."""
-    try:
-        undo.empty_fetch(fetch)
-    except OSError:
-        pass
 
 
 # ------------------------------------------------- PRESS-0210 § 4.11 ----
@@ -234,13 +226,12 @@ def _held_commit(folder: Path) -> str:
     return commit if isinstance(commit, str) else ""
 
 
-def look_folder(folder: Path, settings: settings.Settings, key: str, commit: str = "",
+def look_folder(folder: Path, settings: Settings, key: str, commit: str = "",
                 transport: publisher.Transport | None = None
                 ) -> tuple[pressless_import.Found, str]:
     """The whole repository at `commit`, or the branch's current one, laid out
     at import/folder/; what `read_folder` found there, and the commit read."""
-    held = _held_folder(folder)
-    forget_folder(folder)
+    held = _cleared_held(folder)
     # "/" selects the whole repository (publisher._within_prefix).
     fetched = publisher.fetch_state(settings, key, held, ("/",), commit, transport)
     safe_write.write_whole(_record_path(folder),
@@ -249,15 +240,14 @@ def look_folder(folder: Path, settings: settings.Settings, key: str, commit: str
     return pressless_import.read_folder(held), fetched.commit
 
 
-def look_site(folder: Path, settings: settings.Settings, key: str, address: str, commit: str = "",
+def look_site(folder: Path, settings: Settings, key: str, address: str, commit: str = "",
               transport: publisher.Transport | None = None
               ) -> tuple[pressless_import.Found, str]:
     """The live site at `address` laid out at import/folder/ (PRESS-0333 § 4.2); what
     `read_folder` found there, and the commit it stands for, which names the state
     shown though the pages did not come from it. An address it cannot read leaves the
     folder empty, so no `index.html` is found."""
-    held = _held_folder(folder)
-    forget_folder(folder)
+    held = _cleared_held(folder)
     commit = commit or publisher.head_commit(settings, key, transport)
     crawled = fetch.fetch_site(address, held, lambda: _room(held))
     imports = held.parent
@@ -268,6 +258,17 @@ def look_site(folder: Path, settings: settings.Settings, key: str, address: str,
     return pressless_import.read_folder(held), commit
 
 
+def _cleared_held(folder: Path) -> Path:
+    """import/folder/, forgotten and gone. On Windows a file another program
+    holds open survives the forgetting, and a read on top of it would bring in
+    a page from the state read before, so that stops here."""
+    forget_folder(folder)
+    held = _held_folder(folder)
+    if held.exists():
+        raise undo.FetchAreaInUse("import/folder could not be emptied")
+    return held
+
+
 def forget_folder(folder: Path) -> None:
     """A repository read and refused, or one read again, leaves no copy behind."""
     shutil.rmtree(_held_folder(folder), ignore_errors=True)
@@ -276,14 +277,14 @@ def forget_folder(folder: Path) -> None:
         missing_ok=True)
 
 
-def _lay_out(folder: Path, settings: settings.Settings, key: str, commit: str, address: str,
+def _lay_out(folder: Path, settings: Settings, key: str, commit: str, address: str,
              transport: publisher.Transport | None) -> pressless_import.Found:
     if address:
         return look_site(folder, settings, key, address, commit, transport)[0]
     return look_folder(folder, settings, key, commit, transport)[0]
 
 
-def found_held(folder: Path, settings: settings.Settings, key: str, commit: str,
+def found_held(folder: Path, settings: Settings, key: str, commit: str,
                transport: publisher.Transport | None = None,
                address: str = "") -> pressless_import.Found:
     """What the state at `commit` holds: from import/folder/ where it holds that
@@ -294,7 +295,7 @@ def found_held(folder: Path, settings: settings.Settings, key: str, commit: str,
     return _lay_out(folder, settings, key, commit, address, transport)
 
 
-def bring_folder(folder: Path, settings: settings.Settings, key: str, commit: str, *,
+def bring_folder(folder: Path, settings: Settings, key: str, commit: str, *,
                  capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
                  notices: list[str] | None = None,
                  transport: publisher.Transport | None = None,

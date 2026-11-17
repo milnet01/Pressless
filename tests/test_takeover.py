@@ -42,6 +42,7 @@ from pressless import (
     pressing,
     publisher,
     publishing,
+    safe_write,
     settings,
     setup,
     store,
@@ -772,3 +773,62 @@ def test_an_undo_refused_for_the_takeover_links_to_it(tmp_path, monkeypatch):
     finally:
         served.stop()
     assert f'href="{publishing.TAKEOVER_ADDRESS}"' in json.loads(reply.body)["failure"]
+
+
+# ------------------------------------------------------- written and emptied ---
+
+
+def test_the_marker_is_written_whole_with_lf(tmp_path, monkeypatch):
+    """design.md § Persistence. Breaks when the marker is written in text mode,
+    CRLF on Windows, or straight over the file rather than whole."""
+    written: list[tuple[str, str, str]] = []
+    real = safe_write.write_whole
+
+    def recorded(target, text, **kwargs):
+        written.append((target.name, text, kwargs.get("newline", "\n")))
+        real(target, text, **kwargs)
+
+    monkeypatch.setattr(safe_write, "write_whole", recorded)
+    takeover.mark(tmp_path, ("a.yml", "b.yml"))
+    assert written == [(takeover.MARKER, "a.yml\nb.yml\n", "\n")]
+    assert (tmp_path / takeover.MARKER).read_bytes() == b"a.yml\nb.yml\n"
+    assert takeover.named(tmp_path) == ("a.yml", "b.yml")
+    takeover.unmark(tmp_path)
+    assert not takeover.owed(tmp_path)
+
+
+def test_a_fetch_area_held_open_after_reading_build_files_keeps_the_answer(
+        tmp_path, monkeypatch):
+    """Windows. Breaks when the closing empty's FetchAreaInUse escapes, so
+    setup reads a site it could take over as a failure."""
+    github = _Built()
+    folder = _empty_store(tmp_path)
+    shown = publisher.pages(REPOSITORY_NAME, KEY, github)
+    real = undo.empty_fetch
+    calls: list[Path] = []
+
+    def held_open(fetch: Path) -> None:
+        calls.append(fetch)
+        if len(calls) > 1:
+            raise undo.FetchAreaInUse("held open")
+        real(fetch)
+
+    monkeypatch.setattr(undo, "empty_fetch", held_open)
+    assert takeover.build_files(folder, _settings(folder), KEY, shown, github) == (BUILD,)
+
+
+def test_a_folder_held_open_on_the_pages_step_is_said(tmp_path, monkeypatch):
+    """Windows. Breaks when a working folder another program holds open is
+    worded as an undo's, on a page that is setting a site up."""
+    _site(monkeypatch)
+    double = _Built()
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+
+    def held_open(*args, **kwargs):
+        raise undo.FetchAreaInUse("held open")
+
+    monkeypatch.setattr(takein, "look_site", held_open)
+    with _setup(folder, double) as browser:
+        after = _next(browser, _walk_to(browser, "pages"))
+    assert "could not clear its own working folder, so it changed nothing." in after, after

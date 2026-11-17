@@ -51,6 +51,7 @@ from pressless import (
     starter,
     store,
     takein,
+    undo,
     words,
 )
 
@@ -771,3 +772,40 @@ def _written(folder: Path, files: dict[str, bytes]) -> Path:
         (folder / path).parent.mkdir(parents=True, exist_ok=True)
         (folder / path).write_bytes(data)
     return folder
+
+
+# ------------------------------------------------- a folder held open (Windows) ---
+
+
+def test_a_fetch_area_held_open_after_a_look_never_replaces_its_answer(tmp_path, monkeypatch):
+    """Windows: a file another program holds in the fetch area survives the
+    closing empty. Breaks when that empty's FetchAreaInUse escapes, so a look
+    that worked reads as failed; the next fetch empties the area again."""
+    github, _ = _published(tmp_path)
+    folder = _empty_store(tmp_path, "looked")
+    real = undo.empty_fetch
+    calls: list[Path] = []
+
+    def held_open(fetch: Path) -> None:
+        calls.append(fetch)
+        if len(calls) > 1:
+            raise undo.FetchAreaInUse("held open")
+        real(fetch)
+
+    monkeypatch.setattr(undo, "empty_fetch", held_open)
+    found = takein.look(folder, _settings(folder), KEY, transport=github)
+    assert found.made_here and len(calls) == 2
+
+
+def test_a_held_folder_that_cannot_be_emptied_is_never_read_again(tmp_path, monkeypatch):
+    """Windows: a file held open in import/folder/ survives being forgotten.
+    Breaks when the next look fetches on top of it, so a page from the
+    repository read before is brought in with the new one."""
+    github = _plain_repository()
+    folder = _empty_store(tmp_path, "setup")
+    stale = folder / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER / "old.html"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("<p>Old</p>", encoding="utf-8")
+    monkeypatch.setattr(shutil, "rmtree", lambda path, ignore_errors=False: None)
+    with pytest.raises(undo.FetchAreaInUse):
+        takein.look_folder(folder, _settings(folder), KEY, transport=github)

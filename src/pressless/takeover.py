@@ -13,7 +13,7 @@ import html
 import re
 from pathlib import Path
 
-from pressless import publisher, undo
+from pressless import publisher, safe_write, undo
 from pressless.settings import Settings
 from pressless.words import say
 
@@ -28,8 +28,9 @@ def owed(folder: Path) -> bool:
 
 
 def mark(folder: Path, files: tuple[str, ...]) -> None:
-    """An OSError is the caller's."""
-    (Path(folder) / MARKER).write_text("".join(f"{name}\n" for name in files), encoding="utf-8")
+    """Written whole, with LF endings on every system. An OSError is the caller's."""
+    safe_write.write_whole(Path(folder) / MARKER, "".join(f"{name}\n" for name in files),
+                           prefix=".takeover-")
 
 
 def named(folder: Path) -> tuple[str, ...]:
@@ -40,8 +41,9 @@ def named(folder: Path) -> tuple[str, ...]:
         return ()
 
 
-def done(folder: Path) -> None:
-    """Absent is fine. An OSError is the caller's."""
+def unmark(folder: Path) -> None:
+    """Remove the marker, once the takeover is done. Absent is fine. An
+    OSError is the caller's."""
     (Path(folder) / MARKER).unlink(missing_ok=True)
 
 
@@ -52,20 +54,18 @@ def build_files(folder: Path, settings: Settings, key: str, shown: publisher.Pag
     Empty where Pages is not built elsewhere: there is nothing to take over."""
     if not shown.built_elsewhere:
         return ()
-    fetch = Path(folder) / undo.FETCH_FOLDER
-    undo.empty_fetch(fetch)
+    fetch_area = Path(folder) / undo.FETCH_FOLDER
+    undo.empty_fetch(fetch_area)
     try:
-        fetched = publisher.fetch_state(settings, key, fetch, (_WORKFLOWS,),
+        fetched = publisher.fetch_state(settings, key, fetch_area, (_WORKFLOWS,),
                                         transport=transport)
         return tuple(sorted(
             path for path in fetched.paths
             if "/" not in path.removeprefix(_WORKFLOWS) and path.endswith(_SUFFIXES)
-            and _builds(shown, (fetch / path).read_text(encoding="utf-8", errors="replace"))))
+            and _builds(shown, (fetch_area / path).read_text(encoding="utf-8",
+                                                             errors="replace"))))
     finally:
-        try:
-            undo.empty_fetch(fetch)
-        except OSError:
-            pass    # the next fetch empties the area again
+        undo.empty_fetch_quietly(fetch_area)
 
 
 # PRESS-0336: the two common actions that push a built site to a branch, each

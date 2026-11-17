@@ -762,7 +762,7 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
             if final != saved:
                 gathered(lambda: settings.save(folder, final))
             if not shown.built_elsewhere:
-                gathered(lambda: takeover.done(folder))
+                gathered(lambda: takeover.unmark(folder))
                 told(pressing.quiet())      # the switch was made elsewhere
                 return f"<p>{say(_already_key(shown))}</p>"
             published = publish(folder, final, key, entry=None, taking_over=True,     # step 4
@@ -775,7 +775,7 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
             # kept_on_a_branch folds case, so the removed CNAME may be lower case.
             stale = any(path.casefold() == publisher.CNAME.casefold()
                         for path in published.outcome.removed)
-            gathered(lambda: takeover.done(folder))                                   # step 6
+            gathered(lambda: takeover.unmark(folder))                                 # step 6
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
             return stopped(exc)
     told(pressing.ended(pressing.PUBLISH, True))

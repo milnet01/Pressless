@@ -216,7 +216,7 @@ MARKER = "takeover-owed"             # in the site's folder: the build files' na
 def owed(folder: Path) -> bool: ...
 def mark(folder: Path, files: tuple[str, ...]) -> None: ...  # OSError is the caller's
 def named(folder: Path) -> tuple[str, ...]: ...   # for the report, once they have gone
-def done(folder: Path) -> None: ...  # absent is fine
+def unmark(folder: Path) -> None: ...  # absent is fine
 ```
 
 `sites.SITE_NAMES` gains the marker, as it holds `starter-unpublished`, so
@@ -292,7 +292,7 @@ for this failure.
    and the page says the new site is on GitHub, not yet on the web, and to press
    again. A second press's publish finds nothing differing and writes nothing
    (PRESS-0009 INV-4), then this step runs.
-6. `takeover.done`, then the report page: Pages switched, the workflow files
+6. `takeover.unmark`, then the report page: Pages switched, the workflow files
    named, the branch no longer served, the domain kept, the files added and removed, the root entries replaced,
    with `publisher.Outcome`'s counts, and that a first build takes GitHub a few minutes.
    Where `Outcome.commit` is empty, it says an earlier press published the site, in

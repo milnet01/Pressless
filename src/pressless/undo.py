@@ -127,13 +127,7 @@ def undo(folder: Path, saved: settings.Settings, key: str, *,
             captured(lambda: reverse(reversals))
             raise
     finally:
-        try:
-            empty_fetch(fetch)                                           # step 7
-        except (OSError, FetchAreaInUse):
-            # Never raised: step 1 of the next undo empties the area again and
-            # reads nothing it finds, and a raise here would replace what the
-            # sequence did -- a publish that landed reported as failing (§ 4.3).
-            pass
+        empty_fetch_quietly(fetch)                                       # step 7
 
     return Undone(published.outcome, tuple(changed.restored),
                   tuple(changed.demoted), tuple(changed.kept))
@@ -149,6 +143,17 @@ def empty_fetch(fetch: Path) -> None:
     fetch.mkdir(parents=True, exist_ok=True)
     if any(fetch.iterdir()):
         raise FetchAreaInUse("the fetch area could not be emptied")
+
+
+def empty_fetch_quietly(fetch: Path) -> None:
+    """`empty_fetch` at the end of a sequence, never raised: the next fetch
+    empties the area again and reads nothing it finds, and a raise here would
+    replace what the sequence did, such as a publish that landed reported as
+    failing (§ 4.3). Undo, a take-in and a takeover's read all end so."""
+    try:
+        empty_fetch(fetch)
+    except (OSError, FetchAreaInUse):
+        pass
 
 
 # --------------------------------------------------------------- reading ---

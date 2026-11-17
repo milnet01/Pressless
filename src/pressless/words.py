@@ -341,7 +341,7 @@ _WORDS: dict[str, str] = {
     "failure.undo.NothingToUndo.what": "Pressless cannot undo your very first publish.",
     "failure.undo.NothingToUndo.next": "There is no earlier version of your site to go back to.",
     "failure.undo.FetchAreaInUse.what": (
-        "Pressless could not clear its own working folder for the undo, so it changed nothing."
+        "Pressless could not clear its own working folder, so it changed nothing."
     ),
     "failure.undo.FetchAreaInUse.next": (
         "Another program may have a file open in Pressless's own folder. Close it, then try"
