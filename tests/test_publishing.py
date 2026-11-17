@@ -673,8 +673,9 @@ def test_an_imported_site_publishes_as_before(tmp_path):
 
 
 def test_replace_needs_the_name_and_publishes_nothing(tmp_path):
-    """INV-12. Breaks when the name is not checked, the marker stays, or the
-    page publishes."""
+    """INV-12. Breaks when the name is not checked, the marker goes before a
+    publish lands, or the page publishes. Then a publish replaces the site,
+    and only its landing removes the marker (PRESS-0393)."""
     from test_editor import _Browser as _PageBrowser
     folder = _starter_folder(tmp_path)
     github = _github()
@@ -694,8 +695,11 @@ def test_replace_needs_the_name_and_publishes_nothing(tmp_path):
     assert kept == ("CNAME",) and marked
     assert status == 200
     assert settings.load(folder).untouchable == ()
-    assert not (folder / MARKER).exists()
+    assert (folder / MARKER).exists()
     assert github.requests == []
+    publishing.publish(folder, settings.load(folder), KEY, entry=None,
+                       transport=_holding("index.html"))
+    assert not (folder / MARKER).exists()
 
 
 def test_confirming_the_replace_forgets_the_refusal(tmp_path, monkeypatch):

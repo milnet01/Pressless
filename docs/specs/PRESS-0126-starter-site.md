@@ -89,6 +89,7 @@ Every "(decided here)" is open to the maintainer to overturn.
 ```python
 # src/pressless/starter.py — new; the Face's, as templates.py is
 MARKER = "starter-unpublished"   # in the site's folder; empty file
+REPLACE_AGREED = "replace\n"     # what MARKER holds once replacing is agreed
 
 def offered(folder: Path) -> bool: ...         # § 4.4
 LOOKS = ("sunrise", "meadow", "harbour")     # PRESS-0239
@@ -96,6 +97,8 @@ LOOKS = ("sunrise", "meadow", "harbour")     # PRESS-0239
 def fill(folder: Path, site_name: str, look: str = LOOKS[0]) -> None: ...
 def unpublished(folder: Path) -> bool: ...      # MARKER exists
 def mark_published(folder: Path) -> None: ...   # removes MARKER; absent is fine
+def agree_to_replace(folder: Path) -> None: ... # writes REPLACE_AGREED into MARKER
+def replace_agreed(folder: Path) -> bool: ...   # MARKER holds REPLACE_AGREED
 ```
 
 ```python
@@ -194,7 +197,8 @@ A posted `start` where `offered` is False is ignored.
 
 In `publishing.publish`, the guard step gains a check that runs first:
 
-1. Where `starter.unpublished(folder)`, whether or not `emptying`, call
+1. Where `starter.unpublished(folder)` and not `starter.replace_agreed(folder)`,
+   whether or not `emptying`, call
    `publisher.root_entries(settings, key, transport)`. Where any entry,
    with any trailing `/` removed and folded with `str.casefold`, equals
    `"index.html"` or `"index.md"`, raise `WouldReplaceASite`. That fold is
@@ -223,9 +227,10 @@ publish again after it.
 - `POST /publish/replace` — where the typed name, stripped, is not exactly
   `settings.repository`, the page is shown again with a hint, and nothing is
   written or requested. Otherwise, where any entry was unticked,
-  `settings.save` writes the list without it. Then `starter.mark_published(folder)`
-  removes the marker, and the page says to publish again from where the user
-  was. **It publishes nothing itself**: a refused page publish puts its change
+  `settings.save` writes the list without it. Then `starter.agree_to_replace(folder)`
+  records the say-so in the marker, and the page says to publish again from
+  where the user was. The marker stays until a publish lands, so nothing says
+  the starter is on the web before it is. **It publishes nothing itself**: a refused page publish puts its change
   back (`page_editor`'s publish), so the change is still waiting, and the next
   publish carries it.
 
@@ -312,10 +317,12 @@ other Builder output.
   *Breaks when:* the check runs on every publish.
 - **INV-12** — `POST /publish/replace` with a wrong repository name writes
   nothing and keeps the marker. With the right name and `CNAME` unticked,
-  the saved list lacks `CNAME`, the marker is gone, and no request is made.
+  the saved list lacks `CNAME`, the marker stays, and no request is made.
+  A publish then replaces the site, and its landing removes the marker.
   *Test:*
   `tests/test_publishing.py::test_replace_needs_the_name_and_publishes_nothing`.
-  *Breaks when:* the name is not checked, the marker stays, or the page
+  *Breaks when:* the name is not checked, the marker goes before a publish
+  lands, the say-so does not let the publish through, or the page
   publishes.
 - **INV-13** — Where the Store holds style code, an entry page links
   `look/style.css` alone and the site folder holds it. Where it holds none,

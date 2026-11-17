@@ -31,6 +31,7 @@ from test_setup import _saved
 
 from pressless import (
     builder,
+    checklist,
     editor,
     face,
     marks,
@@ -42,6 +43,7 @@ from pressless import (
     setup,
     starter,
     store,
+    takeover,
     words,
 )
 from pressless.words import say
@@ -1130,6 +1132,22 @@ def test_the_list_opens_on_a_checklist_that_ticks_as_the_site_is_set_up(tmp_path
     assert [done for done, _ in _checklist(folder)] == [True, True, True, False, False]
     store.write_html(folder, store.FURNITURE_FOLDER, "navigation", "<nav>Mine</nav>")
     starter.mark_published(folder)
+    assert _checklist(folder) == []
+
+
+def test_a_site_taken_over_is_not_on_the_web_until_it_is_published(tmp_path):
+    """PRESS-0393. A site brought in from a repository GitHub Actions builds
+    has no starter marker, but nothing of Pressless's is on the web until the
+    first publish ends the takeover. Breaks when Put your site on the web
+    ticks while the takeover is owed, or its link misses the takeover page."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    store.write_identity(folder, store.Identity("Field Notes", "Notes from the field",
+                                                icon="shore.jpg"))
+    takeover.mark(folder, (".github/workflows/pages.yml",))
+    assert [done for done, _ in _checklist(folder)] == [True, True, True, True, False]
+    assert f'href="{publishing.TAKEOVER_ADDRESS}"' in checklist.render(folder)
+    takeover.unmark(folder)
     assert _checklist(folder) == []
 
 

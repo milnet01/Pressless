@@ -10,3 +10,4 @@
 | amend | 2026-11-08 | none: no reviewer was dispatched | 0 | 0 | 0 | 0 | **Amended by PRESS-0276** before it was built: a pointer to its spec, no clause rewritten. |
 | amend | 2026-11-17 | none: PRESS-0383 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.1 `mark_published`; § 4.3 fill keeps `FILLED`'s digests. |
 | amend | 2026-11-17 | none: PRESS-0376 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.2 `holds_a_site` passes over a temporary a killed save left; INV-1 gains a test. |
+| amend | 2026-11-17 | none: PRESS-0393; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.1, 4.5 and INV-12: the replace page records the say-so in the marker, which stays until a publish lands. |

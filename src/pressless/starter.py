@@ -21,6 +21,10 @@ from pressless.safe_write import write_whole
 from pressless.words import say
 
 MARKER = "starter-unpublished"   # in the site's folder; empty file
+# What the marker holds once the user has agreed to replace the site already
+# on GitHub (PRESS-0126 § 4.5). The marker stays until a publish lands, so
+# nothing says the starter is on the web before it is (PRESS-0393).
+REPLACE_AGREED = "replace\n"
 # In the site's folder: a digest of the Home page and the menu as fill wrote
 # them, which checklist compares with, so a rename or reworded starter words
 # never reads as the site made its own (PRESS-0383).
@@ -289,6 +293,19 @@ def unpublished(folder: Path) -> bool:
 def mark_published(folder: Path) -> None:
     """Remove the marker; absent is fine. An OSError is the caller's."""
     (Path(folder) / MARKER).unlink(missing_ok=True)
+
+
+def agree_to_replace(folder: Path) -> None:
+    """Record in the marker that the user agreed to replace the site on
+    GitHub. An OSError is the caller's."""
+    write_whole(Path(folder) / MARKER, REPLACE_AGREED, prefix=f".{MARKER}.")
+
+
+def replace_agreed(folder: Path) -> bool:
+    try:
+        return (Path(folder) / MARKER).read_text(encoding="utf-8") == REPLACE_AGREED
+    except OSError:
+        return False
 
 
 def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:

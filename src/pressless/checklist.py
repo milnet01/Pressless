@@ -9,7 +9,7 @@ import html
 from collections.abc import Callable
 from pathlib import Path
 
-from pressless import editor, starter, store
+from pressless import editor, publishing, starter, store, takeover
 from pressless.words import say
 
 _HOME = editor.page_address(store.PAGES_FOLDER, "index")
@@ -30,8 +30,12 @@ def render(folder: Path) -> str:
              _own(folder, store.FURNITURE_FOLDER, "navigation", starter.navigation)),
             # Any publish that lands removes the starter's marker (PRESS-0126
             # § 4.5), a page's Press to site included, so the link opens Home,
-            # the starter's first page, rather than Publish.
-            ("checklist.publish", _HOME, not starter.unpublished(folder)),
+            # the starter's first page, rather than Publish. A site taken over
+            # from GitHub Actions has no marker, and none of Pressless's pages
+            # are on the web until the takeover's publish (PRESS-0393).
+            ("checklist.publish",
+             publishing.TAKEOVER_ADDRESS if takeover.owed(folder) else _HOME,
+             not starter.unpublished(folder) and not takeover.owed(folder)),
         )
     except store.StoreError:
         return ""

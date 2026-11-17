@@ -248,9 +248,9 @@ def _refuse(folder: Path, settings: settings.Settings, key: str,
     if takeover.owed(folder) and not taking_over:    # PRESS-0333 § 4.5
         raise TakeoverOwed("the site is still built by GitHub Actions")
     # PRESS-0126 § 4.5: the starter's first publish, whether or not
-    # emptying, refuses where the repository holds a site. The fold is
-    # PRESS-0009 § 4.4's.
-    if starter.unpublished(folder) and any(
+    # emptying, refuses where the repository holds a site, until the user
+    # agrees to replace it. The fold is PRESS-0009 § 4.4's.
+    if starter.unpublished(folder) and not starter.replace_agreed(folder) and any(
             name.rstrip("/").casefold() in A_SITE
             for name in publisher.root_entries(settings, key, transport)):
         raise WouldReplaceASite("the repository already holds a site")
@@ -623,8 +623,9 @@ def _digest(path: Path) -> str:
 
 def _replace(face: Face, folder: Path, request: Request) -> str:
     """PRESS-0126 § 4.5: the user's say-so to replace the site on GitHub. It
-    trims the untouchable list as asked and removes the marker, and publishes
-    nothing: a refused publish put its change back, so the next one carries it."""
+    trims the untouchable list as asked and records the say-so in the marker,
+    which stays until a publish lands (PRESS-0393). It publishes nothing: a
+    refused publish put its change back, so the next one carries it."""
     with editor.LOCK, face.capture() as notices:
         body = _replace_page(face, folder, request)
     return render_notices(notices) + body
@@ -649,7 +650,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
             try:
                 if kept != saved.untouchable:
                     settings.save(folder, dataclasses.replace(saved, untouchable=kept))
-                starter.mark_published(folder)
+                starter.agree_to_replace(folder)
             except (settings.SettingsError, OSError) as exc:
                 return face.fail(exc, publishing=False)
             pressing.forget()  # PRESS-0272: this answers the refusal's box
