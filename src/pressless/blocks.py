@@ -286,6 +286,19 @@ def _is_when(value: str) -> bool:
     return True
 
 
+def with_offset(to: str) -> str:
+    """A countdown's end with this computer's offset from UTC on that date
+    added where it has none, since a browser reads an end without one as the
+    visitor's own time. Any other value is returned as it is, for _check to
+    judge."""
+    if not _is_when(to) or to.endswith("Z") or re.search(r"[+-]\d{2}:\d{2}$", to):
+        return to
+    offset = datetime.fromisoformat(to).astimezone().utcoffset()
+    minutes = round(offset.total_seconds() / 60)
+    sign = "-" if minutes < 0 else "+"
+    return f"{to}{sign}{abs(minutes) // 60:02d}:{abs(minutes) % 60:02d}"
+
+
 def _check_parts(section: Section) -> None:
     kind, parts = section.kind, section.parts
     if kind in (PICTURES, SLIDESHOW):

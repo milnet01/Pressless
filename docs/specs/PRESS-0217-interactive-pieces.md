@@ -83,8 +83,8 @@ page's existing CSS does not style:
 | slideshow | none; `parts[0]` its pictures | the pictures in a `<div class="pressless-slideshow">`, all shown in order |
 | questions | none; `parts` one list per question | a `<dl class="pressless-questions">`, each question a `<dt>` and its answer a visible `<dd>` |
 | enlarge | a picture's fields | a picture in a `<figure class="pressless-enlarge">`; the click-to-enlarge behaviour is script-only |
-| top | none | `<a class="pressless-top" href="#top">` with its words; a plain in-page link without script |
-| countdown | `to` (an ISO date-time), `label` | `<p class="pressless-countdown" data-to="…">` showing the target as text |
+| top | `label`, its words | `<a class="pressless-top" href="#top">` with its words; a plain in-page link without script |
+| countdown | `to` (an ISO date-time; the editor's save adds the computer's offset for that date where it has none, `blocks.with_offset`), `label` | `<p class="pressless-countdown" data-to="…">` showing the target as text |
 | script | `code` (the user's script) | a `<script>` holding the code verbatim; it runs on the published host and is inert in the preview (§ 4.4) |
 
 `section_html` refuses a piece with a malformed field as it refuses the nine

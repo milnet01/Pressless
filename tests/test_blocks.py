@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import re
+import time
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -432,6 +433,33 @@ def test_a_piece_round_trips():
     posted = [{"keep": [at]} for at in reversed(range(1, len(PIECES)))]
     moved = blocks.read("page", page_editor.put_sections("page", text, posted, [[0]]))
     assert [section.kind for section in moved.sections] == list(reversed(PIECES[1:]))
+
+
+@pytest.fixture
+def in_london(monkeypatch):
+    """The computer's clock set to London's zone, whose offset changes with
+    summer time; put back after the test."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset sets the zone on Unix only")
+    monkeypatch.setenv("TZ", "Europe/London")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
+
+
+def test_a_countdown_set_in_the_editor_ends_in_the_writers_zone(in_london):
+    """A countdown's end, typed without a zone, is the writer's own time, so
+    the editor's save adds his computer's offset for that date: without one
+    a visitor's browser reads it as the visitor's own time. An end that
+    carries an offset is kept as it is."""
+    text = _page(_form("top"))
+    posted = [{"keep": [0]}] + [
+        {"kind": "countdown", "fields": {"to": to, "label": "Gig"}}
+        for to in ("2026-12-01T18:00", "2026-07-01T18:00:30", "2026-12-01T18:00-05:00")]
+    page = blocks.read("page", page_editor.put_sections("page", text, posted, []))
+    assert [section.fields["to"] for section in page.sections[1:]] == [
+        "2026-12-01T18:00+00:00", "2026-07-01T18:00:30+01:00", "2026-12-01T18:00-05:00"]
 
 
 def test_each_piece_has_a_fallback():

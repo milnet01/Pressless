@@ -195,6 +195,8 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
                 if written is None:
                     raise blocks.SectionRefused(f"a section's {field} is not plain words and links")
                 fields[field] = written
+        if item.get("kind") == blocks.COUNTDOWN and isinstance(fields.get("to"), str):
+            fields["to"] = blocks.with_offset(fields["to"])
         return blocks.Section(str(item.get("kind", "")), fields,
                               tuple(tuple(built(child) for child in part) for part in parts))
 
@@ -2022,6 +2024,7 @@ _VISUAL_SCRIPT = r"""
         input.value = name === "code" ? (picked.kind === "code" ? picked.code : fields.code) || ""
           : name === "count" ? String(picked.parts.length)
           : name === "src" && fields.youtube ? "https://www.youtube.com/watch?v=" + fields.youtube
+          : name === "to" ? (fields.to || "").replace(/(?:Z|[+-]\d\d:\d\d)$/, "")
           : name === "caption" ? captionWords(fields.caption)
           : fields[name] || "";
         // Typing in the field writes words alone, so a caption holding a
