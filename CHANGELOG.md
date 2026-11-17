@@ -25,6 +25,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Menus and the page editor behave as you'd expect** (PRESS-0373)
+  Saving a menu with no links is refused instead of emptying it, and a logo or phone
+  link already in a menu no longer blocks saving it. After you remove a page you land
+  on the Pages list. A picture caption that holds a link is shown read-only, with a
+  pointer to the code view. Typing in pages and in
+  entries now behaves the same way.
+
 - **JPEG XL pictures and Like buttons are more dependable** (PRESS-0386)
   On Windows, a JPEG XL picture in a folder with an accented name now opens. A
   double click on Add downloads the decoder once, and a computer the decoder cannot

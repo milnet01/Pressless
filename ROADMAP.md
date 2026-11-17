@@ -7680,7 +7680,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Editor.
 
-- 📋 [PRESS-0373] **Review fixes: the page editor and menu.**
+- ✅ [PRESS-0373] **Review fixes: the page editor and menu.**
   Subject 03 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 4 low. review-readability: 1 high, 4 medium,
   8 low, plus leads. Among them: failures during a publish reported as
@@ -7691,6 +7691,18 @@ does not wait on them.
   the press failure rendering and the key fetch (lane 03's
   page_editor.py:943-945 row). Replace them with
   publishing.press_failure and publishing.settings_and_key, now on main.
+  Shipped 2026-11-17, 1fd1d72..7737c6e. 22 findings: 21 fixed, 0
+  queued, 1 dismissed as a false positive (publishing=False on press
+  failures is set by PRESS-0013/0015/0172; logged to
+  .ants_review_falsepos.jsonl). A menu save with no links is refused; a
+  kept logo or tel: link no longer blocks its menu; both editors type
+  and publish through one shared script (editor.TYPING_SCRIPT and
+  PUBLISH_SCRIPT, PRESS-0346 § 4.4), which subject 02 builds on; press
+  failures use publishing.press_failure. reshape keeps its own key fetch
+  so PRESS-0195 § 4.4's refusals come first. The caption fix uses
+  DOMParser and is owed a browser check before release. Specs amended:
+  PRESS-0216, 0235. Full suite 2333 passed, 27 skipped.
+  Ledger: close-findings-2026-11-17/lane-03-page-editor.json.
   **Layman:** Fixes in the screen where you edit pages, the header, the footer and the menu.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
