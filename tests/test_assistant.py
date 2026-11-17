@@ -900,6 +900,26 @@ def test_connecting_claude_desktop_keeps_the_rest(tmp_path):
     assert config.read_bytes() == held and copy.read_bytes() == _HELD.encode("utf-8")
 
 
+def test_the_copy_stays_the_file_before_pressless(tmp_path):
+    """INV-14: the copy is the file as it was, byte for byte, a byte-order
+    mark included, and connecting again from a moved program keeps it.
+    Breaks when the copy is written from the decoded text, or rewritten
+    whenever Pressless's entry changes."""
+    config = tmp_path / "Claude" / "claude_desktop_config.json"
+    config.parent.mkdir()
+    held = b"\xef\xbb\xbf" + _HELD.encode("utf-8")
+    config.write_bytes(held)
+    copy = config.with_name("claude_desktop_config.before-pressless.json")
+    for program in ("the-program", "the-moved-program"):
+        assert assistant.connect_claude_desktop(
+            config, program, ["--assistant"]) == "assistant.connect.done"
+        assert copy.read_bytes() == held, program
+    assert json.loads(config.read_text(encoding="utf-8"))["mcpServers"]["pressless"][
+        "command"] == "the-moved-program"
+    assert set(assistant._CONNECT_WORDS.values()) == {
+        "assistant.connect.done", "assistant.connect.not_found", "assistant.connect.unreadable"}
+
+
 @pytest.mark.parametrize("text", ["{not json", "[1, 2]", '{"mcpServers": "words"}'])
 def test_connecting_changes_nothing_it_cannot_read(tmp_path, text):
     """INV-14. Breaks when a file Pressless cannot read as Claude Desktop's

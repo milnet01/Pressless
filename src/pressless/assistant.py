@@ -937,6 +937,8 @@ _CLAUDE_COPY = "claude_desktop_config.before-pressless.json"
 _CLAUDE_FOLDER = "Claude"
 _WINDOWS_SETTINGS = ("AppData", "Roaming")     # where %APPDATA% is unset
 _MAC_SETTINGS = ("Library", "Application Support")
+# Every outcome connect_claude_desktop answers, which writes each key out in
+# full so the words test finds it: an outcome missing here shows no words.
 _CONNECT_WORDS = {word: "assistant.connect." + word
                   for word in ("done", "not_found", "unreadable")}
 
@@ -955,22 +957,27 @@ def claude_desktop_config() -> Path:
 def connect_claude_desktop(config: Path, program: str, arguments: list[str]) -> str:
     """Put Pressless's entry into Claude Desktop's settings file, keeping
     everything else in it, and answer the words saying how it went (§ 4.2,
-    INV-14). A copy of the file as it was is kept beside it first. A file that
-    does not read as that app's settings is left exactly as it is."""
+    INV-14). A copy of the file as it was before Pressless is kept beside it
+    first: made while the file holds no Pressless entry, or no copy exists,
+    so connecting again does not replace it. A file that does not read as
+    that app's settings is left exactly as it is. The outcomes are
+    _CONNECT_WORDS'."""
     if not config.parent.is_dir():
         return "assistant.connect.not_found"
     try:
-        # Bytes, so the copy keeps the file's own line endings.
-        text = config.read_bytes().decode("utf-8-sig") if config.is_file() else ""
+        # Decoded as it is, so the copy keeps the file's own line endings and
+        # any byte-order mark; the JSON is read without the mark.
+        was = config.read_bytes().decode("utf-8") if config.is_file() else ""
+        text = was.removeprefix("\ufeff")
         held = json.loads(text) if text.strip() else {}
         servers = held.get("mcpServers", {}) if isinstance(held, dict) else None
         if not isinstance(servers, dict):
             return "assistant.connect.unreadable"
         entry = {"command": program, "args": arguments}
         if servers.get("pressless") != entry:
-            if config.is_file():
-                safe_write.write_whole(config.with_name(_CLAUDE_COPY), text,
-                                       prefix=".pressless-", newline="")
+            copy = config.with_name(_CLAUDE_COPY)
+            if config.is_file() and ("pressless" not in servers or not copy.exists()):
+                safe_write.write_whole(copy, was, prefix=".pressless-", newline="")
             held["mcpServers"] = {**servers, "pressless": entry}
             safe_write.write_whole(
                 config, json.dumps(held, indent=2, ensure_ascii=False) + "\n",

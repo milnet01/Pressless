@@ -102,8 +102,10 @@ A line on the Face's list, **AI helper**, opens `/assistant/setup`. It holds:
   argument the screen names, and keeps every other key. The file is in the
   `Claude` folder under `%APPDATA%` on Windows, `~/Library/Application
   Support` on macOS, and `$XDG_CONFIG_HOME` or `~/.config` elsewhere. Before
-  the write, the file as it was is copied beside it as
-  `claude_desktop_config.before-pressless.json`. An entry already the same
+  the write, the file as it was is copied beside it, byte for byte, as
+  `claude_desktop_config.before-pressless.json`. The copy is made while the
+  file holds no Pressless entry, or no copy exists, so connecting again keeps
+  it. An entry already the same
   writes nothing. With no `Claude` folder, or a file that does not read as a
   JSON object whose `mcpServers` is an object, nothing is written and the
   screen says so. The by-hand steps stay below the button. The user agreed
@@ -494,10 +496,11 @@ Every test below is new; none can run before the code exists.
 - **INV-14** — Connecting Claude Desktop changes `mcpServers.pressless` and
   nothing else in its settings file, keeps a copy of the file as it was, and
   leaves a file it cannot read exactly as it is. *Test:*
-  `tests/test_assistant.py::test_connecting_claude_desktop_keeps_the_rest`
-  and `::test_connecting_changes_nothing_it_cannot_read`. *Breaks when:* the
-  file is rewritten from Pressless's block alone, or an unreadable file is
-  replaced.
+  `tests/test_assistant.py::test_connecting_claude_desktop_keeps_the_rest`,
+  `::test_the_copy_stays_the_file_before_pressless` and
+  `::test_connecting_changes_nothing_it_cannot_read`. *Breaks when:* the
+  file is rewritten from Pressless's block alone, the copy loses bytes or is
+  replaced by a later connect, or an unreadable file is replaced.
 
 ## 6. Failure modes
 
