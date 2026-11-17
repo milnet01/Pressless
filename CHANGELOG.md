@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **JPEG XL pictures and Like buttons are more dependable** (PRESS-0386)
+  On Windows, a JPEG XL picture in a folder with an accented name now opens. A
+  double click on Add downloads the decoder once, and a computer the decoder cannot
+  run on says so instead of downloading it. When you set up Like buttons, Check tells
+  you if the key is wrong, and each of your sites keeps its own note in a visitor's browser.
+
 - **Sign-in and your own web address are more dependable** (PRESS-0379)
   Signing in to GitHub again keeps a sign-in your other sites share. The web address
   wizard refuses a name like faß.de that older rules would turn into a different

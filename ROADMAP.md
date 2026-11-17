@@ -7956,11 +7956,22 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Import.
 
-- 📋 [PRESS-0386] **Review fixes: votes and JPEG XL.**
+- ✅ [PRESS-0386] **Review fixes: votes and JPEG XL.**
   Subject 16 of the 2026-11-16 full review, closed with close-findings.
   review-code: 3 medium, 3 low. review-readability: 3 medium, 4 low.
   Among them: a double-click installs JPEG XL twice; every non-Windows
   system gets the x86_64 Linux decoder.
+  Ledger: close-findings-2026-11-17/lane-16-votes-jxl.json.
+  Shipped 2026-11-17, a59defc..d7ce608. 16 findings: 16 fixed (one
+  lead a duplicate), 0 queued, 0 dismissed. The JPEG XL decoder is
+  offered only on Windows and x86_64 Linux, the two systems release.yml
+  builds for; elsewhere Settings says it cannot read them, and nothing
+  is downloaded. A picture's size is checked from its header before
+  djxl runs; djxl gets plain names, so Windows non-ASCII paths work;
+  Add downloads once. Votes keep one browser note per project, reading
+  the old shared one until replaced; Check names a bad key and cleans
+  up its test vote. Specs amended: PRESS-0275, 0211, 0213. Full suite
+  2327 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-16-votes-jxl.json.
   **Layman:** Fixes in the Like buttons' setup and the JPEG XL picture support.
   Kind: review-fix.
