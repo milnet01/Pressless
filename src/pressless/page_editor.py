@@ -576,7 +576,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
     standing_word = say("script.standing.off_site" if off_site else
                         "script.standing.changes" if waiting else "script.standing.on_site")
     said, running, ended = pressing.shown(standing_word)
-    pressed = editor._RUNNING if running else ""
+    pressed = editor.PRESS_RUNNING if running else ""
     stylesheets = "".join(
         f'<link rel="stylesheet" href="{attr(editor.PREVIEW_ADDRESS + sheet)}">'
         for sheet in sheets)
@@ -619,7 +619,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
 <script>{editor.TYPING_SCRIPT}</script>
 <script>{_CODE_SCRIPT}</script>
 <script>{_MENU_SCRIPT if menu_file else _VISUAL_SCRIPT}</script>
-<script>{editor._UNDO_SCRIPT}</script>"""
+<script>{editor.UNDO_SCRIPT}</script>"""
 
 
 # PRESS-0265: the handle that drags the picked section, and the line that
@@ -738,7 +738,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 </aside>"""
 
 
-def _shape(kind: str, name: str, text: str) -> dict:
+def _visual_model(kind: str, name: str, text: str) -> dict:
     """What a visual view's script holds of the file just written: the menu's
     links, or the sections."""
     if is_menu(kind, name):
@@ -800,7 +800,7 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
              "notices": render_notices(notices)}
     if visual:
         # § 4.5: after a save the posted list is the file's.
-        reply.update(_shape(kind, name, new))
+        reply.update(_visual_model(kind, name, new))
     return editor.json_reply(reply)
 
 
@@ -868,7 +868,11 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
                    ) -> publishing.Published:
     """`press_page` after its write, which the screen's press splits from the
     write to answer each failure differently. Adds the menu's notices, and the
-    kept copy's, to `notices` whatever the outcome."""
+    kept copy's, to `notices` whatever the outcome.
+
+    The waiting copy goes to the bin when the publish succeeds, and when its
+    outcome is unknown (through `unknown`), since the site may hold it. On any
+    other failure everything is put back and the copy stays (§ 4.7 step 5)."""
     said: list[str] = []
     gathered = gatherer(capture, notices)
     copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -883,9 +887,7 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
         return False
 
     try:
-        saved = gathered(lambda: settings.load(folder))
-        key = github_setup.token(folder, saved.credentials.store,
-                                 saved.credentials.github_account)
+        saved, key = publishing.settings_and_key(folder, gathered)
         changes = _Changes(folder)
         # PRESS-0195 § 4.3: a new page's first press, with no live file.
         first = (kind == store.PAGES_FOLDER
@@ -936,9 +938,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             _press_written(folder, kind, name, new, capture=face.capture, notices=notices,
                            transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
-            failure: str | None = (face.fail(exc, publishing=False,
-                                             secret=say("failure.secret.publishing_key"))
-                                   + publishing.replace_link(exc))
+            failure: str | None = publishing.press_failure(face, exc)
             published = False
         else:
             failure = None
@@ -950,7 +950,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              "failure": failure, "notices": render_notices(notices), "busy": False}
     if _view(form.get("view", "")) == VISUAL:
         # Live or waiting, the file the next save reads holds what was written.
-        reply.update(_shape(kind, name, new))
+        reply.update(_visual_model(kind, name, new))
     return editor.json_reply(reply)
 
 
@@ -1027,7 +1027,7 @@ def _edit_menu(folder: Path, changes: _Changes, edit: Callable[[str], str]) -> b
 
 def _menu_said(said: list[str], published: bool, unknown: bool) -> list[Notice]:
     """§ 4.3, § 4.4: a press's menu notices, saying what became of the site.
-    None where the press failed and everything was put back."""
+    An empty list where the press failed and everything was put back."""
     if not (published or unknown):
         return []
     site = Site.UPDATED if published else Site.UNKNOWN
@@ -1104,11 +1104,15 @@ def reshape_hint(folder: Path, name: str, to: str, renaming: bool,
         return "page_hint.home"
     if not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
         return "page_hint.not_on_site"
+    # The Privacy page says what visitor counting and votes collect, so it
+    # stays while either is on. The starter keeps it up to date by its name,
+    # so it is never renamed.
     if not renaming:
-        if name == "privacy" and (saved.measurement_id is not None or saved.votes is not None):
+        if name == starter.PRIVACY and (saved.measurement_id is not None
+                                        or saved.votes is not None):
             return "page_hint.privacy_remove"
         return None
-    if name == "privacy":
+    if name == starter.PRIVACY:
         return "page_hint.privacy_rename"
     if store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=True).is_file():
         return "page_hint.changes"
@@ -1180,7 +1184,10 @@ def reshape(folder: Path, name: str, to: str, *, renaming: bool,
     gathered_notices = notices if notices is not None else []
     said: list[str] = []
     gathered = gatherer(capture, gathered_notices)
+    to = to.strip()  # § 4.4: the AI door passes the name as it was typed
     try:
+        # § 4.4: the refusals come before the key, and need the settings, so
+        # this press does not fetch both through publishing.settings_and_key.
         saved = gathered(lambda: settings.load(folder))
         hint = gathered(lambda: reshape_hint(folder, name, to, renaming, saved))
         if hint is not None:
@@ -1221,9 +1228,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
         except NameRefused as refused:
             hint = refused.hint
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
-            failure = (face.fail(exc, publishing=False,
-                                 secret=say("failure.secret.publishing_key"))
-                       + publishing.replace_link(exc))
+            failure = publishing.press_failure(face, exc)
         # Where he goes next, read from disk: the page where it still is.
         if store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
             address = editor.page_address(store.PAGES_FOLDER, name)
@@ -1231,7 +1236,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                 folder, store.PAGES_FOLDER, editor.name_address(to)).is_file():
             address = editor.page_address(store.PAGES_FOLDER, editor.name_address(to))
         else:
-            address = "/"
+            address = editor.PAGES_ADDRESS  # § 4.4: the list, as after a discard
     published = hint is None and failure is None
     told(pressing.ended(pressing.PUBLISH, published, failure))
     return editor.json_reply({"published": published, "failure": failure,

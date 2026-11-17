@@ -145,8 +145,10 @@ trimmed. An entry posted back as it was given is unchanged.
 - A link not posted is gone, with the whitespace before it.
 
 A posted entry naming an `at` that is not a link, or naming one twice,
-an empty `words`, or an address `blocks` would not link to, refuses the
-save and writes nothing.
+refuses the save and writes nothing. So do new or changed empty `words`,
+and a new or changed address `blocks` would not link to. A kept link's
+own words and address are not checked, so a logo link with no words
+saves. A post with no links refuses too: the menu would not be plain.
 
 ### 4.5 Saving and publishing
 
@@ -205,10 +207,15 @@ unchanged.
   *Breaks when:* the menu is written from the list of links rather than
   by moving their bytes, so a comment or the writer's spacing is lost.
 
-- **INV-6** — A menu save naming an unknown or doubled `at`, empty words,
-  or an address `blocks` would not link to writes nothing.
-  *Test:* `tests/test_page_editor.py::test_a_menu_save_that_names_no_link_writes_nothing`.
-  *Breaks when:* `arranged` skips a bad entry and writes the rest.
+- **INV-6** — A menu save naming an unknown or doubled `at`, or no link
+  at all, writes nothing. So does one giving a new or changed link empty
+  words, or an address `blocks` would not link to. A kept link's own
+  words and address pass unchecked.
+  *Test:* `tests/test_page_editor.py::test_a_menu_save_that_names_no_link_writes_nothing`,
+  `tests/test_menu.py::test_a_menu_post_naming_no_link_is_refused` and
+  `tests/test_menu.py::test_a_link_posted_back_as_it_was_given_is_kept`.
+  *Breaks when:* `arranged` skips a bad entry and writes the rest, or
+  refuses a menu whose logo link has no words.
 
 - **INV-7** — A menu that is not plain opens in the code view and is
   never written by a menu save.
@@ -235,7 +242,8 @@ unchanged.
 ## 7. Tests
 
 INV-1, INV-2, INV-6 and INV-7 in `tests/test_page_editor.py`; INV-3,
-INV-4 and INV-8 in `tests/test_builder.py`; INV-5 in `tests/test_menu.py`.
+INV-4 and INV-8 in `tests/test_builder.py`; INV-5 and INV-6 in
+`tests/test_menu.py`.
 Each is seen failing first against the code before this item. The
 panel's controls and typing in the header are checked in Chrome by
 `scripts/by-hand-browser-checks.py`, and in Firefox and Edge by hand.
@@ -270,7 +278,7 @@ panel's controls and typing in the header are checked in Chrome by
 | INV-3 | `tests/test_builder.py::test_furniture_marks_are_never_published` |
 | INV-4 | `tests/test_builder.py::test_a_furniture_preview_keeps_its_own_marks_alone` |
 | INV-5 | `tests/test_menu.py::test_an_arranged_menu_keeps_every_other_byte` |
-| INV-6 | `tests/test_page_editor.py::test_a_menu_save_that_names_no_link_writes_nothing` |
+| INV-6 | `tests/test_page_editor.py::test_a_menu_save_that_names_no_link_writes_nothing`, `tests/test_menu.py::test_a_menu_post_naming_no_link_is_refused`, `tests/test_menu.py::test_a_link_posted_back_as_it_was_given_is_kept` |
 | INV-7 | `tests/test_page_editor.py::test_an_unusual_menu_opens_in_the_code_view` |
 | INV-8 | `tests/test_builder.py::test_a_furniture_picture_is_published` |
 | § 4.4 the menu view's controls | **nothing** in CI — `scripts/by-hand-browser-checks.py`, by hand |

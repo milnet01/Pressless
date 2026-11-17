@@ -53,7 +53,6 @@ _UP = "{{UP}}"                       # the Builder fills it in the furniture fil
 _KEPT_UP = "\ue000UP\ue000"           # a page's own {{UP}}, held apart while _UP is filled
 _NAVIGATION = "{{NAVIGATION}}"
 _STYLE_LINK = f'<link rel="stylesheet" href="{_UP}{builder.STYLE_CODE}">'
-_HOME = "Home"                       # what menu._nav and starter.home_page call the front page
 _FRONT = "index"
 _PAGE_SUFFIXES = (".html", ".htm")
 _INDEX_NAMES = ("index.html", "index.htm")
@@ -1177,7 +1176,8 @@ def _marker(kind: str, page: str = "", nonav: bool = False) -> str:
 def _data_nav(navigation: str, names: dict[str, str]) -> str:
     """§ 4.8: each link to a page gains `data-nav="<name>"`, which
     `builder._current` matches; `Home` for the front page."""
-    fronts = {_page_place(name): (_HOME if name == _FRONT else name) for name in names.values()}
+    fronts = {_page_place(name): (builder.HOME_NAV if name == _FRONT else name)
+              for name in names.values()}
 
     def link(found: re.Match) -> str:
         tag = found.group(0)
@@ -1329,7 +1329,7 @@ def _part_out(texts: dict[str, str], names: dict[str, str]
     for path, text in texts.items():
         name = names[path]
         pages[path], said, marked = _parted_page(
-            text, found[path], shared, _HOME if name == _FRONT else name,
+            text, found[path], shared, builder.HOME_NAV if name == _FRONT else name,
             f"{store.PAGES_FOLDER}/{name}")
         listed += said
         any_marked = any_marked or marked
@@ -1432,7 +1432,7 @@ def _shaped(text: str, name: str, deferred: list[str], where: str, listed: list[
     up = "" if front else "../"
     if not _has_body(text):
         title = _title_of(text, name)
-        text = starter.new_page(_HOME if front else name, title, (builder.STYLE_CODE,),
+        text = starter.new_page(builder.HOME_NAV if front else name, title, (builder.STYLE_CODE,),
                                 main=text + "".join(deferred), root=front)
         return _adopted(text.replace(_UP, up), name)
     text, made = _with_main(text)

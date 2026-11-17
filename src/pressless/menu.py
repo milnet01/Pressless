@@ -159,9 +159,10 @@ def links(text: str) -> list[tuple[str, str]]:
 
 def _nav(address: str) -> str | None:
     """The data-nav the Builder marks the current page by, for an address
-    naming a fixed page or the journal; None for any other."""
+    naming a fixed page or the journal; None for any other. The starter writes
+    the home page's."""
     if address == _HOME:
-        return "Home"
+        return builder.HOME_NAV
     if address == builder.JOURNAL_ADDRESS:
         return builder.JOURNAL
     page = _PAGE.fullmatch(address)
@@ -203,33 +204,41 @@ def arranged(text: str, posted: object) -> str:
     starts = [_before(text, link.start()) for link in held]
     gaps = [text[held[at].end():starts[at + 1]] for at in range(len(held) - 1)]
     space = text[starts[0]:held[0].start()]
-    if not isinstance(posted, list):
+    # A menu with no links is not plain, so the menu view could not open it.
+    if not isinstance(posted, list) or not posted:
         raise Refused("the menu save does not list its links")
     pieces, seen = [], set()
     for entry in posted:
         if not isinstance(entry, dict):
             raise Refused(f"{entry!r} is not a menu link")
         at, words, address = entry.get("at"), entry.get("words"), entry.get("href")
-        if not isinstance(words, str) or not words.strip() or not isinstance(address, str):
+        if not isinstance(words, str) or not isinstance(address, str):
             raise Refused("a menu link needs words and an address")
-        if not blocks.address_allowed(address, mailto=True):
+        words = words.strip()
+        if at is not None and (not isinstance(at, int) or isinstance(at, bool)
+                               or not 0 <= at < len(held) or at in seen):
+            raise Refused(f"the menu save names link {at!r} wrongly")
+        # Only what the save changes is checked: a kept link, such as a logo
+        # with no words, passes as it was given.
+        given = read[at] if at is not None else None
+        if not words and (given is None or words != given[0]):
+            raise Refused("a menu link needs words")
+        if ((given is None or address != given[1])
+                and not blocks.address_allowed(address, mailto=True)):
             raise Refused(f"a menu link may not go to {address!r}")
         if at is None:
             nav = _nav(address)
             marked = f' data-nav="{html.escape(nav)}"' if nav is not None else ""
             pieces.append(f'{space}<a href="{html.escape(address)}"{marked}>'
-                          f"{_written(words.strip())}</a>")
+                          f"{_written(words)}</a>")
             continue
-        if (not isinstance(at, int) or isinstance(at, bool) or not 0 <= at < len(held)
-                or at in seen):
-            raise Refused(f"the menu save names link {at!r} wrongly")
         seen.add(at)
         link = held[at]
         own = text[starts[at]:link.start()]
-        if (words.strip(), address) == read[at]:
+        if (words, address) == given:
             own += text[link.start():link.end()]
         else:
-            own += _changed(text, link, words.strip(), address)
+            own += _changed(text, link, words, address)
         pieces.append(own)
     out = [text[:starts[0]]]
     for number, piece in enumerate(pieces):

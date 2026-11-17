@@ -52,6 +52,8 @@ LONGEST_SIDE = 1600
 SITE_ICON = "site-icon.png"   # PRESS-0227 § 4.3: the chosen icon, at the root
 ICON_SIDE = 180
 JOURNAL = "Journal"   # PRESS-0008 § 4.4: the data-nav every generated page marks
+# The home page's mark, and its menu link's data-nav, as the starter writes them.
+HOME_NAV = "Home"
 JOURNAL_ADDRESS = "{{UP}}blog/index.html"   # the menu's link to the journal
 
 

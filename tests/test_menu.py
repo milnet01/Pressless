@@ -172,12 +172,37 @@ def test_every_edit_writes_a_links_words_alike():
      {"at": 0, "words": "Home", "href": "{{UP}}index.html"}],
     [{"at": None, "words": "  ", "href": "{{UP}}index.html"}],
     [{"at": None, "words": "Run", "href": "javascript:alert(1)"}],
+    [{"at": 0, "words": " ", "href": "{{UP}}index.html"}],
+    [{"at": 0, "words": "Home", "href": "javascript:alert(1)"}],
+    [],
     "not a list",
 ])
 def test_a_menu_post_naming_no_link_is_refused(posted):
-    """PRESS-0216 § 4.4. Breaks when a bad entry is skipped and the rest written."""
+    """PRESS-0216 § 4.4. Breaks when a bad entry is skipped and the rest written,
+    or a post with no links writes a menu the menu view can no longer open."""
     with pytest.raises(menu.Refused):
         menu.arranged(ODD, posted)
+
+
+# A logo link has no words, and a phone link an address no new link may take.
+KEPT = ('<nav><a href="{{UP}}index.html" data-nav="Home"><img src="logo.png" alt=""></a> '
+        '<a href="tel:+15550100">Call us</a> '
+        '<a href="{{UP}}pages/about.html" data-nav="about">About</a></nav>')
+
+
+def test_a_link_posted_back_as_it_was_given_is_kept():
+    """PRESS-0216 § 4.4: an entry posted back as it was given is unchanged,
+    so a menu the view opened can always be saved. Only what a save changes
+    is checked. Breaks when a kept link with no words, or with an address a
+    new link may not take, refuses every save of its menu."""
+    read = _as_read(KEPT)
+    assert read[0]["words"] == "" and read[1]["href"] == "tel:+15550100"
+    assert menu.arranged(KEPT, read) == KEPT
+    moved_up = menu.arranged(KEPT, [read[2], read[0], read[1]])
+    assert moved_up.index("About</a>") < moved_up.index("logo.png") < moved_up.index("tel:")
+    moved = {"at": 0, "words": "", "href": "{{UP}}pages/about.html"}
+    assert ('<a href="{{UP}}pages/about.html" data-nav="about"><img src="logo.png" alt=""></a>'
+            in menu.arranged(KEPT, [moved, read[1], read[2]]))
 
 
 def test_a_page_address_reads_back_as_its_page():

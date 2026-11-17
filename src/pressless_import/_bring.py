@@ -180,7 +180,7 @@ def _page_html(page: _Page, sheets: tuple[str, ...], web: Mapping[str, str],
     body = prepared(page.body, wordpress_markup)
     body, listed = _addresses(body, "" if root else "../", web, old_site)
     page.dropped.extend(listed)
-    text = starter.new_page("Home" if root else page.name, page.title, sheets,
+    text = starter.new_page(builder.HOME_NAV if root else page.name, page.title, sheets,
                             main=body, root=root)
     try:
         adopted = blocks.adopt(text, builder.furniture_spans(page.name, text))

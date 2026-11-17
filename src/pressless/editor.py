@@ -137,10 +137,9 @@ SAVE_FAILURES = (store.StoreError, ChangedElsewhere, TooManyCopies, BlocksUnread
 # taken twice, so `save` leaves it to its caller (PRESS-0013 § 4.1).
 LOCK = threading.Lock()
 
-# PRESS-0235 § 4.5: a press-row line rendered while a press runs; the script asks.
-# Shared with page_editor; its spec names it with the underscore, as PRESS-0235
-# and PRESS-0242 name _UNDO_SCRIPT and _EDITOR_SCRIPT, and PRESS-0017 _names_of.
-_RUNNING = ' data-press="running"'
+# PRESS-0235 § 4.5: a press-row line rendered while a press runs; the script
+# asks. Shared with page_editor, so public, as UNDO_SCRIPT is.
+PRESS_RUNNING = ' data-press="running"'
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
 
@@ -517,7 +516,7 @@ def _undo_row(said: str, *, running: bool, before: str = "") -> str:
     showing it (§ 3 decision 3). `before` leads the same row of buttons."""
     return (f'<p>{before}<button type="button" data-undo>{say("editor.undo")}</button></p>'
             f'<p id="undo-status" class="press-status" role="status"'
-            f'{_RUNNING if running else ""}>{html.escape(said)}</p>')
+            f'{PRESS_RUNNING if running else ""}>{html.escape(said)}</p>')
 
 
 def _template_choice(folder: Path) -> str:
@@ -700,7 +699,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     standing_word = say("script.standing.on_site" if not draft else
                         "script.standing.changes" if on_site else "script.standing.off_site")
     said, running, ended = pressing.shown(standing_word)
-    pressed = _RUNNING if running else ""
+    pressed = PRESS_RUNNING if running else ""
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.stylesheets(folder))
     # PRESS-0346 § 4.1: one link to each view, the one to the view shown
@@ -752,7 +751,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <script>{_EDITOR_SCRIPT}</script>
 <script>{TYPING_SCRIPT}</script>
 <script>{_VISUAL_SCRIPT}</script>
-<script>{_UNDO_SCRIPT}</script>"""
+<script>{UNDO_SCRIPT}</script>"""
 
 
 def script_json(payload: object) -> str:
@@ -1239,7 +1238,7 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
 # the reply is the only place the summary and the gathered notices exist, and a
 # reload throws both away before he has read them. So the box is replaced with
 # what came back, and a link back to his list is offered instead.
-_UNDO_SCRIPT = pressing.SCRIPT + """
+UNDO_SCRIPT = pressing.SCRIPT + """
 (() => {
   const button = document.querySelector("button[data-undo]");
   if (!button) return;

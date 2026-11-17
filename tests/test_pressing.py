@@ -282,7 +282,7 @@ def test_every_page_asks_about_the_press():
     held = pressing.holding()
     assert held is not None
     for name, script in (("entry", editor._EDITOR_SCRIPT), ("page", page_editor._PAGE_SCRIPT),
-                         ("undo", editor._UNDO_SCRIPT), ("holding", held)):
+                         ("undo", editor.UNDO_SCRIPT), ("holding", held)):
         assert 'fetch("/press")' in script, name
         assert "Keep this page open." not in script, name
 

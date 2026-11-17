@@ -52,7 +52,7 @@ def _show(face: Face, folder: Path) -> str:
             + '<div id="undo-result"></div><div id="listing">'
             + f'<div class="tiles">{tiles}{"".join(face.pieces("site-tiles"))}</div>'
             + below + "".join(face.pieces("site-below")) + "</div>"
-            + f"<script>{editor._UNDO_SCRIPT}{_PUBLISH_SCRIPT}</script>")
+            + f"<script>{editor.UNDO_SCRIPT}{_PUBLISH_SCRIPT}</script>")
 
 
 def _site_line(folder: Path) -> str:

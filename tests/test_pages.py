@@ -210,7 +210,9 @@ def test_throwing_away_a_new_page_returns_to_the_pages_screen(tmp_path):
 
 def test_removing_a_page(tmp_path, monkeypatch):
     """INV-8: Remove bins the live page and its waiting copy, takes its link
-    out, drops the forwards to it, and the site GitHub receives lacks it.
+    out, drops the forwards to it, and the site GitHub receives lacks it. The
+    editor then goes to the Pages list, as a discard of a page that has gone
+    does (§ 4.4).
 
     Breaks when the waiting copy survives, so the page returns on the list."""
     _key(monkeypatch)
@@ -221,7 +223,7 @@ def test_removing_a_page(tmp_path, monkeypatch):
     github = _github("pages/about.html", "index.html")
     with _pages(folder, github) as browser:
         reply = _reshape(browser, "remove", "about")
-    assert reply["published"] is True and reply["address"] == "/", reply
+    assert reply["published"] is True and reply["address"] == "/pages", reply
     assert not _live(folder, "pages", "about").exists()
     assert not _waiting(folder, "pages", "about").exists()
     assert {"pages/about.html", "pages-waiting/about.html"} <= set(_binned(folder))
@@ -384,4 +386,15 @@ def test_renaming_a_page_and_back(tmp_path, monkeypatch):
               waiting=True, base=_digest(copy), route="/page/publish")
         assert _reshape(browser, "rename", "live-shows", "Concerts")["published"] is True
     assert ('<a href="{{UP}}pages/concerts.html" data-nav="live-shows">Concerts</a>'
+            in _menu(folder))
+
+
+def test_a_rename_by_the_ai_door_trims_the_new_name(tmp_path, monkeypatch):
+    """PRESS-0195 § 4.4: the menu link's new words are `to.strip()`, whoever
+    asks. The AI door calls `reshape` with the name as it was typed. Breaks
+    when only the screen's route trims it, so the spaces reach the menu."""
+    _key(monkeypatch)
+    folder = _folder_with_menu(tmp_path)
+    page_editor.reshape(folder, "about", "  Our Story  ", renaming=True, transport=_github())
+    assert ('<a href="{{UP}}pages/our-story.html" data-nav="about">Our Story</a>'
             in _menu(folder))

@@ -25,6 +25,9 @@ MARKER = "starter-unpublished"   # in the site's folder; empty file
 # them, which checklist compares with, so a rename or reworded starter words
 # never reads as the site made its own (PRESS-0383).
 FILLED = "starter-filled.json"
+# The Privacy page's name. add_privacy keeps it up to date by this name, and the
+# page editor never renames it, nor removes it while it discloses something.
+PRIVACY = "privacy"
 
 # Shipped to every install, so they name nobody and assume nothing about the
 # user (§ 4.3). The header and footer name the site by placeholder, so a
@@ -46,7 +49,8 @@ def header() -> str:
 def navigation() -> str:
     primary = html.escape(say("starter.menu"), quote=True)
     return (f'  <nav class="primary" aria-label="{primary}">\n'
-            + '    <a href="{{UP}}index.html" data-nav="Home">' + say("starter.home") + "</a>\n"
+            + f'    <a href="{{{{UP}}}}index.html" data-nav="{builder.HOME_NAV}">'
+            + say("starter.home") + "</a>\n"
             + '    <a href="{{UP}}pages/about.html" data-nav="about">' + say("starter.about")
             + "</a>\n  </nav>")
 
@@ -133,7 +137,7 @@ def home_page(site_name: str) -> str:
     """The starter's Home page, which sits at the root. A site filled before
     FILLED existed is compared with this by checklist, as worded today."""
     name = html.escape(site_name, quote=True)
-    return _PAGE.format(title=name, links=_links(_OWN_SHEET, ""), page="Home",
+    return _PAGE.format(title=name, links=_links(_OWN_SHEET, ""), page=builder.HOME_NAV,
                         area=_area(say("starter.welcome", name=site_name),
                                    _words("starter.home.words")))
 
@@ -168,7 +172,7 @@ def privacy_page(site_name: str, sheets: tuple[str, ...], *, counting: bool, vot
              + (_recaptcha_words() if recaptcha else ()))
     return _PAGE.format(
         title=say("starter.privacy.title", name=html.escape(site_name, quote=True)),
-        links=_links(sheets, "../"), page="privacy",
+        links=_links(sheets, "../"), page=PRIVACY,
         area=_area(say("starter.privacy"), *words, _words("starter.privacy.questions")))
 
 
@@ -219,20 +223,20 @@ def add_privacy(folder: Path, site_name: str, *, counting: bool, votes: bool,
     folder = Path(folder)
     if not store.holds_a_site(folder):
         return False, False
-    page = store.html_path_for(folder, store.PAGES_FOLDER, "privacy")
+    page = store.html_path_for(folder, store.PAGES_FOLDER, PRIVACY)
     added_page = not page.exists()
     if added_page:
-        store.write_html(folder, store.PAGES_FOLDER, "privacy",
+        store.write_html(folder, store.PAGES_FOLDER, PRIVACY,
                          privacy_page(site_name, builder.stylesheets(folder), counting=counting,
                                       votes=votes, recaptcha=recaptcha))
     for waiting in (False, True):
-        held = store.html_path_for(folder, store.PAGES_FOLDER, "privacy", waiting=waiting)
+        held = store.html_path_for(folder, store.PAGES_FOLDER, PRIVACY, waiting=waiting)
         if not held.exists():
             continue
         text = store.read_html(held)
         changed = _with_missing_words(text, counting=counting, votes=votes, recaptcha=recaptcha)
         if changed != text:
-            store.write_html(folder, store.PAGES_FOLDER, "privacy", changed, waiting=waiting)
+            store.write_html(folder, store.PAGES_FOLDER, PRIVACY, changed, waiting=waiting)
     footer_path = store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
     added_link = False
     if footer_path.exists():
