@@ -104,7 +104,8 @@ def _waiting(folder: Path) -> tuple[str, str]:
         f'{say_count(count, *keys)}</a>'
         for count, keys, address in counts if count)
     said = say_count(total, "overview.waiting.one", "overview.waiting.many", kinds=kinds)
-    nothing = say("overview.publish.nothing", kinds=kinds)
+    nothing = say_count(total, "overview.publish.nothing.one", "overview.publish.nothing.many",
+                        kinds=kinds)
     return (f'<p class="waiting">{said}</p>',
             f'<template id="publish-nothing"><p>{nothing}</p></template>')
 

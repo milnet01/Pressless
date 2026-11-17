@@ -194,9 +194,10 @@ def test_your_site_counts_the_changes_not_on_it(tmp_path: Path) -> None:
 
 def test_publish_says_where_waiting_changes_go(tmp_path: Path) -> None:
     """PRESS-0366. Publish sends none of the changes the count line counts,
-    so its nothing-would-change answer says where they go and links them.
-    Breaks when the answer is the bare sentence while changes wait, or the
-    box takes it as text rather than the template's links."""
+    so its nothing-would-change answer says where they go and links them,
+    in the count line's one-or-many words. Breaks when the answer is the
+    bare sentence while changes wait, says "Each" of one change, or the box
+    takes it as text rather than the template's links."""
     folder = _site(tmp_path)
     store.path_for(folder, "seaside", draft=True).unlink()
     store.write_html(folder, store.PAGES_FOLDER, "index", "<p>New home.</p>", waiting=True)
@@ -206,12 +207,18 @@ def test_publish_says_where_waiting_changes_go(tmp_path: Path) -> None:
     assert template == (
         "<p>Nothing on your site would change. Not on your site yet: "
         f'<a href="{editor.PAGES_ADDRESS}">1 page</a>. '
-        "Each goes out from its own Press to site, not from Publish.</p>")
+        "It goes out from its own Press to site, not from Publish.</p>")
     assert 'getElementById("publish-nothing")' in page and "{nothing})" in page
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About.</p>", waiting=True)
+    with _served(folder) as browser:
+        two = browser.get("/")
+    assert ("2 pages</a>. Each goes out from its own Press to site, not from Publish.</p>"
+            "</template>") in two
     plan = pressing.SCRIPT[pressing.SCRIPT.index("window.presslessPlan ="):]
     assert "options.nothing.content.cloneNode(true)" in plan
     assert "window.presslessPlan(plan, options)" in pressing.SCRIPT
-    store.html_path_for(folder, store.PAGES_FOLDER, "index", waiting=True).unlink()
+    for name in ("index", "about"):
+        store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=True).unlink()
     with _served(folder) as browser:
         assert 'id="publish-nothing"' not in browser.get("/")
 

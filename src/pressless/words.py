@@ -549,7 +549,11 @@ _WORDS: dict[str, str] = {
         "Press to site."
     ),
     # PRESS-0366: Publish's answer where it would change nothing but changes wait.
-    "overview.publish.nothing": (
+    "overview.publish.nothing.one": (
+        "Nothing on your site would change. Not on your site yet: {kinds}. It goes out "
+        "from its own Press to site, not from Publish."
+    ),
+    "overview.publish.nothing.many": (
         "Nothing on your site would change. Not on your site yet: {kinds}. Each goes out "
         "from its own Press to site, not from Publish."
     ),

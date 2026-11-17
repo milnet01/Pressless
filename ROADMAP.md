@@ -7575,6 +7575,12 @@ does not wait on them.
   nothing-would-change answer names them as links. The also-seen
   checklist tick moved to PRESS-0393. A browser check of the plan box is
   owed before the release.
+  2026-11-17: the owed browser check of the plan box passed in headless
+  Chrome (scratch script, PRESS-0373's caption rows beside it). It showed
+  the box saying "Each goes out" of one waiting change; the answer now
+  takes the count line's one-or-many words (overview.publish.nothing.one
+  and .many). test_screens' test_publish_says_where_waiting_changes_go
+  red, then green.
   **Layman:** Your site says a change is waiting, but pressing Publish there says nothing would change; the change goes out from the entry's own button.
   Kind: ux.
   Source: by-hand-check-2026-11-16 1.0.0 draft round.
