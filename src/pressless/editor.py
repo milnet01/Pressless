@@ -1346,10 +1346,66 @@ window.presslessSaving = (send, waiting) => {
 };
 """
 
+# The Publish button's press, shared by both editors' scripts (PRESS-0339,
+# PRESS-0345). `on` is the editor's own part: `address`, the route; asked(),
+# the plan's question; posting() and fields(posted), what a save posts; settle
+# and release, its saving's; standing(), the line between presses; stop(text);
+# pressing(now) and unsaved(now), which set its flags; and published(reply,
+# posted), what a reply updates.
+PUBLISH_SCRIPT = """
+window.presslessPublish = (on) => {
+  const publish = document.querySelector("button[data-editor=publish]");
+  publish.addEventListener("click", async () => {
+    // PRESS-0339: said at once, though a save in flight is waited out first.
+    const said = document.getElementById("publish-status");
+    publish.disabled = true;
+    said.textContent = say("script.press.checking");
+    on.pressing(true);
+    // A save meanwhile would post the copy the publish bins. PRESS-0345: what
+    // waits is saved first, so the plan reads it; saves stay held while the
+    // box is open.
+    await on.settle(true);
+    const unpressed = () => {
+      said.textContent = on.standing(); on.pressing(false); publish.disabled = false;
+      on.release();
+    };
+    try {
+      if (!(await window.presslessCheck(on.asked()))) { unpressed(); return; }
+    } catch (error) {
+      unpressed(); on.stop(""); return;
+    }
+    said.textContent = say("script.press.publishing");
+    try {
+      const posted = on.posting();
+      const body = on.fields(posted);
+      on.unsaved(false);
+      const answer = await fetch(on.address, {method: "POST", body: body});
+      const text = await answer.text();
+      if (answer.status !== 200) { said.textContent = on.standing(); on.stop(text); return; }
+      const reply = JSON.parse(text);
+      // Another press runs: nothing was saved, so the change is still to save.
+      if (window.presslessPress.busy(reply)) { on.unsaved(true); return; }
+      on.published(reply, posted);
+      document.getElementById("failure").innerHTML = reply.failure || "";
+      said.textContent = reply.published
+        ? say("script.press.published") : say("script.press.not_published");
+      if (reply.published) window.presslessPress.viewable();
+    } catch (error) {
+      said.textContent = on.standing(); on.stop("");
+    } finally {
+      on.pressing(false);
+      publish.disabled = window.presslessPress.asking();
+      on.release();
+    }
+  });
+};
+"""
 
-# PRESS-0260 § 4.4's reading of typed words, shared by both visual views: the
-# page editor's and the entry's (PRESS-0346 § 4.4). The words are read from
-# the element's nodes, never from innerHTML, and a paste is its plain text.
+
+# PRESS-0260 § 4.4's typing, shared by both visual views: the page editor's
+# and the entry's (PRESS-0346 § 4.4). The words are read from the element's
+# nodes, never from innerHTML, and a paste is its plain text. Bold, Italic,
+# Link and the keys are here too; each editor passes in its own part.
 TYPING_SCRIPT = r"""
 window.presslessTyping = (() => {
   const text = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -1402,7 +1458,85 @@ window.presslessTyping = (() => {
     const words = (event.clipboardData.getData("text/plain") || "").replace(/\s*\n\s*/g, " ");
     doc.execCommand("insertText", false, words);
   }
-  return {text, allowed, inline, paste};
+
+  // Bold, Italic or Link on the words picked in `doc`. A link takes only an
+  // address `linkable` accepts; any other is refused with the words key
+  // `refused`, in the panel. True where the words changed.
+  function format(doc, name, {linkable = allowed, refused}) {
+    if (name !== "link") {
+      doc.execCommand(name);
+      return true;
+    }
+    const address = window.prompt(say("script.visual.ask_link"), "https://");
+    if (!address) return false;
+    if (!linkable(address)) {
+      document.getElementById("panel-said").textContent = say(refused);
+      return false;
+    }
+    // With no words picked Firefox links nothing; give the link its address.
+    if (doc.getSelection().isCollapsed) {
+      doc.execCommand("insertHTML", false, '<a href="' + text(address).replace(/"/g, "&quot;")
+        + '">' + text(address) + "</a>");
+    } else {
+      doc.execCommand("createLink", false, address);
+    }
+    return true;
+  }
+
+  // Enter, Shift+Enter, Backspace and Ctrl+B, I or K, typed in `on.el`.
+  // `on` is the editor's own part:
+  //   format(name)  Bold, Italic or Link;
+  //   inside        Enter starts a paragraph inside the element (a quotation);
+  //   split(pieces) adds a section below holding `pieces`, what followed the
+  //                 caret, and returns its element, or null;
+  //   joins         Backspace at the very start may join the section above;
+  //   above()       that section, where it can take the words, else null;
+  //   join(above)   drops the section typed in, once `above` holds its words.
+  function keyed(event, doc, on) {
+    const selection = doc.getSelection();
+    const key = event.key.toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && ["b", "i", "k"].includes(key)) {
+      event.preventDefault();
+      on.format({b: "bold", i: "italic", k: "link"}[key]);
+      return;
+    }
+    if (event.key === "Enter" && (event.shiftKey || on.inside)) {
+      event.preventDefault();
+      doc.execCommand(event.shiftKey ? "insertLineBreak" : "insertParagraph");
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const rest = doc.createRange();
+      rest.setStart(range.startContainer, range.startOffset);
+      rest.setEnd(on.el, on.el.childNodes.length);
+      // An emptied Bold or Italic the split leaves behind is not carried.
+      const pieces = [...rest.extractContents().childNodes]
+        .filter((part) => part.textContent !== "" || part.nodeName === "BR");
+      const added = on.split(pieces);
+      if (added) selection.collapse(added, 0);
+      return;
+    }
+    if (event.key === "Backspace" && on.joins && selection.isCollapsed
+        && selection.rangeCount) {
+      const head = doc.createRange();
+      head.setStart(on.el, 0);
+      head.setEnd(selection.anchorNode, selection.anchorOffset);
+      if (head.toString() !== "" || head.cloneContents().querySelector("br, img")) return;
+      // With nothing above to take the words, the key does what it would.
+      const above = on.above();
+      if (!above) return;
+      event.preventDefault();
+      const joined = above.el.childNodes.length;
+      above.el.append(...on.el.childNodes);
+      on.join(above);
+      selection.collapse(above.el, joined);
+    }
+  }
+  return {text, allowed, inline, paste, format, keyed};
 })();
 """
 
@@ -1417,7 +1551,8 @@ _VISUAL_SCRIPT = r"""
   const frame = document.getElementById("preview");
   const panel = document.getElementById("panel");
   const given = JSON.parse(document.getElementById("blocks").textContent);
-  const {text, inline, paste} = window.presslessTyping;
+  const typing = window.presslessTyping;
+  const {text, inline, paste} = typing;
   // § 4.3: a link takes only an address the link mark takes.
   const LINK = new RegExp(given.link);
   const linkable = (href) => LINK.test(href);
@@ -1682,24 +1817,8 @@ _VISUAL_SCRIPT = r"""
   });
   function format(name) {
     if (!typeable(picked) || !picked.el) return;
-    const doc = frame.contentDocument;
-    if (name === "link") {
-      const address = window.prompt(say("script.visual.ask_link"), "https://");
-      if (!address) return;
-      if (!linkable(address)) {
-        document.getElementById("panel-said").textContent = say("script.entry.link_refused");
-        return;
-      }
-      if (doc.getSelection().isCollapsed) {
-        doc.execCommand("insertHTML", false, '<a href="' + text(address).replace(/"/g, "&quot;")
-          + '">' + text(address) + "</a>");
-      } else {
-        doc.execCommand("createLink", false, address);
-      }
-    } else {
-      doc.execCommand(name);
-    }
-    touch(picked);
+    if (typing.format(frame.contentDocument, name,
+                      {linkable, refused: "script.entry.link_refused"})) touch(picked);
   }
   // § 4.4: a colour wraps the words picked in the span its mark writes.
   function paint(style) {
@@ -1774,60 +1893,27 @@ _VISUAL_SCRIPT = r"""
   function keyed(event) {
     if (letGo(event)) return;
     if (!typeable(picked) || !picked.el || !picked.el.contains(event.target)) return;
-    const doc = frame.contentDocument;
-    const selection = doc.getSelection();
-    if ((event.ctrlKey || event.metaKey) && ["b", "i", "k"].includes(event.key.toLowerCase())) {
-      event.preventDefault();
-      format({b: "bold", i: "italic", k: "link"}[event.key.toLowerCase()]);
-      return;
-    }
-    if (event.key === "Enter" && event.shiftKey) {
-      event.preventDefault();
-      doc.execCommand("insertLineBreak");
-      return;
-    }
-    if (event.key === "Enter" && picked.kind === "quote") {
-      // In a quotation, a new paragraph of the same quotation.
-      event.preventDefault();
-      doc.execCommand("insertParagraph");
-      return;
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      if (!selection.rangeCount) return;
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      const rest = doc.createRange();
-      rest.setStart(range.startContainer, range.startOffset);
-      rest.setEnd(picked.el, picked.el.childNodes.length);
-      const after = rest.extractContents();
-      touch(picked);
-      const item = addAfter(picked, "paragraph", true);
-      if (item.el) {
-        item.el.append(...[...after.childNodes].filter((part) => part.textContent !== ""
-                                                        || part.nodeName === "BR"));
-        selection.collapse(item.el, 0);
-      }
-      touch(item);
-      return;
-    }
-    if (event.key === "Backspace" && picked.kind === "paragraph" && selection.isCollapsed
-        && selection.rangeCount) {
-      const head = doc.createRange();
-      head.setStart(picked.el, 0);
-      head.setEnd(selection.anchorNode, selection.anchorOffset);
-      if (head.toString() !== "" || head.cloneContents().querySelector("br, img")) return;
-      const above = model[model.indexOf(picked) - 1];
-      if (!above || above.kind !== "paragraph" || !typeable(above) || !above.el) return;
-      event.preventDefault();
-      const joined = above.el.childNodes.length;
-      above.el.append(...picked.el.childNodes);
-      const gone = picked;
-      touch(above);
-      show(above, true);
-      drop(gone);
-      selection.collapse(above.el, joined);
-    }
+    typing.keyed(event, frame.contentDocument, {
+      el: picked.el, format, inside: picked.kind === "quote",
+      split(pieces) {
+        touch(picked);
+        const added = addAfter(picked, "paragraph", true);
+        if (added.el) added.el.append(...pieces);
+        touch(added);
+        return added.el;
+      },
+      joins: picked.kind === "paragraph",
+      above() {
+        const above = model[model.indexOf(picked) - 1];
+        return above && above.kind === "paragraph" && typeable(above) && above.el ? above : null;
+      },
+      join(above) {
+        const gone = picked;
+        touch(above);
+        show(above, true);
+        drop(gone);
+      },
+    });
   }
 
   // ---- a photograph Pressless holds (§ 4.3) ------------------------------
@@ -1862,9 +1948,9 @@ _VISUAL_SCRIPT = r"""
 
 # The entry's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved. Its
-# twin is page_editor._PAGE_SCRIPT: a fix to how either saves or presses is
-# owed to both, and both save through SAVING_SCRIPT.
-_EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
+# twin is page_editor._PAGE_SCRIPT: both save through SAVING_SCRIPT and press
+# through PUBLISH_SCRIPT, and a fix to the rest of either is owed to both.
+_EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {slug: form.dataset.slug, draft: form.dataset.draft, base: form.dataset.base};
@@ -1988,49 +2074,12 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
   });
   window.presslessLeaving("/save", fields, () => !stopped && dirty, sending);
 
-  const publish = document.querySelector("button[data-editor=publish]");
-  publish.addEventListener("click", async () => {
-    // PRESS-0339: said at once, though a save in flight is waited out first.
-    const said = document.getElementById("publish-status");
-    publish.disabled = true;
-    said.textContent = say("script.press.checking");
-    pressing = true;
-    // PRESS-0345: what waits is saved first, so the plan reads it; saves stay
-    // held while the box is open.
-    await settle(true);
-    const unpressed = () => {
-      said.textContent = standing(); pressing = false; publish.disabled = false; release();
-    };
-    try {
-      const asked = new URLSearchParams({slug: state.slug});
-      if (!(await window.presslessCheck(asked))) { unpressed(); return; }
-    } catch (error) {
-      unpressed(); stop(""); return;
-    }
-    said.textContent = say("script.press.publishing");
-    try {
-      const posted = posting();
-      const body = fields(posted);
-      dirty = false;
-      const answer = await fetch("/publish", {method: "POST", body: body});
-      const text = await answer.text();
-      if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
-      const reply = JSON.parse(text);
-      // Another press runs: nothing was saved, so the change is still to save.
-      if (window.presslessPress.busy(reply)) { dirty = true; return; }
-      adopt(reply);
-      written(reply, posted);
-      document.getElementById("failure").innerHTML = reply.failure || "";
-      said.textContent = reply.published
-        ? say("script.press.published") : say("script.press.not_published");
-      if (reply.published) window.presslessPress.viewable();
-    } catch (error) {
-      said.textContent = standing(); stop("");
-    } finally {
-      pressing = false;
-      publish.disabled = window.presslessPress.asking();
-      release();
-    }
+  window.presslessPublish({
+    address: "/publish", posting, fields, settle, release, standing, stop,
+    asked: () => new URLSearchParams({slug: state.slug}),
+    pressing: (now) => { pressing = now; },
+    unsaved: (now) => { dirty = now; },
+    published: (reply, posted) => { adopt(reply); written(reply, posted); },
   });
 
   // PRESS-0346 § 4.1: the switch changes view in place. What was typed is

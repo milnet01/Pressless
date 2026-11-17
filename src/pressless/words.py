@@ -741,6 +741,13 @@ _WORDS: dict[str, str] = {
     "script.visual.move.below": "Below the columns",
     "script.visual.move.nowhere": "No other place",
     "script.visual.ask_link": "The address to link to:",
+    "script.visual.link_refused": (
+        "A link cannot go to that address. Use one that starts with https://, http:// "
+        "or mailto:."
+    ),
+    "script.visual.caption_linked": (
+        "This caption holds a link. Change it in the code view, so the link is kept."
+    ),
     "script.visual.kind.text": "Paragraph",
     "script.visual.kind.heading": "Heading",
     "script.visual.kind.picture": "Picture",

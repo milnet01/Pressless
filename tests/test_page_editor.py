@@ -1014,6 +1014,75 @@ def test_the_visual_view_refuses_every_link_the_save_refuses(tmp_path):
     assert browser == server
 
 
+# ------------------------------------------------------------- PRESS-0346 ---
+
+# The shared keys and Link under node: the document, the selection and the
+# ranges are stand-ins recording what the script asks of them.
+_KEYS_HARNESS = """
+globalThis.window = globalThis;
+globalThis.say = (key) => key;
+globalThis.Node = {TEXT_NODE: 3, ELEMENT_NODE: 1};
+const said = {textContent: ""};
+globalThis.document = {getElementById: () => said};
+%s
+const {keyed, format} = window.presslessTyping;
+const seen = {};
+const key = (key, more = {}) => ({key, ...more, preventDefault() { seen.prevented = true; }});
+const typedIn = {childNodes: []};
+// Enter at the end of bold words: the split leaves an empty <b> behind.
+const left = [{nodeName: "B", textContent: ""}, {nodeName: "#text", textContent: "rest"},
+              {nodeName: "BR", textContent: ""}];
+const range = {deleteContents() {}, setStart() {}, setEnd() {},
+               extractContents: () => ({childNodes: left}),
+               toString: () => "", cloneContents: () => ({querySelector: () => null})};
+const doc = {
+  getSelection: () => ({rangeCount: 1, isCollapsed: true, anchorNode: typedIn, anchorOffset: 0,
+                        getRangeAt: () => range,
+                        collapse(at) { seen.caret = at; }}),
+  createRange: () => range,
+  execCommand(name) { seen.command = name; },
+};
+keyed(key("Enter"), doc, {el: typedIn, split(pieces) {
+  seen.carried = pieces.map((piece) => piece.nodeName);
+  return "added";
+}});
+// Backspace at the start of the first paragraph: nothing above takes it.
+seen.prevented = false;
+keyed(key("Backspace"), doc, {el: typedIn, joins: true, above: () => null});
+seen.backspaceKept = !seen.prevented;
+keyed(key("Enter", {shiftKey: true}), doc, {el: typedIn});
+seen.shiftEnter = seen.command;
+keyed(key("Enter"), doc, {el: typedIn, inside: true});
+seen.quoteEnter = seen.command;
+keyed(key("K", {ctrlKey: true}), doc, {el: typedIn, format(name) { seen.formatted = name; }});
+window.prompt = () => "javascript:alert(1)";
+seen.linked = format(doc, "link", {refused: "script.visual.link_refused"});
+seen.said = said.textContent;
+process.stdout.write(JSON.stringify(seen));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_both_editors_type_through_the_same_keys(tmp_path):
+    """PRESS-0346 § 4.4: Enter, Backspace, Ctrl+B/I/K and Link live once, in
+    editor.TYPING_SCRIPT, which both visual views load. Breaks when Enter
+    carries an emptied Bold into the new paragraph, Backspace with nothing
+    above it is swallowed, or a refused link address is dropped silently."""
+    harness = tmp_path / "keys.js"
+    harness.write_text(_KEYS_HARNESS % editor.TYPING_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    seen = json.loads(run.stdout)
+    assert seen["carried"] == ["#text", "BR"] and seen["caret"] == "added"
+    assert seen["backspaceKept"] is True
+    assert (seen["shiftEnter"], seen["quoteEnter"]) == ("insertLineBreak", "insertParagraph")
+    assert seen["formatted"] == "link"
+    assert seen["linked"] is False and seen["said"] == "script.visual.link_refused"
+    for script in (editor._VISUAL_SCRIPT, page_editor._VISUAL_SCRIPT):
+        assert "function keyed(event) {" in script and "typing.keyed(event" in script
+        assert "doc.execCommand" not in script
+
+
 # ------------------------------------------------------------- PRESS-0329 ---
 
 # The page's script under node, on a stand-in page: every element is a plain

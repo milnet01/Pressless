@@ -1276,12 +1276,14 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
 # The page's script (§ 4.5), PRESS-0012 § 4.7's. A change saves about a second
 # after the last one, never two saves at once, and on leaving only where a
 # change is unsaved. Its twin is editor._EDITOR_SCRIPT; both save through
-# editor.SAVING_SCRIPT and leave through editor.LEAVING_SCRIPT. They differ in
-# their fields and in what a reply updates. A switch of view, a picker link,
-# Remove and Rename save an unsaved change first. In the visual view,
+# editor.SAVING_SCRIPT, press through editor.PUBLISH_SCRIPT and leave through
+# editor.LEAVING_SCRIPT. They differ in their fields and in what a reply
+# updates. A switch of view, a picker link, Remove and Rename save an unsaved
+# change first. In the visual view,
 # _VISUAL_SCRIPT supplies what is posted and is told what was saved
 # (PRESS-0260 § 4.5).
-_PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + """
+_PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
+                + editor.PUBLISH_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {kind: form.dataset.kind, name: form.dataset.name, view: form.dataset.view,
@@ -1420,51 +1422,16 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
     });
   });
 
-  const publish = document.querySelector("button[data-editor=publish]");
-  publish.addEventListener("click", async () => {
-    // PRESS-0339: said at once, though a save in flight is waited out first.
-    const said = document.getElementById("publish-status");
-    publish.disabled = true;
-    said.textContent = say("script.press.checking");
-    pressing = true;
-    // A save meanwhile would post the waiting copy the publish bins.
-    // PRESS-0345: what waits is saved first, so the plan reads it; saves stay
-    // held while the box is open.
-    await settle(true);
-    const unpressed = () => {
-      said.textContent = standing(); pressing = false; publish.disabled = false; release();
-    };
-    try {
-      const asked = new URLSearchParams({kind: state.kind, name: state.name});
-      if (!(await window.presslessCheck(asked))) { unpressed(); return; }
-    } catch (error) {
-      unpressed(); stop(""); return;
-    }
-    said.textContent = say("script.press.publishing");
-    try {
-      const posted = posting();
-      const body = fields(posted);
-      dirty = false;
-      const answer = await fetch("/page/publish", {method: "POST", body: body});
-      const text = await answer.text();
-      if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
-      const reply = JSON.parse(text);
-      // Another press runs: nothing was saved, so the change is still to save.
-      if (window.presslessPress.busy(reply)) { dirty = true; return; }
+  window.presslessPublish({
+    address: "/page/publish", posting, fields, settle, release, standing, stop,
+    asked: () => new URLSearchParams({kind: state.kind, name: state.name}),
+    pressing: (now) => { pressing = now; },
+    unsaved: (now) => { dirty = now; },
+    published: (reply, posted) => {
       if (reply.published) form.dataset.offSite = "0";
       adopt(reply);
       if (posted) posted.saved(reply);
-      document.getElementById("failure").innerHTML = reply.failure || "";
-      said.textContent = reply.published ? say("script.press.published")
-        : say("script.press.not_published");
-      if (reply.published) window.presslessPress.viewable();
-    } catch (error) {
-      said.textContent = standing(); stop("");
-    } finally {
-      pressing = false;
-      publish.disabled = window.presslessPress.asking();
-      release();
-    }
+    },
   });
 
   // PRESS-0195 § 4.4: Remove and Rename ask first, save what is unsaved, then
@@ -1530,7 +1497,7 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
     });
   });
 })();
-"""
+""")
 
 
 def _code_box(textarea: str, *, hidden: bool = False) -> str:
@@ -1773,10 +1740,12 @@ _VISUAL_SCRIPT = r"""
   const line = document.getElementById("drop-line");
   const given = JSON.parse(document.getElementById("sections").textContent);
   const up = given.up;
-  // page_editor._KINDS and blocks.HOLDERS: the kinds holding other sections,
-  // which no column or answer holds; a row of them holds pictures alone.
+  // page_editor._KINDS: every kind, in the panel's Add list.
   const KINDS = given.kinds;
+  // blocks.HOLDERS: the kinds holding other sections, which no column or
+  // answer holds.
   const HOLDERS = given.holders;
+  // The holders whose sections are a row of pictures, and pictures alone.
   const ROWS = ["pictures", "slideshow"];
   const IN_COLUMN = KINDS.filter((kind) => !HOLDERS.includes(kind));
   const ADDRESSED = ["picture", "pictures", "button", "video", "music", "download",
@@ -1838,18 +1807,21 @@ _VISUAL_SCRIPT = r"""
   };
 
   // ---- § 4.4: the words, read from the element's nodes ----------------
-  // editor.TYPING_SCRIPT's, shared with the entry editor (PRESS-0346 § 4.4).
-  const {text, allowed, inline, paste} = window.presslessTyping;
+  // editor.TYPING_SCRIPT's, shared with the entry editor (PRESS-0346 § 4.4):
+  // the reading, the paste, Bold, Italic, Link and the keys.
+  const typing = window.presslessTyping;
+  const {text, allowed, inline, paste} = typing;
 
   // ---- what is posted (§ 4.5) ------------------------------------------
   const synced = () => each(model, (item) => {
     if (item.el && item.changed) item.fields.html = inline(item.el);
   });
-  function item(of) {
+  // A section as the save posts it: kept by its path, or built anew.
+  function toPost(of) {
     if (!of.changed && of.path) return {keep: of.path};
     if (of.kind === "code") return {code: of.code};
     return {kind: of.kind, fields: {...of.fields},
-            parts: of.parts.map((part) => part.map(item))};
+            parts: of.parts.map((part) => part.map(toPost))};
   }
   function post() {
     synced();
@@ -1857,12 +1829,12 @@ _VISUAL_SCRIPT = r"""
     const places = new Map(), revs = new Map();
     model.forEach((top, at) => {
       places.set(top, [at]);
-      top.parts.forEach((part, column) => part.forEach((child, inside) => {
-        places.set(child, [at, column, inside]);
+      top.parts.forEach((part, column) => part.forEach((child, index) => {
+        places.set(child, [at, column, index]);
       }));
     });
     each(model, (item) => revs.set(item, item.rev));
-    const sections = model.map(item);
+    const sections = model.map(toPost);
     const gone = removed.filter((item) => item.path).map((item) => item.path);
     each(model, (item) => { if (item.changed && item.path) gone.push(item.path); });
     const sent = new Set(removed.filter((item) => item.path));
@@ -2029,6 +2001,10 @@ _VISUAL_SCRIPT = r"""
     fill();
   }
   const field = (name) => panel.querySelector("[data-field=" + name + "]");
+  // A caption's words, every character reference read; a parsed document
+  // runs no script and loads nothing.
+  const captionWords = (caption) => new DOMParser()
+    .parseFromString(caption || "", "text/html").body.textContent;
   const act = (name) => panel.querySelector("[data-act=" + name + "]");
   function fill() {
     const kind = picked ? picked.kind : "";
@@ -2046,9 +2022,16 @@ _VISUAL_SCRIPT = r"""
         input.value = name === "code" ? (picked.kind === "code" ? picked.code : fields.code) || ""
           : name === "count" ? String(picked.parts.length)
           : name === "src" && fields.youtube ? "https://www.youtube.com/watch?v=" + fields.youtube
-          : name === "caption" ? (fields.caption || "").replace(/<[^>]*>/g, "")
-              .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+          : name === "caption" ? captionWords(fields.caption)
           : fields[name] || "";
+        // Typing in the field writes words alone, so a caption holding a
+        // link is shown but kept as it is.
+        if (name === "caption") {
+          input.readOnly = /<[a-z]/i.test(fields.caption || "");
+          if (input.readOnly) {
+            document.getElementById("panel-said").textContent = say("script.visual.caption_linked");
+          }
+        }
       });
       window.presslessCode.paint();
       panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
@@ -2064,18 +2047,19 @@ _VISUAL_SCRIPT = r"""
     act("remove").disabled = !picked;
     destinations = places(picked);
     const where = document.getElementById("move-to");
-    where.replaceChildren(...(destinations.length ? destinations.map((place, at) => new Option(
-      place.below ? say("script.visual.move.below")
-        : say("script.visual.move.column", {number: String(place.column + 1)}), String(at)))
+    where.replaceChildren(...(destinations.length ? destinations.map((spot, at) => new Option(
+      spot.below ? say("script.visual.move.below")
+        : say("script.visual.move.column", {number: String(spot.column + 1)}), String(at)))
       : [new Option(say("script.visual.move.nowhere"), "")]));
     where.disabled = act("move-to").disabled = !destinations.length;
-    const fits = !picked ? KINDS : picked.parent && ROWS.includes(picked.parent.kind) ? ["picture"]
+    const addable = !picked ? KINDS
+      : picked.parent && ROWS.includes(picked.parent.kind) ? ["picture"]
       : picked.parent ? IN_COLUMN : KINDS;
     document.querySelectorAll("#add-kind option").forEach((option) => {
-      option.disabled = !fits.includes(option.value);
+      option.disabled = !addable.includes(option.value);
     });
     const choice = document.getElementById("add-kind");
-    if (choice.selectedOptions[0] && choice.selectedOptions[0].disabled) choice.value = fits[0];
+    if (choice.selectedOptions[0] && choice.selectedOptions[0].disabled) choice.value = addable[0];
     document.getElementById("add-where").textContent =
       say(picked ? "script.visual.below" : "script.visual.end");
     placeHandle();
@@ -2124,21 +2108,8 @@ _VISUAL_SCRIPT = r"""
   });
   function format(name) {
     if (!picked || !picked.el) return;
-    const doc = frame.contentDocument;
-    if (name === "link") {
-      const address = window.prompt(say("script.visual.ask_link"), "https://");
-      if (!address || !allowed(address)) return;
-      // With no words picked Firefox links nothing; give the link its address.
-      if (doc.getSelection().isCollapsed) {
-        doc.execCommand("insertHTML", false, '<a href="' + text(address).replace(/"/g, "&quot;")
-          + '">' + text(address) + "</a>");
-      } else {
-        doc.execCommand("createLink", false, address);
-      }
-    } else {
-      doc.execCommand(name);
-    }
-    touch(picked);
+    if (typing.format(frame.contentDocument, name,
+                      {linkable: allowed, refused: "script.visual.link_refused"})) touch(picked);
   }
 
   // ---- adding, moving, removing ----------------------------------------
@@ -2162,8 +2133,8 @@ _VISUAL_SCRIPT = r"""
     return item;
   }
   // A question's words and its answer, each a paragraph to type into.
-  const question = (holder, column) => [made("text", "", holder, column),
-                                        made("text", "", holder, column)];
+  const question = (questions, column) => [made("text", "", questions, column),
+                                           made("text", "", questions, column)];
   // A countdown starts a week from now, to the minute, in local time.
   function weekAhead() {
     const when = new Date(Date.now() + 7 * 86400000);
@@ -2285,7 +2256,7 @@ _VISUAL_SCRIPT = r"""
     if (!item || !IN_COLUMN.includes(item.kind)) return [];
     if (item.parent && item.parent.kind === "columns") {
       return [...item.parent.parts.map((_, column) => ({columns: item.parent, column}))
-        .filter((place) => place.column !== item.column), {below: item.parent}];
+        .filter((spot) => spot.column !== item.column), {below: item.parent}];
     }
     if (item.parent) return [];
     const above = model[model.indexOf(item) - 1];
@@ -2294,31 +2265,31 @@ _VISUAL_SCRIPT = r"""
   }
   // The element a column's sections sit in, in the frame.
   function holder(columns, column) {
-    const box = between(columns).find((at) => at.nodeType === Node.ELEMENT_NODE);
-    const opening = box ? [...box.childNodes].filter((at) => at.nodeType === Node.COMMENT_NODE
-      && at.data === " pressless:column ") : [];
+    const wrapper = between(columns).find((at) => at.nodeType === Node.ELEMENT_NODE);
+    const opening = wrapper ? [...wrapper.childNodes].filter((at) =>
+      at.nodeType === Node.COMMENT_NODE && at.data === " pressless:column ") : [];
     return opening[column] ? opening[column].nextSibling : null;
   }
   act("move-to").addEventListener("click", () => {
-    const place = destinations[Number(document.getElementById("move-to").value)];
-    if (!picked || !place) return;
+    const spot = destinations[Number(document.getElementById("move-to").value)];
+    if (!picked || !spot) return;
     const item = picked;
     const nodes = item.start ? [item.start, ...between(item), item.end] : [];
     const list = listOf(item);
     list.splice(list.indexOf(item), 1);
-    if (place.below) {
-      model.splice(model.indexOf(place.below) + 1, 0, item);
+    if (spot.below) {
+      model.splice(model.indexOf(spot.below) + 1, 0, item);
       item.parent = null;
       item.column = undefined;
-      if (nodes.length && place.below.end) place.below.end.after(...nodes);
+      if (nodes.length && spot.below.end) spot.below.end.after(...nodes);
     } else {
-      place.columns.parts[place.column].push(item);
-      item.parent = place.columns;
-      item.column = place.column;
-      const inside = holder(place.columns, place.column);
-      if (nodes.length && inside) inside.append(...nodes);
+      spot.columns.parts[spot.column].push(item);
+      item.parent = spot.columns;
+      item.column = spot.column;
+      const sits = holder(spot.columns, spot.column);
+      if (nodes.length && sits) sits.append(...nodes);
     }
-    touch(place.columns || place.below);
+    touch(spot.columns || spot.below);
     fill();
   });
   function drop(item) {
@@ -2332,16 +2303,16 @@ _VISUAL_SCRIPT = r"""
     if (!picked) return;
     const gone = picked;
     show(null, false);
-    const holder = gone.parent;
-    if (holder && holder.kind === "questions" && listOf(gone).indexOf(gone) === 0) {
+    const container = gone.parent;
+    if (container && container.kind === "questions" && listOf(gone).indexOf(gone) === 0) {
       // A question's words go with the whole question, answer and all.
       const column = gone.column;
-      [...holder.parts[column]].forEach(drop);
-      holder.parts.splice(column, 1);
-      holder.parts.slice(column).forEach((part, at) => part.forEach((item) => {
+      [...container.parts[column]].forEach(drop);
+      container.parts.splice(column, 1);
+      container.parts.slice(column).forEach((part, at) => part.forEach((item) => {
         item.column = column + at;
       }));
-      touch(holder);
+      touch(container);
     } else {
       drop(gone);
     }
@@ -2364,9 +2335,9 @@ _VISUAL_SCRIPT = r"""
   }
   // Where the page in the frame starts, measured from the proof.
   function origin() {
-    const outer = frame.getBoundingClientRect(), holder = proof.getBoundingClientRect();
-    return {x: outer.left - holder.left + frame.clientLeft,
-            y: outer.top - holder.top + frame.clientTop, height: frame.clientHeight};
+    const outer = frame.getBoundingClientRect(), area = proof.getBoundingClientRect();
+    return {x: outer.left - area.left + frame.clientLeft,
+            y: outer.top - area.top + frame.clientTop, height: frame.clientHeight};
   }
   function placeHandle() {
     if (!handle) return;
@@ -2383,10 +2354,10 @@ _VISUAL_SCRIPT = r"""
     ? item.kind === "picture" : IN_COLUMN.includes(item.kind));
   function landing(item, x, y) {
     const doc = frame.contentDocument;
-    const under = doc && doc.elementFromPoint(x, y);
-    if (!under) return null;
+    const pointed = doc && doc.elementFromPoint(x, y);
+    if (!pointed) return null;
     let target = null;
-    each(model, (at) => { if (at.marked && inside(at, under)) target = at; });
+    each(model, (at) => { if (at.marked && inside(at, pointed)) target = at; });
     while (target && !fits(item, target.parent)) target = target.parent;
     for (let at = target; at; at = at.parent) if (at === item) return null;
     if (!target) return null;
@@ -2426,9 +2397,9 @@ _VISUAL_SCRIPT = r"""
     });
     handle.addEventListener("pointermove", (event) => {
       if (!dragging) return;
-      const from = origin(), holder = proof.getBoundingClientRect();
-      const found = landing(dragging.item, event.clientX - holder.left - from.x,
-                            event.clientY - holder.top - from.y);
+      const from = origin(), area = proof.getBoundingClientRect();
+      const found = landing(dragging.item, event.clientX - area.left - from.x,
+                            event.clientY - area.top - from.y);
       dragging.landing = found;
       line.hidden = !found;
       if (!found) return;
@@ -2460,57 +2431,33 @@ _VISUAL_SCRIPT = r"""
   function keyed(event) {
     if (letGo(event)) return;
     if (!picked || !picked.el || !picked.el.contains(event.target)) return;
-    const doc = frame.contentDocument;
-    const selection = doc.getSelection();
-    if ((event.ctrlKey || event.metaKey) && ["b", "i", "k"].includes(event.key.toLowerCase())) {
-      event.preventDefault();
-      format({b: "bold", i: "italic", k: "link"}[event.key.toLowerCase()]);
-      return;
-    }
-    if (event.key === "Enter" && event.shiftKey) {
-      event.preventDefault();
-      doc.execCommand("insertLineBreak");
-      return;
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      if (!selection.rangeCount) return;
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      const rest = doc.createRange();
-      rest.setStart(range.startContainer, range.startOffset);
-      rest.setEnd(picked.el, picked.el.childNodes.length);
-      const after = rest.extractContents();
-      const list = listOf(picked);
-      const item = made("text", "", picked.parent, picked.column);
-      touch(picked);
-      place(item, list, list.indexOf(picked) + 1);
-      if (item.el) item.el.append(after);
-      item.fields.html = item.el ? inline(item.el) : "";
-      touch(picked.parent || item);
-      item.changed = true;
-      show(item, true);
-      if (item.el) selection.collapse(item.el, 0);
-      return;
-    }
-    if (event.key === "Backspace" && picked.kind === "text" && selection.isCollapsed
-        && selection.rangeCount) {
-      const head = doc.createRange();
-      head.setStart(picked.el, 0);
-      head.setEnd(selection.anchorNode, selection.anchorOffset);
-      if (head.toString() !== "" || head.cloneContents().querySelector("br, img")) return;
-      event.preventDefault();
-      const list = listOf(picked);
-      const above = list[list.indexOf(picked) - 1];
-      if (!above || above.kind !== "text" || !above.el) return;
-      const joined = above.el.childNodes.length;
-      above.el.append(...picked.el.childNodes);
-      const gone = picked;
-      touch(above);
-      show(above, true);
-      drop(gone);
-      selection.collapse(above.el, joined);
-    }
+    typing.keyed(event, frame.contentDocument, {
+      el: picked.el, format, inside: false,
+      split(pieces) {
+        const list = listOf(picked);
+        const added = made("text", "", picked.parent, picked.column);
+        touch(picked);
+        place(added, list, list.indexOf(picked) + 1);
+        if (added.el) added.el.append(...pieces);
+        added.fields.html = added.el ? inline(added.el) : "";
+        touch(picked.parent || added);
+        added.changed = true;
+        show(added, true);
+        return added.el;
+      },
+      joins: picked.kind === "text",
+      above() {
+        const list = listOf(picked);
+        const above = list[list.indexOf(picked) - 1];
+        return above && above.kind === "text" && above.el ? above : null;
+      },
+      join(above) {
+        const gone = picked;
+        touch(above);
+        show(above, true);
+        drop(gone);
+      },
+    });
   }
 
   // ---- a photograph Pressless holds (§ 4.6) ------------------------------
@@ -2574,10 +2521,10 @@ _VISUAL_SCRIPT = r"""
       return;
     }
     if (!picked || picked.kind !== kind) return;
-    const place = picked.kind === "download" ? "href" : "src";
+    const named = picked.kind === "download" ? "href" : "src";
     if (picked.kind === "video") picked.fields = {src: address};
-    else picked.fields[place] = address;
-    panel.querySelector("[data-for]:not([hidden]) [data-field=" + place + "]").value = address;
+    else picked.fields[named] = address;
+    panel.querySelector("[data-for]:not([hidden]) [data-field=" + named + "]").value = address;
     touch(picked);
   });
 
