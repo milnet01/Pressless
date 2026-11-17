@@ -14,3 +14,4 @@
 | 0402-0404 | 2026-11-17 | 0, no reviewer dispatched | - | - | - | - | Fold-back: § 4.3 chat words for steps pointing below; § 4.4 a source run names its folder; § 4.6 a failure after Yes shows; § 10 rows. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0417: § 4.6 a press's failure after Yes is made by `publishing.press_failure`, so a refusal carries its link. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0418: § 4.4 a packaged program that cannot find itself names no program; the screen says why and Connect writes nothing. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0420: § 4.5 `list_files` answers each user of a file as a kind and a name. |

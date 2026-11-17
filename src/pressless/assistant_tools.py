@@ -70,7 +70,8 @@ TOOLS: tuple[Tool, ...] = (
          "locked: it must be kept as it is.",
          {"name": _PAGE}, ("name",)),
     Tool("list_files", READ,
-         "Every photograph and file the site keeps, and the pages that use each."),
+         "Every photograph and file the site keeps, and what uses each: a page, a part "
+         "of every page or the look, each with its kind and name."),
     Tool("read_look", READ,
          "The site's look: layout, colours, fonts, text size, width and effects, "
          "with the version a change must name."),

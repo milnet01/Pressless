@@ -252,7 +252,7 @@ does, so the version matches what it returned):
 | `read_entry` | `address` | title, date, categories, tags, body in marks, `draft`, `version`. A published entry with a working copy returns the working copy, as `editor._edit` does |
 | `list_pages` | — | each page and part (`header`, `footer`, `navigation`): name, `changed` (a waiting copy exists) |
 | `read_page` | `name` | each section by path, kind and fields, or, for `navigation`, its links; `version`. A script, style or code section, and words holding a Builder placeholder, appear with their kind and `"locked": true`, and no code. `header`, `footer` and `navigation` name the parts |
-| `list_files` | — | each added file and photograph: name, and the pages naming it (`builder.files_named`) |
+| `list_files` | — | each added file and photograph: name, and what names it (`builder.files_named`), each as a kind (`page`, `part` or `look`) and a name |
 | `read_look` | — | `look.Choices` as JSON, `version` |
 | `read_insights` | `days`, one of `dashboard.WINDOWS`' spans | `insights.Report`'s figures as JSON. `NotConfigured` answers its sentence |
 | `request_status` | `request` | `waiting`, `refused`, `expired`, `running`, `done`, `failed` or `unknown`, with the press's outcome sentence |

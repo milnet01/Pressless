@@ -872,6 +872,26 @@ def test_the_reads_and_writes_work(tmp_path):
         assert missing["ok"] is False and "read_entry needs address" in missing["said"]
 
 
+def test_list_files_names_the_kind_of_each_user(tmp_path):
+    """PRESS-0420: a page named footer and the footer part are told apart,
+    as on the Files screen, and the look is named as the look. Breaks when
+    used_by answers bare names."""
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        target = store.file_path_for(folder, "notes.pdf")
+        target.parent.mkdir(exist_ok=True)
+        target.write_bytes(b"%PDF-1.4\n")
+        store.write_html(folder, store.PAGES_FOLDER, "footer",
+                         '<p><a href="../files/notes.pdf">Notes</a></p>')
+        store.write_html(folder, store.FURNITURE_FOLDER, "footer",
+                         '<footer><a href="{{UP}}files/notes.pdf">Notes</a></footer>')
+        store.write_style_code(folder, "body{background:url(../files/notes.pdf)}")
+        listed = pressless.ok("list_files")["files"]
+    assert listed == [{"name": "notes.pdf", "used_by": [
+        {"kind": "part", "name": "footer"}, {"kind": "page", "name": "footer"},
+        {"kind": "look", "name": "look"}]}]
+
+
 def test_an_old_bridge_is_told_to_restart(tmp_path):
     """§ 4.3: a version other than the running program's is refused."""
     with _pressless(tmp_path) as pressless:

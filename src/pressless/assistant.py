@@ -95,6 +95,10 @@ _STATUS_WORDS = {
 _JSON = "application/json"
 _KEEP_FINISHED = 50                   # finished requests kept for request_status
 _KEY_WORDS = "failure.secret.publishing_key"     # the words naming the key, never the key
+# What list_files says names a file, by builder.FileUser's kind: a page and a
+# part may share a name (PRESS-0420).
+_USER_KINDS = {store.PAGES_FOLDER: "page", store.FURNITURE_FOLDER: "part",
+               store.LOOK_FOLDER: "look"}
 _PRESSES = {"publish": pressing.PUBLISH, "undo_last_publish": pressing.UNDO,
             "remove_page": pressing.PUBLISH, "rename_page": pressing.PUBLISH}
 
@@ -412,7 +416,8 @@ class _Door:
         return {"photographs": [{"name": name, "address": builder.web_photograph(name)}
                                 for name in store.list_photographs(folder)],
                 "files": [{"name": name,
-                           "used_by": [user.name for user in named.get(name, ())]}
+                           "used_by": [{"kind": _USER_KINDS[user.kind], "name": user.name}
+                                       for user in named.get(name, ())]}
                           for name in store.list_files(folder)]}
 
     def _read_look(self) -> dict:
