@@ -421,7 +421,10 @@ def test_only_touches_its_own_file(tmp_path, monkeypatch):
     finally:
         monkeypatch.undo()
 
-    strays = [p for p in opened if os.path.dirname(p) != os.fspath(folder)]
+    # The folder itself is opened too, read-only, so its entry for the new file
+    # survives a power loss (safe_write.sync_folder). That reaches no other folder.
+    strays = [p for p in opened
+              if p != os.fspath(folder) and os.path.dirname(p) != os.fspath(folder)]
     assert not strays, (
         f"load()/save() opened {strays!r}, which is outside the folder they "
         f"were handed ({folder!r}). Settings is handed its folder and never "
