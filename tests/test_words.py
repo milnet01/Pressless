@@ -274,7 +274,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                 ":root { color-scheme: light dark;": _CSS,
                 **dict.fromkeys(("an effect is not one Pressless offers",
                                  "an effect is named twice", "no layout is called",
-                                 "the colours are not exactly the look's colour names, in order",
+                                 "the colours are not exactly the look's colour names",
                                  "no text size is called", "no width is called",
                                  "no font is called"), _MESSAGE)},
     "starter.py": {"Home": "a data-nav name, which the Builder matches on",

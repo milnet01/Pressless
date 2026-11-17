@@ -101,15 +101,15 @@ Every "(decided here)" is open to the maintainer to overturn.
 | Field | Values |
 |---|---|
 | `layout` | one of `starter.LOOKS`; PRESS-0359 § 4.1 lists them |
-| `colours.light`, `colours.dark` | exactly the names in `starter.COLOURS`, each a `#rrggbb` value |
+| `colours.light`, `colours.dark` | exactly the names in `look.COLOURS`, in any order, each a `#rrggbb` value |
 | `body_font`, `heading_font` | `system`, `serif`, `humanist`, `mono` |
 | `text_size` | `normal`, `large`, `larger`; every layout's default is `large`, today's `118.75%` |
 | `width` | `narrow`, `medium`, `wide`; `medium`, the default, is the layout's own width |
 | `effects` | any of `lift`, `reveal`, `smooth`, each at most once |
 
-A file that fails any row, or whose `version` is not 1, is unreadable:
-`look.read` raises `look.LookUnreadable` and nothing is written over it
-(§ 6). Keys outside the table are refused the same way, so a later version's
+A file that fails any row, or whose `version` is not the integer 1, is
+unreadable: `look.read` raises `look.LookUnreadable` and nothing is
+written over it (§ 6). Keys outside the table are refused the same way, so a later version's
 file is never half-read.
 
 `look/extra.css` holds the user's CSS as typed, UTF-8, and may be absent
@@ -120,7 +120,8 @@ file is never half-read.
 function, `look_path_for(folder, name)`, for all three. `LOOK_FILES` holds
 the three names, in the order `look.digest` reads them; every reader of the
 set reads it.
-`read_look_file` and `write_look_file` read and write any of them;
+`read_look_file` and `write_look_file` read and write any of them, and
+`read_look_bytes` reads one undecoded for `look.digest`;
 `read_style_code` and `write_style_code` stay as their style-code cases.
 `LOOK_FOLDER` joins `_BINNABLE`, because a save over an unmanaged
 stylesheet (§ 4.4) and an undo (§ 4.7) each bin the version they replace.
@@ -137,8 +138,8 @@ over `starter.COLOURS`, `starter._PALETTES`, `starter.palette`,
 ```python
 FONTS: dict[str, str]          # key -> CSS font-family stack
 TEXT_SIZES: dict[str, str]     # key -> html font-size
-WIDTHS: dict[str, str]         # narrow, wide -> the main column's max-width;
-                               # medium is the layout's own width
+WIDTHS = ("narrow", "medium", "wide")   # medium is the layout's own width;
+                                         # the other two are fixed
 EFFECTS = ("lift", "reveal", "smooth")
 TEXT_PAIRS: tuple[tuple[str, str], ...]   # (text colour, its background)
 

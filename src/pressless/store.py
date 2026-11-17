@@ -1277,6 +1277,11 @@ def read_look_file(folder: Path, name: str) -> str | None:
     return _read_text(look_path_for(folder, name))
 
 
+def read_look_bytes(folder: Path, name: str) -> bytes | None:
+    """One of the look's files, undecoded; None where the Store holds none."""
+    return _read_bytes(look_path_for(folder, name))
+
+
 def write_style_code(folder: Path, css: str) -> Path:
     """Write the style code whole or not at all, its bytes as given, as
     write_html writes a page (PRESS-0126 § 4.2)."""

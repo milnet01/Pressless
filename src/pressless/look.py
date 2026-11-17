@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -283,8 +284,8 @@ def problem(choices: Choices) -> str | None:
     if choices.layout not in LAYOUTS:
         return f"no layout is called {choices.layout!r}"
     for scheme in (choices.light, choices.dark):
-        if not isinstance(scheme, dict) or list(scheme) != list(COLOURS):
-            return "the colours are not exactly the look's colour names, in order"
+        if not isinstance(scheme, dict) or sorted(scheme) != sorted(COLOURS):
+            return "the colours are not exactly the look's colour names"
         for name, value in scheme.items():
             if not isinstance(value, str) or not _HEX.fullmatch(value):
                 return f"{name} is not a colour written #rrggbb"
@@ -319,7 +320,7 @@ def from_json(text: str) -> Choices:
         raise LookUnreadable(f"{store.LOOK_CHOICES_NAME} is not JSON: {exc}") from exc
     if not isinstance(data, dict) or sorted(data) != sorted(_FIELDS):
         raise LookUnreadable(f"{store.LOOK_CHOICES_NAME} does not hold the look's fields")
-    if data["version"] != VERSION:
+    if type(data["version"]) is not int or data["version"] != VERSION:   # true == 1
         raise LookUnreadable(f"{store.LOOK_CHOICES_NAME} is version {data['version']!r}")
     colours, effects = data["colours"], data["effects"]
     if (not isinstance(colours, dict) or sorted(colours) != ["dark", "light"]
@@ -333,7 +334,9 @@ def from_json(text: str) -> Choices:
         raise LookUnreadable(f"{store.LOOK_CHOICES_NAME}: {exc}") from exc
     if why:
         raise LookUnreadable(f"{store.LOOK_CHOICES_NAME}: {why}")
-    return choices
+    # In the look's order, whatever the file's: css() declares them in it.
+    return dataclasses.replace(choices, light={name: choices.light[name] for name in COLOURS},
+                               dark={name: choices.dark[name] for name in COLOURS})
 
 
 def read(folder: Path) -> Choices | None:
@@ -376,13 +379,8 @@ def digest(folder: Path) -> str:
     absent file counting as a fixed marker (§ 4.4, INV-8)."""
     total = hashlib.sha256()
     for name in store.LOOK_FILES:
-        path = store.look_path_for(folder, name)
-        try:
-            data = path.read_bytes()
-        except FileNotFoundError:
-            total.update(b"absent\0")
-            continue
-        total.update(b"%d\0" % len(data) + data)
+        data = store.read_look_bytes(folder, name)
+        total.update(b"absent\0" if data is None else b"%d\0" % len(data) + data)
     return total.hexdigest()
 
 
@@ -449,7 +447,7 @@ def _pieces(choices: Choices, extra: str) -> list[str]:
     hand-edited (PRESS-0314); a test in test_look.py says so. A new rule goes
     in as an _Added piece instead, which made_here accepts absent."""
     def declared(colours: dict[str, str]) -> str:
-        return " ".join(f"--{name}: {value};" for name, value in colours.items())
+        return " ".join(f"--{name}: {colours[name]};" for name in COLOURS)
     width = _FIXED_WIDTHS.get(choices.width, _OWN_WIDTH[choices.layout])
     parts = [
         _Note("look.style_note"),

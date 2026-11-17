@@ -67,6 +67,8 @@ _BROKEN = {
     "an unknown font": lambda data: data.update(body_font="fancy"),
     "an effect named twice": lambda data: data.update(effects=["lift", "lift"]),
     "version 2": lambda data: data.update(version=2),
+    "version true": lambda data: data.update(version=True),
+    "version 1.0": lambda data: data.update(version=1.0),
     "an extra key": lambda data: data.update(shadow="soft"),
     "an unknown layout": lambda data: data.update(layout="garden"),
     "an unknown text size": lambda data: data.update(text_size="huge"),
@@ -86,6 +88,34 @@ def test_a_file_breaking_one_row_is_refused_and_left_alone(tmp_path, edit):
     with pytest.raises(starter_look.LookUnreadable):
         starter_look.read(tmp_path)
     assert _files(tmp_path) == before
+
+
+def test_colours_in_another_order_read_in_the_looks_order(tmp_path):
+    """§ 4.1: exactly the colour names, in any order, since a tool that
+    sorts a JSON file's keys changes nothing it means. Breaks when the order
+    is refused, or read in the file's order, which would reorder css()."""
+    choices = starter_look.defaults("harbour")
+    starter_look.save(tmp_path, choices, "")
+    data = json.loads(store.read_look_file(tmp_path, store.LOOK_CHOICES_NAME))
+    data["colours"]["light"] = dict(reversed(data["colours"]["light"].items()))
+    data["colours"]["dark"] = dict(sorted(data["colours"]["dark"].items()))
+    store.write_look_file(tmp_path, store.LOOK_CHOICES_NAME, json.dumps(data))
+    read = starter_look.read(tmp_path)
+    assert read == choices
+    assert list(read.light) == list(read.dark) == list(starter_look.COLOURS)
+    assert starter_look.made_here(tmp_path)
+
+
+def test_a_look_file_that_cannot_be_read_is_a_store_failure(tmp_path):
+    """Design § Errors: parts raise typed failures. Breaks when the digest
+    lets a raw OSError out, which the Look screen shows as the last-resort
+    page."""
+    starter_look.save(tmp_path, starter_look.defaults("sunrise"), "")
+    style = store.style_code_path(tmp_path)
+    style.unlink()
+    style.mkdir()
+    with pytest.raises(store.StoreError):
+        starter_look.digest(tmp_path)
 
 
 # ------------------------------------------------------------------ INV-4 ---
