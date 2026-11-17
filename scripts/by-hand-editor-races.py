@@ -100,11 +100,19 @@ def main() -> int:
                                   "textarea", "page editor")
 
             page.goto(origin + "/edit?slug=seaside")
+            # Past the 64 KiB a keepalive request carries (editor.py), so the
+            # change cannot be sent as the page goes and the editor asks first.
             page.evaluate("const t = document.querySelector('textarea[name=body]');"
                           "t.value += 'x'.repeat(70000);"
                           "t.dispatchEvent(new Event('input', {bubbles: true}))")
             asked: list[str] = []
-            page.on("dialog", lambda dialog: asked.append(dialog.type))
+
+            def answer(dialog) -> None:
+                # With a listener, Playwright leaves a dialog open until it is answered.
+                asked.append(dialog.type)
+                dialog.accept()
+
+            page.on("dialog", answer)
             page.close(run_before_unload=True)
             time.sleep(1)
             check("#15: a change too large to send as the page goes asks first",
