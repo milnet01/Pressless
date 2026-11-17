@@ -8463,8 +8463,9 @@ does not wait on them.
   10 amended. § 7.1 steps 1 and 3 (a signed, published scratch release)
   remain for the next release.
   User decision 2026-11-17, at the 1.0.1 release: no scratch repository
-  for § 7.1 steps 1 and 3. The real 1.0.1 to 1.0.2 update on Linux, started
-  in a terminal, is the check, owed at the 1.0.2 release.
+  for § 7.1 steps 1 and 3. The real update from 1.0.2 (1.0.1 was never
+  released) to the next release on Linux, started in a terminal, is the
+  check, owed at that next release.
   **Layman:** After updating on Linux, Pressless comes back the way you started it.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
