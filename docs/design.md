@@ -639,6 +639,9 @@ or one question the AI app asks again.
   departure). This is a promise about years of someone's writing, and it
   is the reason the Store never rewrites a file it was only asked to
   read.
+- **Installing an older Pressless over files a newer one wrote is not
+  supported** (user, 2026-11-16). An older version may drop a field it does
+  not know from one of Pressless's own files, such as the site identity.
 
 ### Logging
 
