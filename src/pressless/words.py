@@ -470,6 +470,7 @@ _WORDS: dict[str, str] = {
     "script.assistant.title": "Your AI helper asks to change your site",
     "script.assistant.go": "Yes, do it",
     "script.assistant.wait": "Not yet",
+    # The press row's lines again (PRESS-0235 § 4.3).
     "script.press.undoing": "Putting your site back… this can take a few minutes.",
     "script.press.published": "Published. Your site shows it within a few minutes.",
     "script.press.not_published": "Not published. The reason is below.",
@@ -496,6 +497,7 @@ _WORDS: dict[str, str] = {
     "face.about": "About",
     "face.more": "More",
     "face.help": "Help",
+    "face.message.ok": "OK",  # the message box's button (face.message_box)
     # The editor, and the Pages and Journal screens (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "
@@ -552,6 +554,7 @@ _WORDS: dict[str, str] = {
     "overview.waiting.parts.many": "{count} parts of every page",
     "overview.waiting.entries.one": "1 journal entry",
     "overview.waiting.entries.many": "{count} journal entries",
+    # The editor's site line and lists (editor.py).
     "editor.site_line.unnamed": "Your site",
     "editor.site_line": "Editing <b>{name}</b> at {address}",
     "editor.list.pages_unreadable": "Pressless cannot open your pages folder.",
@@ -575,6 +578,7 @@ _WORDS: dict[str, str] = {
     "checklist.publish": "Put your site on the web",
     "checklist.done": "Done",
     "checklist.to_do": "Still to do",
+    # The editor again (editor.py): its lists, then the entry screen.
     "editor.list.parts": "Parts of every page",
     "editor.list.parts_note": "A change to one of these shows on every page of your site.",
     "editor.list.carry_on": "Carry on with:",
@@ -682,6 +686,8 @@ _WORDS: dict[str, str] = {
     "script.entry.link_refused": (
         "A link in an entry needs an address that starts with https:// or http://."
     ),
+    # The page editor again (page_editor.py): its view switch, and the parts it
+    # opens as code.
     "page_editor.show_visual": "View editor",
     "notice.page_editor.furniture_code_only": (
         "Pressless cannot find where this part of your site starts and ends, so it opens "
@@ -908,7 +914,6 @@ _WORDS: dict[str, str] = {
     "wizard.help": "Help: {label}",
     "wizard.close": "Close",
     "wizard.happening": "What's happening",
-    "face.message.ok": "OK",
     # Signing in to GitHub (github_setup.py), and the links its page shares with Google's.
     "setup.back": "Back to Settings",
     "setup.first": "Set up Pressless first, <a href=\"/setup\">on the setup page</a>.",
@@ -1907,7 +1912,6 @@ _WORDS: dict[str, str] = {
     "dashboard.people.one": "1 person",
     "dashboard.people.many": "{count} people",
     "dashboard.when": "{date} at {clock}",
-    # JPEG XL support (jpegxl_screen.py): its line in Settings.
     # PRESS-0337: the AI helper. The AI app reads the assistant. sentences
     # that are not the screen's.
     "assistant.title": "AI helper",
@@ -2012,6 +2016,7 @@ _WORDS: dict[str, str] = {
     ),
     "failure.assistant.Refused.what": "{said}",
     "failure.assistant.Refused.next": "Nothing changed.",
+    # JPEG XL support (jpegxl_screen.py): its line in Settings.
     "jpegxl.line": "JPEG XL photographs: not added yet.",
     "jpegxl.ready": "JPEG XL photographs: ready.",
     "jpegxl.add": "Add JPEG XL support ({size} MB)",
@@ -2214,6 +2219,8 @@ _WORDS: dict[str, str] = {
     # The manual (manual.py); its own words are in manual_files, not here.
     "manual.title": "Pressless manual",
     "manual.search": "Search the manual",
+    # The captions track's label: the name of manual.LANGUAGE, not the word
+    # "captions".
     "manual.captions": "English",
     "script.manual.found_one": "1 task matches.",
     "script.manual.found": "{count} tasks match.",

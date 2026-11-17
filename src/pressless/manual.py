@@ -24,6 +24,8 @@ MEDIA = ADDRESS + "/media/"
 FOLDER = Path(str(importlib.resources.files("pressless") / "manual_files"))
 LANGUAGE = "en"   # PRESS-0241 chooses; until then the manual is English
 
+# The task id, picture name and video stem go into id= and src= unescaped.
+# These character classes are what keeps them safe: widen one, escape it.
 _TASK = re.compile(r"== ([a-z0-9-]+) \| (\S.*)")
 _STEP = re.compile(r"\d+\.\s+(.*)")
 _PICTURE = re.compile(r"picture ([a-z0-9-]+\.png) \|(.*)")
@@ -42,6 +44,8 @@ SENTENCES[ManualMissing] = Sentence(
 
 
 def _e(text: str) -> str:
+    """`text` trimmed of the spaces at its ends, then escaped for HTML. The
+    trim matters: a picture's alt text starts with the space after `|`."""
     return html.escape(text.strip(), quote=True)
 
 
