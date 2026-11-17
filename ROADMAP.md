@@ -3833,6 +3833,17 @@ it decides how pages, the menu and the look are held.
   keyring Windows WinVaultKeyring"; a real publish through Press to
   site and Publish now put draft-0-14-0-check live on
   milnet02/pressless-test-3. Signed and published after.
+  1.0.2, 2026-11-17, on the release commit b81b420: windows-gate.sh
+  --browsers edge chrome, 173/173 in each (Firefox 173/173 on the commit
+  before). Draft round on the box: the draft's Windows zip started by Start
+  Pressless.bat from a desktop task; its console shows "store: keyring
+  Windows WinVaultKeyring" (/about reads 1.0.2); a real publish through
+  Press to site and Publish now put draft-1-0-2-check live on
+  milnet02/pressless-test-3. The vault's Pressless entries went 2 to 3: the
+  new one is target "Pressless" holding account github. keyring's Windows
+  backend files the newest secret under the bare service name and keeps
+  the older ones as account@service, so a re-saved GitHub sign-in shows
+  this; not a defect. Signed and published after. v1.0.1 has no release.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8183,7 +8194,7 @@ does not wait on them.
   Source: by-hand-check-2026-11-16 1.0.0 draft round (PRESS-0366, also seen).
   Lanes: Sites.
 
-- 📋 [PRESS-0394] **PRIVACY.md and the Hub's policy disagree on what usage reports keep.**
+- ✅ [PRESS-0394] **PRIVACY.md and the Hub's policy disagree on what usage reports keep.**
   From PRESS-0380 (2026-11-17), which rewrote PRIVACY.md from usage.py.
   The Hub's src/policies/pressless.md also says reports are kept two
   months, carry country only, are never used for advertising, list the
@@ -8208,6 +8219,10 @@ does not wait on them.
   and releases use, maps build 22000 and later to "11", and a faked
   build 22631 returned "Windows 11". No fix. PRIVACY.md is done
   (4344d51); the Hub drop-in text remains, sent with the release.
+  Shipped 2026-11-17 with the 1.0.2 release: the Hub was sent the opening
+  sentence, the visitor-figures and Google-data changes, and the Usage
+  reports section verbatim (session message 2200), with the "country
+  only" correction named.
   **Layman:** The privacy policy in the app's files and the one on the website should say exactly the same, true things about usage reports.
   Kind: doc-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
