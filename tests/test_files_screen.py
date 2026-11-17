@@ -12,13 +12,14 @@ import html
 import json
 import os
 import urllib.parse
+import warnings
 from collections.abc import Iterator
 from pathlib import Path
 
 from test_editor import _binned, _Browser, _folder
 from test_photographs import _post
 
-from pressless import editor, face, files, files_screen, store
+from pressless import builder, editor, face, files, files_screen, store
 
 PDF = b"%PDF- made up"   # thirteen bytes
 SONG = b"ID3 a made-up song"
@@ -92,7 +93,7 @@ def test_removal_is_refused_while_a_page_names_the_file(tmp_path):
         assert "gigs" in page, "the page naming the file is not shown"
 
         status, _, refused = browser.request("POST", "/files/remove", {"name": "used.pdf"})
-        assert status == 409
+        assert status == 200 and refused.startswith("<!doctype html>"), refused
         assert "gigs" in refused
         assert _kept(folder) == ["spare.pdf", "used.pdf"]
 
@@ -100,6 +101,40 @@ def test_removal_is_refused_while_a_page_names_the_file(tmp_path):
         assert status == 303, headers
         assert _kept(folder) == ["used.pdf"]
         assert _binned(folder) == ["spare.pdf"]
+
+
+def test_a_refusal_shows_its_notices(tmp_path, monkeypatch):
+    """A refused removal is a whole Face page carrying the notices raised on
+    the way. Breaks when it is answered inside the capture, which fills its
+    list only as it ends."""
+    folder = _folder(tmp_path)
+    _keep(folder, "used.pdf", PDF)
+
+    def noisy(_folder: Path) -> dict[str, tuple[str, ...]]:
+        warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
+                                        mode="644"), stacklevel=2)
+        return {"used.pdf": ("gigs",)}
+
+    monkeypatch.setattr(builder, "files_named", noisy)
+    with _served(folder) as browser:
+        _, _, refused = browser.request("POST", "/files/remove", {"name": "used.pdf"})
+    assert "notes.txt" in refused and "gigs" in refused
+
+
+def test_the_menu_and_the_look_are_named_in_words(tmp_path):
+    """PRESS-0197 § 4.6: a file the menu or the style code names is shown
+    beside those parts' words, never builder.files_named's own names."""
+    folder = _folder(tmp_path)
+    _keep(folder, "menu.pdf", PDF)
+    _keep(folder, "a.woff2", b"wOF2 a made-up font")
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation",
+                     '<nav><a href="{{UP}}files/menu.pdf">Menu</a></nav>')
+    store.write_style_code(folder, '@font-face { src: url("../files/a.woff2"); }')
+    with _served(folder) as browser:
+        page = browser.request("GET", "/files")[2]
+    rows = {row.split("</td>")[0]: row for row in page.split("<tr><td>")[1:]}
+    assert "the menu" in rows["menu.pdf"] and "navigation" not in rows["menu.pdf"]
+    assert "the look" in rows["a.woff2"] and ">look<" not in rows["a.woff2"]
 
 
 def test_an_upload_is_kept_or_refused_in_words(tmp_path):

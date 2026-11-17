@@ -89,8 +89,10 @@ entry and its blocks do not pair, the entry opens in the marks view**
 with a notice saying why. A preview that failed shows its failure, and
 the next save rebuilds it.
 
-An empty body shows one empty paragraph with the caret in it. It is not
-a change until something is typed.
+An empty body shows one empty paragraph, picked, to type into. It is
+not a change until something is typed. The caret goes in at a click,
+since the frame is rebuilt after every save and would otherwise take it
+from the title as he types.
 
 ### 4.3 The panel
 
@@ -173,6 +175,8 @@ around it.
    as read; each block's text as written where kept, or `write` of it
    where built; between two blocks the text read between them where
    both are kept and were neighbours in that order, else `"\n\n"`.
+   A body with no blocks is that text once, after what was built, on
+   lines of its own.
 3. **Read it back.** `parse` of the new body must equal, in normal
    form, the posted list: a kept block as read, a built block as
    built, a `marks` item as `parse` gives it. Otherwise raise

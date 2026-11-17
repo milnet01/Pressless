@@ -7,3 +7,4 @@
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
 | impl | 2026-11-06 | none — fold-back after building PRESS-0346; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5: word joiner between touching asterisks; a failed preview no longer falls back to marks; loose words in a quotation are a paragraph. |
+| amend | 2026-11-17 | none — PRESS-0372; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5 step 2: a body with no blocks is written once. § 4.2: the empty paragraph takes no caret on load, since a rebuild would take it from the title. |

@@ -504,8 +504,12 @@ _FILE_TYPES = {
 }
 
 # Every wrapped page carries this, so a frame on a Face page can only show an
-# address the Face serves: a link followed in the preview never leaves.
-_FRAMES_POLICY = "frame-src 'self'; frame-ancestors 'self'"
+# address the Face serves: a link followed in the preview never leaves. The
+# editors link his site's stylesheets into the page, so its styles, fonts and
+# pictures come from the Face too, never from the web (PRESS-0012 § 3
+# decision 4).
+_FRAMES_POLICY = ("style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; "
+                  "frame-src 'self'; frame-ancestors 'self'")
 
 # Every answer but a wrapped page or a served file carries this alone, added
 # by _Handler.end_headers. A page on another 127.0.0.1 port is the same site,

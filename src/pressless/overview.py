@@ -45,7 +45,7 @@ def _show(face: Face, folder: Path) -> str:
     buttons = (f'{face.view_site()} <button type="button" data-editor="publish" '
                f'data-publish-site>{say("overview.publish")}</button> ')
     return (render_notices(notices) + f"<h1>{say('face.your_site')}</h1>" + site
-            + editor._undo_row(said, running=running, before=buttons) + waiting + nothing
+            + editor.undo_row(said, running=running, before=buttons) + waiting + nothing
             + "".join(face.pieces("site-notices"))
             # PRESS-0236: a press's failure opens over the screen.
             + message_box("failure", ended or "", forgets=True)

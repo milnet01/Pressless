@@ -204,9 +204,11 @@ class Face:
 ```
 
 **A page returning a `str`** is wrapped and sent as today, and now carries
-`Content-Security-Policy: frame-src 'self'; frame-ancestors 'self'`, so a frame
-on a Face page can only show an address the Face serves, and no other origin
-can frame the page (PRESS-0011 § 4.5). **A page returning a
+`Content-Security-Policy: style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'self'; frame-ancestors 'self'`,
+so a frame on a Face page can only show an address the Face serves, and no
+other origin can frame the page (PRESS-0011 § 4.5). The site's stylesheets
+an editor links into the page reach no font, picture or stylesheet on the
+web (§ 3 decision 4). **A page returning a
 `Reply`** is sent as it is: its status, its `Content-Type`, its `Location` when
 set, `Cache-Control: no-store` and `Content-Security-Policy: frame-ancestors
 'self'`.
@@ -562,7 +564,7 @@ made with `store.write_html`.
   from `mimetypes`, or the policy lets a served file's script run.
 
 - **INV-9** — A `Reply` is sent as it is, and a `str` is still wrapped, now
-  with `Content-Security-Policy: frame-src 'self'; frame-ancestors 'self'`.
+  with § 4.3's `Content-Security-Policy`.
   *Test:* `tests/test_face.py::test_a_reply_is_sent_as_given`. A 303 with a
   location, and a JSON body, arrive unwrapped with their status and type. A
   `str` page arrives wrapped and carries the header, written out in the test.

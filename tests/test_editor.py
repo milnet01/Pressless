@@ -19,6 +19,8 @@ import os
 import re
 import shutil
 import subprocess
+import threading
+import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +30,7 @@ from _face_session import Browser
 from test_setup import _saved
 
 from pressless import (
+    builder,
     editor,
     face,
     marks,
@@ -230,8 +233,10 @@ def test_a_new_entry_the_store_cannot_make_shows_the_failure(tmp_path):
     forwards.parent.mkdir(parents=True, exist_ok=True)
     forwards.write_text("not a mapping", encoding="utf-8")
     with _editor(folder) as browser:
-        status = browser.request("POST", "/new", {"title": "Seaside"})[0]
-    assert status == 409
+        status, _, page = browser.request("POST", "/new", {"title": "Seaside"})
+    # A form's failure is a whole Face page, whose script runs Show details.
+    assert status == 200 and page.startswith("<!doctype html>"), page
+    assert 'class="failure"' in page
     assert store.list_slugs(folder, draft=True) == ()
 
 
@@ -351,7 +356,8 @@ def test_throwing_away_changes_bins_the_copy(tmp_path):
         assert status == 303 and headers["Location"] == "/edit?slug=seaside"
         status, _, text = browser.request("POST", "/discard", {
             "slug": "plain", "base": _base(folder, "plain", draft=True)})
-        assert status == 409 and _said(editor.ChangedElsewhere) in text
+        assert status == 200 and text.startswith("<!doctype html>"), text
+        assert _said(editor.ChangedElsewhere) in text
     assert store.list_slugs(folder, draft=True) == ("plain",)
     assert _binned(folder) == ["seaside-changes.txt"]
     assert store.path_for(folder, "seaside", draft=False).read_bytes() == published
@@ -1004,6 +1010,53 @@ Object.defineProperty(line, "textContent", {
 """
 
 
+# PRESS-0016 and PRESS-0197: the one upload every editor's view posts
+# through, run against a refusal, a dropped connection and a kept file.
+_UPLOAD_HARNESS = """
+const shown = {};
+globalThis.document = {getElementById: (id) => shown[id] || (shown[id] = {innerHTML: ""})};
+globalThis.window = globalThis;
+const answers = [
+  () => Promise.resolve({status: 409, text: async () => "refused"}),
+  () => Promise.reject(new TypeError("no connection")),
+  () => Promise.resolve({status: 200,
+                         text: async () => JSON.stringify({name: "a.jpg", notices: "noted"})}),
+];
+globalThis.fetch = () => answers.shift()();
+%s
+(async () => {
+  const stopped = [];
+  const stop = (text) => stopped.push(text);
+  const file = {name: "a b.jpg"};
+  const refused = await window.presslessUpload("/photograph", file, stop);
+  const failure = shown.failure.innerHTML;
+  const dropped = await window.presslessUpload("/photograph", file, stop);
+  const kept = await window.presslessUpload("/file", file, stop);
+  process.stdout.write(JSON.stringify({refused, failure, dropped, stopped, kept,
+                                       notices: shown.notices.innerHTML}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_every_upload_says_how_it_ended(tmp_path):
+    """A photograph or file posted from either editor's view shows a refusal,
+    stops saving where the Face cannot be reached, and shows a kept file's
+    notices. Breaks when a view posts on its own and a dropped connection
+    says nothing, or the notices are dropped."""
+    harness = tmp_path / "upload.js"
+    harness.write_text(_UPLOAD_HARNESS % editor.UPLOAD_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    seen = json.loads(run.stdout)
+    assert (seen["refused"], seen["failure"]) == (None, "refused")
+    assert (seen["dropped"], seen["stopped"]) == (None, [""])
+    assert seen["kept"] == {"name": "a.jpg", "notices": "noted"} and seen["notices"] == "noted"
+    for script in (editor._VISUAL_SCRIPT, editor._EDITOR_SCRIPT, page_editor._VISUAL_SCRIPT):
+        assert '"/photograph?name=' not in script and "presslessUpload(" in script
+    assert '"/file?name=' not in page_editor._VISUAL_SCRIPT
+
+
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 @pytest.mark.parametrize("answer", ["go", "wait"])
 def test_press_says_publishing_the_instant_it_is_clicked(answer, tmp_path):
@@ -1151,6 +1204,27 @@ def test_a_visual_save_of_nothing_changed_keeps_every_byte(tmp_path):
             assert status == 200, text
             assert _body(folder, slug) == read
             assert json.loads(text)["body"] == read
+
+
+def test_a_body_without_blocks_is_written_once():
+    """PRESS-0346 § 4.5 step 2: a body with no blocks is one gap, both the
+    text before the first block and after the last. Breaks when a save
+    writes it twice, which every later save then doubled again."""
+    for body in ("\n", ">", " \t\n\n"):
+        assert editor.put_blocks(body, [], []) == body
+    assert editor.put_blocks("\n", [{"paragraph": "Words."}], []) == "Words.\n"
+    assert editor.put_blocks(">", [{"paragraph": "Words."}], []) == "Words.\n\n>"
+
+
+def test_a_built_block_with_another_kinds_key_is_refused():
+    """PRESS-0346 § 4.5: each item built anew carries its kind's keys and no
+    others. Breaks when an extra key is passed over in silence."""
+    for item in ({"paragraph": "Words.", "x": "y"}, {"quote": ["Words."], "caption": "c"},
+                 {"photo": "a.jpg", "paragraph": "Words."}):
+        with pytest.raises(editor.BlocksUnreadable):
+            editor.put_blocks("", [item], [])
+    assert editor.put_blocks("", [{"photo": "a.jpg", "caption": "Late"}], []) == (
+        "{photo: a.jpg | Late}")
 
 
 def test_unchanged_blocks_keep_their_bytes(tmp_path):
@@ -1311,6 +1385,47 @@ def test_jpeg_xl_view_copy(tmp_path, monkeypatch):
         monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path / "elsewhere"))
         (folder / "jpeg-xl-views" / "seaside.jxl.webp").unlink()
         assert _get_bytes(browser, "/originals/seaside.jxl")[0] == 404
+
+
+def test_the_editor_page_fetches_nothing_from_the_web(tmp_path):
+    """PRESS-0012 § 3 decision 4: the site's stylesheets the entry editor links
+    into its page fetch no stylesheet, font or picture from the web. Breaks
+    when the page's policy leaves any of the three open."""
+    folder = _folder(tmp_path)
+    store.write_style_code(folder, '@import url("https://example.org/a.css");')
+    store.write(folder, _entry("draft"), draft=True)
+    with _editor(folder) as browser:
+        status, headers, page = browser.request("GET", "/edit?slug=draft")
+    assert status == 200 and '/preview/look/style.css"' in page
+    policy = set(headers["Content-Security-Policy"].split("; "))
+    assert {"style-src 'self' 'unsafe-inline'", "font-src 'self'",
+            "img-src 'self' data:"} <= policy, policy
+
+
+def test_two_requests_make_one_view_copy(tmp_path, monkeypatch):
+    """PRESS-0275 § 4.7: the frame and the panel ask for the same view copy
+    at once, and it is made once. Breaks when a second request remakes it
+    over the file the first is sending, which Windows refuses (a 404)."""
+    folder = _folder(tmp_path)
+    original = store.photograph_path_for(folder, "seaside.jxl")
+    original.parent.mkdir(parents=True)
+    original.write_bytes(b"a stand-in original")
+    made = []
+
+    def slow_copy(_original: Path, target: Path) -> None:
+        made.append(target)
+        time.sleep(0.2)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"a stand-in view")
+
+    monkeypatch.setattr(builder, "webp_copy", slow_copy)
+    asked = [threading.Thread(target=editor.photograph_file, args=(folder, "seaside.jxl"))
+             for _ in range(2)]
+    for thread in asked:
+        thread.start()
+    for thread in asked:
+        thread.join()
+    assert len(made) == 1
 
 
 def test_a_view_copy_is_remade_when_the_original_is_newer(tmp_path, monkeypatch):

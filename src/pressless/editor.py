@@ -20,9 +20,10 @@ import threading
 import unicodedata
 import urllib.parse
 import warnings
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from datetime import datetime
 from pathlib import Path
+from typing import TypeVar
 
 from pressless import (
     builder,
@@ -136,12 +137,16 @@ SAVE_FAILURES = (store.StoreError, ChangedElsewhere, TooManyCopies, BlocksUnread
 # Every write, preview and publish runs under it; a threading.Lock cannot be
 # taken twice, so `save` leaves it to its caller (PRESS-0013 § 4.1).
 LOCK = threading.Lock()
+# Held while a JPEG XL original's view copy is made (`photograph_file`), which
+# a page load asks for and must not wait on a save.
+_VIEWS_LOCK = threading.Lock()
 
 # PRESS-0235 § 4.5: a press-row line rendered while a press runs; the script
 # asks. Shared with page_editor, so public, as UNDO_SCRIPT is.
 PRESS_RUNNING = ' data-press="running"'
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
+_T = TypeVar("_T")   # what `captured` hands back
 
 
 def address_for(title: str) -> str:
@@ -192,8 +197,12 @@ def photograph_file(folder: Path, name: str) -> Path:
         original = store.photograph_path_for(folder, original_name)
         if original.is_file():
             view = Path(folder) / VIEWS_FOLDER / (original_name + ".webp")
-            if not view.is_file() or view.stat().st_mtime < original.stat().st_mtime:
-                builder.webp_copy(original, view)
+            # Made one at a time and looked at again once its turn comes: a
+            # second request remaking it would replace a file the first is
+            # still sending, which Windows refuses.
+            with _VIEWS_LOCK:
+                if not view.is_file() or view.stat().st_mtime < original.stat().st_mtime:
+                    builder.webp_copy(original, view)
             return view
     return store.photograph_path_for(folder, name)
 
@@ -324,9 +333,32 @@ def _preview(face: Face, folder: Path, entry: store.Entry, *, draft: bool
     return PREVIEW_ADDRESS + relative, None
 
 
+def captured(face: Face, lock: threading.Lock, call: Callable[[], _T],
+             failures: tuple[type[Exception], ...]
+             ) -> tuple[_T | None, list[str], Exception | None]:
+    """`call`'s result under `lock` and a notice capture, with the notices and
+    the failure among `failures` it raised, or None. The capture fills its
+    list only as it ends, so a failure is answered after this returns."""
+    result, failure = None, None
+    with lock, face.capture() as notices:
+        try:
+            result = call()
+        except failures as exc:
+            failure = exc
+    return result, notices, failure
+
+
 def failed(face: Face, notices: list[str], failure: Exception) -> Reply:
+    """A failure, for a script's request to show in its page. Called after the
+    capture ends, since the notices are filled only then."""
     body = render_notices(notices) + face.fail(failure, publishing=False)
     return Reply(body.encode("utf-8"), _HTML, status=409)
+
+
+def failed_page(face: Face, notices: list[str], failure: Exception) -> str:
+    """A form's failure: the browser shows the answer as a page of its own, so
+    it is a whole Face page, whose script runs Show details' buttons."""
+    return render_notices(notices) + face.fail(failure, publishing=False)
 
 
 def json_reply(value: dict) -> Reply:
@@ -359,13 +391,14 @@ def _journal_switch(journal: bool | None, published: bool) -> str:
             f'<span{when_on}>{say("editor.journal.turn_off")}</span></span></button></form>')
 
 
-def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+def _journal(face: Face, folder: Path, lock: threading.Lock,
+             request: Request) -> str | Reply:
     """PRESS-0214 § 4.5: switch the journal to the opposite of what it is."""
-    with lock, face.capture() as notices:
-        try:
-            store.write_journal(folder, not store.journal_on(folder))
-        except store.StoreError as exc:
-            return failed(face, notices, exc)
+    _, notices, failure = captured(
+        face, lock, lambda: store.write_journal(folder, not store.journal_on(folder)),
+        (store.StoreError,))
+    if failure is not None:
+        return failed_page(face, notices, failure)
     pressing.forget()  # PRESS-0235 decision 6
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=JOURNAL_ADDRESS)
 
@@ -432,7 +465,8 @@ def _pages_screen(face: Face, folder: Path, lock: threading.Lock, request: Reque
 def _journal_screen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
     """PRESS-0353 § 4.4: the switch; with the journal on, the New entry form,
     Drafts and On your site; off, the entries there are under a line saying
-    they are off the site, and no New entry form."""
+    they are off the site, and no New entry form. Where the switch cannot be
+    read, the form still shows, since nothing says the journal is off."""
     with face.capture() as notices:
         entries, first_failure = read_entries(folder)
         try:
@@ -511,9 +545,11 @@ def _new_entry_form(folder: Path) -> str:
             f"<button>{say('editor.list.new')}</button></form>")
 
 
-def _undo_row(said: str, *, running: bool, before: str = "") -> str:
-    """PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
-    showing it (§ 3 decision 3). `before` leads the same row of buttons."""
+def undo_row(said: str, *, running: bool, before: str = "") -> str:
+    """PRESS-0015 § 4.6: the Undo button and its status line, which Your
+    site's overview draws (PRESS-0353 § 4.3). It always shows, and nothing asks
+    GitHub before showing it (§ 3 decision 3). `before` leads the same row of
+    buttons."""
     return (f'<p>{before}<button type="button" data-undo>{say("editor.undo")}</button></p>'
             f'<p id="undo-status" class="press-status" role="status"'
             f'{PRESS_RUNNING if running else ""}>{html.escape(said)}</p>')
@@ -607,15 +643,17 @@ def new_draft(folder: Path, title: str, template: str) -> store.Entry:
     return entry
 
 
-def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+def _new(face: Face, folder: Path, lock: threading.Lock,
+         request: Request) -> str | Reply:
     """§ 4.6."""
     form = form_fields(request)
-    with lock, face.capture() as notices:
-        try:
-            slug = new_draft(folder, form.get("title", ""), form.get("template", "")).slug
-        except store.StoreError as exc:
-            return failed(face, notices, exc)
-    return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(slug))
+    made, notices, failure = captured(
+        face, lock, lambda: new_draft(folder, form.get("title", ""), form.get("template", "")),
+        (store.StoreError,))
+    if failure is not None:
+        return failed_page(face, notices, failure)
+    return Reply(b"", "text/plain; charset=utf-8", status=303,
+                 location=_edit_address(made.slug))
 
 
 def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str | Reply:
@@ -675,7 +713,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 
     named = _replaced(folder, entry) if draft else None
     on_site = not draft or named is not None
-    proof = named is not None
+    proof = named is not None   # a "proof" here is a published entry's working copy
     hide_published, hide_waiting = (" hidden", "") if proof else ("", " hidden")
     # Both states on every page, because a save turns a published entry's page
     # into a working copy's editor, and a press turns a draft's or a proof's
@@ -707,7 +745,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     switch = '<p class="nav">' + "".join(
         f'<a data-switch="{to}" href="{attr(_edit_address(entry.slug) + "&view=" + to)}"'
         f'{" hidden" if to == view else ""}>{say(key)}</a>'
-        for to, key in ((MARKS, "editor.show_marks"), (VISUAL, "page_editor.show_visual"))
+        for to, key in ((MARKS, "editor.show_marks"), (VISUAL, "editor.show_visual"))
     ) + "</p>"
     return f"""{stylesheets}
 <p class="nav"><a href="{JOURNAL_ADDRESS}">{say("face.journal")}</a>
@@ -767,19 +805,21 @@ def script_json(payload: object) -> str:
 def _colours() -> dict:
     """§ 4.4: the colour marks as the page writes them, from their own rows,
     so the script keeps a colour span exactly as `to_html` wrote it."""
-    named, held = {}, "\x00"
+    # The picked colour's argument is stood in for by NUL, which no style
+    # holds, so what comes before it is the style's fixed prefix.
+    named, stand_in = {}, "\x00"
     picked = None
     for row in marks.MARKS:
         if row.kind != "wrap" or row.content != "marks":
             continue
-        opening = row.render(marks.Span(row.name, held if row.arg else None, ()), "", str)
+        opening = row.render(marks.Span(row.name, stand_in if row.arg else None, ()), "", str)
         found = re.fullmatch(r'<span style="([^"]*)">', opening.partition("</")[0])
         if found is None:
             continue
         if row.arg is None:
             named[row.name] = html.unescape(found.group(1))
         else:
-            picked = {"prefix": found.group(1).partition(held)[0], "pattern": row.arg}
+            picked = {"prefix": found.group(1).partition(stand_in)[0], "pattern": row.arg}
     return {"named": named, "picked": picked}
 
 
@@ -802,18 +842,18 @@ def _entry_panel(folder: Path, body: str, *, hidden: bool) -> str:
     named = "".join(f'<button type="button" data-colour="{attr(name)}">'
                     f'{say(_COLOUR_WORDS[name])}</button>'
                     for name in _colours()["named"])
-    return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}"{
+    return f"""<aside id="panel" aria-label="{attr(say("editor.panel.title"))}"{
         " hidden" if hidden else ""}>
 <script type="application/json" id="blocks">{data}</script>
 <p id="picked" role="status">{say("script.entry.nothing")}</p>
-<div class="panel-add"><label>{say("page_editor.panel.add")}
+<div class="panel-add"><label>{say("editor.panel.add")}
  <select id="add-kind">{kinds}</select></label>
-<button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
+<button type="button" data-act="add">{say("editor.panel.add_button")}</button>
 <p id="add-where">{say("script.entry.end")}</p></div>
 <div class="panel-row" data-for="typed">
-<button type="button" data-act="bold"><b>{say("page_editor.panel.bold")}</b></button>
-<button type="button" data-act="italic"><i>{say("page_editor.panel.italic")}</i></button>
-<button type="button" data-act="link">{say("page_editor.panel.link")}</button></div>
+<button type="button" data-act="bold"><b>{say("editor.panel.bold")}</b></button>
+<button type="button" data-act="italic"><i>{say("editor.panel.italic")}</i></button>
+<button type="button" data-act="link">{say("editor.panel.link")}</button></div>
 <div class="panel-row" data-for="typed">{named}
 <label>{say("editor.panel.colour.picked")} <input type="color" id="picked-colour"
  value="#c0453a"></label>
@@ -823,14 +863,14 @@ def _entry_panel(folder: Path, body: str, *, hidden: bool) -> str:
 <p data-for="photo"><button type="button" data-act="photograph">{
     say("editor.add_photograph")}</button>
 <input type="file" id="panel-photograph-file" hidden accept="{photographs.ACCEPT}"></p>
-<label data-for="photo">{say("page_editor.panel.caption")}
+<label data-for="photo">{say("editor.panel.caption")}
  <input data-field="caption" autocomplete="off"></label>
 <p data-for="marks">{say("editor.panel.marks_note")}</p>
 <label data-for="marks">{say("editor.panel.marks")}
 <textarea data-field="marks" rows="8" spellcheck="false"></textarea></label>
-<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
-<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
-<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
+<p class="panel-row"><button type="button" data-act="up">{say("editor.panel.move_up")}</button>
+<button type="button" data-act="down">{say("editor.panel.move_down")}</button>
+<button type="button" data-act="remove">{say("editor.panel.remove")}</button></p>
 <p id="panel-said" role="status"></p>
 </aside>"""
 
@@ -884,7 +924,8 @@ _KIND_WORDS = {"paragraph": "script.entry.kind.paragraph", "photo": "script.entr
                "quote": "script.entry.kind.quote"}
 # The named colour marks' buttons (§ 4.3), by the mark each writes.
 _COLOUR_WORDS = {"accent": "editor.panel.colour.accent", "muted": "editor.panel.colour.muted"}
-_KIND_OF = {row.kind: row.name for row in marks.MARKS if row.kind in ("block", "prefix")}
+# The marks.MARKS rows a quotation and a photograph built anew are written with.
+_QUOTE_MARK, _PHOTO_MARK = "quote", "photo"
 _TYPED = {row.name for row in marks.MARKS if row.kind == "wrap" and row.content == "marks"}
 
 
@@ -923,9 +964,14 @@ def _words(value: object) -> marks.Paragraph:
     return paragraph
 
 
+# § 4.5's items built anew, each by the keys it carries.
+_BUILT_KEYS = ({"paragraph"}, {"quote"}, {"photo"}, {"photo", "caption"})
+
+
 def _built(item: object) -> tuple[marks.Block, ...]:
-    """A block built anew, or none where it holds nothing (§ 4.5)."""
-    if not isinstance(item, dict) or len(item) not in (1, 2):
+    """A block built anew, or none where it holds nothing (§ 4.5). An item
+    carrying any key its kind does not is refused, not half read."""
+    if not isinstance(item, dict) or set(item) not in _BUILT_KEYS:
         raise BlocksUnreadable(f"{item!r} is not a block")
     if "paragraph" in item:
         paragraph = _words(item["paragraph"])
@@ -934,7 +980,7 @@ def _built(item: object) -> tuple[marks.Block, ...]:
         if not isinstance(item["quote"], list):
             raise BlocksUnreadable(f"{item!r} is not a block")
         paragraphs = tuple(p for p in map(_words, item["quote"]) if p.lines)
-        return (marks.Quote(_KIND_OF["prefix"], paragraphs),) if paragraphs else ()
+        return (marks.Quote(_QUOTE_MARK, paragraphs),) if paragraphs else ()
     if "photo" in item:
         name, caption = item["photo"], item.get("caption", "")
         if not isinstance(name, str) or not isinstance(caption, str):
@@ -942,7 +988,7 @@ def _built(item: object) -> tuple[marks.Block, ...]:
         # The caption as a Text holds it, so an '&' typed stays an '&'.
         lines = _words(html.escape(caption, quote=False)).lines
         held = "".join(node.value for node in lines[0].children) if lines else ""
-        return (marks.Photo(_KIND_OF["block"], name.strip(), held or None),)
+        return (marks.Photo(_PHOTO_MARK, name.strip(), held or None),)
     raise BlocksUnreadable(f"{item!r} is not a block")
 
 
@@ -978,13 +1024,18 @@ def put_blocks(body: str, posted: object, removed: object) -> str:
         raise BlocksUnreadable("the save does not name each of the entry's blocks once")
 
     # Kept neighbours keep what lay between them; anything else gets a blank line.
-    out = [gaps[0]]
+    # A body without blocks is one gap, both before and after, so it is
+    # written once, after what was added, on lines of its own.
+    lead, tail = (gaps[0], gaps[-1]) if held else ("", gaps[0])
+    if not held and pieces and tail and not tail.startswith(("\n", "\r")):
+        tail = "\n\n" + tail
+    out = [lead]
     for number, (at, text, _) in enumerate(pieces):
         if number:
             before = pieces[number - 1][0]
             out.append(gaps[at] if at is not None and before == (at - 1) else "\n\n")
         out.append(text)
-    out.append(gaps[-1])
+    out.append(tail)
     new = "".join(out)
     wanted = tuple(marks.normal(block) for _, _, blocks in pieces for block in blocks)
     if tuple(marks.normal(block) for block in marks.parse(new)) != wanted:
@@ -1016,14 +1067,9 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
 def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """PRESS-0016: keep the posted file as an original and name it. The body is
     the file itself, and its chosen name comes in the query."""
-    with lock, face.capture() as notices:
-        try:
-            name = photographs.add(folder, request.query.get("name", ""), request.body)
-        except (store.StoreError, photographs.NotAPhotograph, jpegxl.NotInstalled,
-                OSError) as exc:
-            failure: Exception | None = exc
-        else:
-            failure = None
+    name, notices, failure = captured(
+        face, lock, lambda: photographs.add(folder, request.query.get("name", ""), request.body),
+        (store.StoreError, photographs.NotAPhotograph, jpegxl.NotInstalled, OSError))
     if failure is not None:
         return failed(face, notices, failure)
     # `address`: where the site publishes it, which a page's picture names.
@@ -1171,18 +1217,15 @@ def discard(folder: Path, slug: str, base: str) -> str:
     return named
 
 
-def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+def _discard(face: Face, folder: Path, lock: threading.Lock,
+             request: Request) -> str | Reply:
     """§ 4.10."""
     form = form_fields(request)
-    with lock, face.capture() as notices:
-        try:
-            named = discard(folder, form.get("slug", ""), form.get("base", ""))
-        except (store.StoreError, ChangedElsewhere) as exc:
-            failure: Exception | None = exc
-        else:
-            failure = None
+    named, notices, failure = captured(
+        face, lock, lambda: discard(folder, form.get("slug", ""), form.get("base", "")),
+        (store.StoreError, ChangedElsewhere))
     if failure is not None:
-        return failed(face, notices, failure)
+        return failed_page(face, notices, failure)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(named))
 
 
@@ -1220,14 +1263,10 @@ def throw(folder: Path, slug: str, base: str, *, draft: bool) -> None:
 def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """PRESS-0128: bin the entry this window shows (`throw`)."""
     form = form_fields(request)
-    with lock, face.capture() as notices:
-        try:
-            throw(folder, form.get("slug", ""), form.get("base", ""),
-                  draft=form.get("draft") == "1")
-        except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
-            failure: Exception | None = exc
-        else:
-            failure = None
+    _, notices, failure = captured(
+        face, lock, lambda: throw(folder, form.get("slug", ""), form.get("base", ""),
+                                  draft=form.get("draft") == "1"),
+        (store.StoreError, ChangedElsewhere, TooManyCopies))
     if failure is not None:
         return failed(face, notices, failure)
     return json_reply({"thrown": True, "notices": render_notices(notices)})
@@ -1293,8 +1332,9 @@ UNDO_SCRIPT = pressing.SCRIPT + """
 
 # PRESS-0012 § 4.7 and PRESS-0135: both editors' leaving, the entry's here and
 # page_editor._PAGE_SCRIPT's. An unsaved change goes with the page unless a
-# save is in flight. A keepalive request carries at most 64 KiB, so where the
-# change is larger the browser asks before leaving instead. `unsaved` says a
+# save is in flight. A keepalive request carries at most 64 KiB, counted over
+# every keepalive body the page has in flight, so where the change is near that
+# the browser asks before leaving instead. `unsaved` says a
 # change waits and saving has not stopped; `sending` says a save is in flight.
 LEAVING_SCRIPT = """
 window.presslessLeaving = (address, fields, unsaved, sending) => {
@@ -1343,6 +1383,53 @@ window.presslessSaving = (send, waiting) => {
     if (waiting()) schedule();
   }
   return {schedule, settle, release, sending: () => held !== null};
+};
+
+// The save itself, `send` above: `on` is the editor's own part: `address`,
+// the route; posting() and fields(posted), what it posts; unsaved(now), which
+// sets its flag; stop(text); and saved(reply, posted), what a reply updates.
+window.presslessSend = (on) => async () => {
+  const status = document.getElementById("save-status");
+  on.unsaved(false);
+  status.textContent = say("script.editor.saving");
+  try {
+    const posted = on.posting();
+    const answer = await fetch(on.address, {method: "POST", body: on.fields(posted)});
+    const text = await answer.text();
+    if (answer.status !== 200) { on.stop(text); return; }
+    const reply = JSON.parse(text);
+    document.getElementById("failure").innerHTML = reply.failure || "";
+    on.saved(reply, posted);
+    status.textContent = say("script.editor.saved");
+  } catch (error) {
+    on.stop("");
+  }
+};
+"""
+
+
+# A file posted to be kept, from either editor: a photograph to /photograph
+# (PRESS-0016) or any other file to /file (PRESS-0197). Answers the reply,
+# with its notices shown; or null where the Face refused the file, whose
+# failure is then shown, or could not be reached, which `stop`, the editor's
+# own, says.
+UPLOAD_SCRIPT = """
+window.presslessUpload = async (route, file, stop) => {
+  try {
+    const answer = await fetch(route + "?name=" + encodeURIComponent(file.name),
+                               {method: "POST", body: file});
+    const text = await answer.text();
+    if (answer.status !== 200) {
+      document.getElementById("failure").innerHTML = text;
+      return null;
+    }
+    const reply = JSON.parse(text);
+    document.getElementById("notices").innerHTML = reply.notices;
+    return reply;
+  } catch (error) {
+    stop("");
+    return null;
+  }
 };
 """
 
@@ -1753,14 +1840,14 @@ _VISUAL_SCRIPT = r"""
       picked.el.setAttribute("data-pressless-picked", "");
       if (typeable(picked)) {
         picked.el.setAttribute("contenteditable", "true");
-        const empty = picked.kind === "quote" ? picked.el.querySelector("p") : picked.el;
-        if (empty) empty.setAttribute("data-pressless-empty",
-                                      say("script.entry.kind." + picked.kind));
+        const placeholder = picked.kind === "quote" ? picked.el.querySelector("p") : picked.el;
+        if (placeholder) placeholder.setAttribute("data-pressless-empty",
+                                                  say("script.entry.kind." + picked.kind));
         if (focus) {
           picked.el.focus();
           // The caret goes in a quotation's paragraph, never beside it.
-          if (empty && empty !== picked.el && !picked.el.textContent) {
-            picked.el.ownerDocument.getSelection().collapse(empty, 0);
+          if (placeholder && placeholder !== picked.el && !picked.el.textContent) {
+            picked.el.ownerDocument.getSelection().collapse(placeholder, 0);
           }
         }
       }
@@ -1922,11 +2009,13 @@ _VISUAL_SCRIPT = r"""
   chooser.addEventListener("change", async () => {
     const file = chooser.files[0];
     if (!file || !picked || picked.kind !== "photo") return;
-    const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
-                               {method: "POST", body: file});
-    const reply = await answer.text();
-    if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
-    const name = JSON.parse(reply).name;
+    const said = document.getElementById("panel-said");
+    said.textContent = say("script.editor.adding_photograph");
+    const reply = await window.presslessUpload("/photograph", file,
+                                               window.presslessEntryPage.stop);
+    said.textContent = "";
+    if (!reply) return;
+    const name = reply.name;
     if (![...field("name").options].some((option) => option.value === name)) {
       field("name").append(new Option(name, name));
     }
@@ -1948,9 +2037,11 @@ _VISUAL_SCRIPT = r"""
 
 # The entry's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved. Its
-# twin is page_editor._PAGE_SCRIPT: both save through SAVING_SCRIPT and press
-# through PUBLISH_SCRIPT, and a fix to the rest of either is owed to both.
-_EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRIPT + """
+# twin is page_editor._PAGE_SCRIPT: both save through SAVING_SCRIPT, press
+# through PUBLISH_SCRIPT and upload through UPLOAD_SCRIPT, and a fix to the
+# rest of either is owed to both. A raw string, as the scripts beside it are.
+_EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRIPT
+                  + UPLOAD_SCRIPT + r"""
 (() => {
   const form = document.getElementById("editor");
   const state = {slug: form.dataset.slug, draft: form.dataset.draft, base: form.dataset.base};
@@ -2043,25 +2134,17 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRI
   }
   showMissing(JSON.parse(form.dataset.missing));
 
-  async function send() {
-    dirty = false; status.textContent = say("script.editor.saving");
-    try {
-      const posted = posting();
-      const answer = await fetch("/save", {method: "POST", body: fields(posted)});
-      const text = await answer.text();
-      if (answer.status !== 200) { stop(text); return; }
-      const reply = JSON.parse(text);
+  const send = window.presslessSend({
+    address: "/save", posting, fields, stop,
+    unsaved: (now) => { dirty = now; },
+    saved: (reply, posted) => {
       adopt(reply);
-      document.getElementById("failure").innerHTML = reply.failure || "";
       written(reply, posted);
       if (reply.preview && !posted) {
         document.getElementById("preview").src = reply.preview + "?n=" + Date.now();
       }
-      status.textContent = say("script.editor.saved");
-    } catch (error) {
-      stop("");
-    }
-  }
+    },
+  });
   // Publish, address and throw post the address and base a save would post,
   // and may move them, so each settles first and releases after.
   const {schedule, settle, release, sending} =
@@ -2117,7 +2200,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRI
       switchTo(link.dataset.switch);
     });
   });
-  window.presslessEntryPage = {changed, switchTo};
+  window.presslessEntryPage = {changed, switchTo, stop};
 
   // PRESS-0016: the chosen file is kept as an original, and its picture mark
   // goes on a line of its own where he was typing.
@@ -2133,30 +2216,18 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRI
     const file = picker.files[0];
     if (!file) return;
     photoSaid.textContent = say("script.editor.adding_photograph");
-    try {
-      const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
-                                 {method: "POST", body: file});
-      const text = await answer.text();
-      photoSaid.textContent = "";
-      if (answer.status !== 200) {
-        document.getElementById("failure").innerHTML = text;
-        return;
-      }
-      const reply = JSON.parse(text);
-      document.getElementById("notices").innerHTML = reply.notices;
-      const [start, end] = caret || [box.value.length, box.value.length];
-      const before = box.value.slice(0, start), after = box.value.slice(end);
-      const lead = before === "" || before.endsWith("\\n") ? "" : "\\n";
-      const mark = lead + "{photo: " + reply.name + "}" + (after.startsWith("\\n") ? "" : "\\n");
-      box.value = before + mark + after;
-      box.focus();
-      box.setSelectionRange(before.length + mark.length, before.length + mark.length);
-      photoSaid.textContent = say("script.editor.photograph_added", {name: reply.name});
-      dirty = true; schedule();
-    } catch (error) {
-      photoSaid.textContent = "";
-      stop("");
-    }
+    const reply = await window.presslessUpload("/photograph", file, stop);
+    photoSaid.textContent = "";
+    if (!reply) return;
+    const [start, end] = caret || [box.value.length, box.value.length];
+    const before = box.value.slice(0, start), after = box.value.slice(end);
+    const lead = before === "" || before.endsWith("\n") ? "" : "\n";
+    const mark = lead + "{photo: " + reply.name + "}" + (after.startsWith("\n") ? "" : "\n");
+    box.value = before + mark + after;
+    box.focus();
+    box.setSelectionRange(before.length + mark.length, before.length + mark.length);
+    photoSaid.textContent = say("script.editor.photograph_added", {name: reply.name});
+    dirty = true; schedule();
   });
 
   const button = document.querySelector("button[data-editor=address]");
@@ -2209,4 +2280,4 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRI
     }
   });
 })();
-"""
+""")

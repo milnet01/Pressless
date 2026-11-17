@@ -34,8 +34,10 @@ SENTENCES[FileInUse] = Sentence(
     "failure.files_screen.FileInUse.next",
 )
 
-# The furniture a file may be named by, in words; any other name is a page's.
-_FURNITURE_WORDS = {"header": "files_screen.header", "footer": "files_screen.footer"}
+# What builder.files_named calls the furniture and the look, in words; any
+# other name is a fixed page's.
+_PART_WORDS = {"header": "files_screen.header", "footer": "files_screen.footer",
+               "navigation": "files_screen.navigation", store.LOOK_FOLDER: "files_screen.look"}
 
 
 def register(face: Face, folder: Path) -> None:
@@ -52,8 +54,9 @@ def register(face: Face, folder: Path) -> None:
                    lambda name: store.file_path_for(folder, name))
 
 
-def _pages(names: tuple[str, ...]) -> str:
-    return ", ".join(say(_FURNITURE_WORDS[name]) if name in _FURNITURE_WORDS else name
+def _page_words(names: tuple[str, ...]) -> str:
+    """The pages and parts builder.files_named gives, as the screen says them."""
+    return ", ".join(say(_PART_WORDS[name]) if name in _PART_WORDS else name
                      for name in names)
 
 
@@ -66,13 +69,15 @@ def _size(size: int) -> str:
 
 
 def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
-    with lock, face.capture() as notices:
-        try:
-            kept = store.list_files(folder)
-            named = builder.files_named(folder)
-            sizes = {name: store.file_path_for(folder, name).stat().st_size for name in kept}
-        except (store.StoreError, OSError) as exc:
-            return render_notices(notices) + face.fail(exc, publishing=False)
+    def read() -> tuple[tuple[str, ...], dict[str, tuple[str, ...]], dict[str, int]]:
+        kept = store.list_files(folder)
+        sizes = {name: store.file_path_for(folder, name).stat().st_size for name in kept}
+        return kept, builder.files_named(folder), sizes
+
+    listed, notices, failure = editor.captured(face, lock, read, (store.StoreError, OSError))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
+    kept, named, sizes = listed
     said = f"<p>{say('files_screen.removed')}</p>" if request.query.get(REMOVED) else ""
     return render_notices(notices) + _page(kept, named, sizes, said)
 
@@ -82,7 +87,7 @@ def _page(kept: tuple[str, ...], named: dict[str, tuple[str, ...]],
     e = html.escape
     rows = "".join(
         f"<tr><td>{e(name)}</td><td>{e(_size(sizes[name]))}</td>"
-        f"<td>{e(_pages(named[name])) if name in named else say('files_screen.unused')}</td>"
+        f"<td>{e(_page_words(named[name])) if name in named else say('files_screen.unused')}</td>"
         f'<td><form method="post" action="{ADDRESS}/remove">'
         f'<input type="hidden" name="name" value="{e(name, quote=True)}">'
         f'<button type="submit">{say("files_screen.remove")}</button></form></td></tr>'
@@ -100,13 +105,9 @@ def _page(kept: tuple[str, ...], named: dict[str, tuple[str, ...]],
 def _upload(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.4: the body is the file, its chosen name in the query, answered as
     editor._photograph answers."""
-    with lock, face.capture() as notices:
-        try:
-            name = files.add(folder, request.query.get("name", ""), request.body)
-        except (store.StoreError, files.NotAllowed, files.TooLarge, OSError) as exc:
-            failure: Exception | None = exc
-        else:
-            failure = None
+    name, notices, failure = editor.captured(
+        face, lock, lambda: files.add(folder, request.query.get("name", ""), request.body),
+        (store.StoreError, files.NotAllowed, files.TooLarge, OSError))
     if failure is not None:
         return editor.failed(face, notices, failure)
     return editor.json_reply({"name": name, "notices": render_notices(notices)})
@@ -118,17 +119,16 @@ def remove(folder: Path, name: str) -> None:
     path = store.file_path_for(folder, name)
     pages = builder.files_named(folder).get(name)
     if pages:
-        raise FileInUse(f"pages name {name}", _pages(pages))
+        raise FileInUse(f"pages name {name}", _page_words(pages))
     store.move_to_bin(folder, path)
 
 
-def _remove(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+def _remove(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str | Reply:
     """§ 4.4, through `remove`."""
     name = editor.form_fields(request).get("name", "")
-    with lock, face.capture() as notices:
-        try:
-            remove(folder, name)
-        except (store.StoreError, FileInUse) as exc:
-            return editor.failed(face, notices, exc)
+    _, notices, failure = editor.captured(face, lock, lambda: remove(folder, name),
+                                          (store.StoreError, FileInUse))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
     return Reply(b"", "text/plain; charset=utf-8", status=303,
                  location=f"{ADDRESS}?{REMOVED}=1")

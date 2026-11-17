@@ -100,7 +100,7 @@ In this order, and the order does not change with the site's state:
 
 1. **The site's line**: its name and address (`overview._site_line`),
    View your site, Publish, and Undo the last press
-   (`editor._undo_row`), then the count of changes not on the site
+   (`editor.undo_row`), then the count of changes not on the site
    yet, by kind, each linking to Pages or Journal (decision 5).
 2. **Notices**: the place `site-notices` (§ 4.6), then the press's
    failure box (PRESS-0235 INV-8 holds as written).

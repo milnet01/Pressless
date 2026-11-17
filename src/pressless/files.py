@@ -1,7 +1,9 @@
 """Keeping an uploaded file that is not a photograph (PRESS-0197).
 
-Nine kinds, chosen by suffix and checked by content (§ 4.1), kept byte for
-byte in the Store's `files` folder and named by the photographs' rule, which
+The kinds builder.file_allowed takes, chosen by suffix and checked by
+content (§ 4.1): the ones `ACCEPT` offers, and a brought-in site's fonts and
+icon (PRESS-0210 § 3 decision 10). Each is kept byte for byte in the
+Store's `files` folder and named by the photographs' rule, which
 `photographs.keep` holds for both. The contract is
 `docs/specs/PRESS-0197-upload-any-file.md`.
 """
@@ -22,7 +24,8 @@ ACCEPT = {"music": ",".join(_MUSIC), "video": ",".join(_VIDEO),
 
 
 class NotAllowed(Exception):
-    """The suffix is not one § 4.1 lists, or the bytes are not that kind."""
+    """The suffix is not a kind builder.file_allowed takes, or the bytes are
+    not that kind."""
 
 
 class TooLarge(Exception):

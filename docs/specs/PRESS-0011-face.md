@@ -273,7 +273,7 @@ capture, it lands on that request's list.
   (PRESS-0122 §4.3). The secret itself is never accepted as a cookie.
 - **Every answer's `Content-Security-Policy` carries `frame-ancestors
   'self'`.** `FILES_POLICY` ends with it (PRESS-0012 § 4.3), a wrapped page's
-  policy is `frame-src 'self'; frame-ancestors 'self'`, and every other
+  policy ends with it (PRESS-0012 § 4.3), and every other
   answer — a `Reply`, a redirect, a 403, a 404 — carries `frame-ancestors
   'self'` alone. `'self'` is scheme, host and port, so a page on another
   `127.0.0.1` port cannot frame the Face, while the editor's preview, a Face

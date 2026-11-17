@@ -1278,14 +1278,14 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
 # The page's script (§ 4.5), PRESS-0012 § 4.7's. A change saves about a second
 # after the last one, never two saves at once, and on leaving only where a
 # change is unsaved. Its twin is editor._EDITOR_SCRIPT; both save through
-# editor.SAVING_SCRIPT, press through editor.PUBLISH_SCRIPT and leave through
-# editor.LEAVING_SCRIPT. They differ in their fields and in what a reply
-# updates. A switch of view, a picker link, Remove and Rename save an unsaved
-# change first. In the visual view,
+# editor.SAVING_SCRIPT, press through editor.PUBLISH_SCRIPT, upload through
+# editor.UPLOAD_SCRIPT and leave through editor.LEAVING_SCRIPT. They differ in
+# their fields and in what a reply updates. A switch of view, a picker link,
+# Remove and Rename save an unsaved change first. In the visual view,
 # _VISUAL_SCRIPT supplies what is posted and is told what was saved
 # (PRESS-0260 § 4.5).
 _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
-                + editor.PUBLISH_SCRIPT + """
+                + editor.PUBLISH_SCRIPT + editor.UPLOAD_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {kind: form.dataset.kind, name: form.dataset.name, view: form.dataset.view,
@@ -1332,33 +1332,25 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
     document.getElementById("failure").innerHTML = text;
   };
 
-  async function send() {
-    dirty = false; status.textContent = say("script.editor.saving");
-    try {
-      const posted = posting();
-      const answer = await fetch("/page/save", {method: "POST", body: fields(posted)});
-      const text = await answer.text();
-      if (answer.status !== 200) { stop(text); return; }
-      const reply = JSON.parse(text);
+  const send = window.presslessSend({
+    address: "/page/save", posting, fields, stop,
+    unsaved: (now) => { dirty = now; },
+    saved: (reply, posted) => {
       adopt(reply);
-      document.getElementById("failure").innerHTML = reply.failure || "";
       if (posted) {
         posted.saved(reply);
       } else if (reply.preview) {
         document.getElementById("preview").src = reply.preview + "?n=" + Date.now();
       }
-      status.textContent = say("script.editor.saved");
-    } catch (error) {
-      stop("");
-    }
-  }
+    },
+  });
   const {schedule, settle, release, sending} =
     window.presslessSaving(send, () => dirty && !stopped);
 
   const changed = () => { dirty = true; schedule(); };
   form.addEventListener("input", changed);
   // The visual view's changes happen in the frame and the panel.
-  window.presslessPage = {changed};
+  window.presslessPage = {changed, stop};
   window.presslessLeaving("/page/save", fields, () => !stopped && dirty, sending);
   document.querySelectorAll("a[data-page-link]").forEach((link) => {
     link.addEventListener("click", async (event) => {
@@ -2469,11 +2461,9 @@ _VISUAL_SCRIPT = r"""
   chooser.addEventListener("change", async () => {
     const file = chooser.files[0];
     if (!file || !picked || !["picture", "enlarge"].includes(picked.kind)) return;
-    const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
-                               {method: "POST", body: file});
-    const reply = await answer.text();
-    if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
-    const {name, address: published} = JSON.parse(reply);
+    const reply = await window.presslessUpload("/photograph", file, window.presslessPage.stop);
+    if (!reply) return;
+    const {name, address: published} = reply;
     const address = up + published;
     const option = document.createElement("option");
     option.value = address; option.textContent = name;
@@ -2504,11 +2494,9 @@ _VISUAL_SCRIPT = r"""
       said.textContent = say("script.visual.file_too_large", given.largest_slots);
       return;
     }
-    const answer = await fetch("/file?name=" + encodeURIComponent(file.name),
-                               {method: "POST", body: file});
-    const reply = await answer.text();
-    if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
-    const name = JSON.parse(reply).name;
+    const reply = await window.presslessUpload("/file", file, window.presslessPage.stop);
+    if (!reply) return;
+    const name = reply.name;
     const address = up + "files/" + encodeURIComponent(name);
     const suffix = name.slice(name.lastIndexOf("."));
     Object.keys(given.accept).forEach((section) => {

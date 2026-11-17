@@ -479,7 +479,8 @@ FILES_POLICY_WORDS = (
     "font-src 'self'; script-src 'none'; connect-src 'self'; frame-src 'none'; "
     "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
 )
-FRAMES_POLICY_WORDS = "frame-src 'self'; frame-ancestors 'self'"
+FRAMES_POLICY_WORDS = ("style-src 'self' 'unsafe-inline'; font-src 'self'; "
+                       "img-src 'self' data:; frame-src 'self'; frame-ancestors 'self'")
 ANCESTORS_WORDS = "frame-ancestors 'self'"
 
 
