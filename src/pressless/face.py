@@ -500,9 +500,10 @@ _FILE_TYPES = {
 # address the Face serves: a link followed in the preview never leaves.
 _FRAMES_POLICY = "frame-src 'self'; frame-ancestors 'self'"
 
-# Every other answer carries this alone. A page on another 127.0.0.1 port is
-# the same site, so a frame of the Face would carry the cookie and its clicks
-# the Face's own Origin (PRESS-0011 § 4.5).
+# Every answer but a wrapped page or a served file carries this alone, added
+# by _Handler.end_headers. A page on another 127.0.0.1 port is the same site,
+# so a frame of the Face would carry the cookie and its clicks the Face's own
+# Origin (PRESS-0011 § 4.5).
 _ANCESTORS_POLICY = "frame-ancestors 'self'"
 
 
@@ -1198,6 +1199,7 @@ class _Server(http.server.ThreadingHTTPServer):
 
 class _Handler(http.server.BaseHTTPRequestHandler):
     server: _Server
+    _policy_sent = False  # this answer named its own Content-Security-Policy
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         """Write nothing: the standard one prints the request line, secret
@@ -1209,6 +1211,20 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         self._dispatch("POST")
+
+    def send_header(self, keyword: str, value: str) -> None:
+        if keyword.lower() == "content-security-policy":
+            self._policy_sent = True
+        super().send_header(keyword, value)
+
+    def end_headers(self) -> None:
+        """§ 4.5: every answer carries frame-ancestors 'self', those
+        http.server sends itself included (send_error's 400, 414, 431 and
+        501). An answer naming its own policy keeps it."""
+        if not self._policy_sent:
+            super().send_header("Content-Security-Policy", _ANCESTORS_POLICY)
+        self._policy_sent = False
+        super().end_headers()
 
     def _send(
         self, status: int, body: str, content_type: str, headers: tuple[tuple[str, str], ...] = ()
@@ -1223,8 +1239,6 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
-        if not any(name == "Content-Security-Policy" for name, _ in headers):
-            self.send_header("Content-Security-Policy", _ANCESTORS_POLICY)
         for name, value in headers:
             self.send_header(name, value)
         self.end_headers()
@@ -1553,7 +1567,6 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Disposition",
                                  f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}")
                 self.send_header("Cache-Control", "no-store")
-                self.send_header("Content-Security-Policy", _ANCESTORS_POLICY)
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
                 while piece := handle.read(_PIECE):

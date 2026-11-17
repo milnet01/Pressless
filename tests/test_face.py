@@ -935,6 +935,9 @@ def test_no_other_origin_can_frame_the_face(tmp_path: Path) -> None:
         served.add_page("GET", "/data", lambda request: face.Reply(
             b"{}", "application/json"))
         served.add_page("GET", "/fails", _raises)
+        sent = tmp_path / "sent.zip"
+        sent.write_bytes(b"a file")
+        served.add_page("GET", "/down", lambda request: face.Download(sent, "Site.zip"))
         link_status, link_headers = follow_link(served.url)
         client = _Client(served, follow=False)
         client.cookie = link_headers["Set-Cookie"].split(";", 1)[0]
@@ -948,6 +951,10 @@ def test_no_other_origin_can_frame_the_face(tmp_path: Path) -> None:
             "a 404": client.request("GET", "/nowhere")[:2],
             "a file 404": client.request("GET", "/m/absent.html")[:2],
             "the folder's location": client.request("GET", "/folder/location")[:2],
+            # http.server's own send_error answers these.
+            "a method it does not take": client.request("PUT", "/")[:2],
+            "a HEAD": client.request("HEAD", "/")[:2],
+            "a download": client.request("GET", "/down")[:2],
         }
         for what, (status, headers) in answers.items():
             policy = headers.get("Content-Security-Policy", "")
