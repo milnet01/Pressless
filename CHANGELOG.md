@@ -25,6 +25,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **An AI app's requests are answered once, and a slow one says it is still working** (PRESS-0382)
+  A request you answer is not asked again, the answer says what actually ran, and a
+  request that takes too long now says so instead of failing. Pressless keeps Claude
+  Desktop's own settings file exactly as it was before adding its entry.
+
 - **Saved work survives a power cut, and a half-finished change finishes** (PRESS-0376)
   On Linux, a save now also records the file's place in its folder, so a
   power cut cannot bring back the old version. A page move interrupted part way is
@@ -72,6 +77,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   its moves at the next start. Classic posts keep every line they show.
 
 ### Security
+
+- **On Windows, the AI helper's key file is readable only by you** (PRESS-0382)
+  The file an AI app uses to reach Pressless is now locked to your own Windows
+  account before the key is written into it.
 
 - **A site file can no longer write outside its folder on Windows** (PRESS-0383)
   Opening a site file now checks every part of every name inside it. Before, a

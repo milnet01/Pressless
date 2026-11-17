@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=401 -->
+<!-- ants-roadmap-id-high-water: PRESS=404 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7807,12 +7807,24 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Updates.
 
-- 📋 [PRESS-0382] **Review fixes: the AI helper and its bridge.**
+- ✅ [PRESS-0382] **Review fixes: the AI helper and its bridge.**
   Subject 12 of the 2026-11-16 full review, closed with close-findings.
   review-code: 4 medium, 5 low. review-readability: 6 medium, 7 low.
   Among them: an answer not marked taken; _said always says not
   publishing; the door token file's Windows ACL; a KeyError escaping
   _Door.call.
+  Ledger: close-findings-2026-11-17/lane-12-assistant.json.
+  Shipped 2026-11-17, e9c57ec..0a2b426. 26 findings: 24 fixed, 2
+  duplicates, 0 queued, 0 dismissed. Each request is answered once and
+  says what ran; the bridge survives a bad request and a slow door; a
+  timeout has its own sentence. The door file is owner-only on Windows
+  (protected owner-only access list, set before the token is written),
+  proven on the Windows box: wintest 2080 passed. Not tried: a second
+  Windows account being refused. Claude Desktop's settings copy is
+  byte-exact and made once. Private names reached from other parts made
+  public. Specs amended: PRESS-0337, 0211, 0216, 0235, 0260, 0285.
+  Merge fix: face.py's renamed is_secret applied to subject 01's new
+  cookie and link code. Full suite 2247 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-12-assistant.json.
   **Layman:** Fixes in how an AI app works on your site through Pressless.
   Kind: review-fix.
@@ -8093,6 +8105,36 @@ does not wait on them.
   Kind: refactor.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
   Lanes: Store, Builder, Publishing, Setup.
+
+- 📋 [PRESS-0402] **Failures passed to an AI app point at "the details below", which a chat lacks.**
+  Surfaced by PRESS-0382's sweep. When a failure is handed to the AI
+  app, most failure types still tell the writer to look at "the details
+  below". DanglingReply, BuildStopped, InsightsError, SettingsError,
+  TooLarge, ImportStopped and unforeseen failures do; only
+  WouldReplaceASite has chat wording.
+  **Layman:** When something goes wrong while an AI app is working on your site, the message makes sense in a chat.
+  Kind: fix.
+  Source: PRESS-0382 close-findings sweep 2026-11-17.
+  Lanes: AI helper.
+
+- 📋 [PRESS-0403] **The Yes box shows nothing when remove or discard fails after Yes.**
+  Surfaced by PRESS-0382's sweep. The box script ignores the failure in
+  its answer, so a remove_entry, discard_changes or remove_file that
+  fails after Yes shows the writer nothing. Publish and undo already
+  show theirs on the press row; do the same for these.
+  **Layman:** If you say Yes to an AI app's request and it fails, Pressless tells you.
+  Kind: fix.
+  Source: PRESS-0382 close-findings sweep 2026-11-17.
+  Lanes: AI helper.
+
+- 📋 [PRESS-0404] **A source run of the AI bridge cannot find the door without PRESSLESS_FOLDER.**
+  Surfaced by PRESS-0382 (out of scope there). python -m pressless
+  --assistant finds the door only when PRESSLESS_FOLDER is set, and AI
+  apps do not set it. Developers only; the packaged app is unaffected.
+  **Layman:** A developer-only fix for running the AI bridge from source.
+  Kind: fix.
+  Source: PRESS-0382 close-findings sweep 2026-11-17.
+  Lanes: AI helper.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
