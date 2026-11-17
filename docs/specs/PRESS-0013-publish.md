@@ -265,7 +265,9 @@ on a click:
 6. **Wait.** Print *"Pressless is running. Keep this window open while you use
    it, and close it to stop Pressless."* Then block in `_wait()`, a
    module-level function a test can replace. `KeyboardInterrupt` stops the
-   Face and returns 0. `_wait` returning True is a restart (PRESS-0203): the
+   Face and returns 0. That stop does not wait for `editor.LOCK`: a publish
+   under way ends with the process, as § 6's closed-console row says
+   (PRESS-0410). `_wait` returning True is a restart (PRESS-0203): the
    Face stops once `editor.LOCK` is free, and steps 3 to 6 run again behind
    the same folder lock.
 
@@ -386,7 +388,7 @@ and still asserts the first line.
 | Putting back fails | the Store's failure | whatever the failure left; nothing is deleted |
 | The copy cannot be binned after a publish | success, and a note that the waiting draft can be thrown away | the entry published and the copy still in `drafts/` |
 | No published entry would remain | `NothingToPublish` | nothing moved |
-| He closes the console mid-publish | nothing | the entry published or not, as far as it got; publishing again settles it |
+| He closes the console mid-publish | nothing | the entry published or not, as far as it got; the site as it was or wholly updated, since the branch moves only at the last request (PRESS-0009 INV-3); publishing again settles it |
 | No browser opens | the link, printed in the console | nothing |
 
 ## 7. Tests

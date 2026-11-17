@@ -14,6 +14,7 @@ import dataclasses
 import hashlib
 import html
 import json
+import shutil
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +22,15 @@ from pathlib import Path
 import pytest
 from _face_session import Browser
 from test_editor import _binned
-from test_publisher import _listing, _reads, _Transport, _tree_creation_paths, _writes
+from test_publisher import (
+    _is_reference_update,
+    _is_write,
+    _listing,
+    _reads,
+    _Transport,
+    _tree_creation_paths,
+    _writes,
+)
 
 from pressless import (
     builder,
@@ -238,6 +247,43 @@ def test_a_stop_during_the_upload_puts_nothing_back(tmp_path, monkeypatch):
     assert store.list_slugs(folder, draft=False) == ("harbour",)
     assert store.list_slugs(folder, draft=True) == ()
 
+
+
+class _Ended(BaseException):
+    """The process ending under a publish: nothing after it runs."""
+
+
+def test_a_publish_a_stop_cuts_short_leaves_the_site_whole(tmp_path, monkeypatch):
+    """PRESS-0410: a plain stop does not wait for editor.LOCK, and the Face's
+    threads die with the process, so a stop can end a publish part way. What
+    is left is the files at that instant, copied here at the first upload:
+    the entry moved and the site built, nothing sent. The branch never moved,
+    because its update is the last request (PRESS-0009 INV-3). Publishing
+    again from those files sends the entry (PRESS-0013 § 6)."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    left = tmp_path / "left"
+
+    class Stopped(_Transport):
+        def request(self, method, url, body, headers):
+            if _is_write(method) and "/git/blobs" in url:
+                self.requests.append((method, url, body, headers))
+                shutil.copytree(folder, left)   # what the ended process leaves
+                raise _Ended
+            return super().request(method, url, body, headers)
+
+    stopped = Stopped(reads=_reads(_listing([])), writes=_writes())
+    with pytest.raises(_Ended):
+        publishing.publish(folder, _settings(folder), KEY, entry="seaside", transport=stopped)
+    assert not [request for request in stopped.requests if _is_reference_update(*request[:2])]
+    assert store.list_slugs(left, draft=False) == ("seaside",)
+    assert store.list_slugs(left, draft=True) == ()
+
+    again = _github()
+    publishing.publish(left, _settings(left), KEY, entry=None, transport=again)
+    assert "blog/2026/09/17/seaside/index.html" in (_tree_creation_paths(again) or set())
+    assert _is_reference_update(*again.requests[-1][:2])
 
 # ------------------------------------------------------------------ INV-4 ---
 
