@@ -72,9 +72,9 @@ class Settings:
 ```
 
 `settings.check` refuses a channel matching neither `@[^\s/?#&<>"']{1,100}` nor
-`UC[A-Za-z0-9_-]{22}`, with key `"youtube_channel"`. The key's account name is
-`sites.account("youtube", folder)`. `setup`'s `_candidate` keeps both fields, as it
-keeps `votes`.
+`UC[A-Za-z0-9_-]{22}`, with key `"youtube_channel"`. A key typed in is filed
+under `sites.account("youtube", folder)`. `setup`'s `_candidate` keeps both fields, as
+it keeps `votes`.
 
 ### 4.2 The part: `src/pressless/youtube.py`
 
@@ -209,12 +209,14 @@ newcomer presses: create or choose a project, enable YouTube Data API v3, create
 key restricted to that API with no application restriction, and paste it.
 
 **`POST /youtube/setup`**: `parse_channel`, then `check`, then `credentials.write` and
-`settings.save`. An empty key box with a key held keeps it; with none held, or with
-a key that is not printable ASCII, which a header cannot carry, the key's hint shows.
+`settings.save`. An empty key box with a key held keeps it, and Settings keeps naming
+its entry; with none held, or with a key that is not printable ASCII, which a header
+cannot carry, the key's hint shows.
 Any failure is a hint beside its box, and saves nothing. A changed channel calls `forget`.
 
-**`POST /youtube/off`** does as `google_setup._off`: deletes the key and the cache and
-clears both settings, each failure stopping nothing, the page saying what may remain.
+**`POST /youtube/off`** does as `google_setup._off`: deletes the key under the name
+Settings gives and under this site's own (`credentials.delete_each`), deletes the cache,
+and clears both settings, each failure stopping nothing, the page saying what may remain.
 
 **Settings** gains a row beside the votes row, linking `/youtube/setup`.
 

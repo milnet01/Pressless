@@ -121,6 +121,7 @@ def choose() -> Choice: ...
 def read(store: str, folder: Path, account: str) -> str: ...
 def write(store: str, folder: Path, account: str, secret: str) -> None: ...
 def delete(store: str, folder: Path, account: str) -> None: ...
+def delete_each(store: str, folder: Path, accounts: Iterable[str | None]) -> bool: ...
 
 class NoStore(Exception): ...           # nowhere safe to keep it -- setup stops
 class NotStored(Exception): ...         # the store works and holds nothing here
@@ -251,6 +252,11 @@ cancelled the store's unlock prompt (§4.6). So that error cannot mean
 *nothing to delete*: reading it so reports a locked store as an empty
 one, which §4.2's discriminator exists to prevent. `delete()` decides
 absence the way `read()` does, then asks the store to delete.
+
+`delete_each(store, folder, accounts)` calls `delete()` once for each
+distinct account it is given, skipping `None`. A failure stops none of the
+others, and it returns false where any of them failed. A Turn off uses it
+to remove both the entry Settings names and the site's own.
 
 **No message this module raises names the path, the account, or the
 secret.** `docs/design.md` § Logging puts that on the part that RAISES rather
@@ -821,3 +827,4 @@ exit code.
 | 9 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0254 (`delete()`). Packet: `credentials.py`, the off handler, PRESS-0122 §4.2, the keyring chain's delete source. User budget: one loop. Lane B read a copy frozen before lane A's fixes landed | 1 | 2 | 1 | 1 | **Five verified, three fixed, two filed to PRESS-0256 as outside the amendment.** Both lanes: §4.2 says the load row drops its cause, and the code chains it (filed). Fixed: the delete table let a refused file and a file with no entry both match, so it now judges the file as `read()` does first; `delete()`'s failures now drop the cause (INV-6); INV-2 now covers `delete()` on Windows. Filed: the file store chains a path-bearing `OSError`. Resolved clean, not counted: KWallet's read raises `KeyringLocked` on a cancelled unlock, so asking first does catch a locked store (executed). The fixes are read by no lane; implementation reads them |
 | 10 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0256 (INV-13). Packet: `credentials.py`, `face.details_for`, `log.note`, the INV-6 test, design.md § Logging, a probe of INV-13's routes. User budget: one loop | 2 | 2 | 0 | 0 | **Four verified, four fixed, none dismissed.** Both lanes: `from None` suppresses the context and does not clear `__context__`, so "carries" overstated what INV-13 tests; the rule now says no traceback prints it. Both: "a bare `raise`" named a harmless re-raise as the defect. One: §7 let INV-13 skip its Windows route. Mine, before dispatch: the rolling log does not print a chain (`log.note` takes a string), so that reason was false. Calm cap; all four inside the armed span. The fixes are read by no lane; implementation reads them |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: the file store's read, change and replace hold one lock (§ 6, INV-8's test). |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0405: § 4.1 and § 4.3 gain `delete_each`, which a Turn off uses to delete under both names. |

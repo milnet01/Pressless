@@ -15,6 +15,7 @@ import json
 import os
 import stat
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -204,6 +205,18 @@ def delete(store: str, folder: Path, account: str) -> None:
             ) from None
         return
     raise CredentialError(f"{store!r} is not a store this Pressless knows")
+
+
+def delete_each(store: str, folder: Path, accounts: Iterable[str | None]) -> bool:
+    """`delete` each account named, once, skipping None. A failure stops none
+    of the others; True where none failed."""
+    removed = True
+    for account in dict.fromkeys(a for a in accounts if a):
+        try:
+            delete(store, folder, account)
+        except FAILURES:
+            removed = False
+    return removed
 
 
 def _is_windows() -> bool:

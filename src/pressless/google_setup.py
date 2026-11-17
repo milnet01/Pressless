@@ -387,12 +387,8 @@ def _off(state: _State) -> str:
     # Both the name Settings gives and the one this site files under, where
     # they differ: the first is the key Pressless used, the second what
     # `_choose` writes, even where Settings names none.
-    removed = True
-    for name in dict.fromkeys(n for n in (account, sites.account("google", state.folder)) if n):
-        try:
-            credentials.delete(saved.credentials.store, state.folder, name)
-        except credentials.FAILURES:
-            removed = False
+    removed = credentials.delete_each(saved.credentials.store, state.folder,
+                                      (account, sites.account("google", state.folder)))
     try:
         insights.forget(state.folder)
     except OSError:

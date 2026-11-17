@@ -621,6 +621,43 @@ def test_off_says_what_remains(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "could not remove" in page
 
 
+def _on_elsewhere(folder: Path, keys: _Keys) -> None:
+    """Settings naming a key filed under another name than this site's own,
+    as a site's settings carried from elsewhere can."""
+    on = _on(folder, keys)
+    keys.held = {"youtube-elsewhere": KEY}
+    settings.save(folder, dataclasses.replace(on, credentials=dataclasses.replace(
+        on.credentials, youtube_account="youtube-elsewhere")))
+
+
+def test_off_removes_the_key_the_settings_name(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """INV-11. Breaks when Turn off deletes only under this site's own name:
+    the key Pressless used stays in the store."""
+    keys = _Keys(monkeypatch)
+    folder = _fresh(tmp_path)
+    _on_elsewhere(folder, keys)
+    with _screen(folder, _YouTube()) as browser:
+        page = browser.request("POST", "/youtube/off")[2]
+    assert keys.held == {} and "could not remove" not in page
+    assert set(keys.deleted) == {"youtube-elsewhere", sites.account("youtube", folder)}
+
+
+def test_an_empty_key_box_keeps_the_name_the_key_is_under(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when a save with no new key names this site's own entry, where
+    no key was written: the next read finds none."""
+    keys = _Keys(monkeypatch)
+    folder = _fresh(tmp_path)
+    _on_elsewhere(folder, keys)
+    with _screen(folder, _YouTube()) as browser:
+        browser.request("POST", "/youtube/setup", {"channel": "@another", "key": ""})
+    saved = settings.load(folder)
+    assert saved.youtube_channel == "@another"
+    assert saved.credentials.youtube_account == "youtube-elsewhere"
+    assert keys.held == {"youtube-elsewhere": KEY}
+
+
 # ----------------------------------------------------------------- INV-12 ---
 
 

@@ -217,7 +217,9 @@ def _save(face: Face, folder: Path, client: insights.Transport | None, request: 
         return refuse("youtube.hint.refused")
     except insights.InsightsError:
         return refuse("youtube.hint.unreachable")
-    account = sites.account("youtube", folder)
+    # A new key goes under this site's own name; with none typed, Settings
+    # keeps naming the entry the key is already under.
+    account = sites.account("youtube", folder) if new_key else held
     candidate = dataclasses.replace(
         saved, youtube_channel=channel,
         credentials=dataclasses.replace(saved.credentials, youtube_account=account))
@@ -245,11 +247,11 @@ def _off(face: Face, folder: Path) -> str:
     saved, shown = loaded_settings(face, folder)
     if saved is None:
         return _setup(face, folder)
-    removed = True
-    try:
-        credentials.delete(saved.credentials.store, folder, sites.account("youtube", folder))
-    except credentials.FAILURES:
-        removed = False
+    # Both the entry Settings names, which holds the key in use, and this
+    # site's own, which a setup writes.
+    removed = credentials.delete_each(
+        saved.credentials.store, folder,
+        (saved.credentials.youtube_account, sites.account("youtube", folder)))
     try:
         youtube.forget(folder)
     except OSError:
