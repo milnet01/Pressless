@@ -14,13 +14,12 @@ it copies.
 from __future__ import annotations
 
 import contextlib
-import json
 import re
 import secrets
 import shutil
 from pathlib import Path
 
-from pressless.safe_write import write_whole
+from pressless import json_record
 
 SITES_FOLDER = "sites"
 OPEN_FILE = "sites.json"
@@ -68,16 +67,11 @@ def _record(own: Path) -> dict:
     """sites.json as this Pressless wrote it, else {}. An OSError other than
     its absence is the caller's: a file that is there but cannot be read
     now is never written over."""
-    try:
-        data = json.loads((Path(own) / OPEN_FILE).read_text(encoding="utf-8"))
-    except (FileNotFoundError, ValueError):
-        return {}
-    return data if isinstance(data, dict) and data.get("version") == 1 else {}
+    return json_record.read(Path(own) / OPEN_FILE, strict=True)
 
 
 def _write(own: Path, **changes: object) -> None:
-    data = {**_record(own), **changes, "version": 1}
-    write_whole(Path(own) / OPEN_FILE, json.dumps(data) + "\n", prefix=f".{OPEN_FILE}.")
+    json_record.write(Path(own) / OPEN_FILE, {**_record(own), **changes})
 
 
 def _write_open(own: Path, name: str) -> None:

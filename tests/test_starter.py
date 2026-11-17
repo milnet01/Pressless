@@ -198,7 +198,7 @@ def test_a_write_failing_without_a_reason_names_its_type(tmp_path, monkeypatch):
     monkeypatch.setattr(starter.Path, "write_bytes", refuse)
     with pytest.raises(store.StoreError) as marker:
         starter.fill(tmp_path, "A site")
-    monkeypatch.setattr(starter, "write_whole", refuse)
+    monkeypatch.setattr(starter.json_record, "write", refuse)
     with pytest.raises(store.StoreError) as filled:
         starter._note_filled(tmp_path, {})
     for caught in (marker, filled):

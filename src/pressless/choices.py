@@ -9,12 +9,11 @@ reads as no choices, and a choice that cannot be written is only forgotten.
 from __future__ import annotations
 
 import dataclasses
-import json
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless.safe_write import write_whole
+from pressless import json_record
 
 FILE_NAME = "choices.json"
 _LOCK = threading.Lock()  # two pages opening at once each keep the other's choice
@@ -31,12 +30,7 @@ class Choices:
 
 def read(folder: Path) -> Choices:
     """The choices held. Each one of the wrong shape reads as not made."""
-    try:
-        data = json.loads((Path(folder) / FILE_NAME).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return Choices()
-    if not isinstance(data, dict) or data.get("version") != 1:
-        return Choices()
+    data = json_record.read(Path(folder) / FILE_NAME)
     page = data.get("page")
     if not (isinstance(page, list) and len(page) == 2
             and all(isinstance(part, str) and part for part in page)):
@@ -54,9 +48,8 @@ def remember(folder: Path, **changes: object) -> bool:
     could not be written, which costs only the choice."""
     with _LOCK:
         held = dataclasses.replace(read(folder), **changes)
-        data = {"version": 1, **dataclasses.asdict(held)}
         try:
-            write_whole(Path(folder) / FILE_NAME, json.dumps(data), prefix=f".{FILE_NAME}.")
+            json_record.write(Path(folder) / FILE_NAME, dataclasses.asdict(held))
         except OSError:
             return False
     return True

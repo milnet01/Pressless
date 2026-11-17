@@ -11,12 +11,11 @@ repository is public, and a title is somebody's trademark.
 from __future__ import annotations
 
 import html
-import json
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless.safe_write import write_whole
+from pressless import json_record
 from pressless.words import say
 
 FILE_NAME = "theme.json"
@@ -154,20 +153,15 @@ def known(key: str) -> bool:
 
 
 def _read(folder: Path) -> dict:
-    """The file's choices; missing, unparseable or another version is none."""
-    try:
-        data = json.loads((Path(folder) / FILE_NAME).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return data if isinstance(data, dict) and data.get("version") == 1 else {}
+    """The file's choices; missing, unreadable or another version is none."""
+    return json_record.read(Path(folder) / FILE_NAME)
 
 
 def _write(folder: Path, **choice: str | int) -> None:
     """Replace the file whole, keeping the choices `choice` does not name.
     Locked: /theme and /text-size are answered on threads of their own."""
     with _LOCK:
-        data = {**_read(folder), **choice, "version": 1}
-        write_whole(Path(folder) / FILE_NAME, json.dumps(data), prefix=f".{FILE_NAME}.")
+        json_record.write(Path(folder) / FILE_NAME, {**_read(folder), **choice})
 
 
 def read_choice(folder: Path) -> str:

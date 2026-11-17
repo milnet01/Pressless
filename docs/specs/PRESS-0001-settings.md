@@ -723,8 +723,9 @@ loading or saving does anything.
   address.
 - **PRESS-0002 and PRESS-0019 widen their INV-1 the same way, in the same
   batch** (PRESS-0141): `credentials.py` and `insights.py` call
-  `write_whole` too. `store.py`, `themes.py`, `updater.py`'s whole-file
-  write and `shortcuts.py`'s Linux launcher (PRESS-0183) call it, and the Store's no-overwrite rename calls `patiently`, with
+  `write_whole` too. `store.py`, `json_record.py`, which writes the small
+  versioned records such as `theme.json` and `updates.json` (PRESS-0398),
+  and `shortcuts.py`'s Linux launcher (PRESS-0183) call it, and the Store's no-overwrite rename calls `patiently`, with
   no spec change, as no invariant of theirs forbids
   that import. Each module keeps its own error type.
 - **PRESS-0008 INV-11 admits `pressless.safe_write`** (PRESS-0365): the
@@ -756,3 +757,4 @@ loading or saving does anything.
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: INV-1 names `pressless.words` (PRESS-0242); §4.4 says a key nested in `credentials` is lost only on a downgrade, which is not supported. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0406: § 1 and § 4.1 stop counting the credentials as two. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0398: § 11 names `json_record.py`, which writes the small versioned records, in place of `themes.py` and `updater.py`. |

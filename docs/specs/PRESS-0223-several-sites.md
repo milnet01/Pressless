@@ -60,7 +60,7 @@ opens another, and an existing install's one site is moved into
 
 ```
 Pressless-data/
-  sites.json          {"version": 1, "open": "site-1", "made": 1}
+  sites.json          {"open": "site-1", "made": 1, "version": 1}
   sites/
     site-1/           one site: every name in SITE_NAMES
     site-2/
@@ -69,8 +69,9 @@ Pressless-data/
 ```
 
 A new module, `src/pressless/sites.py`, owns the layout. It imports no
-part of Pressless, only `safe_write` (PRESS-0141), so every part may use
-it.
+part of Pressless, only `json_record` (PRESS-0398), which reads and writes
+`OPEN_FILE` and imports only `safe_write` (PRESS-0141). So every part may
+use it.
 
 ```python
 SITES_FOLDER = "sites"

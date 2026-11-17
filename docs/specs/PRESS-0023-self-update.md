@@ -104,9 +104,10 @@ A new part, **the Updater**, joins `docs/design.md` § The parts:
 already names in `_NETWORK_MODULES`.
 
 **`updater.py` imports no part of Pressless but `update_key`, `installer`,
-`safe_write`, `os_reason` and `zip_member`.** None of those imports a part
-but `os_reason`, which imports nothing. So the Updater cannot reach the
-Store, Settings or Credentials even by import.
+`os_reason`, `zip_member` and `json_record`.** None of those imports
+another Pressless module but `os_reason` and `safe_write`, which import
+none. So the Updater cannot reach the Store, Settings or Credentials even
+by import.
 
 The GitHub repository is a constant in `updater.py`, `REPOSITORY =
 "milnet01/Pressless"`. It is the app's repository, not his site's.
@@ -395,14 +396,20 @@ look for new versions."* with **Look when Pressless starts**. It posts to
 buttons, posting to `/update`, `/update/later` and `/update/skip`. Below the
 buttons it shows what changed (§ 4.12).
 
-`updates.json` sits in Pressless's own folder:
+`updates.json` sits in Pressless's own folder, read and written by
+`json_record` (PRESS-0398):
 
 ```json
-{"version": 1, "check": true, "skip": null}
+{
+  "check": true,
+  "skip": null,
+  "version": 1
+}
 ```
 
-A missing file reads as `check: true, skip: null`. So does a file that does not
-parse or has another shape, and the switch then shows what is actually in force.
+A missing file reads as `check: true, skip: null`. So does a file that cannot
+be read, does not parse, is of another version or has another shape, and the
+switch then shows what is actually in force.
 
 **The offer and a Later are held in memory for the life of the process.** That
 is an exception to § State, which names none today — it calls the Insights

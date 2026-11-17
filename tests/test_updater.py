@@ -474,13 +474,14 @@ def test_the_updater_reaches_no_store_settings_or_credentials():
     """§ 4.1, PRESS-0409: the Updater may not open the Store, Settings or
     Credentials, and it does not import them either, even at one remove.
     Importing it in a fresh interpreter loads no part of Pressless beyond
-    these, each of which imports nothing of Pressless's but `os_reason`.
+    these, each of which imports nothing of Pressless's but `os_reason` or
+    `safe_write`.
 
     Breaks when updater.py, or a module it imports, gains an import of
     another part -- `sitefile` reaches the Store, Settings and Credentials."""
     allowed = {"pressless", "pressless.updater", "pressless.update_key",
                "pressless.installer", "pressless.safe_write", "pressless.os_reason",
-               "pressless.zip_member"}
+               "pressless.zip_member", "pressless.json_record"}
     source = Path(updater.__file__).parents[1]
     loaded = subprocess.run(
         [sys.executable, "-c", "import sys, pressless.updater; "

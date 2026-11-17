@@ -35,9 +35,8 @@ import certifi
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from pressless import os_reason, update_key, zip_member
+from pressless import json_record, os_reason, update_key, zip_member
 from pressless.installer import UpdateError
-from pressless.safe_write import write_whole
 
 # The app's repository, not his site's. PRESSLESS_UPDATE_REPOSITORY replaces it
 # for one run, which is how § 7.1 points a build at a scratch repository; it
@@ -182,22 +181,16 @@ class State(NamedTuple):
 def read_state(folder: Path) -> State:
     """Missing, unparseable or wrong-shaped reads as on with nothing skipped,
     so the switch shows what is actually in force."""
-    try:
-        data = json.loads((Path(folder) / FILE_NAME).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    data = json_record.read(Path(folder) / FILE_NAME)
+    check, skip = data.get("check"), data.get("skip")
+    if not isinstance(check, bool) or not (skip is None or isinstance(skip, str)):
         return State(True, None)
-    if (not isinstance(data, dict) or data.get("version") != 1
-            or not isinstance(data.get("check"), bool)
-            or not (data.get("skip") is None or isinstance(data.get("skip"), str))):
-        return State(True, None)
-    return State(data["check"], data["skip"])
+    return State(check, skip)
 
 
 def write_state(folder: Path, *, check: bool, skip: str | None) -> None:
     """Write the switch and the skipped version, replacing the file whole."""
-    target = Path(folder) / FILE_NAME
-    write_whole(target, json.dumps({"version": 1, "check": check, "skip": skip}),
-                prefix=f".{FILE_NAME}.")
+    json_record.write(Path(folder) / FILE_NAME, {"check": check, "skip": skip})
 
 
 # ------------------------------------------------------------------ reads ---

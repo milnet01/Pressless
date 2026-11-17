@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import hashlib
 import html
-import json
 import re
 from pathlib import Path
 
-from pressless import blocks, builder, look, os_reason, settings, store, templates
+from pressless import blocks, builder, json_record, look, os_reason, settings, store, templates
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -261,11 +260,8 @@ def digest(text: str) -> str:
 def filled(folder: Path) -> dict[str, str] | None:
     """FILLED's digests by file name, or None for a site filled before it
     existed, or never filled. A file fill did not write has no digest."""
-    try:
-        data = json.loads((Path(folder) / FILLED).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    if not isinstance(data, dict) or data.get("version") != 1:
+    data = json_record.read(Path(folder) / FILLED)
+    if not data:
         return None
     return {name: value for name, value in data.items()
             if name != "version" and isinstance(value, str)}
@@ -274,9 +270,8 @@ def filled(folder: Path) -> dict[str, str] | None:
 def _note_filled(folder: Path, wrote: dict[str, str]) -> None:
     """Add what this fill wrote to FILLED; a fill finished later keeps the
     digests of the first."""
-    data = {**(filled(folder) or {}), **wrote, "version": 1}
     try:
-        write_whole(Path(folder) / FILLED, json.dumps(data) + "\n", prefix=f".{FILLED}.")
+        json_record.write(Path(folder) / FILLED, {**(filled(folder) or {}), **wrote})
     except OSError as exc:
         raise store.StoreError(f"{FILLED} could not be written: {os_reason.of(exc)}") from exc
 

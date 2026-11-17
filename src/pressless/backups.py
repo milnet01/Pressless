@@ -16,15 +16,13 @@ from __future__ import annotations
 import contextlib
 import datetime
 import errno
-import json
 import os
 import re
 import threading
 import time
 from pathlib import Path
 
-from pressless import os_reason, sitefile, sites
-from pressless.safe_write import write_whole
+from pressless import json_record, os_reason, sitefile, sites
 from pressless.words import say
 
 FILE_NAME = "backups.json"
@@ -42,22 +40,12 @@ def _record(own: Path, *, strict: bool = False) -> dict:
     """backups.json as this Pressless wrote it, else {}. With `strict`, a
     file that is there but cannot be read now raises its OSError, so a write
     never drops the folder it holds."""
-    try:
-        data = json.loads((Path(own) / FILE_NAME).read_text(encoding="utf-8"))
-    except (FileNotFoundError, ValueError):
-        return {}
-    except OSError:
-        if strict:
-            raise
-        return {}
-    return data if isinstance(data, dict) and data.get("version") == 1 else {}
+    return json_record.read(Path(own) / FILE_NAME, strict=strict)
 
 
 def _write(own: Path, **changes: object) -> None:
     with _RECORD_LOCK:
-        data = {**_record(own, strict=True), **changes, "version": 1}
-        write_whole(Path(own) / FILE_NAME, json.dumps(data, indent=2) + "\n",
-                    prefix=f".{FILE_NAME}.")
+        json_record.write(Path(own) / FILE_NAME, {**_record(own, strict=True), **changes})
 
 
 def _chosen(record: dict) -> Path | None:
