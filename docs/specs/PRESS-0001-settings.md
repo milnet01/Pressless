@@ -412,9 +412,10 @@ which is the writer's choice of somewhere else and is stored absolute.
 - **INV-1** — `src/pressless/settings.py` imports no network module and no
   other `pressless` module but `pressless.safe_write`, which carries §4.4's
   temporary-file, sync and replace steps (§4.4), and `pressless.words`,
-  which gives `SettingsNotice` its words (PRESS-0242 § 4.2).
-  `safe_write.py` itself imports no network module and no `pressless`
-  module, so the rule holds through it. The descriptor check and the
+  which gives `SettingsNotice` its words (PRESS-0242 § 4.2), and
+  `pressless.os_reason`, which gives a failure its reason without its path
+  (PRESS-0401). `safe_write.py` and `os_reason.py` import no network module
+  and no `pressless` module, so the rule holds through them. The descriptor check and the
   `SettingsError` wording stay in `settings.py`, and `settings.py` calls
   neither `tempfile.mkstemp` nor `os.fsync` itself, so the steps are not
   copied back. Named modules on purpose: an import list sees what
@@ -422,7 +423,8 @@ which is the writer's choice of somewhere else and is stored absolute.
   file* is not a rule this test could carry — §4.4 requires `os`, and `os`
   reaches every disk there is. INV-7 is what holds the path rule.
   *Test:* `tests/test_settings.py::test_settings_imports_nothing_forbidden`,
-  walking `settings.py`'s imports and then `safe_write.py`'s, and
+  walking `settings.py`'s imports and then `safe_write.py`'s and
+  `os_reason.py`'s, and
   `settings.py`'s calls for those two names, as
   `tests/test_marks.py::test_marks_is_pure` does — which bans `os` outright,
   and is the precedent rather than the rule here.
@@ -752,3 +754,4 @@ loading or saving does anything.
 | amend | 2026-11-16 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0365 § 4.4 and § 11: the Builder's folder swap calls `patiently`. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376 § 4.4: `write_whole` syncs the target's folder through `sync_folder`. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: INV-1 names `pressless.words` (PRESS-0242); §4.4 says a key nested in `credentials` is lost only on a downgrade, which is not supported. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |

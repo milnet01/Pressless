@@ -16,7 +16,7 @@ import json
 import re
 from pathlib import Path
 
-from pressless import blocks, builder, look, settings, store, templates
+from pressless import blocks, builder, look, os_reason, settings, store, templates
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -278,7 +278,7 @@ def _note_filled(folder: Path, wrote: dict[str, str]) -> None:
     try:
         write_whole(Path(folder) / FILLED, json.dumps(data) + "\n", prefix=f".{FILLED}.")
     except OSError as exc:
-        raise store.StoreError(f"{FILLED} could not be written: {exc.strerror}") from exc
+        raise store.StoreError(f"{FILLED} could not be written: {os_reason.of(exc)}") from exc
 
 
 def offered(folder: Path) -> bool:
@@ -322,7 +322,7 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
     try:
         marker.write_bytes(b"")
     except OSError as exc:
-        raise store.StoreError(f"{MARKER} could not be written: {exc.strerror}") from exc
+        raise store.StoreError(f"{MARKER} could not be written: {os_reason.of(exc)}") from exc
 
     name = html.escape(site_name, quote=True)
     files = (

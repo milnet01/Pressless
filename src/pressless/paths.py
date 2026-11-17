@@ -3,7 +3,8 @@
 The contract is docs/specs/PRESS-0022-packaging.md § 4.2. This is the caller
 PRESS-0001 § 2 says must exist: the entry point asks it for a folder and hands
 that folder to Settings and Credentials, which never look for one themselves.
-It resolves downward only and imports no other part of Pressless (INV-1).
+It resolves downward only and imports no other part of Pressless (INV-1); its
+one Pressless import, `os_reason`, is not a part and imports nothing.
 
 The folder sits beside the artefact the writer downloaded -- the AppImage on
 Linux, the extracted program folder on Windows -- so he chooses the drive by
@@ -18,6 +19,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from pressless import os_reason
+
 # INV-8: every installed machine binds to this name, so it is a breaking change
 # after the first release (scope decision 5 chose it so it cannot be confused
 # with the Pressless/ folder the Windows zip unpacks beside it).
@@ -26,7 +29,7 @@ FOLDER_NAME = "Pressless-data"
 # The preview copy of the live site's assets/, inside that folder. Owned by
 # docs/specs/PRESS-0007-import.md decision 12: Import writes it once and the
 # Face serves it for previews, and it lives here because this module imports
-# nothing of Pressless's, so neither of those two depends on the other. Every
+# no part of Pressless, so neither of those two depends on the other. Every
 # handed folder binds to it, so it is as pinned as FOLDER_NAME (INV-12 there).
 PREVIEW_ASSETS = "preview-assets"
 
@@ -94,6 +97,6 @@ def ensure(folder: Path) -> Path:
     except OSError as exc:
         raise FolderUnusable(
             f"the {target.name} folder beside the program could not be "
-            f"created or written: {exc.strerror or type(exc).__name__}"
+            f"created or written: {os_reason.of(exc)}"
         ) from exc
     return target

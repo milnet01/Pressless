@@ -742,6 +742,7 @@ _ALLOWED_IMPORTS = {
     "pressless.votes",                       # PRESS-0211 § 4.3: text alone, no disk or network
     "pressless.jpegxl",                      # PRESS-0275 § 4.1: runs the decoder, no network
     "pressless.safe_write",                  # PRESS-0365: a Windows retry, no network
+    "pressless.os_reason",                   # PRESS-0401: an error's reason, imports nothing
 }
 
 

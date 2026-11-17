@@ -551,7 +551,7 @@ Sitemap: <the address>/sitemap.xml
   as PRESS-0007 INV-10's test does: `pressless.store`, `pressless.marks`,
   `pressless.blocks` (PRESS-0215), `pressless.votes` (PRESS-0211),
   `pressless.jpegxl` (PRESS-0275), `pressless.safe_write` (PRESS-0365),
-  `pressless.settings`, `PIL` and named
+  `pressless.os_reason` (PRESS-0401), `pressless.settings`, `PIL` and named
   standard-library modules.
   *Breaks when:* a missing photograph is fetched from the old site, or the
   Builder calls the Publisher.

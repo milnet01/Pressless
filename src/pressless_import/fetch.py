@@ -27,7 +27,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
 import certifi
 
-from pressless import __version__, builder
+from pressless import __version__, builder, os_reason
 
 from . import Export, ImportStopped, _field, _place
 from ._folder import (
@@ -131,7 +131,7 @@ def _not_written(exc: OSError) -> str | None:
     if exc.errno == errno.ENOSPC:
         return NO_ROOM
     if exc.filename is not None:
-        return f"it could not be written here ({exc.strerror or type(exc).__name__})"
+        return f"it could not be written here ({os_reason.of(exc)})"
     return None
 
 

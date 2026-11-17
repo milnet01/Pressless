@@ -15,3 +15,4 @@
 | amend | 2026-11-08 | none: no reviewer was dispatched | 0 | 0 | 0 | 0 | **Amended by PRESS-0276** before it was built: a pointer to its spec, no clause rewritten. |
 | amend | 2026-11-16 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0365: § 4.8's renames go through `patiently`; INV-11 admits `pressless.safe_write`. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0375: § 4.6 step 6, an encoder's failure is `BuildStopped` naming the photograph. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-11 admits `pressless.os_reason`, which imports nothing. |

@@ -873,6 +873,8 @@ _ALLOWED_IMPORTS = {
     # PRESS-0385: a page's charset label read as a browser reads it, and a
     # damaged LZMA member named as a damaged ZIP.
     "codecs", "lzma",
+    # PRESS-0401: an error's reason without its path; imports nothing.
+    "pressless.os_reason",
 }
 
 

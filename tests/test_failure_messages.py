@@ -93,8 +93,8 @@ def test_no_publisher_failure_names_a_path(tmp_path):
     a directory, the publish that would empty the site, the fetch area that
     cannot be written, and the local file that cannot be read. The last two
     also carried the OSError's own words, which quote the path it failed on
-    -- a second leak by a different route, and the reason `_why` reports the
-    reason alone.
+    -- a second leak by a different route, and the reason `os_reason.of`
+    reports the reason alone.
 
     Breaks when an implementer puts the folder back to make a failure
     diagnosable. That is the trade this rule already refused: § Errors hands

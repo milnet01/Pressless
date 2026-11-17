@@ -19,6 +19,7 @@ import warnings
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import pressless.os_reason as os_reason
 import pressless.safe_write as safe_write
 from pressless.safe_write import write_whole
 from pressless.words import ENGLISH
@@ -144,22 +145,6 @@ class SettingsError(Exception):
         self.key = key
 
 
-def _why(exc: OSError) -> str:
-    """The reason an OSError carries, never its own words.
-
-    `str(exc)` on a stock file error quotes the path it failed on, and
-    `docs/design.md` § Logging forbids a full filesystem path in anything
-    Pressless shows or writes down. `strerror` is the reason alone, and it
-    is absent on an OSError raised without one, so the type stands in.
-
-    Copied rather than shared: §5 INV-1 lets this module import no
-    `pressless` module but `safe_write`, whose contract is the file-writing
-    steps alone, and `words`, so a shared copy would need INV-1 changed
-    first.
-    """
-    return exc.strerror or type(exc).__name__
-
-
 def path_for(folder: Path) -> Path:
     return Path(folder) / FILE_NAME
 
@@ -203,7 +188,7 @@ def _read(target: Path, *, saving: bool) -> dict | None:
         ) from None
     except OSError as exc:
         raise SettingsError(
-            f"the settings file could not be read: {_why(exc)}"
+            f"the settings file could not be read: {os_reason.of(exc)}"
         ) from None
 
     try:
@@ -436,7 +421,7 @@ def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> N
                     check=lambda handle: _report_a_wide_grant(handle, target))
     except OSError as exc:
         raise SettingsError(
-            f"the settings file could not be written: {_why(exc)}"
+            f"the settings file could not be written: {os_reason.of(exc)}"
         ) from None
 
 

@@ -417,13 +417,15 @@ once the code exists.
 
 - **INV-1** — `src/pressless/credentials.py` imports no other `pressless`
   module but `pressless.safe_write`, which carries §4.4's temporary-file,
-  sync and replace steps (PRESS-0001 §4.4 and §11). `safe_write.py`
-  itself imports no `pressless` module, so the rule holds through it. The
+  sync and replace steps (PRESS-0001 §4.4 and §11), and
+  `pressless.os_reason`, which gives a failure its reason without its path
+  (PRESS-0401). Neither imports a `pressless` module, so the rule holds
+  through them. The
   descriptor's mode is still read and refused in `credentials.py`, before
   the secret is written (§4.6), as the `check` PRESS-0001 §4.4 gives
   `write_whole`: it runs on the raw descriptor before a byte is written.
   *Test:* `tests/test_credentials.py::test_credentials_imports_no_sibling`,
-  walking `credentials.py`'s imports and then `safe_write.py`'s, as
+  walking `credentials.py`'s imports and then those two modules', as
   `tests/test_settings.py::test_settings_imports_nothing_forbidden` does.
   *Breaks when:* an implementer imports `pressless.settings` to fetch the
   account names itself, which makes the Publisher's one documented way in
@@ -828,3 +830,4 @@ exit code.
 | 10 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0256 (INV-13). Packet: `credentials.py`, `face.details_for`, `log.note`, the INV-6 test, design.md § Logging, a probe of INV-13's routes. User budget: one loop | 2 | 2 | 0 | 0 | **Four verified, four fixed, none dismissed.** Both lanes: `from None` suppresses the context and does not clear `__context__`, so "carries" overstated what INV-13 tests; the rule now says no traceback prints it. Both: "a bare `raise`" named a harmless re-raise as the defect. One: §7 let INV-13 skip its Windows route. Mine, before dispatch: the rolling log does not print a chain (`log.note` takes a string), so that reason was false. Calm cap; all four inside the armed span. The fixes are read by no lane; implementation reads them |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: the file store's read, change and replace hold one lock (§ 6, INV-8's test). |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0405: § 4.1 and § 4.3 gain `delete_each`, which a Turn off uses to delete under both names. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |

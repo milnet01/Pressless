@@ -151,7 +151,8 @@ def ensure(folder: Path) -> Path:
 site's `assets/` inside Pressless's own folder. PRESS-0007 decision 12 owns
 it; it lives here because Import and the Face both read it.
 
-**`paths.py` imports no other `pressless` module**, keeping the
+**`paths.py` imports no other `pressless` module but `os_reason`**, which
+imports nothing (PRESS-0401), keeping the
 direction PRESS-0001 INV-1 and PRESS-0002 INV-1 already enforce on
 their own side. Neither `settings.py` nor `credentials.py` may import
 it: doing so would make them derive their own folder, which PRESS-0001
@@ -384,7 +385,8 @@ thing nothing backs up.
 
 ## 5. Invariants
 
-- **INV-1** — `paths.py` imports no other `pressless` module.
+- **INV-1** — `paths.py` imports no other `pressless` module but
+  `pressless.os_reason`, which imports nothing (PRESS-0401).
   *Test:* `tests/test_paths.py::test_paths_imports_nothing_of_ours`,
   walking the module's AST as PRESS-0001 INV-1 does.
   *Breaks when:* `paths` is changed to read `settings.FILE_NAME` to
@@ -394,7 +396,7 @@ thing nothing backs up.
   **The other half of §4.2's rule is already locked and is not
   restated here.** `settings.py` and `credentials.py` importing
   `paths` would be caught by PRESS-0001 INV-1 and PRESS-0002 INV-1,
-  which ban importing any other `pressless` module. An invariant here
+  which ban importing any `pressless` module they do not name. An invariant here
   covering that would claim a test it does not own.
 
 - **INV-2** — Frozen on Linux, `artefact_path()` returns the path in
@@ -684,6 +686,7 @@ against it, and throw it away.
 | 3 | 2026-09-11 | 3, cold — genre pinned `spec`; gating the path-free `FolderUnusable` row (PRESS-0117). Windows, PyInstaller and AppImage unrunnable | 0 | 3 | 1 | 0 | **Four verified: three fixed, one surfaced on PRESS-0011. One loop only, by user instruction: not converged.** All three lanes: INV-5 still named the tried path, and the self-check report printed an absolute path the double-click shows; the report's `folder:` is now relative and reads `Pressless-data` on a correct build. `NotPackaged` no longer names what the variable held. The design label "the Pressless folder" is confusable with `Pressless/` on Windows; the row now defers to design.md, and the label is PRESS-0011's to change. |
 | 2-post | 2026-09-02 | **No reviewer was dispatched.** Author-side, after the cap, while answering the section 15 questions | 1 | 0 | 1 | 0 | **Two findings, two fixed. Not a review loop** — the gate ended at loop 2's violent cap and is not re-run; this row exists because a row no dispatched review produced is otherwise written by nobody. **Q1: `scripts/local-ci.sh` cannot run on `windows-latest` as section 7 step 1 requires it to**, and section 7 was written without checking the script. It invokes `python3`, a spelling the Windows installer does not create, and its leak sweep walks `git rev-list --all`, which a shallow clone answers falsely — the exact failure `ci.yml`'s own `fetch-depth: 0` comment describes. Both are now named in step 1 and in section 11 as this item's to fix. Found by reading the script after lane D asked whether it was runnable there and I asserted section 7 without opening it. **Q3: section 15's two questions are decided** by the user — the folder stays `Pressless-data`, and the Windows batch file stays because section 4.5's program prints and exits, so a bare double-clicked `.exe` would close before it could be read. Both moved to section 3 as decisions 5 and 6, and section 15 is now empty. **Verified separately and NOT a finding:** `windows-latest` (Server 2025) does ship Python 3.9 to 3.13, so section 7 step 2's claim that no clean room can be made there holds. |
 | 4 | 2026-09-27 | 2, cold, run one after the other; every lane held every question. Gating the PRESS-0150 amendment (§4.4 lock file, INV-9, INV-10). Windows runner and the tag-triggered workflow unrunnable; the lock was installed, gated, frozen and tampered with locally | 0 | 3 | 0 | 0 | **Three verified, three fixed, none dismissed; both lanes found all three.** "No other install" forbade §7's apt keyring step; §11 still said the manifest pins PyInstaller; §4.4 kept "appears in no manifest". Loop 1 of this run at the user's one-round budget, so the cap binds: calm, no earlier loop to repair. All three inside the armed change (0fd9593). |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 and § 4.2 let `paths.py` import `pressless.os_reason`, which imports nothing. |
 
 ## 13. Resource cost
 

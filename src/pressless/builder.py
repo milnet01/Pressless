@@ -32,7 +32,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageOps, ImageSequence
 
-from pressless import blocks, jpegxl, marks, store, votes
+from pressless import blocks, jpegxl, marks, os_reason, store, votes
 from pressless.safe_write import patiently
 from pressless.settings import Settings
 
@@ -512,14 +512,14 @@ def _replace(into: Path, folder: Path, publishing: bool, write):
             _remove(old)
         new.mkdir()
     except OSError as exc:
-        raise SiteFolderUnusable(f"{shown} could not be prepared: {_why(exc)}") from None
+        raise SiteFolderUnusable(f"{shown} could not be prepared: {os_reason.of(exc)}") from None
 
     try:
         result = write(new)
     except BaseException as exc:
         shutil.rmtree(new, ignore_errors=True)
         if isinstance(exc, OSError):
-            raise SiteFolderUnusable(f"{shown} could not be written: {_why(exc)}") from None
+            raise SiteFolderUnusable(f"{shown} could not be written: {os_reason.of(exc)}") from None
         raise
 
     # On the Windows box these renames were refused for a moment ("Access is
@@ -535,7 +535,7 @@ def _replace(into: Path, folder: Path, publishing: bool, write):
             except OSError:
                 pass  # the next build renames it back (§4.8)
         shutil.rmtree(new, ignore_errors=True)
-        raise SiteFolderUnusable(f"{shown} could not be replaced: {_why(exc)}") from None
+        raise SiteFolderUnusable(f"{shown} could not be replaced: {os_reason.of(exc)}") from None
     # Not a failed build if this fails: the next one removes it (§4.8).
     shutil.rmtree(old, ignore_errors=True)
     return result
@@ -562,10 +562,6 @@ def _refuse_a_folder_it_did_not_make(into: Path, shown: str, produced: tuple[str
             raise SiteFolderUnusable(
                 f"{shown} holds {child.name}, which Pressless does not make, "
                 f"so the folder was left as it is")
-
-
-def _why(exc: OSError) -> str:
-    return exc.strerror or type(exc).__name__
 
 
 # ------------------------------------------------------------ dates (§4.3) --
@@ -1300,7 +1296,7 @@ class _Build:
                                   f"{largest_slots()['mib']} MiB")
             data = original.read_bytes()
         except OSError as exc:
-            raise BuildStopped(f"the file {name} could not be read: {_why(exc)}") from None
+            raise BuildStopped(f"the file {name} could not be read: {os_reason.of(exc)}") from None
         if not file_allowed(name, data):
             raise BuildStopped(f"the file {name} is not the kind of file its name says")
         self.write_bytes(f"{store.FILES_FOLDER}/{name}", data)
@@ -1486,7 +1482,8 @@ class _Build:
             try:
                 data = path.read_bytes()
             except OSError as exc:
-                raise store.StoreError(f"{relative} could not be read: {_why(exc)}") from None
+                raise store.StoreError(
+                    f"{relative} could not be read: {os_reason.of(exc)}") from None
             self.write_bytes(SOURCE_COPY + relative, data)
 
     # -- sitemap.xml and robots.txt (§4.9) --

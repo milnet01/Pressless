@@ -33,7 +33,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote, unquote
 
-from pressless import blocks, builder, menu, safe_write, sitefile, starter, store, templates
+from pressless import (
+    blocks,
+    builder,
+    menu,
+    os_reason,
+    safe_write,
+    sitefile,
+    starter,
+    store,
+    templates,
+)
 from pressless.words import say
 
 from . import Dropped, ImportStopped, Report, _writing, resolve_slug
@@ -240,7 +250,7 @@ def _writing_here() -> Iterator[None]:
     try:
         yield
     except OSError as exc:
-        raise _NotWritten(exc.strerror or type(exc).__name__) from None
+        raise _NotWritten(os_reason.of(exc)) from None
 
 
 def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> None:
@@ -256,7 +266,7 @@ def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> Non
             out = open(target, "wb")  # noqa: SIM115 -- closed below
         except OSError as exc:
             left.append((path, say("import.folder.why.unwritable",
-                                   why=exc.strerror or type(exc).__name__)))
+                                   why=os_reason.of(exc))))
             continue
         with held.open(info) as unpacked, out:
             while piece := unpacked.read(_PIECE):     # a read failure is the ZIP's

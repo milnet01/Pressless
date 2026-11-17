@@ -185,3 +185,21 @@ def test_each_look_turns_dark_with_the_computer_and_names_no_other_colour(tmp_pa
     # PRESS-0196 § 4.2: the four measures beside the colours, and nothing else.
     measures = {"body-font", "heading-font", "text-size", "width"}
     assert set(re.findall(r"var\(--([a-z-]+)\)", rules)) <= set(starter_look.COLOURS) | measures
+
+
+def test_a_write_failing_without_a_reason_names_its_type(tmp_path, monkeypatch):
+    """PRESS-0401: an OSError raised with no `strerror` gives its type's name,
+    as every other part's failure does, rather than the word 'None'.
+
+    Breaks when starter reads `strerror` alone again."""
+    def refuse(*args, **kwargs):
+        raise OSError()
+
+    monkeypatch.setattr(starter.Path, "write_bytes", refuse)
+    with pytest.raises(store.StoreError) as marker:
+        starter.fill(tmp_path, "A site")
+    monkeypatch.setattr(starter, "write_whole", refuse)
+    with pytest.raises(store.StoreError) as filled:
+        starter._note_filled(tmp_path, {})
+    for caught in (marker, filled):
+        assert str(caught.value).endswith("could not be written: OSError"), str(caught.value)

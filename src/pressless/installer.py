@@ -23,6 +23,8 @@ import time
 from collections.abc import MutableMapping
 from pathlib import Path
 
+from pressless import os_reason
+
 
 class UpdateError(Exception):
     """An update did not happen. The base of every update failure (§ 4.10)."""
@@ -137,12 +139,6 @@ def _stamp(log: Path, word: str, *, first: bool = False) -> None:
         pass
 
 
-def _reason(exc: OSError) -> str:
-    """An error's own words, never its message, which names the path
-    (docs/design.md § Logging)."""
-    return exc.strerror or type(exc).__name__
-
-
 def _helper_environment() -> dict[str, str]:
     """The environment the new program starts in, and on Windows the helper
     that starts it (FIBR-0122). PYINSTALLER_RESET_ENVIRONMENT makes the new
@@ -190,7 +186,7 @@ def apply_linux(appimage: Path, staged: Path, folder: Path) -> None:
     except OSError as exc:
         staged.unlink(missing_ok=True)
         raise InstallFailed(f"the new version could not replace the old: "
-                            f"{_reason(exc)}") from exc
+                            f"{os_reason.of(exc)}") from exc
     _stamp(Path(folder) / LOG_NAME, "swapped", first=True)
 
 
@@ -268,4 +264,4 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
         script.unlink(missing_ok=True)
         shutil.rmtree(staged, ignore_errors=True)
         raise InstallFailed(f"the updater could not be started: "
-                            f"{_reason(exc)}") from exc
+                            f"{os_reason.of(exc)}") from exc

@@ -27,7 +27,7 @@ from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.credentials as credentials_module
-from pressless import safe_write
+from pressless import os_reason, safe_write
 from pressless.credentials import (
     Choice,
     CredentialError,
@@ -131,8 +131,9 @@ def _imports(module) -> tuple[set[str], list]:
 
 def test_credentials_imports_no_sibling():
     """INV-1: credentials.py imports no other pressless module but
-    pressless.safe_write, which imports no pressless module itself, so the
-    rule holds through it (PRESS-0141).
+    pressless.safe_write and pressless.os_reason, which import no pressless
+    module themselves, so the rule holds through them (PRESS-0141,
+    PRESS-0401).
 
     Walks each module's AST, as test_settings_imports_nothing_forbidden does.
 
@@ -146,8 +147,9 @@ def test_credentials_imports_no_sibling():
     """
     imported, relative = _imports(credentials_module)
     ours = {name for name in imported if name.split(".")[0] == "pressless"}
-    assert ours <= {"pressless.safe_write"}, (
-        f"credentials.py imports {ours - {'pressless.safe_write'}!r}. INV-1 "
+    allowed = {"pressless.safe_write", "pressless.os_reason"}
+    assert ours <= allowed, (
+        f"credentials.py imports {ours - allowed!r}. INV-1 "
         "keeps the Publisher's one documented way in singular"
     )
     assert not relative, (
@@ -155,9 +157,10 @@ def test_credentials_imports_no_sibling():
         f"{[n.module for n in relative]!r}, which can only name a "
         f"sibling pressless module"
     )
-    helper, helper_relative = _imports(safe_write)
-    assert not {name for name in helper if name.split(".")[0] == "pressless"}, helper
-    assert not helper_relative
+    for leaf in (safe_write, os_reason):
+        helper, helper_relative = _imports(leaf)
+        assert not {name for name in helper if name.split(".")[0] == "pressless"}, helper
+        assert not helper_relative, leaf.__name__
 
 
 def test_windows_never_writes_a_file(tmp_path, monkeypatch):

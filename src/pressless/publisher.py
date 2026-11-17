@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from pressless import https
+from pressless import https, os_reason
 from pressless.settings import Settings
 
 API = "https://api.github.com"
@@ -698,7 +698,7 @@ def _fetch(session: _Session, repository: str, commit: str,
 
     def not_written(exc: OSError) -> FetchNotWritten:
         return FetchNotWritten(
-            f"the fetched state could not be written to the fetch area: {_why(exc)}")
+            f"the fetched state could not be written to the fetch area: {os_reason.of(exc)}")
 
     try:
         # Staged inside `into` rather than beside it, so the move at the end
@@ -971,17 +971,6 @@ def _without_account(url: str) -> str:
     return url
 
 
-def _why(exc: OSError) -> str:
-    """The reason an OSError carries, never its own words.
-
-    `str(exc)` on a stock file error quotes the path it failed on, and
-    `docs/design.md` § Logging forbids a full filesystem path in anything
-    Pressless shows or writes down. `strerror` is the reason alone. It is
-    absent on an OSError raised without one, so the type stands in.
-    """
-    return exc.strerror or type(exc).__name__
-
-
 def _segment(value: str) -> str:
     """A value safe to put in a URL path (PRESS-0069).
 
@@ -1033,7 +1022,8 @@ def _entries(folder: Path, untouchable: tuple[str, ...]) -> list[Path]:
             children = list(here.iterdir())
         except OSError as exc:
             if here == folder:
-                raise PublishError(f"the site folder could not be read: {_why(exc)}") from exc
+                raise PublishError(
+                    f"the site folder could not be read: {os_reason.of(exc)}") from exc
             raise _unreadable(here.relative_to(folder).as_posix(), exc) from exc
         for path in children:
             relative = path.relative_to(folder).as_posix()
@@ -1100,7 +1090,7 @@ def _unreadable(relative: str, exc: OSError) -> PublishError:
     """A file the writer cannot read is still a file in the site folder;
     the bare OSError was neither of §4.1's types (PRESS-0073)."""
     return PublishError(
-        f"{relative} is in the site folder but could not be read: {_why(exc)}")
+        f"{relative} is in the site folder but could not be read: {os_reason.of(exc)}")
 
 
 def _hash_file(relative: str, path: Path) -> str:

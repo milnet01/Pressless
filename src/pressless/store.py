@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
 
+import pressless.os_reason as os_reason
 import pressless.safe_write as safe_write
 from pressless.safe_write import patiently, write_whole
 from pressless.words import ENGLISH
@@ -731,16 +732,11 @@ def _why(exc: Exception) -> str:
     """The reason an error carries, never its own words.
 
     A stock file error quotes the path it failed on, and PRESS-0005 § 4.4
-    forbids a full path in anything the Store raises or emits. `strerror` is
-    the reason alone. A UnicodeError names no path, so its own words stand.
-    Duplicated on purpose, since design rule 7 forbids reaching into another
-    part: credentials.py, settings.py, builder.py and publisher.py hold their
-    own. This one differs in taking any Exception and answering str(exc) for
-    one that is not an OSError.
+    forbids a full path in anything the Store raises or emits, so an OSError
+    gives `os_reason.of`'s reason alone. A UnicodeError names no path, so its
+    own words stand.
     """
-    if isinstance(exc, OSError):
-        return exc.strerror or type(exc).__name__
-    return str(exc)
+    return os_reason.of(exc) if isinstance(exc, OSError) else str(exc)
 
 
 # ---------------------------------------------------------------------------

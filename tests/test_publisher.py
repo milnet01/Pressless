@@ -283,7 +283,8 @@ class _Transport:
 
 def test_publisher_imports_no_forbidden_sibling():
     """INV-1: publisher.py imports no pressless module other than
-    pressless.settings.
+    pressless.settings, pressless.https and pressless.os_reason, which
+    imports nothing (PRESS-0401).
 
     Walks the module's AST, as test_settings_imports_nothing_forbidden
     does.
@@ -316,7 +317,8 @@ def test_publisher_imports_no_forbidden_sibling():
                 else:
                     pressless_imports.add(node.module)
 
-    forbidden = pressless_imports - {"pressless.settings", "pressless.https"}
+    forbidden = pressless_imports - {"pressless.settings", "pressless.https",
+                                     "pressless.os_reason"}
     assert not forbidden, (
         f"publisher.py imports {sorted(forbidden)!r}, not just "
         f"pressless.settings -- this is the breach of docs/design.md "

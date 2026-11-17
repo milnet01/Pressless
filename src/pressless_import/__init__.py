@@ -35,7 +35,7 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
-from pressless import store
+from pressless import os_reason, store
 from pressless.marks import render
 from pressless.paths import PREVIEW_ASSETS
 
@@ -605,7 +605,7 @@ def _read_text(path: Path, shown: str) -> str:
         return path.read_bytes().decode("utf-8")
     except OSError as exc:
         raise ImportStopped(
-            f"{shown} could not be read: {exc.strerror or type(exc).__name__}") from None
+            f"{shown} could not be read: {os_reason.of(exc)}") from None
     except UnicodeDecodeError:
         raise ImportStopped(f"{shown} is not UTF-8") from None
 
@@ -707,7 +707,7 @@ def _writing(what: str) -> Iterator[None]:
         raise ImportStopped(f"the Store refused {what}: {exc}") from None
     except OSError as exc:
         raise ImportStopped(
-            f"{what} could not be written: {exc.strerror or type(exc).__name__}") from None
+            f"{what} could not be written: {os_reason.of(exc)}") from None
 
 
 def _entry(item: _Item, body: str) -> store.Entry:

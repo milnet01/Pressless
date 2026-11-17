@@ -25,3 +25,4 @@
 | impl | 2026-11-06 | none — amendment for PRESS-0088; no reviewer dispatched | 0 | 0 | 0 | 0 | **INV-13 added.** Files are hashed when read and read again to be sent; a changed file refuses the publish. A 500 MiB site's measured peak fell from 717 to 267 MiB. |
 | impl | 2026-11-06 | none — pointer for PRESS-0345; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.1 notes `plan`, added by PRESS-0345. |
 | fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0377 amended § 4.3: a 403 whose message names the rate limit is a hint, waited out at GitHub's documented minute. § 4.4: nothing on the untouchable list is read. Two § 10 rows added. The log moved here from § 12. No direction changed, so no gate. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 admits `pressless.os_reason`, which imports nothing. |

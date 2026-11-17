@@ -22,6 +22,7 @@ from pathlib import Path
 import keyring
 import keyring.errors
 
+import pressless.os_reason as os_reason
 import pressless.safe_write as safe_write
 from pressless.safe_write import write_whole
 
@@ -64,21 +65,6 @@ class CredentialError(Exception):
 
 # Every failure this module raises, for a caller that catches them all.
 FAILURES = (NoStore, NotStored, CredentialError)
-
-
-def _why(exc: OSError) -> str:
-    """The reason an OSError carries, never its own words.
-
-    `str(exc)` on a stock file error quotes the path it failed on, and
-    `docs/design.md` § Logging forbids a full filesystem path in anything
-    Pressless shows or writes down. `strerror` is the reason alone. It is
-    absent on an OSError raised without one, so the type stands in.
-
-    Copied rather than shared: §5 INV-1 lets this module import no
-    `pressless` module but `safe_write`, whose contract is the file-writing
-    steps alone, so a shared copy would need INV-1 changed first.
-    """
-    return exc.strerror or type(exc).__name__
 
 
 def choose() -> Choice:
@@ -411,7 +397,7 @@ def _save(target: Path, data: dict) -> None:
         write_whole(target, text, prefix=".credentials-", check=_refuse_a_wide_grant)
     except OSError as exc:
         raise CredentialError(
-            f"the credentials file could not be written: {_why(exc)}"
+            f"the credentials file could not be written: {os_reason.of(exc)}"
         ) from None
 
 
@@ -481,7 +467,7 @@ def _read_mapping(target: Path) -> dict | None:
         return None
     except OSError as exc:
         raise CredentialError(
-            f"the credentials file could not be read: {_why(exc)}"
+            f"the credentials file could not be read: {os_reason.of(exc)}"
         ) from None
     except UnicodeDecodeError:  # a ValueError, not an OSError (PRESS-0135)
         raise CredentialError(

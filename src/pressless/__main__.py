@@ -50,6 +50,7 @@ from pressless import (
     jpegxl_screen,
     look_screen,
     manual,
+    os_reason,
     overview,
     page_editor,
     paths,
@@ -214,7 +215,7 @@ def _serve_behind_lock(own: Path, updates: updating.Updates) -> int:
         failed = sites.move_in(own)
         stopped = None if failed is None else say(
             "main.moving_in", folder=own.name,
-            reason=failed.strerror or type(failed).__name__)
+            reason=os_reason.of(failed))
         # PRESS-0125 § 4.7: an Import stopped part way through its moves
         # finishes before anything reads that site.
         for site in sites.all_sites(own):

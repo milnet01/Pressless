@@ -30,7 +30,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pressless import installer, paths, safe_write
+from pressless import installer, os_reason, paths, safe_write
 from pressless.words import say
 
 _ENTRY = "pressless.desktop"   # Linux, in the menu folder and on the desktop
@@ -66,7 +66,7 @@ class ShortcutError(Exception):
 def _failed(what: str, exc: OSError) -> ShortcutError:
     """`what`, with the error's own words: never its message, which names
     the path (docs/design.md § Logging)."""
-    return ShortcutError(f"{what}: {exc.strerror or type(exc).__name__}")
+    return ShortcutError(f"{what}: {os_reason.of(exc)}")
 
 
 @dataclasses.dataclass(frozen=True)

@@ -51,7 +51,8 @@ def _frozen_linux(monkeypatch, tmp_path: Path, *, appimage: Path | None) -> Path
 
 
 def test_paths_imports_nothing_of_ours():
-    """INV-1: paths.py imports no other pressless module.
+    """INV-1: paths.py imports no other pressless module but os_reason,
+    which imports nothing (PRESS-0401).
 
     Walks the module's AST, as test_credentials_imports_no_sibling does.
 
@@ -63,13 +64,16 @@ def test_paths_imports_nothing_of_ours():
     relative = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            imported.update(alias.name.split(".")[0] for alias in node.names)
+            imported.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             if node.level:
                 relative.append(node)
+            elif node.module == "pressless":
+                imported.update(f"pressless.{alias.name}" for alias in node.names)
             elif node.module:
-                imported.add(node.module.split(".")[0])
-    assert "pressless" not in imported, "paths.py imports another pressless module (INV-1)"
+                imported.add(node.module)
+    ours = {name for name in imported if name.split(".")[0] == "pressless"}
+    assert ours <= {"pressless.os_reason"}, f"paths.py imports {ours!r} (INV-1)"
     assert not relative, "paths.py has a relative import, which reaches a sibling (INV-1)"
 
 

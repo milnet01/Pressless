@@ -23,7 +23,7 @@ from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.settings as settings_module
-from pressless import _flag_data, marks, safe_write, words
+from pressless import _flag_data, marks, os_reason, safe_write, words
 from pressless.settings import (
     Credentials,
     NotSetUp,
@@ -118,8 +118,9 @@ def _calls(module) -> set[str]:
 
 def test_settings_imports_nothing_forbidden():
     """INV-1: settings.py imports no network module and no other pressless
-    module but pressless.safe_write, which imports neither, so the rule holds
-    through it, and pressless.words (PRESS-0242). settings.py calls neither
+    module but pressless.safe_write and pressless.os_reason, which import
+    neither, so the rule holds through them, and pressless.words (PRESS-0242,
+    PRESS-0401). settings.py calls neither
     tempfile.mkstemp nor os.fsync itself, so §4.4's steps are not copied back
     (PRESS-0141).
 
@@ -137,7 +138,7 @@ def test_settings_imports_nothing_forbidden():
     top = {name.split(".")[0] for name in imported}
     ours = {name for name in imported if name.split(".")[0] == "pressless"}
     assert not top & _FORBIDDEN_TOP_LEVEL_IMPORTS, top & _FORBIDDEN_TOP_LEVEL_IMPORTS
-    allowed = {"pressless.safe_write", "pressless.words"}
+    allowed = {"pressless.safe_write", "pressless.words", "pressless.os_reason"}
     assert ours <= allowed, (
         f"settings.py imports {ours - allowed!r}. Its row in docs/design.md § The "
         f"parts is 'depends on nothing': no other part but the words table, which "
@@ -147,10 +148,11 @@ def test_settings_imports_nothing_forbidden():
         f"settings.py has relative import(s) {[n.module for n in relative]!r}, "
         f"which can only name a sibling pressless module"
     )
-    helper, helper_relative = _imports(safe_write)
-    helper_top = {name.split(".")[0] for name in helper}
-    assert not helper_top & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"}), helper_top
-    assert not helper_relative
+    for leaf in (safe_write, os_reason):
+        helper, helper_relative = _imports(leaf)
+        helper_top = {name.split(".")[0] for name in helper}
+        assert not helper_top & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"}), helper_top
+        assert not helper_relative, leaf.__name__
     # The words table builds from two modules and nothing else, so the rule
     # holds through it as well (PRESS-0242).
     table_parts = {alias.name for node in ast.walk(ast.parse(inspect.getsource(words)))

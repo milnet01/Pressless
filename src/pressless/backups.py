@@ -23,7 +23,7 @@ import threading
 import time
 from pathlib import Path
 
-from pressless import sitefile, sites
+from pressless import os_reason, sitefile, sites
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -166,7 +166,7 @@ def make_due(own: Path, today: datetime.date) -> str | None:
 
 def _trouble(own: Path, failed: BaseException) -> str:
     return say("backups.trouble", folder=folder_of(own).name,
-               reason=getattr(failed, "strerror", None) or type(failed).__name__)
+               reason=os_reason.of(failed))
 
 
 def clear_leftovers(own: Path) -> None:

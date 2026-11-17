@@ -43,6 +43,7 @@ from pressless import (
     insights,
     log,
     look,
+    os_reason,
     paths,
     publisher,
     settings,
@@ -588,7 +589,7 @@ def _open_folder(folder: Path) -> None:
         )
     except OSError as exc:
         raise FolderNotOpened(
-            f"the opener could not start: {exc.strerror or type(exc).__name__}"
+            f"the opener could not start: {os_reason.of(exc)}"
         ) from None
     try:
         code = opener.wait(timeout=_OPENER_SECONDS)

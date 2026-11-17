@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pressless import blocks, builder, look, menu, sitefile, starter, store, templates
+from pressless import blocks, builder, look, menu, os_reason, sitefile, starter, store, templates
 
 from . import (
     _DRAFT_STATUSES,
@@ -516,7 +516,7 @@ def _held(channel, ns, media: Path):
             data = (media / place).read_bytes()
         except OSError as exc:
             # A held file that cannot be had never stops Import (INV-5).
-            unheld.append((place, f"it could not be read: {exc.strerror or type(exc).__name__}"))
+            unheld.append((place, f"it could not be read: {os_reason.of(exc)}"))
             continue
         if builder.file_allowed(name, data):
             kept[place] = (store.FILES_FOLDER, name)
@@ -734,7 +734,7 @@ def finish(into: Path) -> str | None:
         moving.unlink()
     except OSError as exc:
         return ("Pressless could not finish moving the site it brought in into place: "
-                f"{exc.strerror or type(exc).__name__}. Nothing was lost. Close anything "
+                f"{os_reason.of(exc)}. Nothing was lost. Close anything "
                 "using that folder and start Pressless again.")
     shutil.rmtree(work, ignore_errors=True)
     shutil.rmtree(held_folder / MEDIA_FOLDER, ignore_errors=True)
