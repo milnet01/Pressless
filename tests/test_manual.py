@@ -151,6 +151,17 @@ def test_a_missing_manual_says_so(tmp_path):
     assert 'href="/manual"' in page   # the Help link still shows
 
 
+def test_a_byte_order_mark_does_not_hide_the_first_line(tmp_path):
+    """A text file saved with a byte-order mark, as older Windows editors do,
+    reads as one saved without. Breaks when the mark stays on the first line,
+    which then reads as paragraph words rather than a task."""
+    (tmp_path / "en.txt").write_bytes("﻿== first | One\n1. a\n".encode())
+    status, page = _served(tmp_path, ADDRESS, folder=tmp_path)
+    assert status == 200
+    assert '<section id="first"' in page, page
+    assert "﻿" not in page
+
+
 def test_tasks_are_sections_in_file_order():
     page = manual.render("== first | One\n1. a\n\n== second | Two\nwords\n")
     assert page.index('<section id="first"') < page.index('<section id="second"')

@@ -140,7 +140,9 @@ _SCRIPT = r"""
 def _page(folder: Path):
     def page(request: Request) -> str:
         try:
-            text = (folder / f"{LANGUAGE}.txt").read_text(encoding="utf-8")
+            # utf-8-sig: a byte-order mark, which older Windows editors write,
+            # would otherwise turn a first-line construct into paragraph words.
+            text = (folder / f"{LANGUAGE}.txt").read_text(encoding="utf-8-sig")
         except (OSError, UnicodeDecodeError) as exc:
             raise ManualMissing("the manual's text could not be read") from exc
         body = render(text)
