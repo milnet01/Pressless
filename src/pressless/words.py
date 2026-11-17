@@ -885,9 +885,12 @@ _WORDS: dict[str, str] = {
         "Pressless removed a file, CNAME, which named a domain this site does not use."
     ),
     "publishing.takeover.done.counts": (
-        "{uploaded} files were uploaded or changed, and {removed} were removed. All of it stays "
-        "in the repository's history."
+        "{uploaded}, and {removed}. All of it stays in the repository's history."
     ),
+    "publishing.takeover.done.uploaded.one": "1 file was uploaded or changed",
+    "publishing.takeover.done.uploaded.many": "{count} files were uploaded or changed",
+    "publishing.takeover.done.removed.one": "1 was removed",
+    "publishing.takeover.done.removed.many": "{count} were removed",
     "publishing.takeover.done.earlier": "An earlier press already published the site.",
     "publishing.takeover.done.wait": (
         "GitHub takes a few minutes to build the site the first time, so the old site may show "
@@ -1701,7 +1704,8 @@ _WORDS: dict[str, str] = {
     "import.media.wait": "Pressless is still copying. Wait until it says it has finished.",
     "import.media.retry": "Press Next to try copying them again.",
     "import.gaps.none": "Nothing is missing. Press Next.",
-    "import.gaps.list": "These {count} could not be copied from your old site:",
+    "import.gaps.list.one": "This one could not be copied from your old site:",
+    "import.gaps.list.many": "These {count} could not be copied from your old site:",
     "import.gaps.how": (
         "If you can, download the folder <b>wp-content/uploads</b> from your web host as "
         "one ZIP file: most hosts' File Manager can compress a folder and download it. "
@@ -1709,7 +1713,8 @@ _WORDS: dict[str, str] = {
         "Next to go on without them; each is listed at the end."
     ),
     "import.gaps.choose": "Choose the ZIP file",
-    "import.gaps.filled": "{count} were taken from the ZIP file.",
+    "import.gaps.filled.one": "1 was taken from the ZIP file.",
+    "import.gaps.filled.many": "{count} were taken from the ZIP file.",
     "import.gaps.refused": (
         "That file could not be used. Choose a ZIP file of the uploads folder."
     ),

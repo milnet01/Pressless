@@ -174,7 +174,8 @@ def register(face: Face, folder: Path) -> None:
             return f"<p>{say('import.gaps.none')}</p>"
         rows = "".join(f"<li>{_shown(place)}: {_shown(why)}</li>"
                        for place, why in sorted(left.items()))
-        return (f"<p>{say('import.gaps.list', count=str(len(left)))}</p><ul>{rows}</ul>"
+        listed = _counted(len(left), "import.gaps.list.one", "import.gaps.list.many")
+        return (f"<p>{listed}</p><ul>{rows}</ul>"
                 f"<p>{say('import.gaps.how')}</p>"
                 + face_module.file_box("import-media", ".zip", f"{ADDRESS}/media",
                                          say("import.gaps.choose")))
@@ -272,7 +273,8 @@ def register(face: Face, folder: Path) -> None:
             if state.export == export:
                 safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
                                        prefix=".unfetched-")
-        return shown_again(f"<p>{say('import.gaps.filled', count=str(len(filled)))}</p>")
+        taken = _counted(len(filled), "import.gaps.filled.one", "import.gaps.filled.many")
+        return shown_again(f"<p>{taken}</p>")
 
     def offer() -> str:
         return setup.import_offer() if empty() else ""

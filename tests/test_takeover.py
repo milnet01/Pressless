@@ -555,6 +555,20 @@ def test_the_report_says_what_changed(tmp_path, monkeypatch):
         assert "still comes from GitHub" not in browser.request("GET", "/")[2]
 
 
+def test_one_file_uploaded_and_one_removed_take_the_singular(tmp_path):
+    """INV-14's counts, read by a person. Breaks when a count of one is
+    written into a plural sentence ("1 files were")."""
+    shown = publisher.Pages(on=True, address=None, serves_root=False, built_by_actions=True)
+
+    def told(uploaded: int, removed: int) -> str:
+        outcome = publisher.Outcome(commit="abc", uploaded=("a",) * uploaded,
+                                    removed=("b",) * removed)
+        return publishing._takeover_report(_settings(tmp_path), shown, (), False, outcome)
+
+    assert "1 file was uploaded or changed, and 1 was removed." in told(1, 1)
+    assert "2 files were uploaded or changed, and 0 were removed." in told(2, 0)
+
+
 def test_the_marker_moves_with_the_site():
     """§ 4.3: a site opened from a file still owes the takeover."""
     from pressless import sitefile, sites

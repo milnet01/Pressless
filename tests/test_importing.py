@@ -415,6 +415,33 @@ def test_a_media_download_before_the_fetch_ends_is_refused(tmp_path, monkeypatch
     assert "2012/05/a.jpg" in unfetched.read_text(encoding="utf-8")
 
 
+def test_one_gap_and_one_filled_take_the_singular(tmp_path, monkeypatch):
+    """PRESS-0294's rule on the gaps step: one file left out, then filled
+    from a ZIP, reads in the singular.
+
+    Breaks when a count is written into a plural sentence ("These 1",
+    "1 were")."""
+    def fetch_all(export, media, room, *, progress):
+        return {"2012/05/a.jpg": "the old site answered 404"}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        _next(browser, "export")
+        _fetch_ended(folder)
+        gaps = _through_fetching(browser)
+        _status, _headers, filled = browser.raw(
+            "POST", f"{importing.ADDRESS}/media", _zipped({"2012/05/a.jpg": b"x"}))
+    finally:
+        served.stop()
+    assert "This one could not be copied from your old site:" in gaps, gaps
+    assert "1 was taken from the ZIP file." in filled.decode("utf-8"), filled
+
+
 def test_an_export_handed_over_during_a_fetch_is_fetched_afresh(tmp_path, monkeypatch):
     """§ 4.4: where a new export arrives while the last one's fetch runs, that
     fetch's answer is not kept, and the new export is fetched.

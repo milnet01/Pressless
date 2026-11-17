@@ -808,9 +808,13 @@ def _takeover_report(final: settings.Settings, shown: publisher.Pages, files: tu
         rows.append(say("publishing.takeover.done.added_domain"))
     if stale:
         rows.append(say("publishing.takeover.done.stale"))
+    uploaded, removed = len(outcome.uploaded), len(outcome.removed)
     rows.append(say("publishing.takeover.done.earlier") if not outcome.commit else say(
         "publishing.takeover.done.counts",
-        uploaded=len(outcome.uploaded), removed=len(outcome.removed)))
+        uploaded=say("publishing.takeover.done.uploaded.one") if uploaded == 1 else say(
+            "publishing.takeover.done.uploaded.many", count=str(uploaded)),
+        removed=say("publishing.takeover.done.removed.one") if removed == 1 else say(
+            "publishing.takeover.done.removed.many", count=str(removed))))
     return (f"<h1>{say('publishing.takeover.done.heading')}</h1><ul>"
             + "".join(f"<li>{row}</li>" for row in rows) + "</ul>"
             + f"<p>{say('publishing.takeover.done.wait')}</p>"
