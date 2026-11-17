@@ -200,6 +200,12 @@ refuses Home's name, and no screen makes a part. *Put your site on the web*
 stays to do until the Store holds a published entry or a pressed page or
 part, its link opening the Pages screen (PRESS-0419).
 
+**A site imported into it** (PRESS-0125, PRESS-0210) holds live pages that
+Pressless has not published. Before either wizard brings it in,
+`publishing.mark_imported` writes `publishing.IMPORTED` in the import's own
+folder. *Put your site on the web* stays to do while that file exists, and a
+publish that lands removes it (PRESS-0422).
+
 ### 4.5 Publishing
 
 In `publishing.publish`, the guard step gains a check that runs first:

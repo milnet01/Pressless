@@ -424,6 +424,10 @@ _WORDS: dict[str, str] = {
         "Pressless could not note that your starter site is now published, so your next "
         "publish will ask once more before it replaces a site."
     ),
+    "notice.publishing.import_kept": (
+        "Pressless could not note that your site is now published, so Finish setting up "
+        "still lists putting it on the web until your next publish."
+    ),
     # "A waiting draft", not "the draft of your changes": a copy of a demoted
     # entry bins two drafts, and a failure between them leaves the OLD one
     # (PRESS-0162).

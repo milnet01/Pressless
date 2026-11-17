@@ -18,15 +18,17 @@ import pytest
 from _face_session import Browser
 from PIL import Image
 from test_importer import _export, _item
-from test_publishing import _settings
+from test_publishing import KEY, _github, _settings
 
 import pressless_import
 from pressless import (
+    checklist,
     editor,
     face,
     files_screen,
     importing,
     page_editor,
+    publishing,
     settings,
     setup,
     sitefile,
@@ -725,3 +727,36 @@ def test_both_offers_name_the_folder_wizard():
 
     assert FOLDER_ADDRESS in setup._done(final(), None, False, empty=True)
     assert setup.import_offer().count('href="') == 2 and FOLDER_ADDRESS in setup.import_offer()
+
+
+def _web_step_done(folder: Path) -> bool:
+    """Whether Finish setting up shows Put your site on the web done; a list
+    gone because every step is done counts too."""
+    row = re.search(r'<li class="(done|to-do)">(?:(?!<li).)*?Put your site on the web',
+                    checklist.render(folder), re.S)
+    return row is None or row.group(1) == "done"
+
+
+@pytest.mark.parametrize("how", ["wordpress", "folder"])
+def test_an_imported_site_is_not_on_the_web_until_pressless_publishes_it(tmp_path, how):
+    """PRESS-0422, PRESS-0126 § 4.4. Either import brings in live pages or
+    entries, none of which Pressless has sent to the web. Breaks when an
+    import ticks Put your site on the web, or a landed publish leaves it
+    unticked."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    store.write_identity(folder, store.Identity("Field Notes"))
+    served, browser = _serve(folder)
+    try:
+        if how == "folder":
+            _handed_over(browser, SMALL_SITE)
+            for step in ("folder", "found", "bring"):
+                _folder_step(browser, step)
+        else:
+            _bring_in(browser, _export(_item(1, slug="one")))
+    finally:
+        served.stop()
+    assert store.holds_a_site(folder)
+    assert not _web_step_done(folder)
+    publishing.publish(folder, _settings(folder), KEY, entry=None, transport=_github())
+    assert _web_step_done(folder)

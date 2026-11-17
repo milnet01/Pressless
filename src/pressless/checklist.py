@@ -35,13 +35,15 @@ def render(folder: Path) -> str:
             # are on the web until the takeover's publish (PRESS-0393). A blank
             # site has no marker either, and has nothing on the web until
             # something of his is pressed; with no Home, the link opens the
-            # Pages screen, where a page is made (PRESS-0419).
+            # Pages screen, where a page is made (PRESS-0419). An imported
+            # site holds live pages, but none is on the web until a publish
+            # lands (PRESS-0422).
             ("checklist.publish",
              publishing.TAKEOVER_ADDRESS if takeover.owed(folder)
              else _HOME if _held(folder, store.PAGES_FOLDER, "index")
              else editor.PAGES_ADDRESS,
              not starter.unpublished(folder) and not takeover.owed(folder)
-             and _holds_live(folder)),
+             and not publishing.imported_unpublished(folder) and _holds_live(folder)),
         )
     except store.StoreError:
         return ""

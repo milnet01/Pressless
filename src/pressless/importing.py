@@ -25,7 +25,16 @@ from pathlib import Path
 
 import pressless_import
 from pressless import face as face_module
-from pressless import import_report, safe_write, setup, starter, store, takein, wizard
+from pressless import (
+    import_report,
+    publishing,
+    safe_write,
+    setup,
+    starter,
+    store,
+    takein,
+    wizard,
+)
 from pressless.face import Face, Reply, Request, message_box
 from pressless.import_report import counted as _counted
 from pressless.import_report import shown as _shown
@@ -202,6 +211,7 @@ def register(face: Face, folder: Path) -> None:
             if not empty():
                 # They held the whole site, and its Report was kept before them.
                 return wizard.Done(import_report.page(import_report.kept(held) or []))
+            publishing.mark_imported(folder)    # PRESS-0126 § 4.4: not on the web yet
             pressless_import.bring_in(held / _EXPORT, media, folder, answers.get("look", ""),
                                       unfetched=missing(), keep=keep)
         except pressless_import.ImportStopped as exc:
@@ -325,6 +335,7 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
 
     def check_bring(answers: wizard.Answers):
         try:
+            publishing.mark_imported(folder)    # PRESS-0126 § 4.4: not on the web yet
             brought = pressless_import.bring_in_folder(unpacked, folder, left=left_out())
         except pressless_import.ImportStopped as exc:
             return wizard.Stop(face.fail(exc, publishing=False))

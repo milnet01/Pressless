@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+import pressless_import
 from pressless import (
     builder,
     editor,
@@ -62,6 +63,24 @@ REPLACE_ADDRESS = "/publish/replace"
 TAKEOVER_ADDRESS = "/publish/takeover"
 PLAN_ADDRESS = "/publish/plan"
 SITE_ADDRESS = "/publish/site"
+
+# In the import's own folder, which moves with a site and is never published:
+# an empty file saying the site an import brought in is not yet on the web.
+# The publish that lands removes it, so Finish setting up waits for that
+# (PRESS-0126 § 4.4, PRESS-0422).
+IMPORTED = f"{pressless_import.IMPORT_FOLDER}/unpublished"
+
+
+def mark_imported(folder: Path) -> None:
+    """Note that an import is bringing in a site Pressless has not published.
+    An OSError is the caller's."""
+    marker = Path(folder) / IMPORTED
+    marker.parent.mkdir(exist_ok=True)
+    marker.touch()
+
+
+def imported_unpublished(folder: Path) -> bool:
+    return (Path(folder) / IMPORTED).is_file()
 
 
 # Each failure type below is registered in SENTENCES beside its class, here
@@ -234,7 +253,15 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         except OSError:
             warnings.warn(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
 
+    def forget_the_import() -> None:
+        # PRESS-0422: and so is a site an import brought in.
+        try:
+            (Path(folder) / IMPORTED).unlink(missing_ok=True)
+        except OSError:
+            warnings.warn(store.StoreNotice("notice.publishing.import_kept"), stacklevel=2)
+
     captured(forget_the_starter)
+    captured(forget_the_import)
     return Published(outcome, bin_the_copy())
 
 
