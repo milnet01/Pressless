@@ -280,15 +280,24 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
                           after=None if section is None else (
                               lambda final: _section_saved(folder, final, section)))
     if isinstance(done, publisher.RemoteStateMissing):
-        return _form(values, {"repository": say("setup.hint.no_such_repository")},
-                     google_on=_google_on(saved), start=box, look=answers["look"],
-                     signed_in=_signed_in(folder, saved), section=section)
-    return done
+        missing = {"repository": say("setup.hint.no_such_repository")}
+        return _elsewhere(missing, section) + _form(
+            values, missing, google_on=_google_on(saved), start=box, look=answers["look"],
+            signed_in=_signed_in(folder, saved), section=section)
+    return done.page if isinstance(done, _Saved) else done
 
 
 def _malformed(key: str) -> bool:
     """PRESS-0021 § 4.4's shape rule for a typed key."""
     return not (key.isascii() and key.isprintable() and not any(c.isspace() for c in key))
+
+
+@dataclasses.dataclass(frozen=True)
+class _Saved:
+    """A save sequence that reached the save: the page saying so. Every
+    other answer is a failure's page, or a RemoteStateMissing to word."""
+
+    page: str
 
 
 def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
@@ -301,12 +310,13 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    take_in_commit: str = "", bring_in_commit: str = "",
                    take_over: bool = False,
                    after: Callable[[settings.Settings], str] | None = None,
-                   ) -> str | publisher.RemoteStateMissing:
+                   ) -> _Saved | str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
     (PRESS-0213 § 4.6), save, and say it is done. `candidate` already
     carries the store; nothing here chooses one. A repository GitHub cannot
-    find inside comes back for the caller to word.
+    find inside comes back for the caller to word, and a save that happened
+    comes back as `_Saved`.
 
     With `take_in_commit`, the site at that commit is taken in where the
     starter would be filled, and the identity is the one it wrote
@@ -323,11 +333,14 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     except publisher.PublishError as exc:
         return face.fail(exc, publishing=False)
 
-    # Step 4: store the key, only when he typed one.
+    # Step 4: store the key, only when he typed one. It goes under this
+    # site's own name, never over a sign-in another site shares (PRESS-0347).
     if typed_key:
+        own_name = sites.account("github", folder)
+        candidate = dataclasses.replace(candidate, credentials=dataclasses.replace(
+            candidate.credentials, github_account=own_name))
         try:
-            credentials.write(candidate.credentials.store, folder,
-                              candidate.credentials.github_account, typed_key)
+            credentials.write(candidate.credentials.store, folder, own_name, typed_key)
         except credentials.FAILURES as exc:
             return _credential_failure(face, exc)
 
@@ -416,9 +429,9 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     said = (after(final) if after is not None else
             _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty,
                   taken=taken.found if taken is not None else None, brought=report))
-    return (render_notices(filling) + render_notices(notices) + privacy_failure + said
-            + privacy
-            + (_shortcut_form(where, (True, True)) if where else ""))
+    return _Saved(render_notices(filling) + render_notices(notices) + privacy_failure + said
+                  + privacy
+                  + (_shortcut_form(where, (True, True)) if where else ""))
 
 
 def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, str]:
@@ -1170,11 +1183,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                               take_over=answers.get("take_over") == "yes")
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
-        # The sequence words its own failures and success alike; the settings
-        # file is written last, so its presence says which this was.
-        if not settings.path_for(folder).exists():
-            return wizard.Stop(done)
-        return wizard.Done(done)
+        if isinstance(done, _Saved):
+            return wizard.Done(done.page)
+        return wizard.Stop(done)
 
     # The sign-in flow only: check_signin, check_install and
     # check_new_repository.

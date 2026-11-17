@@ -1079,6 +1079,28 @@ def test_settings_are_written_last_by_the_wizard(tmp_path, monkeypatch):
     assert not _settings_file(tmp_path).exists()
 
 
+def test_a_failed_save_over_a_carried_file_stays_on_site(tmp_path, monkeypatch):
+    """INV-7 over a settings file carried from another machine, whose
+    site_folder is refused, so first run starts with a file already there.
+    Breaks when the wizard tells a failed save from a finished one by whether
+    a settings file exists."""
+    _saved(tmp_path)
+    carried = json.loads(_settings_file(tmp_path).read_text(encoding="utf-8"))
+    carried["site_folder"] = "site"            # not absolute here
+    _settings_file(tmp_path).write_text(json.dumps(carried), encoding="utf-8")
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        page = _walk_to(browser, "site")
+
+        def refuse(folder, value):
+            raise settings.SettingsError("the disk is full")
+
+        monkeypatch.setattr(settings, "save", refuse)
+        page = _next(browser, page)
+    assert _step(page) == "site", page
+    assert "the disk is full" in page
+
+
 def test_pages_is_left_as_github_has_it(tmp_path, monkeypatch):
     """INV-8. Breaks when the step always POSTs, overwrites an existing Pages
     source, or accepts a site served from somewhere Pressless does not publish."""
@@ -1678,6 +1700,23 @@ def test_signing_in_as_someone_else_files_the_sign_in_as_this_sites(tmp_path, mo
     assert keyring.writes == [("keyring", "github-site-2", FIRST_REFRESH)]
 
 
+def test_a_typed_key_never_replaces_another_sites_sign_in(tmp_path, monkeypatch):
+    """A site that continued with the first site's sign-in, then given a
+    hand-made key in Settings, files that key under its own name and says
+    so in its settings. Breaks when the key replaces the shared entry, so the
+    first site's sign-in is gone for good."""
+    keyring = _Store(monkeypatch)
+    second = _second_site(tmp_path)
+    _saved(second)                                   # names site-1's "github"
+    store.write_identity(second, store.Identity("A Journal"))
+    with _setup_page(second, _GitHub(), own=tmp_path) as browser:
+        status, page = browser.post({"repository": "owner/owner.github.io",
+                                     "key": SENTINEL_KEY}, path="/setup/connection")
+    assert status == 200 and "Saved." in page, page
+    assert keyring.writes == [("keyring", "github-site-2", SENTINEL_KEY)]
+    assert settings.load(second).credentials.github_account == "github-site-2"
+
+
 def test_signing_in_again_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
     """INV-13. Breaks when the page is served by its own handler."""
     _app(monkeypatch)
@@ -1910,6 +1949,21 @@ def test_a_section_names_a_refusal_it_does_not_show(tmp_path, monkeypatch):
                             path="/setup/address")[1]
     assert 'Not saved. First change this in <a href="/setup/site">' in page
     assert github.calls == []
+    assert _settings_file(tmp_path).read_bytes() == before
+
+
+def test_a_section_names_a_repository_github_cannot_find(tmp_path, monkeypatch):
+    """PRESS-0353 § 6, for the refusal that comes back from GitHub: the
+    saved repository has gone, and the Address section is saved. Breaks when
+    the hint lands on the repository box, which only Connection shows."""
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("A Journal"))
+    before = _settings_file(tmp_path).read_bytes()
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub(refuse={"/commits/HEAD": 404})) as browser:
+        page = browser.post({"site_address": "https://example.org/changed"},
+                            path="/setup/address")[1]
+    assert 'Not saved. First change this in <a href="/setup/connection">' in page
     assert _settings_file(tmp_path).read_bytes() == before
 
 

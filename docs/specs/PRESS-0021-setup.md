@@ -95,17 +95,21 @@ Every "(decided here)" is open to the maintainer to overturn.
 # src/pressless/setup.py
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
-GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
-KEY = "your publishing key"           # the {secret} noun (PRESS-0011 § 4.2)
 
-def untouchable(root: Iterable[str]) -> tuple[str, ...]: ...  # kept=: PRESS-0197 § 4.7
-def register(face: Face, folder: Path, *,
-             transport: publisher.Transport | None = None) -> None: ...
+def untouchable(root: Iterable[str], kept: Iterable[str] = (),
+                folder: Path | None = None) -> tuple[str, ...]: ...
+def register(face: Face, folder: Path, *, own: Path | None = None,
+             transport: publisher.Transport | None = None,
+             shortcut_places: Callable[[], shortcuts.Places | None] = shortcuts.places,
+             ) -> None: ...
 ```
 
-`folder` is Pressless's own folder, the one `face.serve` was handed.
+`folder` is the open site's folder, and `own` Pressless's own (PRESS-0223).
 `register` adds `GET /setup` and `POST /setup`. `transport` reaches
-`publisher.root_entries` and exists for the tests.
+`publisher.root_entries` and exists for the tests. `kept` is PRESS-0197
+§ 4.7's, `folder` PRESS-0210 § 4.10's, and `shortcut_places` PRESS-0183's.
+The key is filed under `sites.account("github", folder)` (PRESS-0223), and
+the `{secret}` noun is the words table's `failure.secret.publishing_key`.
 
 ```python
 # src/pressless/settings.py — added
@@ -254,7 +258,9 @@ through `Face.fail` and ends the request.
 3. **Choose the store — first run only.** `credentials.choose()`. Settings
    keeps the saved store and never asks again (PRESS-0002 § 4.2).
 4. **Store the key — only when he typed one.**
-   `credentials.write(store, folder, github_account, key)`.
+   `credentials.write(store, folder, sites.account("github", folder), key)`,
+   and `final` names that account. A typed key never replaces a sign-in
+   another site shares (PRESS-0347).
 5. **Save.** `settings.save(folder, final)`, inside `face.capture()`, where
    `final` is the candidate with the list and the store filled in.
 
