@@ -646,6 +646,28 @@ def test_only_a_failure_no_press_row_shows_goes_to_the_box(tmp_path, monkeypatch
         assert pressing.state()["failure"], "the press row lost the publish's failure"
 
 
+@pytest.mark.parametrize("refusal, address", [
+    (publishing.WouldReplaceASite("held"), publishing.REPLACE_ADDRESS),
+    (publishing.TakeoverOwed("owed"), publishing.TAKEOVER_ADDRESS),
+])
+def test_a_refused_ai_publish_offers_the_way_on(tmp_path, monkeypatch, refusal, address):
+    """PRESS-0417: a publish an AI app asked for, refused because it would
+    replace a site or a takeover is owed, offers on its press row the same
+    link as the writer's own publish. Breaks when the door renders the
+    failure without publishing.replace_link."""
+    _key(monkeypatch)
+    with _pressless(tmp_path) as pressless:
+        store.write(pressless.folder, _entry("harbour"), draft=False)
+        asked = pressless.ok("publish")["request"]
+
+        def refused(*args, **kwargs):
+            raise refusal
+
+        monkeypatch.setattr(publishing, "press_site", refused)
+        assert pressless.answer(asked, yes=True)["status"] == "failed"
+        assert f'href="{address}"' in pressing.state()["failure"]
+
+
 # The box's script runs in a browser; Node runs it, with pressing.SCRIPT before
 # it as every page has, against a page with no failure box of its own, a fetch
 # answering a waiting bin and then `answer`, and a writer who says yes.

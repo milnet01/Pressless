@@ -736,7 +736,8 @@ class _Door:
             except Exception as exc:  # noqa: BLE001 -- told to the AI app and the writer
                 # Unknown only where a press was under way: a failed re-plan
                 # ran nothing.
-                failure = self.face.fail(exc, publishing=pressed, secret=say(_KEY_WORDS))
+                # The way on, where a refused publish has one (PRESS-0417).
+                failure = publishing.press_failure(self.face, exc, publishing=pressed)
                 status, said = FAILED, _said(exc, publishing=pressed, secret=say(_KEY_WORDS))
             else:
                 failure, status, said = None, DONE, say(_STATUS_WORDS[DONE])
