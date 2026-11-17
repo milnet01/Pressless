@@ -872,6 +872,27 @@ def test_a_refusal_names_no_place_on_a_screen():
     assert "below" not in said and "Publish" in said
 
 
+def test_no_failure_points_an_ai_app_below():
+    """PRESS-0402, § 4.3: no failure the door can meet tells the AI app to
+    look "below", at details or a link a chat does not have; the details
+    are in the log, which the words name. Breaks when a failure's screen
+    words pointing below reach the AI app as they are."""
+    import pressless_import
+    from pressless import installer, takein, updater, updating, words  # noqa: F401
+    # No tool takes a site in or updates Pressless, so these never reach the
+    # door; a Refused carries its own words.
+    not_at_the_door = {pressless_import.ImportStopped, updater.UpdateRejected,
+                       installer.InstallFailed, assistant.Refused}
+    below = [kind for kind, sentence in face.SENTENCES.items()
+             if "below" in words.ENGLISH[sentence.next] and kind not in not_at_the_door]
+    assert publishing.TakeoverOwed in below and store.DanglingReply in below
+    for kind in [*below, RuntimeError]:
+        said = assistant._said(kind.__new__(kind))
+        assert "below" not in said, (kind, said)
+    assert LOG_FILE in assistant._said(store.DanglingReply())
+    assert LOG_FILE in assistant._said(RuntimeError())
+
+
 # ----------------------------------------------------------------- INV-14 ---
 
 # Windows line endings and a letter outside ASCII: both are kept.

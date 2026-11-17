@@ -40,6 +40,7 @@ from pressless import (
     editor,
     files,
     files_screen,
+    log,
     look,
     look_screen,
     marks,
@@ -217,12 +218,40 @@ def _said(failure: BaseException, *, publishing: bool = False,
     if isinstance(failure, Refused):
         return failure.slots["said"]
     told = sentence_for(failure, publishing=publishing, secret=secret)
-    # A screen's next step may point "below" at a link; a chat has none.
-    following = say(_CHAT_NEXT[type(failure)]) if type(failure) in _CHAT_NEXT else told.next
-    return " ".join(part for part in (told.what, told.site.words, following) if part)
+    return " ".join(part for part in (told.what, told.site.words, _chat_next(told.next))
+                    if part)
 
 
-_CHAT_NEXT = {publishing.WouldReplaceASite: "assistant.next.would_replace"}
+# A screen's next step may point "below", at a failure's details or a link; a
+# chat has neither (§ 4.3). Each such step's words for a chat, by the screen's
+# key. A step is matched by its words, not its failure's type, so a failure
+# whose sentence fell back to the unforeseen one gets that one's.
+_CHAT_NEXT = {
+    "failure.again": "assistant.next.again",
+    "failure.unforeseen.next": "assistant.next.unforeseen",
+    "failure.store.DanglingReply.next": "assistant.next.send_log",
+    "failure.credentials.NoStore.next": "assistant.next.send_log",
+    "failure.settings.SettingsError.next": "assistant.next.settings",
+    "failure.builder.BuildStopped.next": "assistant.next.build_stopped",
+    "failure.insights.InsightsError.next": "assistant.next.again_later",
+    "failure.credentials.CredentialError.next": "assistant.next.credential",
+    "failure.publisher.TooLarge.next": "assistant.next.too_large",
+    # A publish builds the site first, so trying again is building again.
+    "failure.publisher.SiteFolderMissing.next": "assistant.next.again",
+    "failure.publisher.UnfetchablePath.next": "assistant.next.unfetchable",
+    "failure.publishing.NothingToPublish.next": "assistant.next.nothing_to_publish",
+    "failure.publishing.TakeoverOwed.next": "assistant.next.takeover",
+    "failure.publishing.WouldReplaceASite.next": "assistant.next.would_replace",
+}
+
+
+def _chat_next(screen: str) -> str:
+    """`screen`, a next step's words, as the AI app is told it: _CHAT_NEXT's
+    words where the screen's point below, naming the log the details are in."""
+    for key, chat in _CHAT_NEXT.items():
+        if say(key) == screen:
+            return say(chat, log=say("assistant.log", file=log.FILE_NAME))
+    return screen
 
 
 class _Door:

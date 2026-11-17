@@ -170,6 +170,9 @@ none run in parallel.
 
 **Failures** become `said`: `face.sentence_for`'s three parts, joined as
 plain text, with `secret=` naming the key in words where the screens name it.
+A next step that points "below", at the details or a link, has chat words
+instead (`assistant._CHAT_NEXT`): they say where in Pressless to go, or
+name the log that holds the details.
 The log gets `face.details_for`, as `Face.fail` writes it. Neither adds a
 defence: a failure is free of a credential because the part that raised it
 left it out (`docs/design.md` § Logging), and the door relies on that. A
@@ -593,6 +596,7 @@ By hand, before release, on Linux and the Windows box:
 | INV-14 | `tests/test_assistant.py::test_connecting_claude_desktop_keeps_the_rest` and `::test_connecting_changes_nothing_it_cannot_read` |
 | Claude Desktop's file is where § 4.2 says | **Partial:** `::test_claude_desktops_file_on_each_system` checks our reading; only the § 7 check runs the real app, and only on Windows |
 | The home screen after Yes (§ 4.6) | `scripts/by-hand-browser-checks.py`'s PRESS-0356 row, run before a release; nothing in the gate |
+| No failure points a chat "below" (§ 4.3) | `tests/test_assistant.py::test_no_failure_points_an_ai_app_below` |
 | Names stay stable (§ 4.5) | **nothing** — a renamed tool passes every test; caught only by review |
 | Each app's connection steps (§ 4.2) | **Partial:** the § 7 by-hand check, for the three apps named there |
 | The protocol subset matches MCP (§ 4.4) | **Partial:** `tests/test_bridge.py` checks our reading of the spec, not the spec; the § 7 check runs real apps |

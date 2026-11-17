@@ -1979,6 +1979,48 @@ _WORDS: dict[str, str] = {
         "If the writer means to replace it, they press Publish in Pressless and choose "
         "Replace the site on GitHub; then ask to publish again."
     ),
+    # PRESS-0402: the rest of assistant._CHAT_NEXT, each a screen's next step
+    # that points below. {log} is assistant.log.
+    "assistant.log": "Pressless's log ({file}, in the Pressless-data folder beside the program)",
+    "assistant.next.again": (
+        "Try again. If it keeps happening, the writer can send {log} to whoever helps them."
+    ),
+    "assistant.next.again_later": (
+        "Try again later. If it keeps happening, the writer can send {log} to whoever helps "
+        "them."
+    ),
+    "assistant.next.unforeseen": (
+        "Try again, and the writer can send {log} to whoever helps them."
+    ),
+    "assistant.next.send_log": "The writer can send {log} to whoever helps them.",
+    "assistant.next.settings": (
+        "Pressless changed nothing in them. The writer can send {log} to whoever helps them."
+    ),
+    "assistant.next.build_stopped": (
+        "{log} names the file. The writer can check it, then ask again. If it keeps "
+        "happening, they can send the log to whoever helps them."
+    ),
+    "assistant.next.credential": (
+        "If the writer's keyring is locked, they unlock it, then ask again; otherwise they "
+        "enter it again in Pressless's Settings. If it keeps happening, they can send {log} "
+        "to whoever helps them."
+    ),
+    "assistant.next.too_large": (
+        "If a large file was added, remove or shrink it, then try again. If it keeps "
+        "happening, the writer can send {log} to whoever helps them."
+    ),
+    "assistant.next.unfetchable": (
+        "{log} names the file. The writer renames it on the site and publishes; then ask "
+        "again."
+    ),
+    "assistant.next.nothing_to_publish": (
+        "Publish an entry first, or the writer turns the journal off on Pressless's Journal "
+        "screen. If entries have gone missing, they can send {log} to whoever helps them."
+    ),
+    "assistant.next.takeover": (
+        "The writer presses Publish in Pressless and follows Switch your site to Pressless, "
+        "which says what changes first; then ask to publish again."
+    ),
     "assistant.open_pressless": (
         "Pressless is not open, or its AI helper is switched off. Ask the writer to open "
         "Pressless and switch on AI helper, then try again."
