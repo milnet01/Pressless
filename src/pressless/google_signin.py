@@ -21,7 +21,9 @@ import hmac
 import json
 import re
 import secrets
+import time
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from pressless import insights
@@ -69,7 +71,7 @@ class Attempt:
 @dataclass(frozen=True)
 class AccessToken:
     value: str
-    expires_at: float    # the transport's clock
+    expires_at: float    # the clock access_token was given
 
 
 @dataclass(frozen=True)
@@ -143,10 +145,12 @@ def finish(attempt: Attempt, query: dict[str, str],
     return _field(answer, "refresh_token")
 
 
-def access_token(refresh_token: str, client: Transport | None = None) -> AccessToken:
-    """A fresh access token for the saved sign-in."""
+def access_token(refresh_token: str, client: Transport | None = None, *,
+                 clock: Callable[[], float] = time.monotonic) -> AccessToken:
+    """A fresh access token for the saved sign-in. Its end is timed by
+    `clock`, which a change to the computer's time cannot move back."""
     transport = client if client is not None else insights._own_client()
-    asked = transport.now()
+    asked = clock()
     answer = _post(transport, TOKEN_URL, {
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,

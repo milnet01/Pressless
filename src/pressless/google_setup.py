@@ -17,6 +17,8 @@ import dataclasses
 import hmac
 import html
 import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,10 +46,11 @@ class _State:
     """Everything this module holds, for one launch (§ 4.2)."""
 
     def __init__(self, face: Face, folder: Path,
-                 client: insights.Transport | None) -> None:
+                 client: insights.Transport | None, clock: Callable[[], float]) -> None:
         self.face = face
         self.folder = Path(folder)
         self.client = client
+        self.clock = clock
         self.lock = threading.Lock()
         self.attempt: Attempt | None = None
         self.pending: _Pending | None = None
@@ -61,10 +64,13 @@ _state: _State | None = None
 
 
 def register(face: Face, folder: Path, *,
-             client: insights.Transport | None = None) -> None:
-    """Add the Google step's pages to `face` (§ 4.2)."""
+             client: insights.Transport | None = None,
+             clock: Callable[[], float] = time.monotonic) -> None:
+    """Add the Google step's pages to `face` (§ 4.2). The clock only measures
+    how long a held token has left, so it is one a change to the computer's
+    time cannot move back."""
     global _state
-    state = _State(face, folder, client)
+    state = _State(face, folder, client, clock)
     _state = state
     face.add_page("GET", PAGE, lambda request: _show(state))
     face.add_page("POST", PAGE + "/start", lambda request: _start(state))
@@ -77,7 +83,7 @@ def register(face: Face, folder: Path, *,
 def token(folder: Path) -> str:
     """An access token for `insights.read` (§ 4.2), for PRESS-0020's dashboard.
 
-    Uses the client `register` was given, and its clock. The held token is
+    Uses the client and the clock `register` was given. The held token is
     reused until it is within a minute of expiring (INV-14).
     """
     state = _state
@@ -91,10 +97,10 @@ def token(folder: Path) -> str:
     transport = state.transport()
     with state.lock:
         held = state.held
-    if held is not None and held.expires_at - transport.now() > _REFRESH_MARGIN:
+    if held is not None and held.expires_at - state.clock() > _REFRESH_MARGIN:
         return held.value
     refresh = credentials.read(saved.credentials.store, Path(folder), account)
-    access = google_signin.access_token(refresh, transport)
+    access = google_signin.access_token(refresh, transport, clock=state.clock)
     with state.lock:
         state.held = access
     return access.value
@@ -191,7 +197,7 @@ def _back(state: _State, request: Request) -> str | Reply:
     transport = state.transport()
     try:
         refresh = google_signin.finish(attempt, request.query, transport)
-        access = google_signin.access_token(refresh, transport)
+        access = google_signin.access_token(refresh, transport, clock=state.clock)
         found = google_signin.properties(access.value, transport)
     except insights.InsightsError as exc:
         return (state.face.fail(exc, publishing=False,
@@ -216,7 +222,7 @@ def _sites(state: _State) -> str:
     transport = state.transport()
     try:
         refresh = credentials.read(saved.credentials.store, state.folder, account)
-        access = google_signin.access_token(refresh, transport)
+        access = google_signin.access_token(refresh, transport, clock=state.clock)
         found = google_signin.properties(access.value, transport)
     except (insights.InsightsError, *credentials.FAILURES) as exc:
         return (shown + state.face.fail(exc, publishing=False,
@@ -267,8 +273,9 @@ def _choose(state: _State, request: Request) -> str:
     found: tuple[str, ...] = ()
     lookup_failure = ""
     try:
-        if access.expires_at - state.transport().now() <= _REFRESH_MARGIN:
-            access = google_signin.access_token(pending.refresh_token, state.client)
+        if access.expires_at - state.clock() <= _REFRESH_MARGIN:
+            access = google_signin.access_token(pending.refresh_token, state.client,
+                                                clock=state.clock)
         found = google_signin.measurement_ids(access.value, chosen,
                                               saved.site_address, state.client)
     except insights.InsightsError as exc:

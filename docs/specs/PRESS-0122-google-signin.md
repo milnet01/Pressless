@@ -119,7 +119,7 @@ class Attempt:
 @dataclass(frozen=True)
 class AccessToken:
     value: str
-    expires_at: float    # the transport's clock
+    expires_at: float    # the clock access_token was given
 
 @dataclass(frozen=True)
 class Property:
@@ -134,8 +134,8 @@ def available() -> bool
 def begin(redirect_uri: str, client: Transport | None = None) -> tuple[Attempt, str]
 def finish(attempt: Attempt, query: dict[str, str],
            client: Transport | None = None) -> str
-def access_token(refresh_token: str,
-                 client: Transport | None = None) -> AccessToken
+def access_token(refresh_token: str, client: Transport | None = None, *,
+                 clock: Callable[[], float] = time.monotonic) -> AccessToken
 def properties(token: str, client: Transport | None = None) -> tuple[Property, ...]
 def revoke(refresh_token: str, client: Transport | None = None) -> None
 ```
@@ -164,7 +164,7 @@ not one part reaching inside another.
   `code_verifier`, `redirect_uri`, `grant_type=authorization_code`. It returns the answer's
   `refresh_token`. An answer without one is an `InsightsError`.
 - **`access_token`** posts `client_id`, `client_secret`, `refresh_token`
-  and `grant_type=refresh_token` to `TOKEN_URL`. `expires_at` is the clock
+  and `grant_type=refresh_token` to `TOKEN_URL`. `expires_at` is `clock`
   when the request was made, plus the answer's `expires_in`.
 - **`properties`** sends `GET ACCOUNTS_URL?pageSize=200` with the token as
   a bearer header, and follows `nextPageToken` for at most `PAGE_LIMIT`
@@ -204,7 +204,8 @@ GOOGLE_ACCOUNT = "google"                 # the account the refresh token is fil
 RETURN_PATH = "/setup/google/back"        # the redirect_uri's path
 
 def register(face: Face, folder: Path, *,
-             client: insights.Transport | None = None) -> None: ...
+             client: insights.Transport | None = None,
+             clock: Callable[[], float] = time.monotonic) -> None: ...
 def token(folder: Path) -> str: ...       # for PRESS-0020's dashboard
 ```
 
@@ -228,8 +229,8 @@ its own load.
 | `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then `credentials.write(saved store, folder, GOOGLE_ACCOUNT, pending refresh token)`. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. Only then does the access token the streams were read with (PRESS-0199 § 4.3) become the held token, and the pending list is cleared. Where the property changed, `insights.forget(folder)`; an `OSError` there is said on the page. The page says the dashboard is ready. |
 | `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. A failed read is a failed revoke. Then, whether or not `google_account` was set and whatever `revoke` did: `credentials.delete(saved store, folder, GOOGLE_ACCOUNT)`, and the same for `google_account` where it is set and differs; `insights.forget(folder)`, which removes the cache file where there is one and raises `OSError` where it cannot; save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`; and drop the held token and the pending list. A failed delete or removal stops neither the other nor the save. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. Where the delete or the removal failed, the page says that the key or the visitor figures may still be on this computer. |
 
-**`token(folder)`** uses the `client` `register` was given, and its
-clock; so `register` runs first, as it does at every launch. It loads Settings, raises `insights.NotConfigured` where
+**`token(folder)`** uses the `client` and the `clock` `register` was
+given; so `register` runs first, as it does at every launch. It loads Settings, raises `insights.NotConfigured` where
 `google_account` is `None`, and otherwise returns the held token's value
 while it is more than 60 seconds from `expires_at`. Past that, it
 `credentials.read`s the refresh token, calls `access_token`, holds the
@@ -455,10 +456,14 @@ with that double, a `credentials` double, and a real settings file.
 
 - **INV-14** — `token` reuses the held token until 60 seconds before it
   expires, refreshes after; a choose replaces it and an off drops it.
+  The held token is timed by `register`'s `clock`, `time.monotonic`
+  unless a test hands one in, never by the transport's wall clock.
   *Test:* `test_the_token_is_reused_until_it_nearly_expires`, moving the
-  double's clock.
-  *Breaks when:* every dashboard view refreshes, or a token from before
-  Turn off is still handed out.
+  double's clock; `test_the_held_token_is_timed_by_a_clock_that_never_goes_back`
+  and `test_setting_the_time_back_does_not_keep_an_expired_token`.
+  *Breaks when:* every dashboard view refreshes, a token from before
+  Turn off is still handed out, or setting the computer's time back keeps
+  an expired token.
 
 - **INV-15** — With an empty `CLIENT_ID` or `CLIENT_SECRET`, nothing
   reaches Google.
@@ -588,7 +593,7 @@ carries the cookie (§4.3 step 4), and a packaged release's sign-in
 | INV-11 | `tests/test_google_setup.py::test_the_sign_in_is_stored_and_never_shown` |
 | INV-12 | `tests/test_google_setup.py::test_only_a_listed_property_is_saved` |
 | INV-13 | `tests/test_google_setup.py::test_turning_off_clears_both_fields` |
-| INV-14 | `tests/test_google_setup.py::test_the_token_is_reused_until_it_nearly_expires` |
+| INV-14 | `tests/test_google_setup.py::test_the_token_is_reused_until_it_nearly_expires`, `::test_the_held_token_is_timed_by_a_clock_that_never_goes_back`, `::test_setting_the_time_back_does_not_keep_an_expired_token` |
 | INV-15 | `tests/test_google_setup.py::test_an_unregistered_copy_offers_no_sign_in` |
 | INV-16 | `tests/test_write_google_secret.py` |
 | INV-17 | `tests/test_google_setup.py::test_a_failed_return_stays_on_screen` |

@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import inspect
 import json
+import time
 import urllib.parse
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -144,13 +146,16 @@ class _Browser(Browser):
 
 
 @contextlib.contextmanager
-def _served(folder: Path, google: _Google, *, with_setup: bool = False
-            ) -> Iterator[_Browser]:
+def _served(folder: Path, google: _Google, *, with_setup: bool = False,
+            clock: Callable[[], float] | None = None) -> Iterator[_Browser]:
+    """`clock` times the held token; by default the double's own, so one
+    `google.clock` moves both."""
     served = face.serve(folder)
     try:
         if with_setup:
             setup.register(served, folder)
-        google_setup.register(served, folder, client=google)
+        google_setup.register(served, folder, client=google,
+                              clock=google.now if clock is None else clock)
         yield _Browser(served)
     finally:
         served.stop()
@@ -392,6 +397,31 @@ def test_the_token_is_reused_until_it_nearly_expires(
         browser.send("POST", "/setup/google/off")
         with pytest.raises(insights.NotConfigured):
             google_setup.token(tmp_path)
+
+
+def test_the_held_token_is_timed_by_a_clock_that_never_goes_back():
+    """INV-14. Breaks when the held token's end is judged by the wall clock,
+    which a time change can move backwards, so an expired token is handed out."""
+    clock = inspect.signature(google_setup.register).parameters.get("clock")
+    assert clock is not None and clock.default is time.monotonic
+
+
+def test_setting_the_time_back_does_not_keep_an_expired_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """INV-14. Breaks when the held token's end is judged by the transport's
+    clock: an hour passes, the computer's time goes back an hour, and the
+    token Google has expired is handed out."""
+    _Store(monkeypatch)
+    _signed_in(tmp_path)
+    google = _Google()
+    elapsed = [0.0]
+    with _served(tmp_path, google, clock=lambda: elapsed[0]):
+        google_setup.token(tmp_path)
+        elapsed[0] += 3600
+        google.clock -= 3600
+        google_setup.token(tmp_path)
+    assert google.token_requests() == 2
 
 
 # -------------------------------------------------------------- INV-15 ----

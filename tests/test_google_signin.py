@@ -156,7 +156,7 @@ def test_the_secret_goes_only_to_the_token_endpoint(monkeypatch: pytest.MonkeyPa
     attempt = _attempt(client)
     assert google_signin.finish(attempt, {"state": attempt.state, "code": CODE},
                                 client) == REFRESH
-    token = google_signin.access_token(REFRESH, client)
+    token = google_signin.access_token(REFRESH, client, clock=client.now)
     google_signin.properties(ACCESS, client)
     google_signin.revoke(REFRESH, client)
 
