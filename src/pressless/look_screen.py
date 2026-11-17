@@ -11,6 +11,7 @@ the frame (INV-10).
 """
 from __future__ import annotations
 
+import dataclasses
 import html
 import json
 from pathlib import Path
@@ -287,7 +288,7 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
 <h1>{say("look_screen.title")}</h1>
 <p>{say("look_screen.about")}</p>
 <p id="look-status" class="press-status" role="status">{said}</p>
-<form id="look" method="post" action="{ADDRESS}/save"{' data-restart' if restart else ''}>
+<form id="look" method="post" action="{ADDRESS}/save"{_starts() if restart else ''}>
 <input type="hidden" name="base" value="{attr(base)}">
 {routes}
 <div id="look-panel"{shown(PRESSLESS)}>
@@ -323,6 +324,13 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
 <iframe id="preview" class="undimmed" title="{attr(say("look_screen.preview_title"))}"
  sandbox="allow-same-origin" src="{attr(frame or "about:blank")}"></iframe></div>
 <script>{_SCRIPT}</script>"""
+
+
+def _starts() -> str:
+    """§ 4.4 state 2: each layout's defaults, for the script to put in the
+    fields when a layout is picked, leaving the CSS typed below as it is."""
+    starts = {layout: dataclasses.asdict(look.defaults(layout)) for layout in look.LAYOUTS}
+    return f' data-restart="{html.escape(json.dumps(starts), quote=True)}"'
 
 
 def _own_colours() -> str:
@@ -380,10 +388,6 @@ _SCRIPT = r"""
     style.textContent = draft;
     doc.head.appendChild(style);
   }
-  function route() {
-    const picked = form.querySelector("input[name=route]:checked");
-    return picked ? picked.value : "";
-  }
   const label = (name) => form.querySelector(`tr[data-colour="${name}"]`).dataset.label;
   function warn(found) {
     form.querySelectorAll("[data-warn]").forEach((slot) => { slot.textContent = ""; });
@@ -431,14 +435,24 @@ _SCRIPT = r"""
     });
     for (const radio of styles) radio.checked = radio === match;
   }
-  form.addEventListener("input", (event) => {
-    // A site whose choices were never saved starts again from a layout's own.
-    if (form.hasAttribute("data-restart") && event.target.name === "layout") {
-      window.location.href = "/look?route=" + encodeURIComponent(route())
-        + "&layout=" + encodeURIComponent(event.target.value);
-      return;
+  // A site whose choices were never saved starts again from a layout's own
+  // choices; the CSS typed below stays.
+  const starts = form.dataset.restart ? JSON.parse(form.dataset.restart) : null;
+  function restart(layout) {
+    const start = starts[layout];
+    if (!start) return;
+    fill(start);
+    for (const name of ["body_font", "heading_font", "text_size", "width"]) {
+      form.querySelector(`select[name=${name}]`).value = start[name];
     }
-    if (event.target.name === "style") fill(JSON.parse(event.target.dataset.colours));
+    form.querySelectorAll('input[name^="effect."]').forEach((box) => {
+      box.checked = start.effects.includes(box.name.slice("effect.".length));
+    });
+    mark();
+  }
+  form.addEventListener("input", (event) => {
+    if (starts && event.target.name === "layout") restart(event.target.value);
+    else if (event.target.name === "style") fill(JSON.parse(event.target.dataset.colours));
     else if (event.target.type === "color") mark();
     if (event.target.name === "route") {
       form.querySelectorAll("[data-route]").forEach((part) => {

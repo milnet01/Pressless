@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import html
 import json
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+import pytest
 from test_editor import _binned, _Browser, _folder, _said
 
 from pressless import builder, editor, face, look_screen, settings, starter, store
@@ -137,6 +140,78 @@ def test_a_site_from_before_the_look_screen_starts_from_a_layout(tmp_path):
     assert re.search(r'name="layout" value="harbour" checked', page)
     assert f'name="light.paper" value="{harbour.light["paper"]}"' in page
     assert "data-restart" in page and "a copy of the current one in the bin" in page
+
+
+# The screen's script runs in a browser; Node runs it against a stand-in form
+# holding the fields it sets, so a layout picked can be watched.
+_NODE = shutil.which("node")
+_RESTART_HARNESS = """const fields = {};
+const field = (name, value) => (fields[name] = {name, value, checked: false, dataset: {}});
+for (const scheme of ["light", "dark"]) {
+  for (const name of COLOURS) field(scheme + "." + name, "#000000").type = "color";
+}
+for (const name of ["body_font", "heading_font", "text_size", "width"]) field(name, "");
+for (const name of EFFECTS) field("effect." + name, "on").checked = true;
+field("extra", "p { color: red; }");
+let typed = null;
+const named = /^(?:input|select)\\[name="?([^"\\]]+)"?\\]$/;
+const form = {
+  dataset: {restart: RESTART},
+  querySelector: (selector) => (named.exec(selector) || [])[1] in fields
+    ? fields[named.exec(selector)[1]] : null,
+  querySelectorAll: (selector) => selector === 'input[name^="effect."]'
+    ? Object.values(fields).filter((one) => one.name.startsWith("effect.")) : [],
+  addEventListener: (kind, run) => { if (kind === "input") typed = run; },
+};
+const window = {location: {href: "/look"}};
+const document = {getElementById: (id) => id === "look" ? form
+  : {addEventListener() {}, textContent: ""}};
+const say = (key) => key;
+const fetch = () => new Promise(() => {});
+SCRIPT
+typed({target: {name: "layout", value: "harbour", dataset: {}}});
+const values = {};
+for (const [name, one] of Object.entries(fields)) {
+  values[name] = name.startsWith("effect.") ? one.checked : one.value;
+}
+process.stdout.write(JSON.stringify({href: window.location.href, values}));
+process.exit(0);
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_picking_a_layout_to_start_from_keeps_the_css_typed(tmp_path):
+    """§ 4.4 state 2. Breaks when picking a layout reloads the screen, which
+    loses the CSS typed below it, or when the fields do not take the
+    layout's own choices."""
+    folder = _site(tmp_path)
+    store.look_path_for(folder, store.LOOK_CHOICES_NAME).unlink()
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+    restart = re.search(r'<form id="look"[^>]*\sdata-restart="([^"]*)"', page)
+    assert restart, "the form carries no layouts to start from"
+    script = look_screen._SCRIPT
+    assert f"<script>{script}</script>" in page
+    harness = tmp_path / "restart.js"
+    harness.write_text(
+        _RESTART_HARNESS.replace("COLOURS", json.dumps(starter_look.COLOURS))
+        .replace("EFFECTS", json.dumps(starter_look.EFFECTS))
+        .replace("RESTART", json.dumps(html.unescape(restart.group(1))))
+        .replace("SCRIPT", script), encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    shown = json.loads(run.stdout)
+    harbour = starter_look.defaults("harbour")
+    assert shown["href"] == "/look"
+    assert shown["values"]["extra"] == "p { color: red; }"
+    assert {name: shown["values"][f"light.{name}"] for name in starter_look.COLOURS} == (
+        harbour.light)
+    assert {name: shown["values"][f"dark.{name}"] for name in starter_look.COLOURS} == (
+        harbour.dark)
+    for name in ("body_font", "heading_font", "text_size", "width"):
+        assert shown["values"][name] == getattr(harbour, name), name
+    assert [name for name in starter_look.EFFECTS if shown["values"][f"effect.{name}"]] == (
+        list(harbour.effects))
 
 
 # ------------------------------------------------------------------ INV-8 ---
