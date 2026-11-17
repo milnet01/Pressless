@@ -1158,6 +1158,52 @@ def test_an_oversize_registered_post_body_is_refused(tmp_path: Path) -> None:
     assert raw.split(b"\r\n", 1)[0].split(b" ")[1] == b"413"
 
 
+def _held_open(client: _Client, head: str, sent: bytes = b"") -> bytes:
+    """Send `head` and `sent`, keep the socket open for writing, and return
+    what arrives before the server closes. Raises socket.timeout where the
+    server is still waiting for the body after three seconds."""
+    conn = socket.create_connection(("127.0.0.1", client.port), timeout=3)
+    try:
+        conn.sendall(head.encode("ascii") + sent)
+        raw = b""
+        while chunk := conn.recv(4096):
+            raw += chunk
+        return raw
+    finally:
+        conn.close()
+
+
+def test_a_stalled_body_does_not_hold_a_thread(tmp_path: Path, monkeypatch) -> None:
+    """A client that declares a body and stops sending holds a server thread
+    until the stall limit, never for ever. Breaks when the handler has no
+    timeout. The limit is shortened so the test waits half a second."""
+    monkeypatch.setattr(face, "_STALL_SECONDS", 0.5, raising=False)
+    served = face.serve(tmp_path)
+    served.add_page("POST", "/sink", lambda request: "")
+    try:
+        client = _Client(served)
+        _held_open(client, f"POST /sink HTTP/1.1\r\nHost: {client.host}\r\n"
+                           f"Cookie: {client.cookie}\r\nContent-Length: 100\r\n\r\n")
+    finally:
+        served.stop()
+
+
+def test_a_refused_request_is_drained_only_so_far(tmp_path: Path, monkeypatch) -> None:
+    """A request refused before the cookie check is anyone's, so its body is
+    read no further than the page ceiling before the 403 goes. Breaks when a
+    declared length past it keeps a thread reading. The ceiling is lowered
+    so the test sends a kilobyte."""
+    monkeypatch.setattr(face, "_MAX_BODY", 1024)
+    served = face.serve(tmp_path)
+    try:
+        client = _Client(served)
+        raw = _held_open(client, f"POST /sink HTTP/1.1\r\nHost: {client.host}\r\n"
+                                 f"Content-Length: {10 * 1024 * 1024}\r\n\r\n", b"x" * 1024)
+    finally:
+        served.stop()
+    assert raw.split(b"\r\n", 1)[0].split(b" ")[1] == b"403"
+
+
 # ------------------------------------------------------------ PRESS-0224 ----
 
 

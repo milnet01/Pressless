@@ -1206,6 +1206,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         included, to the console (§ 4.5)."""
         return
 
+    def setup(self) -> None:
+        # A client that declares a body and stops sending holds this thread
+        # until the stall limit, not for ever. Read here, per connection.
+        self.timeout = _STALL_SECONDS
+        super().setup()
+
     def do_GET(self) -> None:  # noqa: N802 -- the name http.server dispatches to
         self._dispatch("GET")
 
@@ -1285,9 +1291,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return None
         return length
 
-    def _refuse(self) -> None:
-        self._drain()
-        self._send(403, say("face.forbidden"), "text/plain")
+    def _refuse(self, key: str = "face.forbidden") -> None:
+        """403. The request is anyone's, so its body is drained no further
+        than _MAX_BODY; past that the connection closes, and the sender may
+        see it dropped rather than the answer."""
+        declared = _length(self.headers.get("Content-Length")) or 0
+        self._drain(min(declared, _MAX_BODY))
+        self.close_connection = True
+        self._send(403, say(key), "text/plain")
 
     def _drain(self, left: int | None = None) -> None:
         """Read and drop a body that will not be used, so the answer arrives:
@@ -1339,8 +1350,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 if self._has_cookie(face):
                     self._send(303, "", "text/plain", (("Location", parts.path or "/"),))
                 else:
-                    self._drain()
-                    self._send(403, say("face.link_spent"), "text/plain")
+                    self._refuse("face.link_spent")
                 return
             cookie = f"{face._cookie}={face._session}; HttpOnly; SameSite=Strict; Path=/"
             self._send(
@@ -1609,6 +1619,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 # seconds; `stop` waits up to this long. The standard library's own default.
 # tests/conftest.py shortens it: the suite starts and stops hundreds of servers.
 _POLL_SECONDS = 0.5
+
+# The longest a request may stall, in seconds, on one read or write. Generous:
+# the browser is on this machine.
+_STALL_SECONDS = 60
 
 # The longest body the theme and true-colours routes take: the longest theme
 # key with room to spare. A longer body is no choice of either.
