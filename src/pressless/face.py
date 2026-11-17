@@ -88,6 +88,11 @@ class FolderNotOpened(Exception):
     """The platform's opener is missing or failed (§ 6)."""
 
 
+class NoRoom(Exception):
+    """An upload would leave the drive less than _SPARE free, or its free
+    space cannot be read (PRESS-0224 § 4.5)."""
+
+
 def _keys(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
           link: tuple[str, str] | None = None) -> Sentence:
     """A SENTENCES entry: it holds words keys, which sentence_for looks up."""
@@ -273,6 +278,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "failure.face.FolderNotOpened.what",
         "failure.face.FolderNotOpened.next",
     ),
+    NoRoom: _keys("failure.face.NoRoom.what", "failure.face.NoRoom.next"),
     shortcuts.ShortcutError: _keys(
         "failure.shortcuts.ShortcutError.what",
         "failure.again",
@@ -1218,12 +1224,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self._send(status, _page(body, face._theme, face.site_name(), face._size, after),
                    "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
-    def _body_length(self, limit: int) -> int | None:
+    def _body_length(self, limit: int,
+                     too_long: Callable[[], None] | None = None) -> int | None:
         """The declared body length, or None once the request is refused.
 
         An unparseable or negative length gets 400 unread: read(-1) would wait
         for the client to close, holding this thread (PRESS-0162). A length
-        past `limit` is drained and gets 413, never read into memory.
+        past `limit` is drained, never read into memory, and answered by
+        `too_long`, or else a bare 413.
         """
         length = _length(self.headers.get("Content-Length"))
         if length is None:
@@ -1231,7 +1239,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return None
         if length > limit:
             self._drain()
-            self._send(413, "", "text/plain")
+            if too_long is None:
+                self._send(413, "", "text/plain")
+            else:
+                too_long()
             return None
         return length
 
@@ -1449,16 +1460,24 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             usage.report("screen", screen=request.path)   # the registered path, no query
         self._send_page(face, 200, body)
 
-    def _take_upload(self, face: Face, upload: tuple[Callable[[Path], str], Path],
-                     path: str, query: dict[str, str]) -> None:
+    def _take_upload(self, face: Face, upload: _Upload, path: str,
+                     query: dict[str, str]) -> None:
         """PRESS-0224 § 4.5: the body is a file, copied to disk in pieces, never
         held whole, and handed to the route's handler as a page is answered.
-        Every check a page gets has run before this."""
-        handler, into = upload
-        length = self._body_length(_room(into))
+        Every check a page gets has run before this, and both size checks run
+        on the declared length before a byte is written."""
+        request = Request("POST", path, query, b"")
+        if upload.too_large is not None:
+            too_large = upload.too_large
+            if self._body_length(upload.largest, lambda: self._answer_then(
+                    face, too_large, request, False)) is None:
+                return
+        length = self._body_length(_room(upload.into), lambda: self._send_page(
+            face, 413, face.fail(NoRoom("the drive is short of room"), publishing=False)))
         if length is None:
             return
-        taken = Path(into) / f".upload-{secrets.token_hex(8)}"
+        handler = upload.handler
+        taken = upload.into / f".upload-{secrets.token_hex(8)}"
         failure: OSError | None = None
         left = length
         try:
@@ -1484,7 +1503,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                     raise failure
                 return handler(taken)
 
-            self._answer_then(face, page, Request("POST", path, query, b""), False)
+            self._answer_then(face, page, request, False)
         finally:
             taken.unlink(missing_ok=True)
 
@@ -1560,11 +1579,21 @@ _SPARE = 1024 * 1024 * 1024
 
 
 def _room(folder: Path) -> int:
-    """The bytes an upload into `folder` may take."""
+    """The bytes an upload into `folder` may take. -1 where the free space
+    cannot be read, so every upload is refused, an empty one included."""
     try:
         return shutil.disk_usage(folder).free - _SPARE
     except OSError:
         return -1
+
+
+@dataclass(frozen=True)
+class _Upload:
+    """A route `Face.add_upload` registered."""
+    handler: Callable[[Path], str | Reply]
+    into: Path
+    largest: int
+    too_large: Page | None
 
 
 # PRESS-0353 § 4.6: where a part can show something on a screen it does not own.
@@ -1579,7 +1608,7 @@ class Face:
         # Pressless's own folder; the settings and choices are the open site's.
         self._folder = Path(folder)
         self._site = Path(site) if site is not None else self._folder
-        self._uploads: dict[str, tuple[Callable[[Path], str], Path]] = {}
+        self._uploads: dict[str, _Upload] = {}
         self._log = log.open_log(self._folder)
         self._theme = themes.read_choice(self._folder)
         self._size = themes.read_size(self._folder)
@@ -1627,11 +1656,14 @@ class Face:
         registered at one of those is never reached."""
         self._pages[(method.upper(), path)] = (page, publishing)
 
-    def add_upload(self, path: str, handler: Callable[[Path], str], into: Path) -> None:
+    def add_upload(self, path: str, handler: Callable[[Path], str | Reply], into: Path, *,
+                   largest: int = 0, too_large: Page | None = None) -> None:
         """Register a POST `path` whose body is a file, copied to `into` in
         pieces and handed to `handler` by path, then deleted (PRESS-0224
-        § 4.5). The handler's answer is a page's."""
-        self._uploads[path] = (handler, Path(into))
+        § 4.5). The handler's answer is a page's. With `too_large`, a body
+        declared longer than `largest` bytes is never written, and
+        `too_large` answers instead."""
+        self._uploads[path] = _Upload(handler, Path(into), largest, too_large)
 
     def add_return_page(self, path: str, page: Page) -> None:
         """Register `page` for GET `path`, reached WITHOUT the session cookie.

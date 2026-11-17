@@ -152,6 +152,35 @@ def test_an_upload_that_is_not_an_export_is_refused_and_not_kept(tmp_path):
     assert not list(folder.glob(".upload-*"))
 
 
+def test_an_export_past_its_ceiling_is_never_written(tmp_path, monkeypatch):
+    """§ 4.3: an export over EXPORT_LARGEST is refused at upload. Breaks
+    when the body is copied to disk before its size is checked (PRESS-0384),
+    or the refusal stops saying why. The ceiling is lowered so the test
+    sends bytes, not 256 MiB."""
+    monkeypatch.setattr(importing, "EXPORT_LARGEST", 100)
+    real_open = open
+    written: list[str] = []
+
+    def watched(path, *args, **kwargs):
+        if ".upload-" in str(path):
+            written.append(str(path))
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(face, "open", watched, raising=False)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        status, _headers, page = browser.raw(
+            "POST", f"{importing.ADDRESS}/export", b"x" * 101)
+    finally:
+        served.stop()
+    assert status == 200 and b'value="export"' in page
+    assert b"larger than any WordPress export" in page
+    assert written == []
+    assert not (folder / "import" / "export.xml").exists()
+
+
 def test_the_report_escapes_what_it_names(tmp_path):
     """INV-14: every value in the Report page is escaped, and a control
     character is shown escaped.

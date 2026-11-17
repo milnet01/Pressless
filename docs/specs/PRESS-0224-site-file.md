@@ -152,8 +152,9 @@ the publishing key yet, and to enter it in Settings
 
 ```python
 # src/pressless/face.py
-def add_upload(self, path: str, handler: Callable[[Path], str],
-               into: Path) -> None: ...
+def add_upload(self, path: str, handler: Callable[[Path], str | Reply],
+               into: Path, *, largest: int = 0,
+               too_large: Page | None = None) -> None: ...
 
 @dataclass(frozen=True)
 class Download:
@@ -164,9 +165,12 @@ class Download:
 - **`add_upload`** registers a `POST` route that gets every check a
   registered page gets — host, cookie, origin — before its body is read.
   The body is the file itself, sent by `fetch` with no form around it.
-  It is copied in 64 KiB pieces to `<into>/.upload-<random>`, refused
-  with 413 where the declared length is over the drive's free space less
-  1 GiB, and handed to `handler` by path. The handler runs as a
+  It is copied in 64 KiB pieces to `<into>/.upload-<random>`, owner-only
+  on Linux, and handed to `handler` by path. Two checks run on the
+  declared length before a byte is written. With `too_large`, a length
+  over `largest` is answered by `too_large`, as a page is. A length over
+  the drive's free space less 1 GiB, or any length where the free space
+  cannot be read, gets 413 and `face.NoRoom`'s sentence. The handler runs as a
   registered page's does: `face.after_reply` works inside it, its `str`
   is wrapped as a page, and an exception reaches `Face.fail`. The file is
   deleted when `handler` returns or raises. `_MAX_BODY` is unchanged for

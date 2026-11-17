@@ -9,6 +9,7 @@
 # a red run against a stub fails in the test body for the stub's reason.
 from __future__ import annotations
 
+import html
 import http.client
 import importlib
 import inspect
@@ -1148,6 +1149,71 @@ def test_an_upload_is_written_owner_only(tmp_path: Path) -> None:
         served.stop()
         os.umask(old)
     assert modes == [0o600]
+
+
+NO_ROOM = "This computer's drive has too little free space to take that file."
+
+
+@pytest.mark.parametrize("room", ["short", "unreadable"])
+def test_an_upload_refused_for_room_says_why(tmp_path: Path, monkeypatch, room: str) -> None:
+    """docs/design.md § Errors: a refusal he can reach is a sentence. The file
+    box writes the answer over the page, so an empty 413 left a blank screen.
+    Breaks when the room refusal answers without a page, or when free space
+    that cannot be read lets the body through."""
+    if room == "short":
+        monkeypatch.setattr(face, "_room", lambda folder: 10)
+    else:
+        def unreadable(folder):
+            raise OSError("no answer")
+        monkeypatch.setattr(face.shutil, "disk_usage", unreadable)
+    into = tmp_path / "own"
+    into.mkdir()
+    served = face.serve(into)
+    try:
+        served.add_upload("/up", lambda path: "<p>taken</p>", into)
+        status, _, page = _Client(served).raw("POST", "/up", b"x" * 100)
+    finally:
+        served.stop()
+    assert status == 413
+    assert NO_ROOM in html.unescape(page.decode("utf-8")) and b"taken" not in page
+    assert not list(into.glob(".upload-*"))
+
+
+def test_an_upload_past_its_routes_largest_is_answered_unwritten(
+        tmp_path: Path, monkeypatch) -> None:
+    """PRESS-0384: a route's own ceiling is checked against the declared
+    length before a byte is written, and its `too_large` page answers.
+    Breaks when the body is copied to disk first, or a body at the ceiling
+    is refused."""
+    real_open = open
+    written: list[str] = []
+
+    def watched(path, *args, **kwargs):
+        if ".upload-" in str(path):
+            written.append(str(path))
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(face, "open", watched, raising=False)
+    into = tmp_path / "own"
+    into.mkdir()
+    taken: list[bytes] = []
+
+    def took(path: Path) -> str:
+        taken.append(path.read_bytes())
+        return "<p>taken</p>"
+
+    served = face.serve(into)
+    try:
+        served.add_upload("/up", took, into, largest=10,
+                          too_large=lambda request: "<p>too large</p>")
+        client = _Client(served)
+        status, _, page = client.raw("POST", "/up", b"x" * 11)
+        assert (status, b"too large" in page) == (200, True)
+        assert written == [] and taken == []
+        assert client.raw("POST", "/up", b"x" * 10)[0] == 200
+    finally:
+        served.stop()
+    assert taken == [b"x" * 10]
 
 
 def test_a_failed_upload_write_still_answers_with_its_page(tmp_path: Path,

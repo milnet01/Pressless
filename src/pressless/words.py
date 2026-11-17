@@ -194,6 +194,12 @@ _WORDS: dict[str, str] = {
     "failure.face.FolderNotOpened.next": (
         "Use Copy location instead, and paste it into your file manager."
     ),
+    "failure.face.NoRoom.what": (
+        "This computer's drive has too little free space to take that file."
+    ),
+    "failure.face.NoRoom.next": (
+        "Free some space on this computer's drive, then send the file again."
+    ),
     "failure.shortcuts.ShortcutError.what": (
         "Pressless could not change its shortcut in the menu or on the desktop."
     ),

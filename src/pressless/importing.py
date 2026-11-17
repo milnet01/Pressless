@@ -229,11 +229,14 @@ def register(face: Face, folder: Path) -> None:
     def shown_again(said: str) -> str:
         return said + flow.page(face, Request("GET", ADDRESS, {}, b""))
 
+    def export_too_large(request: Request) -> str | Reply:
+        if not empty():
+            return to_the_list()
+        return shown_again(message_box("import-hint", say("import.export.too_large")))
+
     def export_file(taken: Path) -> str | Reply:
         if not empty():
             return to_the_list()
-        if taken.stat().st_size > EXPORT_LARGEST:
-            return shown_again(message_box("import-hint", say("import.export.too_large")))
         try:
             pressless_import.read(taken)
         except pressless_import.ImportStopped:
@@ -276,7 +279,8 @@ def register(face: Face, folder: Path) -> None:
 
     face.add_page("GET", ADDRESS, page)
     face.add_page("POST", ADDRESS, page)
-    face.add_upload(f"{ADDRESS}/export", export_file, folder)
+    face.add_upload(f"{ADDRESS}/export", export_file, folder, largest=EXPORT_LARGEST,
+                    too_large=export_too_large)
     face.add_upload(f"{ADDRESS}/media", media_file, folder)
     face.add_piece("site-notices", offer)
     _register_folder(face, folder, empty, room, to_the_list)
