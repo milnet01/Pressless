@@ -15,6 +15,9 @@ must never be committed (INV-18), and nothing here overwrites a key a
 release may already depend on. Refuses a folder that does not exist, too.
 Keep a copy on a second drive. A lost key cannot be recovered from (scope
 decision 4).
+
+It runs on Linux only: owner-only is checked by the file's POSIX mode, and
+Windows keeps access in ACLs instead.
 """
 from __future__ import annotations
 
@@ -37,12 +40,14 @@ ROOT = Path(__file__).resolve().parent.parent
 def kept_private(path: Path) -> bool:
     """Whether the file really is owner-only. A drive with no POSIX modes --
     FAT, exFAT, NTFS mounted without them -- ignores the 0o600 asked for and
-    says nothing (PRESS-0162). Windows keeps access in ACLs, not these bits,
-    so it is not judged by them."""
-    return os.name == "nt" or not os.stat(path).st_mode & 0o077
+    says nothing (PRESS-0162)."""
+    return not os.stat(path).st_mode & 0o077
 
 
 def main(argv: list[str]) -> int:
+    if sys.platform == "win32":
+        print("refused: the key maker runs on Linux only", file=sys.stderr)
+        return 2
     if len(argv) != 1:
         print("usage: make-signing-key.py <path outside this repository>", file=sys.stderr)
         return 2
@@ -61,8 +66,17 @@ def main(argv: list[str]) -> int:
     key = Ed25519PrivateKey.generate()
     private = key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
     handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(handle, "wb") as out:
-        out.write(private)
+    try:
+        with os.fdopen(handle, "wb") as out:
+            out.write(private)
+            # On the disk before its public half is printed and pasted anywhere.
+            out.flush()
+            os.fsync(out.fileno())
+    except OSError as exc:
+        target.unlink(missing_ok=True)   # a part-file would block the next run
+        print(f"refused: the key could not be written ({type(exc).__name__})",
+              file=sys.stderr)
+        return 1
     if not kept_private(target):
         target.unlink()
         print("refused: that drive does not keep the key readable by you alone; "

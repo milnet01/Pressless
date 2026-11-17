@@ -6,16 +6,21 @@ key is made, and the real one is never touched.
 from __future__ import annotations
 
 import os
+import sys
 
 import pytest
 from _scripts import load_script
+
+# The key maker runs on Linux only (user, 2026-11-16): owner-only is judged
+# by POSIX modes, which Windows does not keep.
+pytestmark = pytest.mark.skipif(sys.platform == "win32",
+                                reason="the key maker runs on Linux only")
 
 
 def _maker():
     return load_script("make-signing-key.py")
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Windows keeps access in ACLs")
 def test_a_file_others_can_read_is_not_private(tmp_path):
     """A drive with no POSIX modes answers the 0o600 open with whatever it
     always answers; the maker used to trust the request. Breaks when the
@@ -37,3 +42,31 @@ def test_a_folder_that_is_not_there_is_refused_in_words(tmp_path, capsys):
     assert maker.main([str(target)]) == 1
     assert "does not exist" in capsys.readouterr().err
     assert not target.parent.exists()
+
+
+def test_windows_is_refused_before_a_key_is_made(tmp_path, capsys, monkeypatch):
+    """review-code: on Windows the 0o600 asked for restricts nothing, and the
+    check waved the key through. Breaks when the maker runs there."""
+    maker = _maker()
+    monkeypatch.setattr(sys, "platform", "win32")
+    target = tmp_path / "key.pem"
+    assert maker.main([str(target)]) == 2
+    assert "Linux only" in capsys.readouterr().err
+    assert not target.exists()
+
+
+def test_a_key_not_safely_on_disk_is_removed_and_not_printed(tmp_path, capsys, monkeypatch):
+    """review-code: the public key was printed before the private one was on
+    the disk, and a failed write left a part-file that blocked a rerun."""
+    maker = _maker()
+
+    def broken(handle):
+        raise OSError("the drive went away")
+
+    monkeypatch.setattr(os, "fsync", broken)
+    target = tmp_path / "key.pem"
+    assert maker.main([str(target)]) == 1
+    said = capsys.readouterr()
+    assert said.out == ""
+    assert "could not be written" in said.err
+    assert not target.exists()
