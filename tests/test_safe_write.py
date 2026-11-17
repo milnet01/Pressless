@@ -189,3 +189,42 @@ def test_off_windows_the_first_refusal_is_final(tmp_path, monkeypatch):
     with pytest.raises(PermissionError):
         write_whole(tmp_path / "state.json", "after", prefix=".state-")
     assert len(calls) == 1
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"),
+                    reason="Windows opens no folder descriptor to sync")
+def test_the_folder_is_synced_after_the_replace(tmp_path, monkeypatch):
+    """PRESS-0376: the replace is a change to the FOLDER, and on POSIX a
+    power loss can lose it unless the folder is synced too -- a save reported
+    done comes back as the old version, or a first save vanishes.
+
+    Breaks when only the temporary's descriptor is synced."""
+    synced = []
+    real_fsync = os.fsync
+
+    def watched(descriptor):
+        found = os.fstat(descriptor)
+        synced.append((stat.S_ISDIR(found.st_mode), found.st_ino))
+        return real_fsync(descriptor)
+
+    monkeypatch.setattr(os, "fsync", watched)
+    write_whole(tmp_path / "state.json", "text", prefix=".state-")
+    assert (True, os.stat(tmp_path).st_ino) in synced, "the folder was never synced"
+    assert synced.index((True, os.stat(tmp_path).st_ino)) > 0, "the folder was synced first"
+
+
+def test_a_folder_that_cannot_be_synced_does_not_fail_a_save(tmp_path, monkeypatch):
+    """PRESS-0376: the folder sync is best effort. Some file systems refuse
+    to sync a folder; the file is already in place by then, so a refusal must
+    not report a finished save as failed."""
+    real_fsync = os.fsync
+
+    def refusing(descriptor):
+        if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+            raise OSError(22, "Invalid argument")
+        return real_fsync(descriptor)
+
+    monkeypatch.setattr(os, "fsync", refusing)
+    target = tmp_path / "state.json"
+    write_whole(target, "text", prefix=".state-")
+    assert target.read_text(encoding="utf-8") == "text"

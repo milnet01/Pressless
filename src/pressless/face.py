@@ -42,6 +42,7 @@ from pressless import (
     google_signin,
     insights,
     log,
+    look,
     paths,
     publisher,
     settings,
@@ -124,6 +125,11 @@ SENTENCES: dict[type[Exception], Sentence] = {
     store.DanglingReply: _keys(
         "failure.store.DanglingReply.what",
         "failure.store.DanglingReply.next",
+    ),
+    # Here rather than in look_screen.py, so no import order decides it.
+    look.LookUnreadable: _keys(
+        "failure.look.LookUnreadable.what",
+        "failure.look.LookUnreadable.next",
     ),
     blocks.SectionRefused: _keys("failure.blocks.SectionRefused.what", "failure.again"),
     builder.BuildStopped: _keys(

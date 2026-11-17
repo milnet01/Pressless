@@ -234,7 +234,13 @@ and silently replaces it on POSIX, so the move is `os.rename` there
 and `os.link` then `os.unlink` here, both raising `FileExistsError`.
 A check alone leaves a window in which a second copy of Pressless, or
 a hand copy, creates the destination and the move destroys it — which
-INV-10 says cannot happen.
+INV-10 says cannot happen. **On POSIX the move syncs both folders**
+through `safe_write.sync_folder`, as `write_whole` syncs its one.
+
+**A move killed between the link and the unlink is finished, not
+refused.** It leaves one file in both folders, which `os.path.samefile`
+tells from two entries. The next move of that slug unlinks the source
+and succeeds; nothing is overwritten.
 
 **The check is not redundant, and one case needs it.** On a filesystem
 with no hard links `os.link` fails for its own reason before it can
@@ -346,6 +352,8 @@ Every single newline is a line break.
   `  Title: x` in a hand-edited file is the `Title`. Without that rule it
   routes to `extra`, and INV-9 then refuses the write because the name
   strips to a recognised one — so the file opens and can never be saved.
+  **A name that strips to nothing is refused on read**, naming the file,
+  for the same reason: INV-9 refuses an empty extra name on write.
 - **On read, an absent `Title`, `Categories` or `Tags` is empty rather
   than an error.** Only `Slug` and `Date` missing is a parse failure.
   S3 invites hand-editing, and a file someone trimmed a blank `Tags:`
@@ -551,7 +559,8 @@ The temporary is flushed and fsynced before the replace: `os.replace`
 orders the namespace and not the data, so without it a power loss can
 commit the rename ahead of the blocks and leave an empty file where
 the sentence above promises the previous one (PRESS-0039). PRESS-0001
-§4.4 states it in the same terms.
+§4.4 states it in the same terms, and has `write_whole` sync the folder
+after the replace.
 
 **On POSIX every file written this way is left readable by its owner
 alone.** `mkstemp` creates the temporary with mode `0600`, and
@@ -756,7 +765,9 @@ is true of a template is PRESS-0006's (§9).
   its destination: given a file at the destination that `path_for`
   composes exactly, each raises `SlugInUse`, moves nothing, and leaves
   both files byte-identical. A destination differing only in `A`–`Z`
-  case is INV-13's case, never this one — §4.3 owns the split.
+  case is INV-13's case, never this one — §4.3 owns the split. A
+  destination that is the source's own file is a cut-short move, which
+  the move finishes (§4.1).
   *Test:* `tests/test_store.py::test_a_move_never_overwrites` — write
   different entries at one slug as a draft and as published, call each
   direction, and compare both files' bytes before and after.
@@ -1131,7 +1142,9 @@ imports.
 | INV-7 | `tests/test_store.py::test_a_draft_never_reaches_published` |
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
-| INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
+| INV-10 | `tests/test_store.py::test_a_move_never_overwrites`, and `::test_a_move_cut_short_between_its_link_and_unlink_is_finished` for the finished move |
+| An empty header name is refused on read (§4.2) | `tests/test_store.py::test_a_header_line_with_no_name_is_refused_on_read` |
+| A POSIX move syncs both folders (§4.1) | `tests/test_store.py::test_a_move_syncs_both_folders` |
 | INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit. `::test_the_notice_names_no_path` holds the naming clause |
 | INV-11's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
@@ -1210,6 +1223,7 @@ imports.
 | 13 | 2026-09-26 | 3, cold, every lane holding every question — genre pinned `spec`; gating PRESS-0159's whole-name fold and byte-order mark. Packet carried `store.py` whole and the Windows measurements; Windows unrunnable. Lanes disclosed a git snapshot naming the amendment's commit | 0 | 3 | 0 | 0 | **Three verified, three fixed, none dismissed.** All three lanes: INV-12 still said `exists` and the listing cannot disagree and share one helper — false of shipped code, and against the new one-direction rule. Two lanes: INV-13's "case-folded" named no fold, so the twin notice could fire on a look-alike `exists` calls unrelated; it now names §4.3's A–Z fold. Two lanes: the new "listing never offers a file `read` cannot open" contradicted §4.3's listed suffix twin; narrowed to names `path_for` refuses. Three open questions resolved clean. |
 | 14 | 2026-09-26 | 3, cold, every lane holding every question — identical brief; packet rebuilt from disk. Windows unrunnable | 0 | 2 | 0 | 0 | **Two verified, two fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the spec ships.** All three lanes: INV-13 now folds the whole name while §4.3, §6 and INV-10 still said only the suffix's case makes a twin — settled on the whole name, as `exists` does, and INV-13's test gains a `Seaside.txt` case. All three: "a folded twin is listed" predates the stem fold and now covers `Seaside`, which the listing refuses; narrowed to the suffix case. **A calm cap**: one of the two landed on text loop 13 wrote. Over the run, one of five findings fell inside the amendment's own lines; the other four were passages it made false. |
 | impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: the address forwards file and its three calls. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376: §4.1 a cut-short move is finished and a POSIX move syncs both folders; §4.2 an empty header name is refused on read; §4.5 points at the folder sync; INV-10 names the cut-short case. |
 
 ## 13. Resource cost
 

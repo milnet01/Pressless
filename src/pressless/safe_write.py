@@ -1,7 +1,7 @@
 """Replacing a file whole, so an interrupted save leaves the old file or the new.
 
 The contract is docs/specs/PRESS-0001-settings.md § 4.4, which states this
-module's two functions; § 11 there names the modules that call it. It is not a
+module's functions; § 11 there names the modules that call it. It is not a
 part of Pressless: it imports no pressless module and no network module, so a
 module allowed to import it reaches nothing else through it (PRESS-0141).
 
@@ -68,15 +68,35 @@ def write_whole(
     except BaseException:
         _discard(temporary)
         raise
+    sync_folder(target.parent)
+
+
+def sync_folder(folder: Path) -> None:
+    """Make a rename, link or unlink in `folder` survive a power loss on POSIX.
+
+    The file's own fsync covers its blocks, not the folder entry naming it, so
+    without this a save already reported done can come back as the old version.
+    Best effort: some file systems refuse to sync a folder, and by then the
+    change is made, so a refusal must not report it as failed. Windows opens
+    no folder descriptor, so it does nothing there (PRESS-0376)."""
+    if _is_windows():
+        return
+    try:
+        handle = os.open(folder, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(handle)
+    except OSError:
+        pass
+    finally:
+        os.close(handle)
 
 
 def patiently(step: Callable[[], _T]) -> _T:
     """Run `step` and return what it returns, retrying a PermissionError for a
-    moment on Windows only.
-
-    write_whole replaces through it, the Store's own rename does too, and the
-    wizard reads its progress file through it: the scanner refuses all three
-    the same way (PRESS-0135 #2, PRESS-0351)."""
+    moment on Windows only, where a scanner briefly refuses a file just
+    written (PRESS-0135 #2). PRESS-0001 § 11 names its callers."""
     for attempt in range(_WINDOWS_TRIES):
         try:
             return step()

@@ -134,7 +134,8 @@ file in this item, so `_BINNABLE` is unchanged.
 `furniture/`, both `WAITING_FOLDERS`, `comments/`, `photographs/` or
 `forwards/` holds a file. `templates/` and `look/` are not counted:
 `templates.register` seeds the templates at every launch, and neither is a
-site on its own.
+site on its own. Nor is a temporary a killed save left, named with a
+leading `.` and ending `.tmp` (PRESS-0376).
 
 ### 4.3 The starter set
 
@@ -257,7 +258,7 @@ other Builder output.
   seeded templates and style code, and True once any one of § 4.2's counted
   folders holds a file. *Test:*
   `tests/test_store.py::test_holds_a_site_counts_writing_not_templates`,
-  one case per counted folder.
+  one case per counted folder, and `::test_a_save_cut_short_is_not_a_site`.
   *Breaks when:* `templates/` is counted, so every launched install holds a
   site, or a counted folder is left out.
 - **INV-2** — After `fill`, `builder.build` succeeds and writes
@@ -407,7 +408,7 @@ mutation-probed once the code lands.
 
 | Rule | What catches a breach |
 |------|----------------------|
-| INV-1 | `tests/test_store.py::test_holds_a_site_counts_writing_not_templates` |
+| INV-1 | `tests/test_store.py::test_holds_a_site_counts_writing_not_templates` and `::test_a_save_cut_short_is_not_a_site` |
 | INV-2 | `tests/test_starter.py::test_a_filled_starter_builds` |
 | INV-3 | `tests/test_starter.py::test_fill_writes_only_what_is_absent` |
 | INV-4 | `tests/test_starter.py::test_the_name_is_escaped` |

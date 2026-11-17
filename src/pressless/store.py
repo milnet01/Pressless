@@ -171,9 +171,7 @@ def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
     are the Store's own layout rather than the caller's, so a fresh install
     needs no setup step for them (§6).
     """
-    handed = Path(folder)
-    if not handed.is_dir():
-        raise StoreError("the folder handed to the Store is not a folder")
+    handed = _handed(folder)
     subfolder = handed / (DRAFTS_FOLDER if draft else PUBLISHED_FOLDER)
     return _only_usable(
         _raw_names(subfolder, FILE_SUFFIX),
@@ -285,6 +283,11 @@ def read(path: Path) -> Entry:
             categories = _parse_list(value)
         elif name == "Tags":
             tags = _parse_list(value)
+        elif not name:
+            # Kept as an extra named '', the entry opened and could never be
+            # saved, since write refuses an empty name. Refused here, naming
+            # the file, as PRESS-0074 does for the slug (§4.2).
+            raise StoreError(f"{target.name}: header line {line!r} has no name before its colon")
         else:
             # Kept and never dropped, which is ADR-0001's promise, and read
             # exactly as the recognised fields are -- one rule for every
@@ -410,6 +413,10 @@ def copy_to_bin(folder: Path, path: Path) -> Path:
         try:
             with open(target, "xb") as copy:
                 copy.write(data)
+                # Synced before the caller writes the replacement, or a power
+                # loss can keep the replacement and lose this copy (PRESS-0376).
+                copy.flush()
+                os.fsync(copy.fileno())
         except FileExistsError:
             raise                   # not this call's file: it is left alone
         except BaseException:
@@ -474,6 +481,12 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
         f"two has to be renamed before this can go ahead"
     )
     if target.exists():
+        if _same_file(source, target):
+            # A move killed between its link and its unlink: one file in both
+            # folders, not two entries. Finishing it overwrites nothing (INV-10).
+            _finish_a_cut_short_move(source, slug)
+            _report_a_stranded_twin(target, slug)
+            return target
         raise SlugInUse(occupied)
     try:
         target.parent.mkdir(exist_ok=True)
@@ -489,6 +502,23 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     # After the move, so a move that failed is never described (PRESS-0162).
     _report_a_stranded_twin(target, slug)
     return target
+
+
+def _same_file(source: Path, target: Path) -> bool:
+    try:
+        return os.path.samefile(source, target)
+    except OSError:
+        return False
+
+
+def _finish_a_cut_short_move(source: Path, slug: str) -> None:
+    try:
+        os.unlink(source)
+    except OSError as exc:
+        raise StoreError(
+            f"{slug!r} could not be moved out of {source.parent.name}: {_why(exc)}"
+        ) from exc
+    safe_write.sync_folder(source.parent)
 
 
 def _report_a_stranded_twin(target: Path, slug: str) -> None:
@@ -514,8 +544,9 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
         return
     for path in folder.iterdir():
         if path.name != target.name and _folded(path.name) == _folded(target.name):
+            # report -> _move -> publish or unpublish -> their caller.
             warnings.warn(StoreNotice("notice.store.twin", twin=path.name,
-                                      target=target.name), stacklevel=3)
+                                      target=target.name), stacklevel=4)
 
 
 def _move_without_overwriting(source: Path, target: Path) -> None:
@@ -552,6 +583,8 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
         with contextlib.suppress(OSError):  # both stay; the failure raised says so
             os.unlink(target)
         raise
+    safe_write.sync_folder(target.parent)
+    safe_write.sync_folder(source.parent)
 
 
 def _refuse_what_the_format_cannot_carry(entry: Entry) -> None:
@@ -700,8 +733,10 @@ def _why(exc: Exception) -> str:
     A stock file error quotes the path it failed on, and PRESS-0005 § 4.4
     forbids a full path in anything the Store raises or emits. `strerror` is
     the reason alone. A UnicodeError names no path, so its own words stand.
-    Duplicated from publisher.py on purpose: design rule 7 forbids reaching
-    into another part.
+    Duplicated on purpose, since design rule 7 forbids reaching into another
+    part: credentials.py, settings.py, builder.py and publisher.py hold their
+    own. This one differs in taking any Exception and answering str(exc) for
+    one that is not an OSError.
     """
     if isinstance(exc, OSError):
         return exc.strerror or type(exc).__name__
@@ -747,6 +782,9 @@ IDENTITY_FILE = "identity.json"
 STYLE_CODE_NAME = "style.css"
 LOOK_CHOICES_NAME = "choices.json"   # PRESS-0196: what the style code is made from
 EXTRA_CSS_NAME = "extra.css"         # PRESS-0196: their own CSS, added last
+# PRESS-0196: the look's files, in the order look.digest reads them. Every
+# reader of the set reads this, so a fourth file is added here once.
+LOOK_FILES = (LOOK_CHOICES_NAME, EXTRA_CSS_NAME, STYLE_CODE_NAME)
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
@@ -756,6 +794,8 @@ WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-w
 
 # What move_to_bin takes a file from (PRESS-0005 §4.1): every folder of
 # writing the Store holds, and the kept files (PRESS-0197), and nothing else.
+# `mark` also reads it as the list of the Store's folders, photographs added:
+# a folder taken out of it, or a new one left out, is a change `mark` misses.
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
     TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, OPTIONS_FOLDER,
@@ -815,9 +855,7 @@ def list_html(folder: Path, kind: str, *, waiting: bool = False) -> tuple[str, .
     for the furniture folder that is the furniture set as well, so a legal
     slug which is not one of the three is passed over and named (INV-12).
     """
-    handed = Path(folder)
-    if not handed.is_dir():
-        raise StoreError("the folder handed to the Store is not a folder")
+    handed = _handed(folder)
     subfolder = handed / (WAITING_FOLDERS[_html_subfolder(kind)] if waiting
                           else _html_subfolder(kind))
     return _only_usable(
@@ -869,9 +907,7 @@ def list_templates(folder: Path) -> tuple[str, ...]:
     What PRESS-0017's picker binds to, and what write_template names its file
     from. Only names template_path_for accepts, each refusal named (INV-12).
     """
-    handed = Path(folder)
-    if not handed.is_dir():
-        raise StoreError("the folder handed to the Store is not a folder")
+    handed = _handed(folder)
     subfolder = handed / TEMPLATES_FOLDER
     return _only_usable(
         _raw_names(subfolder, FILE_SUFFIX),
@@ -1224,7 +1260,7 @@ def style_code_path(folder: Path) -> Path:
 def look_path_for(folder: Path, name: str) -> Path:
     """Where one of the look's files sits: STYLE_CODE_NAME, LOOK_CHOICES_NAME
     or EXTRA_CSS_NAME (PRESS-0196 § 4.1)."""
-    if name not in (STYLE_CODE_NAME, LOOK_CHOICES_NAME, EXTRA_CSS_NAME):
+    if name not in LOOK_FILES:
         raise StoreError(f"{name!r} is not one of the look's files")
     return Path(folder) / LOOK_FOLDER / name
 
@@ -1278,6 +1314,12 @@ def mark(folder: Path, *others: Path) -> str:
     return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()
 
 
+def _is_a_temporary(name: str) -> bool:
+    """A name `_write_atomically` gives its temporary: a prefix starting with a
+    dot, and safe_write's `.tmp` suffix."""
+    return name.startswith(".") and name.endswith(".tmp")
+
+
 # PRESS-0126 § 4.2: the folders whose files make a site. Not templates/, which
 # every launch seeds, and not look/, options/ or identity/, which are no site on
 # their own.
@@ -1289,10 +1331,11 @@ _SITE_FOLDERS = (
 
 def holds_a_site(folder: Path) -> bool:
     """Whether any of the folders that make a site holds a file. Setup offers
-    the starter site only where this is False (PRESS-0126 § 4.4)."""
+    the starter site only where this is False (PRESS-0126 § 4.4). A temporary
+    a killed save left behind (`.<kind>-<random>.tmp`) is not his site."""
     handed = Path(folder)
     try:
-        return any(child.is_file()
+        return any(child.is_file() and not _is_a_temporary(child.name)
                    for name in _SITE_FOLDERS if (handed / name).is_dir()
                    for child in (handed / name).iterdir())
     except OSError as exc:
@@ -1534,9 +1577,8 @@ def _refuse_a_zoned_date(comments: tuple[Comment, ...], target: Path) -> None:
     reason the entry path gives: it misorders nothing, and refusing it would
     reject datetime.now().
 
-    Nothing in the tree can reach this today -- read_comments builds every
-    date with strptime -- so the caller it is written for is Import
-    (PRESS-0007), which is why it is here before that caller exists.
+    read_comments builds every date with strptime, so only a caller that
+    builds its own comments can hand one in.
     """
     for comment in comments:
         date = comment.date
@@ -1549,6 +1591,16 @@ def _refuse_a_zoned_date(comments: tuple[Comment, ...], target: Path) -> None:
                 f"the offset and keep the wall clock before writing; nothing "
                 f"was written"
             )
+
+
+def _handed(folder: Path) -> Path:
+    """The folder a caller handed, refused where it is not a folder: a mistyped
+    folder is not a Store to list or to start filling (§6). Every listing and
+    `_write_atomically` start here."""
+    handed = Path(folder)
+    if not handed.is_dir():
+        raise StoreError("the folder handed to the Store is not a folder")
+    return handed
 
 
 def _raw_names(subfolder: Path, suffix: str) -> tuple[tuple[str, str], ...]:
@@ -1565,8 +1617,9 @@ def _raw_names(subfolder: Path, suffix: str) -> tuple[tuple[str, str], ...]:
     today, and the answer §4.4 rejects (INV-12).
 
     `suffix` is lower case and matched A-Z folded, as _slugs_in matches it.
-    The entries, page and template listings share this helper; the whole-name
-    listings use _list_names. A missing subfolder holds nothing (§6).
+    The entries, page and template listings share this helper, each after
+    `_handed` has refused a mistyped folder; the whole-name listings use
+    _list_names. A missing subfolder holds nothing (§6).
     """
     if not subfolder.is_dir():
         return ()
@@ -1616,9 +1669,7 @@ def _list_names(folder: Path, subfolder: str) -> tuple[str, ...]:
     the Store's own layout rather than the caller's, so a fresh install needs
     no setup step for them (§6), the same answer _raw_names gives.
     """
-    handed = Path(folder)
-    if not handed.is_dir():
-        raise StoreError("the folder handed to the Store is not a folder")
+    handed = _handed(folder)
     destination = handed / subfolder
     if not destination.is_dir():
         return ()
@@ -1704,9 +1755,7 @@ def _write_atomically(
     templates and comments pass "\\n"; a page passes "" to turn translation off
     and keep the bytes it was given (§4.2).
     """
-    handed = Path(folder)
-    if not handed.is_dir():
-        raise StoreError("the folder handed to the Store is not a folder")
+    _handed(folder)
     destination = Path(target).parent
     try:
         destination.mkdir(exist_ok=True)

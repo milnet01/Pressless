@@ -117,7 +117,9 @@ file is never half-read.
 
 `store` gains `LOOK_CHOICES_NAME = "choices.json"` and
 `EXTRA_CSS_NAME = "extra.css"` beside `STYLE_CODE_NAME`, and one path
-function, `look_path_for(folder, name)`, for all three.
+function, `look_path_for(folder, name)`, for all three. `LOOK_FILES` holds
+the three names, in the order `look.digest` reads them; every reader of the
+set reads it.
 `read_look_file` and `write_look_file` read and write any of them;
 `read_style_code` and `write_style_code` stay as their style-code cases.
 `LOOK_FOLDER` joins `_BINNABLE`, because a save over an unmanaged

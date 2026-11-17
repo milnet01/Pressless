@@ -20,6 +20,7 @@ import threading
 import unicodedata
 import urllib.parse
 import warnings
+from collections.abc import Collection
 from datetime import datetime
 from pathlib import Path
 
@@ -157,13 +158,16 @@ def name_address(name: str) -> str:
     return photographs.folded(text)[:LONGEST_ADDRESS].strip("-")
 
 
-def free_address(folder: Path, wanted: str) -> str:
+def free_address(folder: Path, wanted: str, *, reserved: Collection[str] = ()) -> str:
     """`wanted`, or the first of `wanted-2`, `wanted-3` … no entry holds, no old
-    address forwards from, and the Store accepts (§ 4.1; PRESS-0182)."""
+    address forwards from, none of `reserved` names, and the Store accepts
+    (§ 4.1; PRESS-0182). Undo reserves what it is about to write (PRESS-0015
+    § 4.4)."""
     # Read once, outside the loop: its StoreError must stop the search, not be
     # skipped as a refused name (PRESS-0182 § 4.2).
     forwarded = store.read_forwards(folder)
     return photographs.first_free(wanted, lambda candidate: candidate not in forwarded
+                            and candidate not in reserved
                             and not store.exists(folder, candidate))
 
 

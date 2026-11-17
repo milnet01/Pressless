@@ -325,7 +325,10 @@ Builder its folder swap (PRESS-0365), and the wizard its read of the
 progress file (PRESS-0351). On
 any failure the descriptor is closed, the temporary is removed, and the
 exception propagates unchanged; turning it into a module's own error is the
-caller's. It imports no `pressless` module and no network module.
+caller's. **After the replace it syncs `target`'s folder** through
+`sync_folder(folder)`, since the file's own sync does not cover the folder
+entry naming it. That is POSIX only and best effort: Windows opens no folder
+descriptor, and a refusal must not fail a save already made (PRESS-0376). It imports no `pressless` module and no network module.
 `settings.py` passes its owner-only notice (below) as `check`.
 **`safe_write` is not a part**, as `paths` and `update_key` are not:
 `docs/design.md` § The parts lists parts, and *depends on nothing* there
@@ -745,3 +748,4 @@ loading or saving does anything.
 | amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.1: Settings gains `votes`. |
 | amend | 2026-11-12 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0351 § 4.4: `patiently` returns what `step` returns; the wizard reads its progress file through it. |
 | amend | 2026-11-16 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0365 § 4.4 and § 11: the Builder's folder swap calls `patiently`. |
+| amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376 § 4.4: `write_whole` syncs the target's folder through `sync_folder`. |

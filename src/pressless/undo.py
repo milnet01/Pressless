@@ -54,18 +54,21 @@ class NothingToUndo(Exception):
     """The state before holds no `content/` (§ 3 decision 5)."""
 
 
+class FetchAreaInUse(Exception):
+    """Step 1 left something in the fetch area: on Windows, a file another
+    program holds open (§ 4.3)."""
+
+
 # Added here rather than in face.py, which cannot import this module back.
-# PRESS-0196: undo keeps the Store's look rather than raise this (§ 4.7); the
-# sentence is for the Look screen, which can.
-SENTENCES[look.LookUnreadable] = Sentence(
-    "failure.look.LookUnreadable.what",
-    Site.UNCHANGED,
-    "failure.look.LookUnreadable.next",
-)
 SENTENCES[NothingToUndo] = Sentence(
     "failure.undo.NothingToUndo.what",
     Site.UNCHANGED,
     "failure.undo.NothingToUndo.next",
+)
+SENTENCES[FetchAreaInUse] = Sentence(
+    "failure.undo.FetchAreaInUse.what",
+    Site.UNCHANGED,
+    "failure.undo.FetchAreaInUse.next",
 )
 
 
@@ -77,7 +80,7 @@ class Undone:
     kept: tuple[str, ...]      # addresses his own versions were kept under
 
 
-def undo(folder: Path, settings: settings.Settings, key: str, *,
+def undo(folder: Path, saved: settings.Settings, key: str, *,
          capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
          notices: list[str] | None = None,
          transport: publisher.Transport | None = None) -> Undone:
@@ -95,7 +98,7 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
 
     empty_fetch(fetch)                                                   # step 1
     try:
-        fetched = publisher.fetch_previous(settings, key, fetch, CONTENT, transport)  # step 2
+        fetched = publisher.fetch_previous(saved, key, fetch, CONTENT, transport)  # step 2
         if not fetched.paths:                                            # step 3
             raise NothingToUndo("the state before this commit holds no site")
 
@@ -106,7 +109,7 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
             changed = captured(lambda: reconcile(folder, state, reversals))   # step 5
             uploading = True
             published = publishing.publish(                              # step 6
-                folder, settings, key, entry=None, emptying=True,
+                folder, saved, key, entry=None, emptying=True,
                 capture=capture, notices=gathered, transport=transport)
         except publisher.OutcomeUnknown:
             # The Store stays as undo made it: GitHub may have taken the change,
@@ -127,7 +130,7 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
     finally:
         try:
             empty_fetch(fetch)                                           # step 7
-        except OSError:
+        except (OSError, FetchAreaInUse):
             # Never raised: step 1 of the next undo empties the area again and
             # reads nothing it finds, and a raise here would replace what the
             # sequence did -- a publish that landed reported as failing (§ 4.3).
@@ -140,9 +143,13 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
 def empty_fetch(fetch: Path) -> None:
     """§ 4.3 steps 1 and 7. Undo never reads a fetch area it did not just create:
     PRESS-0009 § 4.5 leaves a window where a failed fetch leaves the folder part
-    old and part new, and says this item must not assume otherwise."""
+    old and part new, and says this item must not assume otherwise. So
+    anything left in it -- a file another program holds open on Windows --
+    raises FetchAreaInUse rather than being read."""
     shutil.rmtree(fetch, ignore_errors=True)
     fetch.mkdir(parents=True, exist_ok=True)
+    if any(fetch.iterdir()):
+        raise FetchAreaInUse("the fetch area could not be emptied")
 
 
 # --------------------------------------------------------------- reading ---
@@ -245,16 +252,13 @@ def read_state(fetch: Path, paths: tuple[str, ...]) -> State:
             state.options.update(store.read_options(fetch / prefix))
         elif kind == store.IDENTITY_FOLDER and name == store.IDENTITY_FILE:
             identity = store.read_identity(fetch / prefix)
-        elif kind == store.LOOK_FOLDER and name in _LOOK_FILES:
+        elif kind == store.LOOK_FOLDER and name in store.LOOK_FILES:
             text = store.read_look_file(fetch / prefix, name)
             if text is not None:
                 state.look[name] = text
         else:
             skipped.append(relative)
     return dataclasses.replace(state, identity=identity, skipped=tuple(skipped))
-
-
-_LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
 
 
 def _stem(name: str, suffix: str) -> str:
@@ -279,12 +283,16 @@ def reconcile(folder: Path, state: State, reversals: list[Callable[[], None]]) -
     changed = _Changed()
     published = set(store.list_slugs(folder, draft=False))
     drafts = set(store.list_slugs(folder, draft=True))
+    # What the reconcile is about to write, which a kept address must not take
+    # (§ 4.4): the fetched slugs, and the old addresses its forwards file sends
+    # on, restored after the entries.
+    reserved = {*state.entries, *state.forwards.get(store.FORWARDS_FILE, {})}
 
     for slug, fetched in state.entries.items():
         if slug in published:
-            _restore_over_published(folder, slug, fetched, reversals, changed)
+            _restore_over_published(folder, slug, fetched, reversals, changed, reserved)
         elif slug in drafts:
-            _restore_over_draft(folder, slug, fetched, reversals, changed)
+            _restore_over_draft(folder, slug, fetched, reversals, changed, reserved)
         else:
             store.write(folder, fetched, draft=False)
             reversals.append(_bin_later(folder, slug, draft=False))
@@ -298,13 +306,14 @@ def reconcile(folder: Path, state: State, reversals: list[Callable[[], None]]) -
 
 
 def _restore_over_published(folder: Path, slug: str, fetched: store.Entry,
-                            reversals: list[Callable[[], None]], changed: _Changed) -> None:
+                            reversals: list[Callable[[], None]], changed: _Changed,
+                            reserved: set[str]) -> None:
     """The Store publishes it. Nothing where it does not differ; otherwise his
     version is kept as a draft and the fetched entry written over it (§ 4.4)."""
     remembered = store.read(store.path_for(folder, slug, draft=False))
     if remembered == fetched:
         return
-    kept = _keep(folder, remembered, slug)
+    kept = _keep(folder, remembered, slug, reserved)
     reversals.append(_bin_later(folder, kept, draft=True))
     store.write(folder, fetched, draft=False)
     reversals.append(lambda: store.write(folder, remembered, draft=False))
@@ -313,7 +322,8 @@ def _restore_over_published(folder: Path, slug: str, fetched: store.Entry,
 
 
 def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
-                        reversals: list[Callable[[], None]], changed: _Changed) -> None:
+                        reversals: list[Callable[[], None]], changed: _Changed,
+                        reserved: set[str]) -> None:
     """A draft holds that slug. His draft is kept under a free address with its
     own fields, the old draft file is binned, and the fetched entry is published
     — otherwise one slug would name two files, which docs/design.md rules out."""
@@ -323,7 +333,7 @@ def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
     demoted = (any(name == publishing.UNDONE for name, _ in his.extra)
                and dataclasses.replace(his, extra=_without(his.extra, publishing.UNDONE))
                == fetched)
-    kept = None if demoted else _keep(folder, his, slug)
+    kept = None if demoted else _keep(folder, his, slug, reserved)
     if kept:
         reversals.append(_bin_later(folder, kept, draft=True))
     store.move_to_bin(folder, store.path_for(folder, slug, draft=True))
@@ -368,7 +378,7 @@ def _restore_look(folder: Path, fetched: dict[str, str],
         except look.LookUnreadable:
             warnings.warn(store.StoreNotice("notice.undo.look_kept"), stacklevel=2)
             return
-    for name in _LOOK_FILES:
+    for name in store.LOOK_FILES:
         _restore_one(folder, store.look_path_for(folder, name),
                      store.read_look_file(folder, name), fetched.get(name),
                      lambda text, n=name: store.write_look_file(folder, n, text),
@@ -411,12 +421,14 @@ def _restore_other_kinds(folder: Path, state: State,
     path = store.options_path_for(folder)
     remembered_options = store.read_options(folder)
     if remembered_options != state.options:
-        if path.is_file():
+        existed = path.is_file()
+        if existed:
             store.move_to_bin(folder, path)
             reversals.append(lambda o=remembered_options: store.write_options(folder, o))
         if state.options:
             store.write_options(folder, state.options)
-            reversals.append(lambda p=path: store.move_to_bin(folder, p))
+            if not existed:     # a reversal never bins a file it is putting back
+                reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
     for slug, comments in sorted(state.comments.items()):
         path = store.comments_path_for(folder, slug)
@@ -452,14 +464,15 @@ def _restore_one(folder: Path, path: Path, remembered: _T | None, wanted: _T | N
             reversals.append(lambda: store.move_to_bin(folder, path))
 
 
-def _keep(folder: Path, entry: store.Entry, restored: str) -> str:
-    """His version, as a draft under a free address (§ 4.4). It keeps its own
-    fields, so a draft that was a working copy of some OTHER entry stays one —
+def _keep(folder: Path, entry: store.Entry, restored: str, reserved: set[str]) -> str:
+    """His version, as a draft under a free address none of `reserved` names
+    (§ 4.4). It keeps its own fields, so a draft that was a working copy of
+    some OTHER entry stays one —
     but never a `Replaces` naming the entry just put back, which § 3 decision 7
     rules out and `editor.TooManyCopies` would then refuse, and never the
     `Undone` mark, or the list calls an entry back on the site taken off it,
     and never a vote key, since it becomes another entry (PRESS-0211 § 4.2)."""
-    wanted = editor.free_address(folder, restored + KEPT_SUFFIX)
+    wanted = editor.free_address(folder, restored + KEPT_SUFFIX, reserved=reserved)
     extra = tuple(pair for pair in _without(_without(entry.extra, publishing.UNDONE),
                                             store.VOTE_KEY)
                   if not (pair[0] == editor.REPLACES and pair[1] == restored))

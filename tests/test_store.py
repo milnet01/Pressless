@@ -2014,3 +2014,118 @@ def test_address_forwards_read_back(tmp_path):
     store_module.write_address_forwards(tmp_path, {"about.html": "Not A Name"})
     with pytest.raises(store_module.StoreError):
         store_module.read_address_forwards(tmp_path)
+
+
+# PRESS-0376: the 2026-11-16 review of the Store.
+
+
+def test_a_move_cut_short_between_its_link_and_unlink_is_finished(tmp_path):
+    """INV-10: a move killed after its link and before its unlink leaves one
+    file in both folders. That is the same file, not a second entry, so the
+    next move of that slug finishes the first rather than refusing it.
+
+    Breaks when the move treats its own half-made link as an occupied slug:
+    the writer is then told to rename one of two identical files."""
+    _require_hard_links(tmp_path)
+    draft = Path(write(tmp_path, _entry(slug="halfway"), draft=True))
+    (tmp_path / _PUBLISHED).mkdir(exist_ok=True)
+    os.link(draft, tmp_path / _PUBLISHED / f"halfway{_SUFFIX}")
+    held = draft.read_bytes()
+
+    target = publish(tmp_path, "halfway")
+
+    assert target.read_bytes() == held
+    assert not draft.exists(), "the draft half of the move was left behind"
+
+
+def test_a_copy_into_the_bin_is_synced(tmp_path, monkeypatch):
+    """PRESS-0376: copy_to_bin keeps the old style code while its replacement
+    is written and synced. Unsynced, a power loss can keep the replacement
+    and lose the copy, and the old style code is then gone.
+
+    Breaks when the copy is closed without an fsync of its own descriptor."""
+    css = store_module.style_code_path(tmp_path)
+    css.parent.mkdir()
+    css.write_bytes(b"body { color: black; }\n")
+    synced = []
+    real_fsync = os.fsync
+
+    def watched(descriptor):
+        found = os.fstat(descriptor)
+        synced.append((found.st_ino, found.st_size))
+        return real_fsync(descriptor)
+
+    monkeypatch.setattr(os, "fsync", watched)
+    copied = store_module.copy_to_bin(tmp_path, css)
+    assert (os.stat(copied).st_ino, len(b"body { color: black; }\n")) in synced
+
+
+@pytest.mark.parametrize("left", ["drafts/.entry-abc123.tmp", "pages/.page-x1y2.tmp",
+                                  "comments/.comments-q.tmp"])
+def test_a_save_cut_short_is_not_a_site(tmp_path, left):
+    """PRESS-0126 INV-1: a temporary a killed save left behind is not the
+    writer's site, so setup still offers the starter site.
+
+    Breaks when holds_a_site counts every file, the Store's own temporaries
+    among them."""
+    target = tmp_path / left
+    target.parent.mkdir()
+    target.write_text("half a save", encoding="utf-8")
+    assert store_module.holds_a_site(tmp_path) is False
+
+
+def test_a_header_line_with_no_name_is_refused_on_read(tmp_path):
+    """§4.2: a header line with nothing before its colon is refused when the
+    file is opened, naming the file -- as write refuses an empty extra name.
+    Read as an extra field named '', the entry opened and could never be
+    saved (PRESS-0074's class of fault).
+
+    Breaks when read keeps an empty name as an extra field."""
+    folder = tmp_path / _PUBLISHED
+    folder.mkdir()
+    path = folder / f"nameless{_SUFFIX}"
+    path.write_text("Slug: nameless\nDate: 2014-11-09 21:32:00\n: a value\n\nBody.\n",
+                    encoding="utf-8")
+    with pytest.raises(StoreError, match=f"nameless{_SUFFIX}"):
+        read(path)
+
+
+def test_a_stranded_twin_notice_points_at_the_caller(tmp_path):
+    """INV-13's notice is attributed to the code that called publish, as
+    every listing's notice is to the code that called the listing.
+
+    Breaks when its stacklevel stops inside the Store."""
+    _require_hard_links(tmp_path)
+    _require_distinct_case(tmp_path)
+    write(tmp_path, _entry(slug="moved"), draft=True)
+    stranded = tmp_path / _PUBLISHED
+    stranded.mkdir(exist_ok=True)
+    (stranded / f"Moved{_SUFFIX}").write_text("the writer's own copy")
+
+    with pytest.warns(StoreNotice) as caught:
+        publish(tmp_path, "moved")
+
+    assert [each.filename for each in caught] == [__file__]
+
+
+def test_a_move_syncs_both_folders(tmp_path, monkeypatch):
+    """PRESS-0376: the POSIX move is a link and an unlink, two changes to two
+    folders. Each folder is synced, or a power loss can bring the entry back
+    in the folder it left, or lose it from the one it reached.
+
+    Breaks when the move returns without syncing a folder."""
+    _require_hard_links(tmp_path)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: False)
+    write(tmp_path, _entry(slug="moving"), draft=True)
+    (tmp_path / _PUBLISHED).mkdir(exist_ok=True)
+    synced = []
+    real_fsync = os.fsync
+
+    def watched(descriptor):
+        synced.append(os.fstat(descriptor).st_ino)
+        return real_fsync(descriptor)
+
+    monkeypatch.setattr(os, "fsync", watched)
+    publish(tmp_path, "moving")
+    for name in (_PUBLISHED, _DRAFTS):
+        assert os.stat(tmp_path / name).st_ino in synced, f"{name}/ was never synced"

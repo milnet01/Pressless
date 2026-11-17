@@ -11,6 +11,8 @@ import contextlib
 import dataclasses
 import json
 import re
+import subprocess
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -402,3 +404,18 @@ def test_the_style_whose_colours_fill_the_boxes_is_marked(tmp_path: Path) -> Non
         _, _, page = browser.request("GET", "/look")
     assert _marked_styles(page) == []
     assert len(re.findall(r'name="style" value=', page)) == len(starter_look.STYLES)
+
+
+def test_the_unreadable_look_has_its_sentence_without_undo():
+    """The Look screen shows an unreadable choices.json in its own words. The
+    sentence is registered in the Face's own table, so it does not depend on
+    undo, which never raises it, being imported first.
+
+    Breaks when the registration lives in a module the screen never imports."""
+    probe = ("import sys; from pressless import face, look; "
+             "assert 'pressless.undo' not in sys.modules; "
+             "assert look.LookUnreadable in face.SENTENCES")
+    # Run from src/, which `python -c` puts first on the path.
+    ran = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True,  # noqa: S603
+                         check=False, cwd=Path(face.__file__).resolve().parents[1])
+    assert ran.returncode == 0, ran.stderr

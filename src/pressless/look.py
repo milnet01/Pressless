@@ -368,7 +368,7 @@ def digest(folder: Path) -> str:
     """SHA-256 over choices.json, extra.css and style.css in that order, an
     absent file counting as a fixed marker (§ 4.4, INV-8)."""
     total = hashlib.sha256()
-    for name in (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME):
+    for name in store.LOOK_FILES:
         path = store.look_path_for(folder, name)
         try:
             data = path.read_bytes()

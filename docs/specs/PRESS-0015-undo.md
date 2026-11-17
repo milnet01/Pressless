@@ -113,6 +113,7 @@ CONTENT = "content/"        # the prefix fetched (PRESS-0008 § 4.7)
 KEPT_SUFFIX = "-before-undo"
 
 class NothingToUndo(Exception): ...   # the state before holds no content/ (§ 3 decision 5)
+class FetchAreaInUse(Exception): ...  # step 1 left something in the fetch area (§ 4.3)
 
 @dataclass(frozen=True)
 class Undone:
@@ -121,7 +122,7 @@ class Undone:
     demoted: tuple[str, ...]   # entries turned back into drafts
     kept: tuple[str, ...]      # addresses his own versions were kept under
 
-def undo(folder: Path, settings: Settings, key: str, *,
+def undo(folder: Path, saved: Settings, key: str, *,
          capture: Callable[[], ContextManager[list[str]]] = nothing_captured,
          notices: list[str] | None = None,
          transport: publisher.Transport | None = None) -> Undone: ...
@@ -153,8 +154,8 @@ applies `capture` to its own steps as it already does.
 § 4.5 step 3). Without that line `POST /undo` is never added and no button can
 reach it.
 
-`undo.py` adds `NothingToUndo`'s sentence to `face.SENTENCES` when it is
-imported, as `publishing.py` and `editor.py` do.
+`undo.py` adds the sentences of `NothingToUndo` and `FetchAreaInUse` to
+`face.SENTENCES` when it is imported, as `publishing.py` and `editor.py` do.
 
 ### 4.2 The route
 
@@ -165,11 +166,14 @@ sequence, so a save in another window cannot meet a Store write half way
 through. In order:
 
 1. **Settings.** `settings.load(folder)`.
-2. **The key.** `credentials.read(store, folder, github_account)`.
+2. **The key.** `github_setup.token(folder, store, github_account)`, which
+   takes `credentials.read`'s arguments and renews a signed-in key.
 3. **Undo.** `undo(folder, settings, key, capture=face.capture,
    notices=<the reply's list>, transport=…)`.
 
-Steps 1 and 2 run inside `face.capture()`; step 3 passes it on. A failure at
+Step 1 runs inside `face.capture()`; step 3 passes it on. Step 2 runs
+outside it: a renewal reaches GitHub, a capture holds a process-wide lock,
+and the key emits no notice. A failure at
 any step answers status 200 rather than an error status, so the page can render
 the failure beside what it already shows:
 
@@ -209,7 +213,9 @@ succeeded.
    PRESS-0009 § 4.5 leaves a residual window in which a failed fetch leaves
    the folder part old and part new, and says this item must not be built
    assuming otherwise. Undo therefore never reads a fetch area it did not
-   just create.
+   just create. **Anything left in it raises `FetchAreaInUse`**, the Store
+   untouched: on Windows, a file another program holds open survives the
+   removal.
 2. **Fetch.** `publisher.fetch_previous(settings, key, folder / FETCH_FOLDER,
    CONTENT, transport)`. `NoPreviousState` where the current commit has no
    parent. Any `publisher.PublishError` here is raised with the Store
@@ -298,11 +304,11 @@ dataclasses, so each compares by value.
 
 - **The Store publishes it and it does not differ.** Nothing.
 - **The Store publishes it and it differs.** His version is written as a draft
-  under `editor.free_address(folder, slug + KEPT_SUFFIX)`, carrying no
-  `Replaces` field (§ 3 decision 7). Then the fetched entry is written as
+  under `editor.free_address(folder, slug + KEPT_SUFFIX, reserved=…)`,
+  carrying no `Replaces` field (§ 3 decision 7). Then the fetched entry is written as
   published.
 - **A draft holds that slug.** His draft is written under
-  `editor.free_address(folder, slug + KEPT_SUFFIX)`, **keeping its own fields
+  `editor.free_address(folder, slug + KEPT_SUFFIX, reserved=…)`, **keeping its own fields
   but `publishing.UNDONE`** — so a draft that was a working copy of some other
   entry stays one, and the list does not call it taken off the site — and the
   old draft file is binned. Then the fetched entry is written as published.
@@ -313,6 +319,10 @@ dataclasses, so each compares by value.
   and not kept, since nothing of his differs from what is published
   (INV-13). Decided by the user 2026-09-26 (PRESS-0154).
 - **The Store holds neither.** The fetched entry is written as published.
+
+**`reserved` is every slug the fetched state publishes, and every old
+address its `forwards.json` sends on.** Either may be written after a kept
+draft, so a kept address takes neither, whatever order the entries come in.
 
 **An entry the Store publishes and the fetched state does not hold** is
 demoted: `store.unpublish(folder, slug)`, then written back as a draft
@@ -579,6 +589,7 @@ does.
 | A Store write fails during the reconcile | the Store's failure | the reversals recorded so far are run, so his files are as they were |
 | Putting back fails | the Store's failure | whatever the failure left; nothing deleted |
 | The fetch area cannot be written | `FetchNotWritten` | nothing moved; the area is emptied |
+| The fetch area cannot be emptied at the start (step 1) | the `FetchAreaInUse` sentence: close the program holding a file, then try again | nothing moved |
 | The fetch area cannot be emptied at the end (step 7) | the undo's own outcome, unchanged | the area as step 7 left it; the next undo empties it |
 | Anything unforeseen, before the upload | the unforeseen sentence, saying the site is unchanged | as the rows above: nothing moved, or his files put back |
 | On Windows, the earlier state names a file this computer cannot hold (PRESS-0009 § 4.5) | `UnfetchablePath` | nothing moved; the area is emptied |
@@ -656,6 +667,9 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-14 | `tests/test_undo.py::test_an_unforeseen_failure_says_the_site_is_unchanged` and `::test_a_failed_final_empty_keeps_the_outcome` |
 | INV-15 | `tests/test_editor.py::test_the_list_says_which_draft_undo_took_off` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
+| A fetch area that cannot be emptied stops the undo (§ 4.3 step 1) | `tests/test_undo.py::test_a_fetch_area_that_cannot_be_emptied_stops_the_undo` |
+| A kept address is none the fetched state writes (§ 4.4) | `tests/test_undo.py::test_a_kept_address_is_not_one_the_fetched_state_publishes` and `::test_a_kept_address_is_not_one_the_fetched_forwards_send_on` |
+| A reversal never bins the options file it puts back (§ 4.3) | `tests/test_undo.py::test_an_options_file_written_over_is_written_back_not_binned` |
 | The buttons, and that neither page reloads (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |
 | A real undo against GitHub | **nothing** in CI — by hand, against the maintainer's test repository |
 | That the move phase of a fetch is not all-or-nothing | **nothing** — PRESS-0009 § 4.5 records the residual window; INV-1 removes undo's exposure to it by never reusing the folder, and does not close it |

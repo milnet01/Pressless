@@ -829,3 +829,107 @@ def test_address_forwards_come_back(tmp_path):
     into = tmp_path / "built"
     builder.build(folder, _settings(tmp_path), into)
     assert (into / "content/forwards/addresses.json").is_file()
+
+
+# ------------------------------------------- PRESS-0376: review 2026-11-16 ---
+
+
+def test_an_options_file_written_over_is_written_back_not_binned(tmp_path, monkeypatch):
+    """§ 4.3's table: a reversal of "wrote over a file that was there" writes
+    the remembered value back, and never bins the file it is putting back.
+    Both binnings land in one second here, as on a quick failure.
+
+    Breaks when the options branch records a bin reversal for a file that
+    was there: the second bin of options.json in one second is refused, the
+    refusal replaces the real failure, and the reversals before it never run."""
+    monkeypatch.setattr(store, "_now", lambda: datetime(2026, 11, 17, 9, 0, 0))  # noqa: DTZ001
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_journal(folder, False)
+    remembered = store.options_path_for(folder).read_bytes()
+    scratch = tmp_path / "previous-options"
+    scratch.mkdir()
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside"),),
+                        comments=(("seaside", (_comment("1"),)),)),
+             "content/options/options.json": store.write_journal(scratch, True).read_bytes()}
+
+    def refused(*args, **kwargs):
+        raise OSError("the disk refused the comments")
+
+    monkeypatch.setattr(store, "write_comments", refused)
+    with pytest.raises(OSError, match="refused the comments"):
+        _undo(folder, _previous(files))
+    assert store.options_path_for(folder).read_bytes() == remembered
+    assert store.journal_on(folder) is False
+
+
+def test_a_kept_address_is_not_one_the_fetched_state_publishes(tmp_path):
+    """§ 4.4: his version is kept under an address the fetched state does not
+    publish, whatever order the fetched entries come in, so one slug never
+    names two entries (docs/design.md § What may depend on what).
+
+    Breaks when the kept address is chosen from the Store alone: here the
+    fetched `seaside-before-undo` is written after it, as a published entry
+    beside his kept draft of the same slug."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="His newer words."), draft=False)
+    state = undo.State(entries={"seaside": _entry("seaside", body="The older words."),
+                                "seaside-before-undo": _entry("seaside-before-undo",
+                                                              body="An older entry.")})
+
+    changed = undo.reconcile(folder, state, [])
+
+    assert changed.kept == ["seaside-before-undo-2"]
+    assert store.read(store.path_for(folder, "seaside-before-undo-2", draft=True)).body == (
+        "His newer words.")
+    assert store.list_slugs(folder, draft=True) == ("seaside-before-undo-2",)
+
+
+def test_a_kept_address_is_not_one_the_fetched_forwards_send_on(tmp_path):
+    """§ 4.4 and PRESS-0182: the fetched forwards file is restored after the
+    entries, so a kept address must not be one of its old addresses, or his
+    draft would sit at an address that forwards elsewhere.
+
+    Breaks when the kept address is checked against the Store's forwards
+    alone."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="His newer words."), draft=False)
+    scratch = tmp_path / "previous-forwards"
+    scratch.mkdir()
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside", body="The older words."),
+                                             _entry("harbour"))),
+             "content/forwards/forwards.json": store.write_forwards(
+                 scratch, {"seaside-before-undo": "harbour"}).read_bytes()}
+
+    result = _undo(folder, _previous(files))
+
+    assert list(result.kept) == ["seaside-before-undo-2"]
+    assert store.read_forwards(folder) == {"seaside-before-undo": "harbour"}
+
+
+def test_a_fetch_area_that_cannot_be_emptied_stops_the_undo(tmp_path, monkeypatch):
+    """INV-1 and § 4.3 step 1: undo never reads a fetch area it did not just
+    create. Where a file survives the emptying -- one another program holds
+    open on Windows -- undo stops with its own failure, before the fetch, and
+    the Store is untouched.
+
+    Breaks when step 1 swallows the failure to empty the area and goes on."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Now."), draft=False)
+    fetch = folder / undo.FETCH_FOLDER
+    fetch.mkdir()
+    (fetch / "held-open.txt").write_text("stale", encoding="utf-8")
+    monkeypatch.setattr(undo.shutil, "rmtree", lambda *args, **kwargs: None)
+    before = _files_under(folder)
+    transport = _previous({**_furnished(tmp_path),
+                           **_content(tmp_path, published=(_entry("seaside"),))})
+
+    with pytest.raises(undo.FetchAreaInUse):
+        _undo(folder, transport)
+
+    assert _files_under(folder) == before
+    assert transport.requests == [], "undo fetched into an area it could not empty"
+    sentence = face.sentence_for(undo.FetchAreaInUse("x"), publishing=False)
+    assert sentence.site is face.Site.UNCHANGED

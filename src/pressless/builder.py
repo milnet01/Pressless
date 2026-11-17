@@ -1462,7 +1462,7 @@ class _Build:
             paths.append(store.options_path_for(self.folder))    # PRESS-0214, for undo
         if store.identity_path_for(self.folder).is_file():
             paths.append(store.identity_path_for(self.folder))   # PRESS-0213, for undo
-        for name in (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME):
+        for name in store.LOOK_FILES:
             if store.look_path_for(self.folder, name).is_file():   # PRESS-0196 § 4.7
                 paths.append(store.look_path_for(self.folder, name))
         for path in paths:
