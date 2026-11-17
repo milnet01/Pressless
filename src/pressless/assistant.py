@@ -744,7 +744,10 @@ class _Door:
             with self.state:
                 self._close(made, status, said)
         self.face.note(f"assistant: {made.tool} {status}")
-        return _answer({"answered": True, "status": status, "failure": failure})
+        # A press's failure is on the press row; the box's script shows only an
+        # ask's that runs none, which no row shows (PRESS-0403).
+        return _answer({"answered": True, "status": status,
+                        "failure": failure if told is None else None})
 
     def _press(self, made: _Request) -> None:
         folder, arguments, transport = self.folder, made.arguments, self.transport
@@ -1045,10 +1048,12 @@ window.presslessHelper = window.presslessHelper || (() => {
     // PRESS-0356: the answer comes back when the press has ended. Until then a
     // page with a press row shows it running; after it Your site, Pages or Journal,
     // whose lists the press changed, is drawn again. Other screens may hold typing.
+    // A failure the answer carries, which no press row shows, opens over any page.
     if (yes) window.presslessPress.ask();
     try {
       const reply = await (await fetch("/assistant/answer", {method: "POST", body})).json();
       if (reply.busy || reply.replanned) shown = "";
+      else if (reply.failure) window.presslessFailed(reply.failure);
       else if (yes && reply.answered
                && ["/", "/pages", "/journal"].includes(window.location.pathname)) {
         window.location.reload();

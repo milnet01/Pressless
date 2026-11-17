@@ -498,6 +498,7 @@ _WORDS: dict[str, str] = {
     "face.more": "More",
     "face.help": "Help",
     "face.message.ok": "OK",  # the message box's button (face.message_box)
+    "script.message.ok": "OK",  # the same button on a box a script makes (presslessFailed)
     # The editor, and the Pages and Journal screens (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "

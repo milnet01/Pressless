@@ -334,6 +334,11 @@ page with a press row shows the press running, as after its own button
 screen is loaded again, since its lists are what an ask changes. No other
 screen reloads: it may hold typing (PRESS-0356).
 
+**A failure after Yes** shows where the writer is. A publish's or an undo's
+is on the press row. `remove_entry`, `discard_changes` and `remove_file` run
+no press, so the answer carries their failure, and the box's script opens it
+in a message box over the page instead of reloading.
+
 **Not yet** refuses the request. A request waiting for 30 minutes expires.
 Neither changes anything.
 
@@ -597,6 +602,7 @@ By hand, before release, on Linux and the Windows box:
 | Claude Desktop's file is where § 4.2 says | **Partial:** `::test_claude_desktops_file_on_each_system` checks our reading; only the § 7 check runs the real app, and only on Windows |
 | The home screen after Yes (§ 4.6) | `scripts/by-hand-browser-checks.py`'s PRESS-0356 row, run before a release; nothing in the gate |
 | No failure points a chat "below" (§ 4.3) | `tests/test_assistant.py::test_no_failure_points_an_ai_app_below` |
+| A failure after Yes shows (§ 4.6) | `tests/test_assistant.py::test_only_a_failure_no_press_row_shows_goes_to_the_box` and `::test_a_failure_after_yes_is_shown_on_any_page`, which needs Node; no browser runs it |
 | Names stay stable (§ 4.5) | **nothing** — a renamed tool passes every test; caught only by review |
 | Each app's connection steps (§ 4.2) | **Partial:** the § 7 by-hand check, for the three apps named there |
 | The protocol subset matches MCP (§ 4.4) | **Partial:** `tests/test_bridge.py` checks our reading of the spec, not the spec; the § 7 check runs real apps |

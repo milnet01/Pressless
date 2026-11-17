@@ -16,6 +16,8 @@ import http.client
 import io
 import json
 import os
+import shutil
+import subprocess
 import sys
 import threading
 from collections.abc import Iterator
@@ -615,6 +617,97 @@ def test_a_failed_publish_is_unknown_to_the_ai_app_too(tmp_path, monkeypatch):
         assert pressless.answer(asked, yes=True)["status"] == "failed"
         said = pressless.ok("request_status", {"request": asked})["said"]
         assert UNKNOWN_WORDS in said and UNCHANGED_WORDS not in said
+
+
+def test_only_a_failure_no_press_row_shows_goes_to_the_box(tmp_path, monkeypatch):
+    """PRESS-0403, § 4.6: a bin that fails after Yes runs no press, so its
+    answer carries the failure for the box's script to show. A publish's
+    failure is on the press row, so its answer carries none, or the writer
+    would see it twice. Breaks when the answer drops a bin's failure, or
+    hands on a press's."""
+    _key(monkeypatch)
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        store.write(folder, _entry("seaside"), draft=True)
+        asked = pressless.ok("remove_entry", {
+            "address": "seaside", "version": _base(folder, "seaside", draft=True)})["request"]
+        store.path_for(folder, "seaside", draft=True).unlink()     # binned elsewhere
+        reply = pressless.answer(asked, yes=True)
+        assert reply["status"] == "failed" and "EntryNotFound" in reply["failure"], reply
+        store.write(folder, _entry("harbour"), draft=False)
+        asked = pressless.ok("publish")["request"]
+
+        def broken(*args, **kwargs):
+            raise RuntimeError("the line went down")
+
+        monkeypatch.setattr(publishing, "press_site", broken)
+        reply = pressless.answer(asked, yes=True)
+        assert reply["status"] == "failed" and reply["failure"] is None, reply
+        assert pressing.state()["failure"], "the press row lost the publish's failure"
+
+
+# The box's script runs in a browser; Node runs it, with pressing.SCRIPT before
+# it as every page has, against a page with no failure box of its own, a fetch
+# answering a waiting bin and then `answer`, and a writer who says yes.
+_NODE = shutil.which("node")
+_BOX_HARNESS = """const window = globalThis;
+const made = [];
+const element = (tag) => {
+  const node = {tag, children: [], dataset: {}, classes: [], open: false,
+    classList: {add: (...names) => node.classes.push(...names)},
+    append: (...nodes) => node.children.push(...nodes),
+    addEventListener: () => {}, showModal: () => { node.open = true; },
+    close: () => { node.open = false; }, remove: () => {}};
+  made.push(node);
+  return node;
+};
+const document = {getElementById: () => null, querySelector: () => null,
+  querySelectorAll: () => [], createElement: element,
+  body: {append: (node) => { node.inPage = true; }}};
+let reloaded = false;
+window.location = {pathname: "/journal", reload: () => { reloaded = true; }};
+window.presslessPlan = async () => true;
+const replies = {
+  "/assistant/waiting": {request: "r1", stamp: "s1", publishing: false, pages: [], lines: []},
+  "/assistant/answer": %s,
+};
+const fetch = async (url) => ({json: async () => replies[url]});
+let tick = null;
+const setInterval = (run) => { tick = run; };
+const say = (key) => "<" + key + ">";
+%s
+%s
+(async () => {
+  await tick();
+  const boxes = made.filter((node) => node.tag === "dialog" && node.inPage);
+  const shown = boxes.map((box) => box.children.map((child) => child.innerHTML || ""));
+  process.stdout.write(JSON.stringify({reloaded, open: boxes.map((box) => box.open), shown}));
+})();
+"""
+
+
+def _box_after_yes(tmp_path: Path, answer: dict) -> dict:
+    harness = tmp_path / "box.js"
+    harness.write_text(_BOX_HARNESS % (json.dumps(answer), pressing.SCRIPT,
+                                       assistant._BOX_SCRIPT), encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=False, timeout=30)
+    assert run.returncode == 0, run.stderr.decode()
+    return json.loads(run.stdout)
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_failure_after_yes_is_shown_on_any_page(tmp_path):
+    """PRESS-0403, § 4.6: a bin, discard or file removal that fails after Yes
+    shows its failure in a box over whatever page the writer is on, and the
+    list is not reloaded over it. A Yes that ran is reloaded as before.
+    Breaks when the box's script ignores the answer's failure."""
+    failure = '<section class="failure"><p class="what">Not binned.</p></section>'
+    seen = _box_after_yes(tmp_path, {"answered": True, "status": "failed", "failure": failure})
+    assert seen["reloaded"] is False and seen["open"] == [True], seen
+    assert failure in seen["shown"][0], seen
+    seen = _box_after_yes(tmp_path, {"answered": True, "status": "done", "failure": None})
+    assert seen == {"reloaded": True, "open": [], "shown": []}
 
 
 # ----------------------------------------------------------------- INV-12 ---

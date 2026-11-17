@@ -155,7 +155,8 @@ def holding() -> str | None:
 # then writes how it ended (§ 4.5). A holding page reloads instead. A page
 # whose asks keep failing stops, says so and gives its buttons back (decision
 # 5). It also defines presslessCheck and presslessPlan, the box saying what a
-# press would change, which POST /publish/plan answers (PRESS-0345 § 4.3).
+# press would change, which POST /publish/plan answers (PRESS-0345 § 4.3), and
+# presslessFailed, a failure no press row shows (PRESS-0337 § 4.6).
 SCRIPT = """
 window.presslessPress = window.presslessPress || (() => {
   const line = document.getElementById("publish-status") ||
@@ -219,6 +220,25 @@ window.presslessCheck = window.presslessCheck || (async (body, options = {}) => 
     return false;
   }
   return window.presslessPlan(plan, options);
+});
+// PRESS-0337 § 4.6: the failure of an AI helper's ask that runs no press, so no
+// press row shows it, in a message box made for it (face.message_box's shape).
+// `failure` is the Face's own fragment, its words escaped (face.render_failure).
+window.presslessFailed = window.presslessFailed || ((failure) => {
+  const box = document.createElement("dialog");
+  box.classList.add("message");
+  const words = document.createElement("div");
+  words.innerHTML = failure;
+  const ok = document.createElement("button");
+  ok.type = "button";
+  ok.dataset.close = "";
+  ok.textContent = say("script.message.ok");
+  const row = document.createElement("p");
+  row.append(ok);
+  box.append(words, row);
+  box.addEventListener("close", () => box.remove());
+  document.body.append(box);
+  box.showModal();
 });
 // PRESS-0345 § 4.4: what a press would change, in a box over the page. True
 // for Publish now; false for Not yet, Escape or a box that cannot open.
