@@ -79,6 +79,11 @@ def say(key: str, **slots: str) -> str: ...
     # in use lacks takes ENGLISH's words. A key ENGLISH lacks, or a gap left
     # unfilled, raises KeyError.
 
+def say_count(number: int, one: str, many: str, **slots: str) -> str: ...
+    # `say` for `number` of something: key `one` for exactly one, `many`
+    # otherwise. The `count` gap is `number` as written unless the caller
+    # passes its own (PRESS-0413).
+
 def use(table: dict[str, str]) -> contextlib.AbstractContextManager: ...
     # Puts `table` in front of ENGLISH for the whole process, every server
     # thread included, while the block runs. The tests' seam, and the hook

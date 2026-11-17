@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pressless_import
 from pressless import safe_write
-from pressless.words import say
+from pressless.words import say, say_count
 
 _REPORT = "report.txt"
 
@@ -22,7 +22,7 @@ def shown(text: str) -> str:
 
 def counted(count: int | str, one: str, many: str) -> str:
     """A count with its noun, which takes the singular for one (PRESS-0294)."""
-    return say(one) if int(count) == 1 else say(many, count=str(count))
+    return say_count(int(count), one, many, count=str(count))
 
 
 def _counts(report: pressless_import.Report) -> str:
@@ -59,8 +59,8 @@ def lines(report: pressless_import.Report) -> list[str]:
              for place, name in report.renamed_photographs]
     said += [say("import.report.inside", path=path) for path in report.inside_pages]
     said += [say("import.report.sheet_for_some", path=path) for path in report.sheets_for_some]
-    said += [say("import.report.other_type.one", kind=kind) if count == 1
-             else say("import.report.other_type.many", kind=kind, count=str(count))
+    said += [say_count(count, "import.report.other_type.one", "import.report.other_type.many",
+                       kind=kind)
              for kind, count in report.other_types]
     said += [say("import.report.dropped", where=dropped.slug, what=dropped.what)
              for dropped in report.dropped]

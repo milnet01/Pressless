@@ -75,6 +75,18 @@ def test_a_missing_key_or_gap_raises(entry) -> None:
         words.say("test.hello")
 
 
+def test_say_count_chooses_one_for_one_and_many_otherwise(entry) -> None:
+    """§ 4.1 (PRESS-0413). Breaks when the choice tests anything but exactly
+    one, drops the other gaps, or overrides a `count` the caller wrote."""
+    entry("test.files.one", "1 file in {where}")
+    entry("test.files.many", "{count} files in {where}")
+    assert words.say_count(1, "test.files.one", "test.files.many", where="a") == "1 file in a"
+    assert words.say_count(0, "test.files.one", "test.files.many", where="a") == "0 files in a"
+    assert words.say_count(2, "test.files.one", "test.files.many", where="a") == "2 files in a"
+    assert words.say_count(1234, "test.files.one", "test.files.many", where="a",
+                           count="1,234") == "1,234 files in a"
+
+
 def test_a_table_in_use_comes_first_and_falls_back_to_english(entry) -> None:
     """§ 4.1. Breaks when use() hides English for keys its table lacks, or
     outlives its block."""

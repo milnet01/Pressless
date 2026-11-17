@@ -2757,6 +2757,14 @@ def say(key: str, **slots: str) -> str:
     return _lookup(key).format_map(slots)
 
 
+def say_count(number: int, one: str, many: str, **slots: str) -> str:
+    """`say` for `number` of something: key `one` for exactly one, `many`
+    otherwise. The `count` gap is `number` as written unless the caller
+    passes its own, such as one with its thousands marked."""
+    slots.setdefault("count", str(number))
+    return say(one if number == 1 else many, **slots)
+
+
 @contextlib.contextmanager
 def use(table: dict[str, str]) -> Iterator[None]:
     """Put `table` in front of ENGLISH for the whole process while the block

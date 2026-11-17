@@ -28,7 +28,7 @@ from pathlib import Path
 
 from pressless import _flag_data, credentials, google_setup, insights, settings
 from pressless.face import Face, Request, loaded_settings
-from pressless.words import say
+from pressless.words import say, say_count
 
 PAGE = "/visitors"
 
@@ -223,8 +223,8 @@ def _report(report: insights.Report, address: str = "") -> str:
     if report.people == 0:
         count = say("dashboard.count.none", window=window)
     else:
-        key = "dashboard.count.one" if report.people == 1 else "dashboard.count.many"
-        count = say(key, count=f"{report.people:,}", window=window)
+        count = say_count(report.people, "dashboard.count.one", "dashboard.count.many",
+                          count=f"{report.people:,}", window=window)
     page = f'<p class="visitors-count">{count}</p>' + _strip(report.daily) + updated
     cards = [_countries(report.countries), _regions(report.regions), _sources(report.sources),
              _pages(report.pages, address)]
@@ -375,9 +375,7 @@ def _duration(seconds: float) -> str:
 
 
 def people(count: int) -> str:
-    if count == 1:
-        return say("dashboard.people.one")
-    return say("dashboard.people.many", count=f"{count:,}")
+    return say_count(count, "dashboard.people.one", "dashboard.people.many", count=f"{count:,}")
 
 
 def when(moment: float) -> str:

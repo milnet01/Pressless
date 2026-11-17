@@ -47,7 +47,7 @@ from pressless.face import (
     nothing_captured,
     render_notices,
 )
-from pressless.words import say
+from pressless.words import say, say_count
 
 MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's address
 
@@ -812,10 +812,10 @@ def _takeover_report(final: settings.Settings, shown: publisher.Pages, files: tu
     uploaded, removed = len(outcome.uploaded), len(outcome.removed)
     rows.append(say("publishing.takeover.done.earlier") if not outcome.commit else say(
         "publishing.takeover.done.counts",
-        uploaded=say("publishing.takeover.done.uploaded.one") if uploaded == 1 else say(
-            "publishing.takeover.done.uploaded.many", count=str(uploaded)),
-        removed=say("publishing.takeover.done.removed.one") if removed == 1 else say(
-            "publishing.takeover.done.removed.many", count=str(removed))))
+        uploaded=say_count(uploaded, "publishing.takeover.done.uploaded.one",
+                           "publishing.takeover.done.uploaded.many"),
+        removed=say_count(removed, "publishing.takeover.done.removed.one",
+                          "publishing.takeover.done.removed.many")))
     return (f"<h1>{say('publishing.takeover.done.heading')}</h1><ul>"
             + "".join(f"<li>{row}</li>" for row in rows) + "</ul>"
             + f"<p>{say('publishing.takeover.done.wait')}</p>"

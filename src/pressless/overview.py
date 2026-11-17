@@ -22,7 +22,7 @@ from pressless import (
     store,
 )
 from pressless.face import Face, message_box, render_notices
-from pressless.words import say
+from pressless.words import say, say_count
 
 
 def register(face: Face, folder: Path) -> None:
@@ -101,10 +101,9 @@ def _waiting(folder: Path) -> tuple[str, str]:
         return "", ""
     kinds = ", ".join(
         f'<a href="{html.escape(address, quote=True)}">'
-        f'{say(keys[0] if count == 1 else keys[1], count=count)}</a>'
+        f'{say_count(count, *keys)}</a>'
         for count, keys, address in counts if count)
-    said = say("overview.waiting.one" if total == 1 else "overview.waiting.many",
-               count=total, kinds=kinds)
+    said = say_count(total, "overview.waiting.one", "overview.waiting.many", kinds=kinds)
     nothing = say("overview.publish.nothing", kinds=kinds)
     return (f'<p class="waiting">{said}</p>',
             f'<template id="publish-nothing"><p>{nothing}</p></template>')
@@ -144,8 +143,7 @@ def _journal(folder: Path) -> str:
         published = len(entries.published) + len(entries.unreadable[False])
         drafts = len(entries.drafts) + len(entries.unreadable[True])
         figures = (say("overview.journal.figures", published=published,
-                       drafts=say("overview.drafts.one" if drafts == 1 else "overview.drafts.many",
-                                  count=drafts))
+                       drafts=say_count(drafts, "overview.drafts.one", "overview.drafts.many"))
                    if on else say("overview.journal.off"))
     return _tile("face.journal", figures, _link(editor.JOURNAL_ADDRESS, "overview.open_journal"))
 
@@ -180,7 +178,7 @@ def _files(folder: Path) -> str:
     except (store.StoreError, OSError):
         figures = ""
     else:
-        figures = say("overview.files.one" if count == 1 else "overview.files.many", count=count)
+        figures = say_count(count, "overview.files.one", "overview.files.many")
     return _tile("face.files", figures, _link("/files", "overview.open_files"))
 
 
