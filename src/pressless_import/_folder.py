@@ -265,6 +265,11 @@ def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> Non
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             out = open(target, "wb")  # noqa: SIM115 -- closed below
+        except ValueError:
+            # Python refuses a path past Windows's 32,767-character limit
+            # before asking the system (PRESS-0385).
+            left.append((path, say("import.folder.why.too_long")))
+            continue
         except OSError as exc:
             left.append((path, say("import.folder.why.unwritable",
                                    why=os_reason.of(exc))))

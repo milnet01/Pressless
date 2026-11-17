@@ -1788,6 +1788,7 @@ _WORDS: dict[str, str] = {
     "import.folder.why.twin_folder": (
         "a folder in its path has the same name as another, but for capital letters"),
     "import.folder.why.long": "a name in its path is longer than Linux can hold",
+    "import.folder.why.too_long": "its whole path is longer than this computer can hold",
     "import.folder.why.unwritable": "this computer could not write it there ({why})",
     "import.folder.why.cname": "it says which web address GitHub serves, and stays on GitHub",
     "import.folder.why.lost": (

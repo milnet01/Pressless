@@ -28,6 +28,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 import certifi
 
 from pressless import __version__, builder, os_reason
+from pressless.words import say
 
 from . import Export, ImportStopped, _field, _place
 from ._folder import (
@@ -133,6 +134,15 @@ def _not_written(exc: OSError) -> str | None:
     if exc.filename is not None:
         return f"it could not be written here ({os_reason.of(exc)})"
     return None
+
+
+def _not_made(exc: OSError | ValueError) -> str:
+    """Why a file's place on this computer could not be made. Python refuses a
+    path past Windows's 32,767-character limit with a ValueError, before
+    asking the system (PRESS-0385)."""
+    if isinstance(exc, ValueError):
+        return say("import.folder.why.too_long")
+    return _not_written(exc) or f"it could not be written here ({type(exc).__name__})"
 
 
 def fetch(address: str, target: Path, room: Callable[[], int], *,
@@ -257,8 +267,8 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
         if not target.is_file():
             try:
                 target.parent.mkdir(parents=True, exist_ok=True)
-            except OSError as exc:
-                why = _not_written(exc) or f"it could not be written here ({type(exc).__name__})"
+            except (OSError, ValueError) as exc:
+                why = _not_made(exc)
             else:
                 why = NO_ROOM if full else fetch(address, target, room, resolve=resolve,
                                                  connect=connect)
@@ -438,10 +448,9 @@ class _Crawl:
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             self.part.replace(target)
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             # A whole path longer than the system holds, as Windows' 260 characters.
-            self.left.append((landing, _not_written(exc) or f"it could not be written here "
-                              f"({type(exc).__name__})"))
+            self.left.append((landing, _not_made(exc)))
             self.part.unlink(missing_ok=True)
             return False
         self.landed[asked] = self.landed[final] = landing

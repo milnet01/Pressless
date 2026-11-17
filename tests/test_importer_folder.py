@@ -213,6 +213,28 @@ def test_a_member_no_system_can_hold_is_left_not_the_zip(tmp_path):
     assert not into.with_name(".folder.part").exists()
 
 
+def test_a_path_python_refuses_is_left_not_the_zip(tmp_path, monkeypatch):
+    """PRESS-0385: past Windows's 32,767-character limit Python raises a
+    ValueError, not an OSError, before asking the system. Stood in for here,
+    so every system runs it.
+
+    Breaks when that ValueError stops the whole ZIP."""
+    real = Path.mkdir
+
+    def mkdir(self, *args, **kwargs):
+        if "refused" in self.parts:
+            raise ValueError("mkdir: path too long for Windows")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", mkdir)
+    into = tmp_path / "folder"
+    left = dict(pressless_import.unpack_folder(
+        _zip(tmp_path, {"index.html": "<p>Home</p>", "refused/a.html": "x"}),
+        into, lambda: 10**9))
+    assert (into / "index.html").is_file()
+    assert left == {"refused/a.html": say("import.folder.why.too_long")}, left
+
+
 def test_a_folder_twin_by_capitals_is_left(tmp_path):
     """§ 4.1: `A/` and `a/` are one folder on Windows and two elsewhere, so the
     second is left on every system."""
