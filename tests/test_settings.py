@@ -119,8 +119,9 @@ def _calls(module) -> set[str]:
 def test_settings_imports_nothing_forbidden():
     """INV-1: settings.py imports no network module and no other pressless
     module but pressless.safe_write, which imports neither, so the rule holds
-    through it, and pressless.words (PRESS-0242). settings.py calls neither tempfile.mkstemp nor os.fsync
-    itself, so §4.4's steps are not copied back (PRESS-0141).
+    through it, and pressless.words (PRESS-0242). settings.py calls neither
+    tempfile.mkstemp nor os.fsync itself, so §4.4's steps are not copied back
+    (PRESS-0141).
 
     Walks each module's AST, as test_marks_is_pure does. Reads the source from
     the test, never from settings.py itself.
