@@ -8064,11 +8064,21 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0390] **Review fixes: the by-hand browser checks.**
+- ✅ [PRESS-0390] **Review fixes: the by-hand browser checks.**
   Subject 20 of the 2026-11-16 readability review, closed with
   close-findings. review-readability: 7 medium, 9 low, plus leads.
   Among them: rows run whether or not the press they guard happened; a
   dialog never answered; an assert that vanishes under -O.
+  Ledger: close-findings-2026-11-17/lane-20-by-hand-checks.json.
+  Shipped 2026-11-17, 95a25a3..e431291. 21 findings: 21 fixed (two
+  leads duplicates), 0 queued, 0 dismissed, including the four ruff
+  errors in scripts/by-hand-votes-rules.py routed from every subject:
+  it now calls only 127.0.0.1 emulator addresses, and a failed sign-up
+  stops it with SystemExit. Rows that need the entry pressed run only
+  when it was (pressed_entry); editor-races accepts the leave-page
+  dialog. ruff src/ tests/ scripts/ is clean. Not yet run in a browser:
+  by-hand-browser-checks.py and by-hand-editor-races.py (owed before
+  release). Full suite 2370 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-20-by-hand-checks.json.
   **Layman:** Fixes in the scripts that check Pressless in a real browser before each release.
   Kind: review-fix.
