@@ -909,7 +909,7 @@ def _name_held(paths: list[str], path_for: Callable[[Path, str], Path]
 
 
 def _page_place(name: str) -> str:
-    return "index.html" if name == _FRONT else f"pages/{name}{store.HTML_SUFFIX}"
+    return builder.page_file(name)
 
 
 # -------------------------------------------- writing a page's addresses ----

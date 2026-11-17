@@ -20,6 +20,7 @@ from __future__ import annotations
 import contextlib
 import fnmatch
 import html
+import io
 import os
 import re
 import shutil
@@ -96,9 +97,15 @@ _JOURNAL_HREF = re.compile(rf"""\bhref\s*=\s*["']{re.escape(JOURNAL_ADDRESS)}["'
                            re.IGNORECASE)
 
 # §4.6: re-encoded in their own format, JPEG XL as WebP (PRESS-0275 § 4.5).
-# Anything else Pillow opens is refused.
+# GIF is published too, every frame kept, so it is not re-encoded as one still
+# picture: web_copy's own branch. Anything else Pillow opens is refused.
 _REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP", "AVIF": "AVIF",
               "JXL": "WEBP"}
+# What a photograph may be. photographs.SUFFIXES gives each one its endings and
+# photographs.ACCEPT offers each in the upload boxes; a test holds the first equal.
+PUBLISHED_FORMATS = frozenset({*_REENCODED, "GIF"})
+# What Pillow raises for a picture it cannot read, or cannot write as asked.
+_PICTURE_ERRORS = (OSError, SyntaxError, ValueError, Image.DecompressionBombError)
 _JXL_SUFFIX = ".jxl"
 
 def _entries_text(count: int) -> str:
@@ -301,9 +308,9 @@ def photograph_format(path: Path) -> str | None:
             # Every frame decoded, as web_copy will: a file cut short opens.
             for frame in ImageSequence.Iterator(picture):
                 frame.load()
-    except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
+    except _PICTURE_ERRORS:
         return None
-    return fmt if fmt in _REENCODED or fmt == "GIF" else None
+    return fmt if fmt in PUBLISHED_FORMATS else None
 
 
 def is_photograph(path: Path) -> bool:
@@ -314,6 +321,11 @@ def is_photograph(path: Path) -> bool:
         return photograph_format(path) is not None
     except jpegxl.NotInstalled:
         return True
+
+
+def page_file(name: str) -> str:
+    """Where the fixed page `name` is written, from the site's root."""
+    return "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
 
 
 def web_file(name: str) -> str:
@@ -396,8 +408,7 @@ def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
     def write(new: Path) -> str:
         page = _Build(folder, settings, new, photo_src, entry, today or date.today())
         page.read_furniture()
-        for name in (*entry.categories, *entry.tags):
-            page.refuse_an_unusable_name(entry, name)
+        page.refuse_an_unusable_name(entry)
         page.entry_page(entry)
         return page.files[0]
 
@@ -425,8 +436,7 @@ def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
             shown = page.shown(page.read_entries())
             if not shown:
                 raise BuildStopped("there is no published entry to show the change on")
-            for name in (*shown[0].categories, *shown[0].tags):
-                page.refuse_an_unusable_name(shown[0], name)
+            page.refuse_an_unusable_name(shown[0])
             page.entry_page(shown[0])
         elif show in pages:
             page.fixed_page(show, pages[show], marks=marks and not page.marked)
@@ -441,8 +451,42 @@ def roots_produced(folder: Path) -> tuple[str, ...]:
     """What a build of the Store at `folder` may put at the site's root:
     ROOT_OUTPUT, and the first segment of each old address it forwards
     (PRESS-0210 § 4.10)."""
-    forwarded = {path.split("/")[0] for path in store.read_address_forwards(folder)}
+    forwarded = {path.split("/")[0] for path in _address_forwards(folder)}
     return (*ROOT_OUTPUT, *sorted(forwarded - set(ROOT_OUTPUT)))
+
+
+# The folders a build fills from the Store alone, which no old address may enter
+# (INV-7 for content/).
+_STORE_COPIES = frozenset({SOURCE_COPY.rstrip("/"), store.LOOK_FOLDER,
+                           store.PHOTOGRAPHS_FOLDER, store.FILES_FOLDER})
+
+
+def _address_forwards(folder: Path) -> dict[str, str]:
+    """The Store's old addresses a build may write a forward at: none with a
+    segment beginning with a dot, and none inside a folder in _STORE_COPIES
+    (§ 4.10, PRESS-0210 § 4.10)."""
+    return {old: name for old, name in store.read_address_forwards(folder).items()
+            if not any(part.startswith(".") for part in old.split("/"))
+            and old.split("/")[0].casefold() not in _STORE_COPIES}
+
+
+def _forward_page(what: str, title: str, canonical: str, link: str) -> str:
+    """A page sending readers on to `link`, saying the `what` (an entry or a
+    page) has moved (PRESS-0182 § 4.3, PRESS-0195 § 4.5, PRESS-0210 § 4.10)."""
+    title = html.escape(title)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<link rel="canonical" href="{html.escape(canonical)}">
+<meta http-equiv="refresh" content="0; url={link}">
+</head>
+<body>
+<p>This {what} has moved to <a href="{link}">{title}</a>.</p>
+</body>
+</html>
+"""
 
 
 def _replace(into: Path, folder: Path, publishing: bool, write):
@@ -644,25 +688,25 @@ def _current(navigation: str, page: str) -> str:
     return navigation
 
 
-def furniture_spans(name: str, html: str) -> tuple[tuple[int, int], ...]:
+def furniture_spans(name: str, text: str) -> tuple[tuple[int, int], ...]:
     """PRESS-0014 § 4.1: the offsets of the text inside each marker block, from
     the end of a START marker to the start of the next END marker of its kind.
     The Builder fills these and the page editor reads around them, so both find
     them here (§ 3 decision 8)."""
     spans, pos = [], 0
     while True:
-        start = _START.search(html, pos)
-        before = start.start() if start else len(html)
-        if _ANY_END.search(html, pos, before):
+        start = _START.search(text, pos)
+        before = start.start() if start else len(text)
+        if _ANY_END.search(text, pos, before):
             raise BuildStopped(f"the page {name} has a marker END with no START before it")
         if start is None:
             return tuple(spans)
         kind = start.group(1)
-        end = re.compile(rf"<!--\s*{kind}:END\s*-->").search(html, start.end())
+        end = re.compile(rf"<!--\s*{kind}:END\s*-->").search(text, start.end())
         if end is None:
             raise BuildStopped(f"the page {name} has a {kind}:START with no {kind}:END after it")
-        if (_START.search(html, start.end(), end.start())
-                or _ANY_END.search(html, start.end(), end.start())):
+        if (_START.search(text, start.end(), end.start())
+                or _ANY_END.search(text, start.end(), end.start())):
             # A pair inside a pair would be swallowed into the outer span and
             # replaced in silence -- markers that do not pair (§6, PRESS-0162).
             raise BuildStopped(f"the page {name} has a marker inside its {kind} pair")
@@ -791,7 +835,7 @@ def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
                               store.read_html(path).replace("{{UP}}", "")))
         for name in store.list_html(folder, store.PAGES_FOLDER, waiting=waiting):
             path = store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=waiting)
-            relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
+            relative = page_file(name)
             texts.append((name, relative, store.read_html(path)))
     style_code = store.read_style_code(folder)
     if style_code is not None:
@@ -811,8 +855,8 @@ class _Build:
     def __init__(self, folder: Path, settings: Settings, root: Path,
                  photo_src: marks.PhotoSrc | None, change: store.Entry | Html | None,
                  today: date):
-        self._photographs: frozenset[str] | None = None
-        self._files: frozenset[str] | None = None
+        self._held_photographs: frozenset[str] | None = None
+        self._held_files: frozenset[str] | None = None
         self.folder = folder
         self.settings = settings
         self.root = root
@@ -854,23 +898,26 @@ class _Build:
     def read_furniture(self) -> None:
         """The three furniture files as the Store holds them, for a preview
         (PRESS-0012 §4.2)."""
-        furniture = {name: store.read_html(
-                         store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
-                     for name in ("header", "navigation", "footer")}
-        self.set_furniture(furniture)
+        self.set_furniture(self.stored_furniture())
+
+    def stored_furniture(self, *, but: str = "") -> dict[str, str]:
+        """Each furniture file as the Store holds it, `but` the one named."""
+        return {name: store.read_html(
+                    store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
+                for name in store.FURNITURE_NAMES if name != but}
 
     # Listed once a build rather than once a page; a _Build lives for one.
     @property
     def held_photographs(self) -> frozenset[str]:
-        if self._photographs is None:
-            self._photographs = frozenset(store.list_photographs(self.folder))
-        return self._photographs
+        if self._held_photographs is None:
+            self._held_photographs = frozenset(store.list_photographs(self.folder))
+        return self._held_photographs
 
     @property
     def held_files(self) -> frozenset[str]:
-        if self._files is None:
-            self._files = frozenset(store.list_files(self.folder))
-        return self._files
+        if self._held_files is None:
+            self._held_files = frozenset(store.list_files(self.folder))
+        return self._held_files
 
     def set_furniture(self, furniture: dict[str, str]) -> None:
         identity = store.read_identity(self.folder) or store.Identity("")
@@ -898,12 +945,9 @@ class _Build:
         pages."""
         pages = {name: store.read_html(store.html_path_for(self.folder, store.PAGES_FOLDER, name))
                  for name in store.list_html(self.folder, store.PAGES_FOLDER)}
-        furniture = {name: store.read_html(
-                         store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
-                     for name in ("header", "navigation", "footer")
-                     if not (isinstance(self.change, Html)
-                             and self.change.kind == store.FURNITURE_FOLDER
-                             and self.change.name == name)}
+        changed = (isinstance(self.change, Html)
+                   and self.change.kind == store.FURNITURE_FOLDER)
+        furniture = self.stored_furniture(but=self.change.name if changed else "")
         if isinstance(self.change, Html):
             # The Store's own refusal of a kind or name it does not hold (§6).
             store.html_path_for(self.folder, self.change.kind, self.change.name)
@@ -913,6 +957,7 @@ class _Build:
         return pages
 
     def filtered(self, entries: dict[str, store.Entry]) -> list[str]:
+        """The slugs the Daily Prompt filter keeps off the site."""
         pattern = self.settings.daily_prompt_filter
         return sorted(slug for slug, entry in entries.items()
                       if any(fnmatch.fnmatchcase(tag, pattern) for tag in entry.tags))
@@ -940,8 +985,7 @@ class _Build:
         filtered = self.filtered(entries)
         shown = self.shown(entries)
         for entry in shown:
-            for name in (*entry.categories, *entry.tags):
-                self.refuse_an_unusable_name(entry, name)
+            self.refuse_an_unusable_name(entry)
 
         for entry in shown:
             self.entry_page(entry)
@@ -983,7 +1027,7 @@ class _Build:
         site folder and a preview alike; `marks` keeps them, for the visual
         editor's preview alone (PRESS-0260 § 4.2)."""
         depth = 0 if name == "index" else 1
-        relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
+        relative = page_file(name)
         if self.publishing:
             self.copy_what_is_named(relative, text)
         shown = _relinked(text if marks else blocks.unmarked(name, text), depth,
@@ -993,15 +1037,16 @@ class _Build:
         self.write_text(relative, self.counted(self.identified(self.enhanced(
             filled, depth, self.furniture_pieces or _has_piece(text)), depth)))
 
-    def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
-        """§4.3: a category or tag becomes a folder name, so the Store's slug
-        test decides it."""
-        try:
-            store.path_for(self.folder, name, draft=False)
-        except store.StoreError:
-            raise BuildStopped(
-                f"the entry {entry.slug} is filed under {name!r}, which cannot be "
-                f"part of an address: one or more of a-z, 0-9 and '-'") from None
+    def refuse_an_unusable_name(self, entry: store.Entry) -> None:
+        """§4.3: each of the entry's categories and tags becomes a folder name,
+        so the Store's slug test decides it."""
+        for name in (*entry.categories, *entry.tags):
+            try:
+                store.path_for(self.folder, name, draft=False)
+            except store.StoreError:
+                raise BuildStopped(
+                    f"the entry {entry.slug} is filed under {name!r}, which cannot be "
+                    f"part of an address: one or more of a-z, 0-9 and '-'") from None
 
     # -- a page's shell (§4.3) --
 
@@ -1193,17 +1238,13 @@ class _Build:
                     copy = None
         except jpegxl.NotInstalled:
             raise BuildStopped(_no_jpeg_xl(name)) from None
-        except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
-            raise BuildStopped(
-                f"the photograph {name} could not be read as a picture") from None
+        except _PICTURE_ERRORS:
+            raise BuildStopped(_unreadable(name)) from None
         if copy is None:
             raise BuildStopped(
                 f"the photograph {name} is a {fmt} picture, which Pressless does not publish")
-        relative = f"{store.PHOTOGRAPHS_FOLDER}/{published}"
-        target = self.root / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        copy.save(target, fmt, **options)
-        self.files.append(relative)
+        self.write_bytes(f"{store.PHOTOGRAPHS_FOLDER}/{published}",
+                         _encoded(copy, fmt, name, **options))
         self.copied.add(name)
 
     def _name(self, relative: str) -> None:
@@ -1227,14 +1268,12 @@ class _Build:
                 # The first frame. RGBA before the fit: PNG cannot hold a
                 # CMYK JPEG's mode, and a palette would be resized coarsely.
                 upright = ImageOps.exif_transpose(picture).convert("RGBA")
-                icon = ImageOps.fit(upright, (ICON_SIDE, ICON_SIDE))
+                icon = _bare(ImageOps.fit(upright, (ICON_SIDE, ICON_SIDE)))
         except jpegxl.NotInstalled:
             raise BuildStopped(_no_jpeg_xl(name)) from None
-        except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
-            raise BuildStopped(
-                f"the photograph {name} could not be read as a picture") from None
-        icon.save(self.root / SITE_ICON, "PNG")
-        self.files.append(SITE_ICON)
+        except _PICTURE_ERRORS:
+            raise BuildStopped(_unreadable(name)) from None
+        self.write_bytes(SITE_ICON, _encoded(icon, "PNG", name))
 
     # -- kept files (PRESS-0197 § 4.6) --
 
@@ -1346,13 +1385,13 @@ class _Build:
                 f'      <section class="arch-year">\n        <h2>{year} '
                 f'<span class="arch-count">{len(years[year])}</span></h2>\n'
                 f'        <ul class="arch-index">\n{rows}\n        </ul>\n      </section>')
-        count = len(shown)
+        count = _entries_text(len(shown))
         joined = "\n".join(sections)
-        self.page("blog/archive", 2, "Archive", f"All {count} entries by year.", f"""
+        self.page("blog/archive", 2, "Archive", f"All {count} by year.", f"""
     <div class="page-intro">
       <p class="eyebrow">Journal</p>
       <h1>Archive</h1>
-      <p class="lead">All {count} entries, newest first.</p>
+      <p class="lead">All {count}, newest first.</p>
     </div>
 
     <div class="archive">
@@ -1371,20 +1410,9 @@ class _Build:
                 continue
             target = entries[new]
             relative = entry_path(target)
-            title = html.escape(target.title or _long_date(target.date))
-            self.write_text(f"{relative.rsplit('/', 1)[0]}/{old}/index.html", f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>{title}</title>
-<link rel="canonical" href="{html.escape(address)}/{relative}/index.html">
-<meta http-equiv="refresh" content="0; url=../{new}/index.html">
-</head>
-<body>
-<p>This entry has moved to <a href="../{new}/index.html">{title}</a>.</p>
-</body>
-</html>
-""")
+            self.write_text(f"{relative.rsplit('/', 1)[0]}/{old}/index.html", _forward_page(
+                "entry", target.title or _long_date(target.date),
+                f"{address}/{relative}/index.html", f"../{new}/index.html"))
 
     def page_forwards(self, pages: dict[str, str]) -> None:
         """PRESS-0195 § 4.5: a page at each renamed page's old address,
@@ -1394,20 +1422,8 @@ class _Build:
         for old, new in sorted(store.read_page_forwards(self.folder).items()):
             if new not in pages or old in pages:
                 continue
-            title = html.escape(label(new))
-            self.write_text(f"pages/{old}{store.HTML_SUFFIX}", f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>{title}</title>
-<link rel="canonical" href="{html.escape(address)}/pages/{new}.html">
-<meta http-equiv="refresh" content="0; url={new}.html">
-</head>
-<body>
-<p>This page has moved to <a href="{new}.html">{title}</a>.</p>
-</body>
-</html>
-""")
+            self.write_text(f"pages/{old}{store.HTML_SUFFIX}", _forward_page(
+                "page", label(new), f"{address}/pages/{new}.html", f"{new}.html"))
 
     def address_forwards(self, pages: dict[str, str]) -> None:
         """PRESS-0210 § 4.10: a page at each brought-in page's old path, sending
@@ -1417,27 +1433,13 @@ class _Build:
         address = self.settings.site_address.rstrip("/")
         renamed = store.read_page_forwards(self.folder)
         written = {name.casefold() for name in self.files}
-        for old, name in sorted(store.read_address_forwards(self.folder).items()):
+        for old, name in sorted(_address_forwards(self.folder).items()):
             target = renamed.get(name, name)
             if target not in pages or old.casefold() in written:
                 continue
-            place = ("index.html" if target == "index"
-                     else f"pages/{target}{store.HTML_SUFFIX}")
-            link = "../" * old.count("/") + place
-            title = html.escape(label(target))
-            self.write_text(old, f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>{title}</title>
-<link rel="canonical" href="{html.escape(address)}/{place}">
-<meta http-equiv="refresh" content="0; url={link}">
-</head>
-<body>
-<p>This page has moved to <a href="{link}">{title}</a>.</p>
-</body>
-</html>
-""")
+            place = page_file(target)
+            self.write_text(old, _forward_page("page", label(target), f"{address}/{place}",
+                                               "../" * old.count("/") + place))
 
     # -- content/ (§4.7) --
 
@@ -1549,6 +1551,24 @@ def _comment_html(body: str) -> str:
         marks.Paragraph(tuple(marks.Line((marks.Text(line),)) for line in part.split("\n")))
         for part in parts if part)
     return marks.to_html(paragraphs, _no_photographs)
+
+
+def _unreadable(name: str) -> str:
+    """web_copy's and icon_copy's sentence for a picture Pillow cannot read
+    (PRESS-0227 § 4.3 wants the two alike)."""
+    return f"the photograph {name} could not be read as a picture"
+
+
+def _encoded(picture: Image.Image, fmt: str, name: str, **options) -> bytes:
+    """`picture` written as `fmt`, in memory: so an encoder's failure is told
+    apart from a site folder that cannot be written."""
+    out = io.BytesIO()
+    try:
+        picture.save(out, fmt, **options)
+    except _PICTURE_ERRORS:
+        raise BuildStopped(
+            f"the photograph {name} could not be made into a {fmt} picture") from None
+    return out.getvalue()
 
 
 def _no_jpeg_xl(name: str) -> str:

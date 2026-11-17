@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageCms
 
 import pressless.builder as builder
 from pressless import blocks, marks, safe_write, starter, store
@@ -734,7 +734,7 @@ def test_writing_renders_through_marks(tmp_path, monkeypatch):
 
 _ALLOWED_IMPORTS = {
     "__future__",
-    "contextlib", "dataclasses", "datetime", "fnmatch", "html", "os", "pathlib", "re",
+    "contextlib", "dataclasses", "datetime", "fnmatch", "html", "io", "os", "pathlib", "re",
     "shutil", "tempfile",
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
     "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
@@ -884,6 +884,9 @@ def test_a_listing_lead_is_its_count_alone(tmp_path):
     assert _lead(one / "site", "blog") == "1 entry, from May 2020 to May 2020."
     assert _lead(one / "site", "blog/category/poetry") == "1 entry in poetry."
     assert _lead(one / "site", "blog/tag/sea") == "1 entry tagged “sea”."
+    assert _lead(one / "site", "blog/archive") == "All 1 entry, newest first."
+    assert '<meta name="description" content="All 1 entry by year.">' in (
+        one / "site/blog/archive/index.html").read_text(encoding="utf-8")
 
     two = tmp_path / "two"
     folder = _store(two)
@@ -2025,6 +2028,64 @@ def test_a_build_still_refuses_a_file_it_did_not_make(tmp_path):
     with pytest.raises(builder.SiteFolderUnusable):
         build(folder, _settings(), into)
     assert builder.roots_produced(folder) == (*ROOT_OUTPUT, "about.html")
+
+
+def test_an_old_address_never_lands_in_a_folder_the_build_owns(tmp_path):
+    """PRESS-0008 INV-4 and INV-7 over PRESS-0210 § 4.10: no forward at a
+    path with a segment beginning with a dot, nor under a folder the build
+    fills from the Store; and roots_produced admits neither.
+
+    Breaks when address_forwards or roots_produced takes a key as the Store
+    hands it over."""
+    folder = _store(tmp_path, pages=_plain_pages("index", "about"))
+    refused = (".well-known/about.html", "blog/.about.html", "content/about.html",
+               "Look/about.html", "photographs/about.html", "files/about.html")
+    store.write_address_forwards(folder, {**{old: "about" for old in refused},
+                                          "old/about.html": "about"})
+    into = tmp_path / "site"
+    built = build(folder, _settings(), into)
+    for old in refused:
+        assert old not in built.files, old
+        assert not (into / old).exists(), old
+    assert "old/about.html" in built.files
+    assert builder.roots_produced(folder) == (*ROOT_OUTPUT, "old")
+    build(folder, _settings(), into)
+
+
+def test_the_icon_carries_nothing_from_the_original(tmp_path):
+    """PRESS-0227 § 4.3 beside PRESS-0008 INV-9: the icon is as bare as a
+    web copy, so no colour profile or EXIF block reaches site-icon.png.
+
+    Breaks when icon_copy saves the fitted picture with the original's info."""
+    folder = _pictured(tmp_path, icon="wide.jpg")
+    profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    _photograph(folder, "wide.jpg", _image("JPEG", (300, 200), exif=_exif_with_gps(),
+                                           icc_profile=profile))
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    with Image.open(into / "site-icon.png") as icon:
+        assert "icc_profile" not in icon.info and "exif" not in icon.info, icon.info
+
+
+@pytest.mark.parametrize("failure", [ValueError("encoder"), OSError("encoder error -2")])
+def test_a_picture_pillow_cannot_encode_stops_the_build_by_name(tmp_path, monkeypatch,
+                                                                failure):
+    """PRESS-0008 § 4.6: an encoder's failure names the photograph, never
+    reaching the user as an unexplained error or as a site folder that cannot
+    be written. Breaks when the save sits outside the picture's own handling."""
+    folder = _pictured(tmp_path, icon="wide.png")
+    _photograph(folder, "wide.png", _image("PNG", (300, 200)))
+    store.write(folder, _entry("seaside", body="{photo: wide.png}"), draft=False)
+
+    def refuse(self, fp, format=None, **params):
+        raise failure
+
+    monkeypatch.setattr(Image.Image, "save", refuse)
+    with pytest.raises(BuildStopped, match="the photograph wide.png "):
+        build(folder, _settings(), tmp_path / "site")
+    store.write_identity(folder, store.Identity("A"))
+    with pytest.raises(BuildStopped, match="the photograph wide.png "):
+        build(folder, _settings(), tmp_path / "site")
 
 
 def _small_png() -> bytes:

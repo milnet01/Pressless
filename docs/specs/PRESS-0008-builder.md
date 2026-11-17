@@ -332,6 +332,8 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
 5. **Anything else is `BuildStopped`** naming the file. A format Pillow
    cannot open is refused rather than copied, because copying could publish
    location metadata nobody inspected.
+6. **A picture Pillow cannot re-encode is `BuildStopped`** naming the file,
+   never a site folder that cannot be written.
 
 Each web copy is written once, however many entries name it.
 

@@ -364,19 +364,22 @@ segment accepted by `store.file_path_for`, or the file is a `StoreError`. A
 value must be `index` or a legal page name. `bring_in_folder` writes one where a
 page's old path is not its new one.
 
-`builder._Build.address_forwards(pages, written)` runs after `page_forwards`.
-For each key, the target is the value, or where `read_page_forwards` maps that
-name, the name it maps to. It writes a forward page in `page_forwards`' shape at
-the key's path, its link and refresh relative to that path's depth, unless:
+`builder._Build.address_forwards(pages)` runs after `page_forwards`. For each
+key, the target is the value, or where `read_page_forwards` maps that name, the
+name it maps to. It writes a forward page in `page_forwards`' shape at the key's
+path, its link and refresh relative to that path's depth, unless:
 
 - the target is not in `pages`, because the page was removed; or
 - a file already written folds to the same `casefold()` as the key, because the
-  site's own file wins.
+  site's own file wins; or
+- a segment of the key begins with `.`, or its first segment is `content`,
+  `look`, `photographs` or `files`, any capitals: PRESS-0008 INV-4 and INV-7.
 
 `builder.roots_produced(folder)` answers `ROOT_OUTPUT` and the first segment of
-each key. `_refuse_a_folder_it_did_not_make` reads it, or a second build stops
-with `SiteFolderUnusable` at its own `about.html`. `setup.untouchable` reads it,
-so a take-in's list leaves the forwards off.
+each key the last bullet does not refuse. `_refuse_a_folder_it_did_not_make`
+reads it, or a second build stops with `SiteFolderUnusable` at its own
+`about.html`. `setup.untouchable` reads it, so a take-in's list leaves the
+forwards off.
 
 `sitemap` lists no forward. `_Build.content` carries the file, and
 `undo._FORWARDS` gains it, so a take-in and an undo bring it back.

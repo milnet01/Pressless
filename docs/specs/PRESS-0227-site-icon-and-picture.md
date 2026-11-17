@@ -108,7 +108,8 @@ first run over a carried folder does not drop them.
   `web_copy` does, with the same `BuildStopped` sentences for a missing or
   unreadable one. It writes `site-icon.png`: the first frame,
   `ImageOps.exif_transpose`, converted to `RGBA`, then `ImageOps.fit` to
-  `ICON_SIDE = 180` pixels square, centred, and saved as PNG. PNG cannot
+  `ICON_SIDE = 180` pixels square, centred, and saved as PNG carrying
+  nothing a web copy would not, such as a colour profile. PNG cannot
   hold a CMYK JPEG's mode, and a palette is resized coarsely.
 - **Picture chosen.** `web_copy(name)` publishes it as any photograph.
 

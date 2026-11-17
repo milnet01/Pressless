@@ -23,7 +23,7 @@ import pytest
 from _face_session import session_cookie
 from PIL import Image
 
-from pressless import editor, face, marks, photographs, settings, store
+from pressless import builder, editor, face, marks, photographs, settings, store
 
 
 def _picture(fmt: str = "JPEG", colour: tuple[int, int, int] = (200, 30, 30)) -> bytes:
@@ -127,6 +127,12 @@ _ENDINGS = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif", "AVIF
 @pytest.mark.parametrize("fmt", list(_ENDINGS))
 def test_each_published_format_is_kept_under_its_own_ending(tmp_path, fmt):
     assert photographs.add(tmp_path, "picture", _picture(fmt)) == "picture" + _ENDINGS[fmt]
+
+
+def test_every_published_format_has_its_endings():
+    """PRESS-0274: SUFFIXES names the formats the Builder publishes, no more
+    and no fewer. Breaks when a format is added to one side alone."""
+    assert set(photographs.SUFFIXES) == builder.PUBLISHED_FORMATS
 
 
 def test_the_upload_box_offers_every_format_kept():
