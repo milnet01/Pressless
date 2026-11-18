@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0204 — A tray icon opens, restarts and stops Pressless
 
-**Status:** spec draft (2026-11-18).
+**Status:** accepted (2026-11-18).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0204 (user request 2026-10-02; placed after
 1.0 by the user 2026-10-03).
@@ -54,10 +54,11 @@ tray, Pressless runs exactly as it does now.
 ```python
 # src/pressless/tray.py — new. Every word lives in words.py (PRESS-0242).
 class Tray:
-    def __init__(self, stop: Callable[[], None], note: Callable[[str], None]) -> None: ...
+    def __init__(self, stop: Callable[[], None]) -> None: ...
     def start(self) -> bool:            # False: no tray here, and nothing else changes
     def serve(self, face: Face, restart: Callable[[], None]) -> None:
-        """The Face and restart the entries act on now; one call per Face."""
+        """The Face and restart the entries act on now; one call per Face.
+        Notes go to `face.note`. `face.at_stop` makes the tray forget the Face."""
     def close(self) -> None:            # removes the icon; idempotent
 
 # src/pressless/face.py — added
@@ -77,13 +78,15 @@ their words.
 |---|---|
 | Open Pressless (also a left click on the icon) | `webbrowser.open(face.fresh_link())`; where no browser opens, print the link, as launch does (PRESS-0013 § 4.5 step 5) |
 | Restart | the `restart` callable `serve` was given: the same path as Settings' Restart after its confirm (PRESS-0203) |
-| Stop Pressless | `stop`: `_thread.interrupt_main()`, Ctrl+C's way out, so the stop steps run (PRESS-0013 § 4.5 step 6) |
+| Stop Pressless | `stop`: `_thread.interrupt_main()`, Ctrl+C's way out (PRESS-0013 § 4.5 step 6). Once: a second Stop does nothing, as a second close signal does (PRESS-0208) |
 
 An action runs on the tray's own thread and never raises into it: a
-failure is noted with `note` by type, and the icon stays.
+failure is noted by type in the log of the Face `serve` last named, and
+the icon stays.
 
-Between Faces (during a restart) `serve` has not been called again yet;
-Open and Restart do nothing then, and Stop still stops.
+From a Face's stop steps until the next `serve`, the tray holds no Face:
+Open and Restart do nothing, a failure is not noted, and Stop still
+stops.
 
 ### 4.3 The link, re-armed (amends PRESS-0011 § 4.5)
 
@@ -100,9 +103,11 @@ and `url` becomes the new link at `/`, so it never names a dead one.
 ### 4.4 Launching (amends PRESS-0013 § 4.5)
 
 `_serve_behind_lock` makes one `Tray` per process, after the move-in and
-before the first Face, and closes it in the same `finally` that runs the
-stop steps. `_serve_once` calls `tray.serve(served, restart.set)` once the
-pages are registered. A `start()` returning False changes nothing: the
+before the first Face, and closes it in its inner `finally`, the one
+around `_serve_held`, after the last Face's stop steps. `_serve_once`
+calls `tray.serve(served, restart.set)` once the pages are registered.
+The first `serve` calls `start()`, so a tray that cannot start is noted
+in that Face's log. A `start()` returning False changes nothing: the
 console line and the console controls stay as they are. The console line
 (`main.running`) is unchanged.
 
@@ -188,9 +193,12 @@ only `127.0.0.1`.
 
 - **INV-3** — Each entry runs its action on the Face `serve` last named:
   Open opens `fresh_link()`, Restart calls that `restart`, Stop calls
-  `stop`; and an action that raises is noted, not propagated.
+  `stop`, once however often it is chosen; once that Face stops, Open
+  and Restart do nothing; and an action that raises is noted, not
+  propagated.
   *Test:* `tests/test_tray.py`, driving the shared action table with a
-  fake Face and recorders, the second `serve` replacing the first.
+  fake Face and recorders, the second `serve` replacing the first, and
+  the fake Face's stop steps clearing it.
   *Breaks when:* the tray keeps the first Face it was given, so Open after
   a restart opens a dead port.
 
@@ -199,8 +207,9 @@ only `127.0.0.1`.
   *Test:* `tests/test_tray_linux.py`, on a private `dbus-daemon` with a
   fake watcher written with `jeepney`: registration arrives, `GetLayout`
   lists the three entries, and `Event(id, "clicked")` and `Activate` each
-  reach the recorder. It skips where `dbus-daemon` is absent, and fails
-  instead where `CI` is set, so the Linux runner cannot skip it quietly.
+  reach the recorder. It runs on Linux only. There it skips where
+  `dbus-daemon` is absent, and fails instead where `CI` is set, so the
+  Linux runner cannot skip it quietly.
   *Breaks when:* the menu's ids and the action table disagree.
 
 - **INV-5** — On Windows, the callback message runs the action, and
@@ -299,7 +308,8 @@ maintainer's desktop); on Windows, on the box (`docs/working-here.md`
 - **`pyproject.toml`**: `jeepney` declared on Linux, since Pressless now
   imports it itself.
 - **`CLAUDE.md` § Build and test**: `jeepney` reached only by
-  `_tray_linux.py`.
+  `_tray_linux.py`, and `Pillow` by `_tray_linux.py` as well as
+  `builder.py`.
 - **The in-app manual and README**: the icon and its three entries.
 - **CHANGELOG**: the tray icon.
 
