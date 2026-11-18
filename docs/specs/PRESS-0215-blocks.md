@@ -147,10 +147,13 @@ whitespace (which goes into `gaps`):
    closing mark of the same kind at the same depth. The section's
    bytes are both marks and everything between.
 2. **A section's bytes are read as its kind only where
-   `section_html(<the section read>)` returns exactly those bytes.**
-   Any other bytes, and a kind not in `KINDS`, make it a `CODE` section
-   whose `source` is the bytes. An optional field a section does not
-   carry is absent from `fields`, never `""`.
+   `section_html(<the section read>)` returns exactly those bytes,**
+   or bytes that differ from them only in how characters are written
+   as references (`&#8217;` for `’`, PRESS-0426). The latter keep their
+   bytes as `source`, as § 4.5's earlier forms do, and their fields hold
+   the characters. Any other bytes, and a kind not in `KINDS`, make it
+   a `CODE` section whose `source` is the bytes. An optional field a
+   section does not carry is absent from `fields`, never `""`.
 3. **An opening mark with no matching closing mark, a closing mark
    with no opening one, and any other content** start an unmarked code
    run. It runs to the next opening section mark at this depth, or to
@@ -288,13 +291,16 @@ since marks are comments and `page_editor.pieces` skips markup.
   *Breaks when:* a gap, an unmarked run or a code section's source is
   re-spelled on the way through.
 
-- **INV-2** — A section whose bytes are not a recorded form of its kind
-  reads as `CODE`, with those bytes as its `source`.
+- **INV-2** — A section whose bytes are not a recorded form of its kind,
+  character references read, reads as `CODE`, with those bytes as its
+  `source`.
   *Test:* `tests/test_blocks.py::test_a_changed_section_reads_as_code`:
   a text section given `class="x"` on its `p`, and one with a `span`
-  inside, each read as `CODE`.
-  *Breaks when:* step 2 of § 4.3 compares anything looser than bytes,
-  such as the parsed tree.
+  inside, each read as `CODE`;
+  `test_a_character_written_as_a_reference_still_reads_as_its_kind`:
+  each kind with words, written with references, reads as that kind.
+  *Breaks when:* step 2 of § 4.3 compares anything looser than bytes
+  with references read, such as the parsed tree.
 
 - **INV-3** — For every kind, `read` of a page holding
   `section_html(s)` gives back `s`.
@@ -369,7 +375,7 @@ since marks are comments and `page_editor.pieces` skips markup.
 | What happens | What the user sees |
 |---|---|
 | Marks hand-edited so they no longer pair | That stretch is an unmarked code run; the page still opens and builds (§4.3 step 3) |
-| A section's HTML hand-edited | It is a code section, kept byte for byte (INV-2) |
+| A section's HTML hand-edited | It is a code section, kept byte for byte (INV-2); a character re-written as a reference changes nothing |
 | `adopt` finds no usable `main` | `None`; PRESS-0260 opens the page in the code view, as today |
 | Marker pairs that do not pair | `BuildStopped` from `furniture_spans`, as today |
 | A page's words view adds a paragraph inside a text section (PRESS-0238) | That section becomes a code section; nothing is lost. PRESS-0260 retires the words view |
@@ -397,7 +403,8 @@ Each test is seen failing before the code it locks exists.
 - **Comparing parsed trees instead of bytes for the round-trip rule.**
   Two spellings would both read as the kind, and the next save would
   re-spell what the user wrote by hand, which is the fight design.md
-  rules out.
+  rules out. A character reference is the one spelling § 4.3 step 2
+  reads past, and only because the section then keeps its bytes.
 - **Keeping the marks in the published site.** The user chose to
   strip them (§3 decision 3).
 - **Sections anywhere in the body.** The header markers, the `head`
@@ -421,7 +428,7 @@ Each test is seen failing before the code it locks exists.
 | Rule | What catches a breach |
 |---|---|
 | INV-1 | `tests/test_blocks.py::test_every_page_writes_back_as_it_was`; `tests/test_blocks_archive.py` |
-| INV-2 | `tests/test_blocks.py::test_a_changed_section_reads_as_code` |
+| INV-2 | `tests/test_blocks.py::test_a_changed_section_reads_as_code`; `test_a_character_written_as_a_reference_still_reads_as_its_kind` |
 | INV-3 | `tests/test_blocks.py::test_every_kind_reads_back_as_written` |
 | INV-4 | `tests/test_blocks.py::test_every_earlier_form_still_reads` |
 | INV-5 | `tests/test_blocks.py::test_adopting_keeps_what_the_page_shows`; `tests/test_blocks_archive.py` |

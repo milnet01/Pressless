@@ -199,7 +199,9 @@ section they change by hand becomes a code section, shown in the visual
 editor as code, as WordPress's custom-HTML block is. A page taken in
 from elsewhere arrives the same way: whatever no section fits is a code
 section, and still editable. A section in a form an earlier Pressless
-wrote reads as its kind, and keeps its bytes until it is changed.
+wrote reads as its kind, and keeps its bytes until it is changed. So
+does one that differs only in a character written as a reference
+(`&#8217;` for `’`).
 
 **Pages have drafts** — decided with the user 2026-10-02. A change to a
 page is held as that page's draft until the user publishes the page, so

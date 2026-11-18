@@ -530,6 +530,32 @@ _IN_AN_ANSWER = _IN_A_COLUMN
 _IN_PICTURES = frozenset((PICTURE,))
 
 
+def _respelled(section: Section | None) -> Section | None:
+    """`section` with its words fields as section_html writes them, each
+    character reference read; None where it is None or a field is not
+    <inline>."""
+    if section is None:
+        return None
+    fields = dict(section.fields)
+    for name in ("html", "caption"):
+        if name in fields:
+            fields[name] = inline(fields[name])
+            if fields[name] is None:
+                return None
+    return Section(section.kind, fields, section.parts)
+
+
+def _spelled_alike(written: str, source: str) -> bool:
+    """§4.3 step 2: the two differ at most in how characters are written as
+    references (`&#8217;` for `’`). Each construct HTMLParser reports is
+    compared with its references read, so a quote, a space or an attribute's
+    place still counts."""
+    def read(text: str):
+        return [(event.kind, event.tag, event.attrs, event.text,
+                 _html.unescape(text[event.start:event.end])) for event in _scan(text)]
+    return read(written) == read(source)
+
+
 class _Reading:
     def __init__(self, text: str, marks: list[_Mark]):
         self.text = text
@@ -580,7 +606,8 @@ class _Reading:
         source = self.text[opening.start:closing.end]
         if opening.name in allowed:
             for number, (reader, writer) in enumerate(_FORMS[opening.name]):
-                found = self.candidate(opening.name, reader, opening.end, closing.start)
+                found = _respelled(self.candidate(opening.name, reader, opening.end,
+                                                  closing.start))
                 if found is None:
                     continue
                 try:
@@ -588,10 +615,12 @@ class _Reading:
                     written = _wrap(found.kind, writer(found))
                 except SectionRefused:
                     continue
-                if written == source:
-                    latest = number == len(_FORMS[opening.name]) - 1
-                    return found if latest else Section(found.kind, found.fields, found.parts,
-                                                        source)
+                if written == source and number == len(_FORMS[opening.name]) - 1:
+                    return found
+                # An earlier form (§4.5), or one spelling a character as a
+                # reference: either keeps its bytes until it is changed.
+                if _spelled_alike(written, source):
+                    return Section(found.kind, found.fields, found.parts, source)
         return Section(CODE, source=source)
 
     def candidate(self, kind: str, reader, start: int, end: int) -> Section | None:

@@ -153,11 +153,11 @@ def test_a_mark_fault_is_kept_as_code():
 
 
 def test_a_changed_section_reads_as_code():
-    """INV-2. Breaks when §4.3 step 2 compares anything looser than bytes."""
+    """INV-2. Breaks when §4.3 step 2 compares anything looser than bytes with
+    each character reference read."""
     written = blocks.section_html(Section(blocks.TEXT, {"html": "Words"}))
     for changed in (written.replace("<p>", '<p class="x">'),
                     written.replace("Words", "<span>Words</span>"),
-                    written.replace("Words", "Words &#8217;"),
                     written.replace("<p>", "<P>").replace("</p>", "</P>"),
                     written.replace("<p>", "<p >")):
         page = blocks.read("page", _page(changed))
@@ -166,15 +166,43 @@ def test_a_changed_section_reads_as_code():
     button = blocks.section_html(Section(blocks.BUTTON, {"href": "a.html", "label": "A & B"}))
     for changed in (picture.replace('src="1.jpg" alt="picture 1"', 'alt="picture 1" src="1.jpg"'),
                     picture.replace('"1.jpg"', "'1.jpg'"),
-                    picture.replace(">", " >", 2).replace(" >", ">", 1),
-                    button.replace("&amp;", "&#38;"),
-                    button.replace('"a.html"', '"a&#46;html"')):
+                    picture.replace(">", " >", 2).replace(" >", ">", 1)):
         assert changed != picture and changed != button
         page = blocks.read("page", _page(changed))
         assert page.sections == (Section(blocks.CODE, source=changed),), changed
     hand_spaced = blocks.section_html(EVERY_KIND[-1]).replace("</div><!-- /pressless:column -->",
                                                               "</div>\n<!-- /pressless:column -->")
     assert blocks.read("page", _page(hand_spaced)).sections[0].kind == blocks.CODE
+
+
+def test_a_character_written_as_a_reference_still_reads_as_its_kind():
+    """INV-2, PRESS-0426: a section that differs from section_html's only in
+    how a character is written reads as its kind with the characters in its
+    fields, and keeps its bytes as source. Breaks when a reference other than
+    &amp;, &lt; or &gt; makes a section code."""
+    text = blocks.section_html(Section(blocks.TEXT, {"html": "Jerry’s café"}))
+    heading = blocks.section_html(Section(blocks.HEADING, {"level": "2", "html": "It’s"}))
+    picture = blocks.section_html(_picture(1, caption='Jerry’s "best"'))
+    enlarge = blocks.section_html(Section(blocks.ENLARGE, {"src": "1.jpg", "alt": "Jerry’s",
+                                                           "caption": "Jerry’s"}))
+    button = blocks.section_html(Section(blocks.BUTTON, {"href": "a.html", "label": "A & B’s"}))
+    for changed, kind, fields in (
+            (text.replace("’", "&#8217;").replace("é", "&eacute;"), blocks.TEXT,
+             {"html": "Jerry’s café"}),
+            (heading.replace("’", "&rsquo;"), blocks.HEADING, {"level": "2", "html": "It’s"}),
+            (picture.replace("’", "&#x2019;").replace('"best"', "&quot;best&quot;"),
+             blocks.PICTURE, {"src": "1.jpg", "alt": "picture 1", "caption": 'Jerry’s "best"'}),
+            (enlarge.replace("’", "&#8217;"), blocks.ENLARGE,
+             {"src": "1.jpg", "alt": "Jerry’s", "caption": "Jerry’s"}),
+            (button.replace("&amp;", "&#38;").replace('"a.html"', '"a&#46;html"')
+             .replace("’", "&#8217;"), blocks.BUTTON, {"href": "a.html", "label": "A & B’s"})):
+        page = blocks.read("page", _page(changed))
+        assert page.sections == (Section(kind, fields, source=changed),), changed
+        assert blocks.write(page) == _page(changed)
+    row = blocks.section_html(Section(blocks.PICTURES, parts=((_picture(1, caption="it’s"),),)))
+    page = blocks.read("page", _page(row.replace("’", "&#8217;")))
+    assert page.sections[0].kind == blocks.PICTURES
+    assert page.sections[0].parts[0][0].fields["caption"] == "it’s"
 
 
 # ------------------------------------------------------------------ INV-3 ---
