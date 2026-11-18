@@ -434,8 +434,7 @@ charset=utf-8`, holding `face.fail(failure, publishing=False)`. Nothing is
 written.
 
 **A failure at step 5 does not undo the save.** It is shown through `Face.fail`
-in the reply, in the preview's place. So is `NotSetUp`, and the `StoreError`
-an install with no furniture raises (PRESS-0126).
+in the reply, in the preview's place. So is `NotSetUp`.
 
 A successful save answers status 200, `application/json`:
 
@@ -674,7 +673,7 @@ and finds them without a change.
 | The file was edited by hand while open | `ChangedElsewhere`; saving stops | the hand edit |
 | Two copies replace one published entry | `TooManyCopies` when it is opened | both copies |
 | Pressless is not set up | the save succeeds; `NotSetUp` in the preview's place | the save |
-| No furniture yet (PRESS-0126) | the save succeeds; `StoreError` in the preview's place | the save |
+| No furniture yet (PRESS-0126) | the save succeeds; the preview shows no header, menu or footer (PRESS-0423) | the save |
 | A typed category or tag with no letter or number, or one naming a Windows device | left out, and a notice names it | the rest of the save |
 | A category or tag put in the file by hand that cannot be an address | `BuildStopped` in the preview's place on opening; the first save stores it as an address or leaves it out with a notice | the file until that save |
 | A title or value the Store cannot carry | the Store's refusal; saving stops | the file as it was |

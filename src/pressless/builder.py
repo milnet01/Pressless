@@ -640,9 +640,13 @@ def _excerpt(text: str, limit: int) -> str:
 # -------------------------------------------------------- furniture (§4.4) --
 
 
+# PRESS-0423: the header of a site that holds none, so its menu still shows.
+_MENU_ONLY_HEADER = '<header class="site">\n{{NAVIGATION}}\n</header>'
+
+
 @dataclass(frozen=True)
 class _Furniture:
-    header: str
+    header: str | None            # None where the Store holds no header
     navigation: str
     footer: str
     year: int
@@ -651,12 +655,15 @@ class _Furniture:
     def fill(self, kind: str, depth: int, *, page: str = "", animate: bool = False,
              nav: bool = True) -> str:
         if kind == "HEADER":
-            text = _LEADING_COMMENT.sub("", self.header, count=1).rstrip("\n")
             navigation = ""
             if nav:
                 navigation = self.navigation
                 if page:
                     navigation = _current(navigation, page)
+            header = self.header
+            if header is None:
+                header = _MENU_ONLY_HEADER if navigation.strip() else ""
+            text = _LEADING_COMMENT.sub("", header, count=1).rstrip("\n")
             text = text.replace("{{NAVIGATION}}", navigation)
         else:
             text = _LEADING_COMMENT.sub("", self.footer, count=1).rstrip("\n")
@@ -905,11 +912,13 @@ class _Build:
         (PRESS-0012 §4.2)."""
         self.set_furniture(self.stored_furniture())
 
-    def stored_furniture(self, *, but: str = "") -> dict[str, str]:
-        """Each furniture file as the Store holds it, `but` the one named."""
-        return {name: store.read_html(
-                    store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
-                for name in store.FURNITURE_NAMES if name != but}
+    def stored_furniture(self, *, but: str = "") -> dict[str, str | None]:
+        """Each furniture file as the Store holds it, `but` the one named;
+        None for one it does not hold, as a blank site holds none (PRESS-0423)."""
+        paths = {name: store.html_path_for(self.folder, store.FURNITURE_FOLDER, name)
+                 for name in store.FURNITURE_NAMES if name != but}
+        return {name: store.read_html(path) if path.is_file() else None
+                for name, path in paths.items()}
 
     # Listed once a build rather than once a page; a _Build lives for one.
     @property
@@ -924,18 +933,23 @@ class _Build:
             self._held_files = frozenset(store.list_files(self.folder))
         return self._held_files
 
-    def set_furniture(self, furniture: dict[str, str]) -> None:
+    def set_furniture(self, furniture: dict[str, str | None]) -> None:
+        """A part the Store does not hold builds as nothing, but for the
+        header, which _Furniture.fill makes hold the menu (PRESS-0423)."""
         identity = store.read_identity(self.folder) or store.Identity("")
+        absent_header = furniture["header"] is None
+        texts = {name: text or "" for name, text in furniture.items()}
         # PRESS-0216 § 4.2: furniture's held photographs are published as a
         # page's are, {{UP}} being the site's root; PRESS-0210 § 4.13 adds the menu's.
         if self.publishing:
-            for text in furniture.values():
+            for text in texts.values():
                 self.copy_what_is_named("index.html", text.replace("{{UP}}", ""))
-        held = {name: furniture[name] if self.marked == name
-                else blocks.unmarked(name, furniture[name]) for name in ("header", "footer")}
-        self.furniture_pieces = any(_has_piece(furniture[name]) for name in ("header", "footer"))
-        self.furniture = _Furniture(held["header"], furniture["navigation"],
-                                    held["footer"], self.today.year, identity)
+        held = {name: texts[name] if self.marked == name
+                else blocks.unmarked(name, texts[name]) for name in ("header", "footer")}
+        self.furniture_pieces = any(_has_piece(texts[name]) for name in ("header", "footer"))
+        self.furniture = _Furniture(None if absent_header else held["header"],
+                                    texts["navigation"], held["footer"], self.today.year,
+                                    identity)
 
     def read_entries(self) -> dict[str, store.Entry]:
         entries = {slug: store.read(store.path_for(self.folder, slug, draft=False))

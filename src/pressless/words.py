@@ -807,6 +807,13 @@ _WORDS: dict[str, str] = {
         "A renamed page's old address forwards from there. Choose another name."
     ),
     "page_hint.unusable": "That name cannot be a page's address. Choose another name.",
+    # PRESS-0423: a Home page and a menu for a site that holds neither.
+    "editor.list.add_home": "Add a Home page",
+    "editor.list.add_menu": "Add a menu",
+    "page_hint.menu_empty": (
+        "The menu links the pages on your site. Make a page and press it to your site, "
+        "then add the menu."
+    ),
     "page_hint.home": "The homepage cannot be removed or renamed.",
     "page_hint.not_on_site": (
         "This page is not on your site yet. Throw away its changes to remove it."

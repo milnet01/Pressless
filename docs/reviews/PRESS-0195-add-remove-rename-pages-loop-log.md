@@ -10,3 +10,4 @@
 | amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.5: Privacy also stays while `votes` is set. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0399 § 4.6: undo takes a page the fetched state lacks off the site, so a rename's undo leaves the new name waiting. |
 | amend | 2026-11-17 | none — PRESS-0414; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: a Store failure on New page answers a whole Face page, since its button is a form. |
+| amend | 2026-11-18 | none — PRESS-0423; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: Add a Home page and Add a menu; Home's first press puts it first in the menu. |

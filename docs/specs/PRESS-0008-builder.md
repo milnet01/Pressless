@@ -296,8 +296,9 @@ included, gains
 `page="Journal"` would be. Where no link carries `data-nav="Journal"`,
 the first link with no `data-nav` whose `href` is
 `{{UP}}blog/index.html` gains it instead: a menu saved before Pressless
-wrote that marker still shows the journal as current. A furniture file the Store does not hold raises
-the Store's own `StoreError`.
+wrote that marker still shows the journal as current. A furniture file the Store does not hold
+fills as nothing, but for a missing header where the menu is held: that header is
+`<header class="site">`, the menu, and `</header>`, so the menu still shows (PRESS-0423).
 
 ### 4.5 S7 — only published writing reaches the folder
 
@@ -622,7 +623,7 @@ Sitemap: <the address>/sitemap.xml
 | A picture names a dot-name, or a format §4.6 refuses | `BuildStopped` naming the file |
 | Pillow cannot read an original | `BuildStopped` naming the file |
 | A fixed page's markers do not pair | `BuildStopped` naming the page |
-| A furniture file is absent | The Store's `StoreError`, unchanged |
+| A furniture file is absent | It fills as nothing, a missing header as the menu alone (§4.4) |
 | An entry file cannot be parsed | The Store's `StoreError`, unchanged |
 | A listing skips a file | The Store's `StoreNotice`, passed through; the build goes on |
 | `change` is an `Html` whose kind or name the Store refuses | The Store's `StoreError`, unchanged |

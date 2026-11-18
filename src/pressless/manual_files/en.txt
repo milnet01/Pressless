@@ -192,6 +192,9 @@ picture new-page.png | The Your pages card on the Pages screen, with the Page na
 
 Pressless opens the new page and adds a link to it in your menu.
 
+A site with no Home page has an Add a Home page button above the Page
+name box. Click it, change the words, and click Press to site.
+
 == renaming-a-page | Renaming or removing a page
 1. Open the page.
 2. Click Rename this page and type its new name. The old address still reaches the page.
@@ -228,6 +231,9 @@ picture menu.png | The menu's links, each with a Words box, a Goes to box, and t
 3. Click Move up or Move down to change the order, or Remove to take a link out.
 4. Click Add a link for a new one.
 5. Click Press to site to publish the menu.
+
+No Navigation under Parts of every page? Click Add a menu there. It
+links the pages already on your site.
 
 == header-and-footer | Changing the header or footer
 The header is the top of every page of your site, and the footer is the

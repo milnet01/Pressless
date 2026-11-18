@@ -398,3 +398,65 @@ def test_a_rename_by_the_ai_door_trims_the_new_name(tmp_path, monkeypatch):
     page_editor.reshape(folder, "about", "  Our Story  ", renaming=True, transport=_github())
     assert ('<a href="{{UP}}pages/our-story.html" data-nav="about">Our Story</a>'
             in _menu(folder))
+
+
+
+# ------------------------------------------- a blank site (PRESS-0423) ---
+
+
+def _press(browser, folder: Path, kind: str, name: str) -> None:
+    """The waiting copy pressed as it stands, as the editor's Press does."""
+    copy = _waiting(folder, kind, name)
+    status, _, text = _save(browser, kind, name, "code", copy.read_text(encoding="utf-8"),
+                            waiting=True, base=_digest(copy), route="/page/publish")
+    assert status == 200 and json.loads(text)["published"] is True, text
+
+
+def test_a_blank_site_gains_pages_a_menu_and_home(tmp_path, monkeypatch):
+    """PRESS-0423. A blank site holds no page and no part. Its first page
+    presses with no header, menu or footer; Add a menu waits until a page is on
+    the site, then links it; Add a Home page writes the starter's Home, whose
+    first press puts Home first in the menu; and with no header, the menu
+    shows in one of its own. Breaks when a missing part stops the build,
+    either button writes live, Home's link goes under pages/ or after About,
+    or the menu shows nowhere."""
+    _key(monkeypatch)
+    folder = _folder(tmp_path)
+    for kind in (store.FURNITURE_FOLDER, store.PAGES_FOLDER):
+        for path in (folder / kind).iterdir():
+            path.unlink()
+    store.write_identity(folder, store.Identity("Field Notes"))
+    github = _github()
+    with _pages(folder, github) as browser:
+        listed = browser.request("GET", "/pages")[2]
+        assert 'action="/page/home"' in listed and 'action="/page/menu"' in listed
+        before = _held(folder)
+        status, headers, _ = browser.request("POST", "/page/menu", {})
+        assert (status, headers["Location"]) == (303, "/pages?page_hint=menu_empty")
+        assert _held(folder) == before
+        hint = browser.request("GET", headers["Location"])[2]
+        assert html.escape(say("page_hint.menu_empty")) in hint
+
+        _new(browser, "About")
+        _press(browser, folder, "pages", "about")
+
+        status, headers, _ = browser.request("POST", "/page/menu", {})
+        assert (status, headers["Location"]) == (303, "/page?kind=furniture&name=navigation")
+        about = '<a href="{{UP}}pages/about.html" data-nav="about">About</a>'
+        assert about in _menu(folder, waiting=True)
+        assert not _live(folder, "furniture", "navigation").exists()
+        _press(browser, folder, "furniture", "navigation")
+
+        status, headers, _ = browser.request("POST", "/page/home", {})
+        assert (status, headers["Location"]) == (303, "/page?kind=pages&name=index")
+        assert "<title>Field Notes</title>" in _waiting(folder, "pages", "index").read_text(
+            encoding="utf-8")
+        assert not _live(folder, "pages", "index").exists()
+        _press(browser, folder, "pages", "index")
+        listed = browser.request("GET", "/pages")[2]
+    assert 'action="/page/home"' not in listed and 'action="/page/menu"' not in listed
+    home = '<a href="{{UP}}index.html" data-nav="Home">Home</a>'
+    assert home + "\n    " + about in _menu(folder)
+    uploaded = b"".join(_uploaded(github)).decode("utf-8")
+    assert '<header class="site">' in uploaded
+    assert '<a href="index.html" data-nav="Home" aria-current="page">Home</a>' in uploaded

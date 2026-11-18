@@ -1155,31 +1155,40 @@ def test_a_site_taken_over_is_not_on_the_web_until_it_is_published(tmp_path):
 
 
 def test_a_blank_site_shows_nothing_done_that_was_not_done(tmp_path):
-    """PRESS-0419. Setup without the starter leaves an identity and nothing
-    else. A Home page and a menu were never there, and nothing on the Face
-    makes either, so their steps are left off rather than ticked; the web
-    stays to do until something of his is pressed, its link opening the
-    Pages screen. Breaks when a page or part that never existed, or a site
-    with nothing published, reads as done, or the link opens a failure."""
+    """PRESS-0419, PRESS-0423. Setup without the starter leaves an identity
+    and nothing else. Home and the menu are to do, their links opening the
+    Pages screen, which adds each; Home stays to do until his words replace
+    the starter's, and a menu he added is done. The web stays to do until
+    something of his is pressed, its link opening the Pages screen too.
+    Breaks when a page or part that never existed, or a site with nothing
+    published, reads as done, or a link opens a failure."""
     folder = tmp_path / "data"
     folder.mkdir()
     store.write_identity(folder, store.Identity("Field Notes", "Notes from the field",
                                                 icon="shore.jpg"))
     assert _checklist(folder) == [(True, "Describe your site in a line"),
                                   (True, "Choose your site's icon"),
+                                  (False, "Make the Home page your own"),
+                                  (False, "Set up the menu"),
                                   (False, "Put your site on the web")]
-    link = re.search(r'<a href="([^"]*)">Put your site', checklist.render(folder)).group(1)
+    links = re.findall(r'<a href="([^"]*)">', checklist.render(folder))[2:]
+    assert links == [editor.PAGES_ADDRESS] * 3, links
     served = face.serve(folder)
     try:
         editor.register(served, folder)
         page_editor.register(served, folder)
-        status, _, page = _Browser(served).request("GET", html.unescape(link))
+        status, _, page = _Browser(served).request("GET", html.unescape(links[0]))
     finally:
         served.stop()
-    assert status == 200 and 'class="failure"' not in page, link
+    assert status == 200 and 'class="failure"' not in page, links[0]
     store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About me.</p>", waiting=True)
-    assert [done for done, _ in _checklist(folder)] == [True, True, False]
+    assert [done for done, _ in _checklist(folder)] == [True, True, False, False, False]
     store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About me.</p>")
+    page_editor.add_home(folder)
+    assert [done for done, _ in _checklist(folder)] == [True, True, False, False, True]
+    assert page_editor.add_menu(folder) is True
+    assert [done for done, _ in _checklist(folder)] == [True, True, False, True, True]
+    store.write_html(folder, store.PAGES_FOLDER, "index", "<p>My own words.</p>")
     assert _checklist(folder) == []
 
 

@@ -46,6 +46,22 @@ def test_add_places_the_link_after_the_last_page(kind):
     assert added == text[:last] + space + link + text[last:]
 
 
+
+@pytest.mark.parametrize("kind", ["one line", "four"])
+def test_add_puts_home_first_and_once(kind):
+    """PRESS-0423: Home's link goes before the first link, at the site's root,
+    followed by the whitespace before that link; a menu already linking Home
+    is unchanged. Breaks when Home goes under pages/, last, or twice."""
+    text = _menus()[kind]
+    first = text.index("<a ")
+    without = text[:first] + text[text.index("</a>") + len("</a>"):].lstrip(" \n")
+    first_link = without.index("<a ")
+    space = without[len(without[:first_link].rstrip(" \t\n")):first_link]
+    link = '<a href="{{UP}}index.html" data-nav="Home">Home</a>'
+    assert menu.add(without, "index", "Home") == (without[:first_link] + link + space
+                                                  + without[first_link:])
+    assert menu.add(text, "index", "Home") == text
+
 def test_add_refuses_a_menu_it_cannot_edit_safely():
     """INV-5: a menu of <ul><li> items is not plain, and add raises Unusual.
 

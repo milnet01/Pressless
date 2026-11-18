@@ -14,3 +14,4 @@
 | amend | 2026-11-17 | none: PRESS-0419; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: a blank site's checklist leaves off Home and the menu, and keeps the web to do until something is published. |
 | amend | 2026-11-17 | none: PRESS-0422; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: an imported site's web step waits for a publish to land (`publishing.IMPORTED`). |
 | amend | 2026-11-17 | none: PRESS-0425; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: the imported-site marker moves out of `import/` to the site's folder, so a saved site file keeps it. |
+| amend | 2026-11-18 | none: PRESS-0423; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: a blank site's Home and menu are to do, linking the Pages screen. |

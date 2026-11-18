@@ -16,3 +16,4 @@
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376: § 4.1 `free_address` takes `reserved`, which only undo passes. |
 | amend | 2026-11-17 | none — PRESS-0372; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3 and INV-9: a wrapped page's policy limits styles, fonts and pictures to the Face, so a linked stylesheet reaches nothing on the web. |
 | amend | 2026-11-17 | none — PRESS-0372; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.10: a failed throw-away answers a whole Face page, since its button is a form. |
+| amend | 2026-11-18 | none — PRESS-0423; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.8, § 6: no furniture no longer fails the preview. |

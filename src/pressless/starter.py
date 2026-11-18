@@ -15,7 +15,17 @@ import html
 import re
 from pathlib import Path
 
-from pressless import blocks, builder, json_record, look, os_reason, settings, store, templates
+from pressless import (
+    blocks,
+    builder,
+    json_record,
+    look,
+    menu,
+    os_reason,
+    settings,
+    store,
+    templates,
+)
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -56,6 +66,17 @@ def navigation() -> str:
             + say("starter.home") + "</a>\n"
             + '    <a href="{{UP}}pages/about.html" data-nav="about">' + say("starter.about")
             + "</a>\n  </nav>")
+
+
+def menu_linking(pages: list[tuple[str, str]]) -> str:
+    """PRESS-0423: a menu in navigation's shape, linking each (page, words)
+    in order, for a site that holds none."""
+    primary = html.escape(say("starter.menu"), quote=True)
+    links = "".join(
+        f'    <a href="{menu.address(page)}" data-nav="'
+        f'{html.escape(builder.HOME_NAV if page == "index" else page, quote=True)}">'
+        f"{html.escape(words)}</a>\n" for page, words in pages)
+    return f'  <nav class="primary" aria-label="{primary}">\n{links}  </nav>'
 
 
 def footer() -> str:
@@ -136,11 +157,12 @@ def new_page(name: str, title: str, sheets: tuple[str, ...], *,
                             if main is None else main)
 
 
-def home_page(site_name: str) -> str:
+def home_page(site_name: str, sheets: tuple[str, ...] = _OWN_SHEET) -> str:
     """The starter's Home page, which sits at the root. A site filled before
-    FILLED existed is compared with this by checklist, as worded today."""
+    FILLED existed is compared with this by checklist, as worded today. The
+    Pages screen's Add a Home page passes the site's own `sheets` (PRESS-0423)."""
     name = html.escape(site_name, quote=True)
-    return _PAGE.format(title=name, links=_links(_OWN_SHEET, ""), page=builder.HOME_NAV,
+    return _PAGE.format(title=name, links=_links(sheets, ""), page=builder.HOME_NAV,
                         area=_area(say("starter.welcome", name=site_name),
                                    _words("starter.home.words")))
 
@@ -267,9 +289,11 @@ def filled(folder: Path) -> dict[str, str] | None:
             if name != "version" and isinstance(value, str)}
 
 
-def _note_filled(folder: Path, wrote: dict[str, str]) -> None:
-    """Add what this fill wrote to FILLED; a fill finished later keeps the
-    digests of the first."""
+def note_filled(folder: Path, wrote: dict[str, str]) -> None:
+    """Add what this fill, or the Pages screen's Add, wrote to FILLED; a fill
+    finished later keeps the digests of the first. An empty `wrote` still
+    makes FILLED, after which a page or part with no digest in it reads to
+    checklist as his own (PRESS-0423)."""
     try:
         json_record.write(Path(folder) / FILLED, {**(filled(folder) or {}), **wrote})
     except OSError as exc:
@@ -336,7 +360,7 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
         if not path.exists():
             store.write_html(folder, kind, file_name, text)
             wrote[file_name] = digest(store.read_html(path))
-    _note_filled(folder, {name: wrote[name] for name in ("index", "navigation")
+    note_filled(folder, {name: wrote[name] for name in ("index", "navigation")
                           if name in wrote})
     if not store.style_code_path(folder).exists():
         look.save(folder, look.defaults(layout), "")

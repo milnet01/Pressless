@@ -99,8 +99,17 @@ def _plain(text: str) -> list[re.Match]:
 
 def add(text: str, name: str, words: str) -> str:
     """A link to the page after the last link to a page, else after the last
-    link, preceded by the whitespace that precedes the link it follows."""
+    link, preceded by the whitespace that precedes the link it follows. Home
+    goes before the first link instead, followed by that whitespace, unless
+    the menu already links it (PRESS-0423)."""
     links = _plain(text)
+    if name == "index":
+        if any(_href_value(link) == _HOME for link in links):
+            return text
+        first = links[0].start()
+        space = text[_before(text, first):first]
+        return (text[:first] + f'<a href="{_HOME}" data-nav="{html.escape(builder.HOME_NAV)}">'
+                + f"{_written(words)}</a>" + space + text[first:])
     pages = [link for link in links if (_href_value(link) or "").startswith(_PAGES)]
     after = (pages or links)[-1]
     space = text[_before(text, after.start()):after.start()]

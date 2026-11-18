@@ -174,12 +174,29 @@ live file is absent at step 3:
 - Step 3 remembers *absent* for the page. It also remembers the live
   navigation file's text, and its waiting copy's where one exists. It
   writes `menu.add` of each, `words` being the page's `<title>` text,
-  unescaped, else `builder.label(page)`.
+  unescaped, else `builder.label(page)`. For Home, `words` is
+  `say("starter.home")`, and `menu.add` puts its link at the site's root
+  before the first link, unless the menu already links it.
 - A copy `menu.add` raises `Unusual` on is left as it is, and the reply
   carries a notice saying the menu was not changed and how to add the
   link in its code.
 - The put-back after a failure bins the live page it wrote and writes
   each remembered navigation text back.
+
+**A Home page and a menu** (PRESS-0423), for a site that holds neither,
+as a blank site does. Each is a button, shown only while the site holds
+no such page or part, and each writes a waiting copy and answers 303 to
+the page editor for it:
+
+- **Add a Home page** posts to `POST /page/home`, which writes
+  `starter.home_page(<site name>, builder.stylesheets(folder))` and adds
+  its digest to `starter.FILLED`, so the checklist keeps *Make the Home
+  page your own* to do until his words replace the starter's.
+- **Add a menu**, in the parts card, posts to `POST /page/menu`, which
+  writes `starter.menu_linking`: Home, then each other live page, worded
+  as a first press words its link. It writes `starter.FILLED` where absent,
+  so the checklist counts the menu as his. With no live page, it writes
+  nothing and the 303 goes to the list with the `menu_empty` hint.
 
 ### 4.4 Remove and Rename
 

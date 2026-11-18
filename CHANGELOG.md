@@ -12,6 +12,20 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **A site started blank can add a Home page and a menu** (PRESS-0423)
+  The Pages screen now has an Add a Home page button while your site has no Home
+  page, and an Add a menu button while it has no menu. The menu links the pages
+  already on your site.
+
+### Fixed
+
+- **A site started blank can publish its pages** (PRESS-0423)
+  A site set up without the starter had no header, menu or footer, and every
+  preview and publish stopped with "Pressless could not use one of your files".
+  Pages now build without them.
+
 ## [1.0.2] - 2026-11-17
 
 **Theme:** Every sign holds, and the format is frozen

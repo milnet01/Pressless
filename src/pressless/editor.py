@@ -577,7 +577,8 @@ def _template_choice(folder: Path) -> str:
 # PRESS-0195 § 4.3: why a new page's name was refused, by the code its route
 # sends back, so the list shows a sentence and never the query's own text.
 PAGE_HINTS = {"empty": "page_hint.empty", "taken": "page_hint.taken",
-              "forwarded": "page_hint.forwarded", "unusable": "page_hint.unusable"}
+              "forwarded": "page_hint.forwarded", "unusable": "page_hint.unusable",
+              "menu_empty": "page_hint.menu_empty"}  # PRESS-0423's Add a menu
 
 
 def held_html(folder: Path, kind: str) -> list[str]:
@@ -595,15 +596,16 @@ def _pages(folder: Path, hint: str = "") -> _Listed:
     The pages and the furniture come back apart, the furniture as the parts
     of every page (PRESS-0341). Drawn from the Store alone, so this module
     imports nothing of page_editor.py."""
+    held_pages = held_html(folder, store.PAGES_FOLDER)
     rows = [(store.PAGES_FOLDER, name,
              say("editor.pages.home") if name == "index" else builder.label(name))
-            for name in held_html(folder, store.PAGES_FOLDER)]
-    parts = held_html(folder, store.FURNITURE_FOLDER)
+            for name in held_pages]
+    held_parts = held_html(folder, store.FURNITURE_FOLDER)
     rows += [(store.FURNITURE_FOLDER, name, say(key))
              for name, key in (("header", "editor.pages.header"),
                                ("footer", "editor.pages.footer"),
                                ("navigation", "editor.pages.navigation"))
-             if name in parts]
+             if name in held_parts]
     items: dict[str, list[str]] = {store.PAGES_FOLDER: [], store.FURNITURE_FOLDER: []}
     carry_on = ""
     last = choices.read(folder).page  # PRESS-0263: where he left off, while it is held
@@ -617,13 +619,22 @@ def _pages(folder: Path, hint: str = "") -> _Listed:
         items[kind].append(f'<li><a href="{html.escape(address, quote=True)}">'
                            f"{html.escape(label)}</a>{note}</li>")
     said = say(PAGE_HINTS[hint]) if hint in PAGE_HINTS else ""
+
+    def add(action: str, key: str, missing: bool) -> str:
+        """PRESS-0423: a button making a Home page or a menu, where none is held."""
+        return (f'<form method="post" action="{action}"><button>{say(key)}</button></form>'
+                if missing else "")
+
     pages = ("<ul>" + "".join(items[store.PAGES_FOLDER]) + "</ul>"
-             f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
+             + add("/page/home", "editor.list.add_home",
+                   "index" not in held_pages)
+             + f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
              '<input name="name" autocomplete="off"></label> '
              f"<button>{say('editor.list.new_page')}</button></form>"
              f'<p id="page-hint" role="status">{html.escape(said)}</p>')
     parts = (f"<p>{say('editor.list.parts_note')}</p>"
-             "<ul>" + "".join(items[store.FURNITURE_FOLDER]) + "</ul>")
+             "<ul>" + "".join(items[store.FURNITURE_FOLDER]) + "</ul>"
+             + add("/page/menu", "editor.list.add_menu", "navigation" not in held_parts))
     return _Listed(pages, parts, carry_on)
 
 

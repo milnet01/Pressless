@@ -291,6 +291,13 @@ def register(face: Face, folder: Path, *,
                   lambda request: _publish(face, folder, request, transport))
     # PRESS-0195: a new page, and removing or renaming one.
     face.add_page("POST", "/page/new", route(_new))
+    # PRESS-0423: a Home page and a menu for a site that holds neither.
+    face.add_page("POST", "/page/home", route(
+        lambda face, folder, lock, request: _add(face, folder, lock, store.PAGES_FOLDER,
+                                                 HOME, add_home)))
+    face.add_page("POST", "/page/menu", route(
+        lambda face, folder, lock, request: _add(face, folder, lock, store.FURNITURE_FOLDER,
+                                                 "navigation", add_menu)))
     face.add_page("POST", "/page/remove",
                   lambda request: _reshape(face, folder, request, transport, renaming=False))
     face.add_page("POST", "/page/rename",
@@ -895,7 +902,8 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
         try:
             gathered(lambda: changes.write(kind, name, new))
             if first:
-                words = _title(new) or builder.label(name)
+                words = (say("starter.home") if name == HOME
+                         else _title(new) or builder.label(name))
                 if not gathered(lambda: _edit_menu(folder, changes,
                                                    lambda text: menu.add(text, name, words))):
                     said.append(say("notice.pages.menu_unusual"))
@@ -1096,6 +1104,55 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> st
         return editor.failed_page(face, notices, failure)
     else:
         location = editor.page_address(store.PAGES_FOLDER, page)
+    return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
+
+
+def add_home(folder: Path) -> None:
+    """PRESS-0423: where the site holds no Home page, its waiting copy in the
+    starter's shape, noted for checklist as fill's is. Takes no lock."""
+    if HOME in editor.held_html(folder, store.PAGES_FOLDER):
+        return
+    identity = store.read_identity(folder) or store.Identity("")
+    store.write_html(folder, store.PAGES_FOLDER, HOME,
+                     starter.home_page(identity.name, builder.stylesheets(folder)),
+                     waiting=True)
+    written = store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, HOME,
+                                                  waiting=True))
+    starter.note_filled(folder, {HOME: starter.digest(written)})
+    pressing.forget()
+
+
+def add_menu(folder: Path) -> bool:
+    """PRESS-0423: where the site holds no menu, its waiting copy linking
+    Home and then each other page on the site, worded as a new page's first
+    press words its link. False, writing nothing, where no page is on the
+    site to link. Takes no lock."""
+    if "navigation" in editor.held_html(folder, store.FURNITURE_FOLDER):
+        return True
+    live = sorted(store.list_html(folder, store.PAGES_FOLDER), key=lambda page: page != HOME)
+    if not live:
+        return False
+    links = [(page, say("starter.home") if page == HOME else
+              _title(store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, page)))
+              or builder.label(page)) for page in live]
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation",
+                     starter.menu_linking(links), waiting=True)
+    # The menu he added is his own: the checklist's step is done.
+    starter.note_filled(folder, {})
+    pressing.forget()
+    return True
+
+
+def _add(face: Face, folder: Path, lock: threading.Lock, kind: str, name: str,
+         add: Callable[[Path], bool | None]) -> str | Reply:
+    """PRESS-0423's buttons, which are forms: the part or page opens in the
+    editor, or the Pages screen says why the menu was not added."""
+    added, notices, failure = editor.captured(face, lock, lambda: add(folder),
+                                              (store.StoreError,))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
+    location = (editor.PAGES_ADDRESS + "?page_hint=menu_empty" if added is False
+                else editor.page_address(kind, name))
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
 
 

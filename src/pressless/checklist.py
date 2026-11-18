@@ -24,9 +24,15 @@ def render(folder: Path) -> str:
         items = (
             ("checklist.describe", "/setup", bool(identity.description)),
             ("checklist.icon", "/setup", bool(identity.icon)),
-            ("checklist.home", _HOME, _own(folder, store.PAGES_FOLDER, "index",
-                                           lambda: starter.home_page(identity.name))),
-            ("checklist.menu", editor.page_address(store.FURNITURE_FOLDER, "navigation"),
+            # Where Home or the menu was never there, its link opens the
+            # Pages screen, which adds it (PRESS-0423).
+            ("checklist.home",
+             _HOME if _held(folder, store.PAGES_FOLDER, "index") else editor.PAGES_ADDRESS,
+             _own(folder, store.PAGES_FOLDER, "index",
+                  lambda: starter.home_page(identity.name))),
+            ("checklist.menu",
+             editor.page_address(store.FURNITURE_FOLDER, "navigation")
+             if _held(folder, store.FURNITURE_FOLDER, "navigation") else editor.PAGES_ADDRESS,
              _own(folder, store.FURNITURE_FOLDER, "navigation", starter.navigation)),
             # Any publish that lands removes the starter's marker (PRESS-0126
             # § 4.5), a page's Press to site included, so the link opens Home,
@@ -47,8 +53,6 @@ def render(folder: Path) -> str:
         )
     except store.StoreError:
         return ""
-    # A step with nothing to work on is left off, never ticked (PRESS-0419).
-    items = tuple(item for item in items if item[2] is not None)
     if all(done for _, _, done in items):
         return ""
     rows = "".join(
@@ -62,17 +66,17 @@ def render(folder: Path) -> str:
             f"<p>{count}</p><ul>{rows}</ul></section>")
 
 
-def _own(folder: Path, kind: str, name: str, started: Callable[[], str]) -> bool | None:
+def _own(folder: Path, kind: str, name: str, started: Callable[[], str]) -> bool:
     """Whether the page or part differs from what the starter wrote, a change
     waiting to be pressed included. One the starter did not write is his own,
-    and one he removed has nothing left to do. None where it was never there:
-    a blank site has no Home page or menu, and nothing on the Face makes
-    either (PRESS-0419). A site filled before starter.FILLED is compared with
+    and one he removed has nothing left to do. One never there is to do: a
+    blank site has neither, and the Pages screen adds each (PRESS-0423). A
+    site filled before starter.FILLED is compared with
     `started()`, the starter's text as worded today."""
     held = _held(folder, kind, name)
     wrote = starter.filled(folder)
     if not held:
-        return True if wrote is not None and name in wrote else None
+        return wrote is not None and name in wrote
     if wrote is not None:
         return name not in wrote or any(starter.digest(text) != wrote[name] for text in held)
     return any(text != started() for text in held)
