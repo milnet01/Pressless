@@ -1,7 +1,8 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0241 — Pressless speaks Spanish, Afrikaans, French and German
 
-**Status:** spec draft (2026-11-18).
+**Status:** accepted (2026-11-18). One review round, the user's budget for a
+new spec; its fixes were read by no lane.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0241 (user request 2026-10-07).
 
@@ -67,8 +68,9 @@ byte, as it does today.
    can say the wrong thing; English never does. The gate does not fail on
    it: a report lists what needs translating, and the release checklist
    runs it.
-9. **Show details, the log, exception messages, commit messages and the
-   command-line tools stay English** — PRESS-0242 decision 4, unchanged.
+9. **Show details, the log, exception messages, commit messages, the
+   self-check line and the command-line tools stay English** — PRESS-0242
+   decision 4, unchanged.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -76,9 +78,9 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 ### 4.1 A language file
 
-One JSON file per language in `src/pressless/languages/`, named by its
-code: `es.json`, `af.json`, `fr.json`, `de.json`. English has none; it is
-`words.ENGLISH`.
+One JSON file per language in `src/pressless/language_files/`, named by
+its code: `es.json`, `af.json`, `fr.json`, `de.json`. English has none; it
+is `words.ENGLISH`, with `one` `[1]` and `,` for thousands.
 
 ```json
 {
@@ -97,13 +99,14 @@ code: `es.json`, `af.json`, `fr.json`, `de.json`. English has none; it is
 - `made-from` — the first eight hexadecimal characters of the SHA-256 of
   the UTF-8 English the entry was translated from.
 
-The folder is bundled beside `manual_files` (`scripts/freeze_flags.py`).
+The folder is named as `manual_files` is (PRESS-0219 § 4.1), and bundled
+beside it (`scripts/freeze_flags.py`).
 
 ### 4.2 The words module
 
 ```python
 # src/pressless/words.py — additions
-LANGUAGES: tuple[str, ...]        # ("en", "es", "af", "fr", "de"), the order shown
+LANGUAGES: tuple[str, ...]        # "en", then each code § 4.6 adds; the order shown
 
 def table(code: str) -> dict[str, str]: ...
     # The language's entries whose made-from matches today's English.
@@ -124,16 +127,21 @@ def number(value: int, code: str | None = None) -> str: ...
     # `value` with the thousands marked as `code` (default: in use) marks them.
 ```
 
-- **`say_count` takes the language's `one`**, and its `count` gap is
-  `number(...)` unless the caller passes its own.
+- **`say_count` takes `code` as `number` does**, and that language's
+  `one`. Its `count` gap is `number(...)` in that language unless the
+  caller passes its own. Every `:,` thousands format under `src/pressless` becomes
+  `number(...)`.
+- **The Builder's counts keep today's unmarked digits** in every language,
+  passing their own `count`.
 - **`words.use` stays the tests' seam.** `choose` is what startup and the
   picker call.
 - **Months and days are entries**: `date.month.1` … `date.month.12`,
   `date.mon.1` … `date.mon.12`, `date.day.0` … `date.day.6` (Monday is 0),
-  and the formats `date.long` (`{day} {month} {year}`), `date.short`
-  (`{day} {mon}`), `date.month_year` and `date.weekday` (`{weekday} {day}
-  {mon}`). One function each in `words` fills them; no module calls
-  `strftime` for a name.
+  and the formats `date.long` (`{day} {month} {year}`), `date.medium`
+  (`{day} {mon} {year}`), `date.short` (`{day} {mon}`), `date.month_year`
+  (`{month} {year}`), `date.mon_year` (`{mon} {year}`) and `date.weekday`
+  (`{weekday} {day} {mon}`). One function each in `words` fills them; no
+  module calls `strftime` for a name.
 
 ### 4.3 The screens' language
 
@@ -160,7 +168,8 @@ def for_screens(folder: Path) -> tuple[str, bool]: ...
 ```
 
 - **At startup** `__main__` calls `words.choose(for_screens(...)[0])`
-  before the Face, the tray or the first console line.
+  once its own folder is known, before the Face, the tray or the first
+  translated console line.
 - **The top bar's More menu** carries a language picker beside the theme
   (`themes.picker`), each language named in its own words. A choice is
   written, `words.choose` is called, and the page reloads in it.
@@ -180,11 +189,13 @@ without one keeps today's bytes. A non-empty value is two or three
 lowercase letters; anything else is refused as a malformed identity is
 today.
 
-- **A new site** — `setup._fill`, and Import where it writes an identity
-  — records `words.in_use()`. Take-in keeps the language the identity it
-  takes in carries. `carry_name_across` records nothing.
+- **A new site** — the wizard's *site* step — records `words.in_use()`
+  where the identity holds no language yet. Take-in keeps the language the
+  identity it takes in carries. A bring-in writes no identity, so its site
+  has no language recorded until one is chosen (decision 7).
+  `carry_name_across` records nothing.
 - **The Settings page** shows a *Site language* row in the identity
-  section, offering `words.LANGUAGES` by name.
+  section, offering `words.LANGUAGES` by name, and saves the row's choice.
 - **The Builder** writes every word of its own with `words.say_in(site
   language, …)`, its dates through § 4.2's date functions, and
   `lang="<site language or en>"` on the pages it makes. A code with no
@@ -204,7 +215,8 @@ way.
 ### 4.6 Building it
 
 The machinery first, with no language file: every page reads as today.
-Then one commit per language, its table, manual and captions together.
+Then one commit per language: its code in `LANGUAGES`, its table, manual
+and captions together.
 The gate is green after every commit.
 
 ## 5. Invariants
@@ -213,8 +225,8 @@ The gate is green after every commit.
   before this item, whatever language the screens use.
   *Test:* `tests/test_builder_archive.py::test_the_first_publish_moves_no_page`
   (archive), and `tests/test_languages.py::test_a_site_without_a_language_builds_as_before`
-  — build a fixture site under `words.choose("de")` and compare with the
-  build under English.
+  — build a fixture site with the screens in a test language whose table
+  marks every entry, and compare with the build under English.
   *Breaks when:* the Builder takes the screens' language, or writes
   `lang` from it.
 
@@ -265,7 +277,8 @@ The gate is green after every commit.
   `builder._MONTHS` removed. `%APPDATA%` in a comment is not a format.
   *Breaks when:* someone writes `strftime("%b")`.
 
-- **INV-8** — A number and a count read as the language writes them.
+- **INV-8** — A number and a count on a screen read as the language
+  writes them.
   *Test:* `tests/test_words.py::test_say_count_follows_the_language` —
   French takes *one* for 0 and 1, English for 1 only; `number(1234,
   "de")` is `1.234`.
@@ -273,8 +286,11 @@ The gate is green after every commit.
 
 - **INV-9** — Every language in `words.LANGUAGES` but English has a file
   that loads, with a name.
-  *Test:* `tests/test_languages.py::test_every_language_loads`.
-  *Breaks when:* a file is left out of the bundle list or is not JSON.
+  *Test:* `tests/test_languages.py::test_every_language_loads` — and
+  `pyinstaller_args` carries the folder, as `tests/test_manual.py` checks
+  `manual_files`.
+  *Breaks when:* the folder is left out of `freeze_flags.DATA`, or a file
+  is not JSON.
 
 ## 6. Failure modes
 
@@ -286,8 +302,8 @@ The gate is green after every commit.
   site builds in English until it is chosen again.
 - **A longer translation** wraps where English fitted. Nothing checks
   this; § 4.6's by-hand look at each language does.
-- **The tray menu and console lines** take the language at startup; a
-  choice in the picker reaches them at the next start.
+- **The tray menu** takes the language at startup; a choice in the
+  picker reaches it at the next start.
 
 ## 7. Tests
 
