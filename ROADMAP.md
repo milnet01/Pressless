@@ -8150,13 +8150,17 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Tests.
 
-- 📋 [PRESS-0391] **Decide whether the pre-commit survivor check covers a wholly deleted document.**
+- ✅ [PRESS-0391] **Decide whether the pre-commit survivor check covers a wholly deleted document.**
   Queued from PRESS-0388 (2026-11-17). The hook now handles renames and
   names with spaces. Covering deletions would block every deletion of a
   document whose rules live elsewhere too, including merging two into
   one home. The skeleton's pre-commit hook in ~/.claude is the owner of
   the design, so the claude-config session decides first; this hook then
   follows it.
+  Decided by the user 2026-11-18, through the claude-config session:
+  a wholly deleted document is not checked. The hook now takes the
+  skeleton's copy, which also reads staged content and resolves links
+  as GitHub does (3889a14).
   **Layman:** A check that runs before each commit looks at renamed documents but not deleted ones; whether it should is a design choice.
   Kind: investigate.
   Source: review-readability-2026-11-16 lead .githooks/pre-commit:41,46.
