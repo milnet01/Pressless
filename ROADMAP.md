@@ -8881,6 +8881,10 @@ does not wait on them.
   setting for its published words (dates, lang=""); it starts as the
   computer's language and the writer can change it in Settings. The
   app's screens still follow the computer's language.
+  Spec accepted 2026-11-18 after its one review round (review-contract,
+  two lanes): 11 verified findings fixed in a7d6a4e, 1 dismissed; no
+  deferred tail. The fixes were read by no lane; the build is the next
+  reader. Log: docs/reviews/PRESS-0241-more-languages-loop-log.md.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
