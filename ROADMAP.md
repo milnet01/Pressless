@@ -8826,7 +8826,7 @@ does not wait on them.
   Source: user request 2026-10-02.
   Lanes: Launcher, Package.
 
-- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
+- ✅ [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
   Asked for by the user 2026-10-02. LWSM (the user's local web-server
   manager) manages every app that runs a web server: start, stop,
   restart, and open the page in the browser of choice. Where LWSM runs
@@ -8837,6 +8837,15 @@ does not wait on them.
   Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
   this item applies on Linux only. On Windows the tray icon always shows
   as PRESS-0204 has it, and the check need not run there.
+  2026-11-18: built in 8cddc78, no spec (one subsystem, cheap to
+  redo). The signal is LWSM's own: LWSM_MANAGED=1, set by its
+  supervisor for every app it starts (its ADR-0006), not PORT, which
+  other tools set too. Only exactly "1" counts, on Linux only; the hint
+  gates the icon and nothing else. tests/test_tray.py covers set, unset,
+  "0", "true" and Windows; three hand mutations each killed. Seen on
+  Plasma 6 with run.sh: with the hint, no tray item and the log line
+  "the tray icon is left to the local web-server manager"; without it,
+  the item appears and goes on stop.
   **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
   Kind: feature.
   Source: user request 2026-10-02.
