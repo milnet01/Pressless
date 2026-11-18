@@ -271,6 +271,12 @@ on a click:
    Face stops once `editor.LOCK` is free, and steps 3 to 6 run again behind
    the same folder lock.
 
+**The tray icon** (PRESS-0204 § 4.4). One `tray.Tray` per process, made
+before the first Face, is served each Face with its restart once step 3's
+pages are registered, and closed after the last Face's stop steps. Its Stop
+takes step 6's interrupt. A tray that cannot start is noted in the Face's
+log, and every step above runs as it does without one.
+
 ### 4.6 What this item never does
 
 - It never publishes a folder it did not just build.

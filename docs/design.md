@@ -699,7 +699,8 @@ Face, `Pillow` for photographs (already proven — `_work/resize.py` in
 the sibling workspace turns 220 MB of camera originals into 31 MB), the
 operating system's keyring for the key, a hand-written subset of the
 Model Context Protocol on the standard library for AI apps (PRESS-0337
-§ 8), and PyInstaller to package one
+§ 8), a tray icon on `ctypes` on Windows and on `jeepney`'s D-Bus on
+Linux (PRESS-0204 § 8), and PyInstaller to package one
 artefact per system — an AppImage on Linux, an extracted folder shipped
 as a zip on Windows, which is what § Where everything sits on disk
 resolves against.

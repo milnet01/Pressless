@@ -2741,6 +2741,11 @@ _WORDS: dict[str, str] = {
         "Pressless is running. Keep this window open while you use it, and close it to stop "
         "Pressless."
     ),
+    # The tray icon's tooltip and menu (tray.py).
+    "tray.tooltip": "Pressless is running",
+    "tray.open": "Open Pressless",
+    "tray.restart": "Restart",
+    "tray.stop": "Stop Pressless",
     # The Face: the preview's true-colours box, and the plain 403 and 404 replies.
     "face.true_colours": "Show the preview in its true colours",
     "face.forbidden": "Forbidden",

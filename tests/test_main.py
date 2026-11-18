@@ -14,6 +14,7 @@ import threading
 import urllib.parse
 
 import pytest
+from conftest import QuietIcon
 from test_paths import _artefact, _frozen_linux
 
 import pressless.__main__ as main_module
@@ -151,6 +152,55 @@ def test_restart_serves_a_fresh_face(monkeypatch, tmp_path, capsys):
     assert not opened.faces[0]._thread.is_alive(), "the first Face was not stopped"
     assert main_module.editor.LOCK.acquire(blocking=False), "the restart kept the lock"
     main_module.editor.LOCK.release()
+
+
+def test_the_tray_follows_each_face_and_closes_last(monkeypatch, tmp_path, capsys):
+    """PRESS-0204 § 4.4: one tray per process, served each Face in turn with
+    that Face's restart, and closed once the last Face has stopped.
+
+    Breaks when _serve_once stops serving the tray, so its Open after a
+    restart reaches a closed port."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+    monkeypatch.setattr(main_module, "_wait", lambda restart: next(answers))
+    answers = iter([True, False])
+    served = []
+    real_serve = main_module.tray.Tray.serve
+
+    def serve(self, face, restart):
+        served.append((self, face))
+        return real_serve(self, face, restart)
+
+    monkeypatch.setattr(main_module.tray.Tray, "serve", serve)
+    assert main_module.main([]) == 0
+    assert [face for _, face in served] == opened.faces and len(served) == 2
+    assert served[0][0] is served[1][0], "a restart made a second tray"
+    assert len(QuietIcon.made) == 1 and QuietIcon.made[0].closed
+
+
+class _NoTray(QuietIcon):
+    def start(self):
+        raise OSError("no session bus")
+
+
+def test_a_tray_that_cannot_start_leaves_the_launch_as_it_was(monkeypatch, tmp_path, capsys):
+    """PRESS-0204 INV-6: no tray here is a note in the log; the browser
+    opens, the console line is printed and the launch ends as before.
+
+    Breaks when a tray failure escapes _serve_behind_lock."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+    monkeypatch.setattr(main_module.tray, "_Icon", _NoTray)
+
+    assert main_module.main([]) == 0
+    assert len(opened.links) == 1
+    assert main_module.say("main.running") in capsys.readouterr().out
+    log = (artefact.parent / _FOLDER_NAME / "pressless.log").read_text(encoding="utf-8")
+    assert "the tray icon could not start: OSError" in log
 
 
 class _InterruptedOnEntry:

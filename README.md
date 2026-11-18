@@ -112,6 +112,12 @@ It also offers one optional step: signing in with Google, so it can show
 who reads your site once the dashboard arrives. You can skip it and lose
 nothing else.
 
+### While it runs
+
+Its icon sits by the clock. Click it to open Pressless again after closing
+the browser; right-click it to restart or stop Pressless. Some Linux
+desktops show no icons there.
+
 ### Upgrading without losing anything
 
 **From 0.5.0 on, Pressless updates itself.** When a new version is out,

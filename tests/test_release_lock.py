@@ -57,7 +57,9 @@ def test_lock_covers_the_manifest():
               *project["optional-dependencies"]["packaging"]]
     locked = _locked()
     for requirement in wanted:
-        name, floor = re.fullmatch(r"([A-Za-z0-9._-]+)>=(\S+)", requirement).groups()
+        # A marker (jeepney's "; sys_platform == 'linux'") limits where, not what.
+        bare = requirement.split(";", 1)[0].strip()
+        name, floor = re.fullmatch(r"([A-Za-z0-9._-]+)>=(\S+)", bare).groups()
         assert _name(name) in locked, f"{name} is not in the lock"
         version, _ = locked[_name(name)]
         assert _numbers(version) >= _numbers(floor), f"{name} {version} is below {floor}"

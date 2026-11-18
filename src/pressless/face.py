@@ -1806,6 +1806,19 @@ class Face:
         """`http://127.0.0.1:<port>`, the Face's own origin."""
         return self._origin
 
+    def fresh_link(self, path: str = "/") -> str:
+        """A new one-use link to `path`; the previous link stops admitting,
+        spent or not (PRESS-0204 § 4.3). The session stays, so open tabs stay
+        signed in. Only an in-process caller reaches it: no route serves one."""
+        secret = secrets.token_urlsafe(32)
+        while secret == self._session:
+            secret = secrets.token_urlsafe(32)
+        with self._link_lock:
+            self._secret = secret
+            self._link_spent = False
+            self.url = f"{self._origin}/?t={secret}"
+        return f"{self._origin}{path}?t={secret}"
+
     def add_files(self, prefix: str, locate: Locate) -> None:
         """Answer GETs under `prefix`, which ends in "/", with the file `locate`
         names for the rest of the path (PRESS-0012 § 4.3)."""

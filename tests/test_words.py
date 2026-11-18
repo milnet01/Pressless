@@ -310,6 +310,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "extra name", "already holds", "a photograph", "a file"),
                         _MESSAGE),
     },
+    "tray.py": {"the tray icon could not start:": "a log line",
+                "a tray action failed:": "a log line"},
     "updating.py": {"The update check stopped at step": "a log line"},
     "votes.py": {
         "RULES": "Firestore's rules language", "_SCRIPT": "a script reading no words",

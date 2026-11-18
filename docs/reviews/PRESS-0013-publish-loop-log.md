@@ -15,3 +15,4 @@
 | impl | 2026-11-13 | none — amendment for PRESS-0358; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3 and INV-6: the guard passes a site with no entries to lose; `preview` runs it too. |
 | fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0377 amended § 4.2: the failure fragment is `publishing.press_failure`. § 4.6: the press never passes `change` to the build; PRESS-0345's preview does. No direction changed, so no gate. |
 | impl | 2026-11-17 | none — amendment for PRESS-0410; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5 step 6: a plain stop does not wait for `editor.LOCK`. § 6: a cut publish leaves the site whole, by PRESS-0009 INV-3. |
+| impl | 2026-11-18 | none — amendment for PRESS-0204; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5: the tray icon is made before the first Face, served each Face and closed last; one that cannot start changes no step. |

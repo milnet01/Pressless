@@ -12,8 +12,9 @@ tests/features/packaging/ parses the lines.
 
 `--self-check` stops there. The double-click then serves the Face, with setup,
 the editor, publishing, undo and the page editor on it, opens his browser,
-and runs until the console window is closed. Restart in Settings serves a
-fresh Face in the same window (PRESS-0203). Every part is imported here at
+and runs until the console window is closed or the tray icon's Stop is
+chosen. Restart in Settings or the tray serves a fresh Face in the same
+window (PRESS-0203, PRESS-0204). Every part is imported here at
 module level, so a packaged `--self-check` proves each one loads in the bundle.
 """
 from __future__ import annotations
@@ -64,6 +65,7 @@ from pressless import (
     sites,
     sites_screen,
     templates,
+    tray,
     undo,
     updating,
     usage,
@@ -228,9 +230,12 @@ def _serve_behind_lock(own: Path, updates: updating.Updates) -> int:
         kept = _stop_on_close()
         stopped = threading.Event()
         unwatch = _watch_console(stopped)
+        # PRESS-0204 § 4.4: one per process. Its Stop is Ctrl+C's way out.
+        icon = tray.Tray(_thread.interrupt_main)
         try:
-            return _serve_held(own, updates)
+            return _serve_held(own, updates, icon)
         finally:
+            icon.close()    # after the last Face's stop steps
             stopped.set()   # the stop steps have run: a closing console may end us
             unwatch()
             for number, handler in kept.items():
@@ -305,15 +310,16 @@ def _console_handler(on_event: Callable[[int], bool]) -> Callable[[], None]:
     return lambda: windll.kernel32.SetConsoleCtrlHandler(routine, False)
 
 
-def _serve_held(own: Path, updates: updating.Updates) -> int:
-    # `updates` is one per process: a restart keeps the update offer and a
-    # Later, and does not check again (PRESS-0023 § 4.9).
-    while _serve_once(own, updates):
+def _serve_held(own: Path, updates: updating.Updates, icon: tray.Tray) -> int:
+    # `updates` and `icon` are one per process: a restart keeps the update
+    # offer and a Later, and does not check again (PRESS-0023 § 4.9), and
+    # keeps the one tray icon (PRESS-0204 § 4.4).
+    while _serve_once(own, updates, icon):
         print(say("restarting.going.title"))
     return 0
 
 
-def _serve_once(own: Path, updates: updating.Updates) -> bool:
+def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray) -> bool:
     """One Face, from start to stop. True where he asked for a restart
     (PRESS-0203): the caller then serves a new one, behind the same lock.
     Each pass opens the site sites.json names now, so opening another site is
@@ -353,6 +359,7 @@ def _serve_once(own: Path, updates: updating.Updates) -> bool:
         importing.register(served, folder)
         assistant.register(served, folder, own=own)         # PRESS-0337
         _refresh_shortcuts(served)
+        icon.serve(served, restart.set)                     # PRESS-0204
 
         first = "/"
         with served.capture():

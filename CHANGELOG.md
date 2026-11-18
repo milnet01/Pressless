@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A Pressless icon by the clock** (PRESS-0204)
+  While Pressless runs, its icon sits in the notification area on Windows
+  and the system tray on Linux. Click it to open Pressless again, even after
+  closing the browser; right-click it to restart or stop Pressless.
+
 - **A site started blank can add a Home page and a menu** (PRESS-0423)
   The Pages screen now has an Add a Home page button while your site has no Home
   page, and an Add a menu button while it has no menu. The menu links the pages

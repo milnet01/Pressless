@@ -24,8 +24,8 @@ license = { file = "LICENSE" }
 # and errors.NoKeyringError behave as §4.6 records. Nothing caps it, so the
 # gate installs the newest release.
 #
-# Pillow re-encodes every published photograph, reached only by
-# src/pressless/builder.py (PRESS-0008 § 4.6). A floor at the release the
+# Pillow re-encodes every published photograph, in src/pressless/builder.py
+# (PRESS-0008 § 4.6), and draws the Linux tray's icon (PRESS-0204). A floor at the release the
 # metadata stripping was measured against: which fields a saver carries over
 # from its source has changed between releases, and INV-9 is what checks it.
 #
@@ -38,10 +38,16 @@ license = { file = "LICENSE" }
 # because the AppImage's OpenSSL looks where openSUSE keeps nothing (PRESS-0142,
 # measured with the v0.1.2 AppImage). A floor at the set measured; a newer set
 # only ever adds and retires roots, so nothing caps it.
+# jeepney is the Linux tray's D-Bus, reached only by src/pressless/_tray_linux.py
+# (PRESS-0204 § 4.6). keyring already brings it on Linux; declared because
+# Pressless now imports it itself. A floor at the release the tray was
+# measured with.
+#
 # Every floor here is a floor for development and the gate. A release build
 # installs packaging/release-requirements.txt instead: exact versions with
 # their hashes, regenerated from this file (PRESS-0022 § 4.4, PRESS-0150).
-dependencies = ["keyring>=25", "Pillow>=12", "cryptography>=47", "certifi>=2026.4.22"]
+dependencies = ["keyring>=25", "Pillow>=12", "cryptography>=47", "certifi>=2026.4.22",
+                "jeepney>=0.9; sys_platform == 'linux'"]
 
 # The gate's tools (scripts/local-ci.sh). Floors record what was measured, not
 # a ceiling: CI installs whatever is newest above them, so a release that

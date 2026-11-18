@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from pressless import face, github_signin, pressing, usage
+from pressless import face, github_signin, pressing, tray, usage
 
 # Stopping a Face waits for its loop's next check, half a second in the app.
 # The suite stops hundreds of them, and waited about a minute on that alone.
@@ -38,3 +38,29 @@ def _no_usage_reports(monkeypatch):
     monkeypatch.setattr(usage, "API_SECRET", "")
     monkeypatch.setattr(usage, "_folder", None)
     monkeypatch.setattr(usage, "_transport", None)
+
+
+class QuietIcon:
+    """A tray icon that shows nothing, and the entries it was given."""
+
+    made: list[QuietIcon] = []
+
+    def __init__(self, entries, tooltip, run) -> None:
+        self.entries, self.tooltip, self.run = list(entries), tooltip, run
+        self.closed = False
+        QuietIcon.made.append(self)
+
+    def start(self) -> None:
+        pass
+
+    def close(self) -> None:
+        self.closed = True
+
+
+@pytest.fixture(autouse=True)
+def _no_tray_on_the_desktop(monkeypatch):
+    """Every launch a test runs gets a tray that shows nothing (PRESS-0204).
+    The real one would put an icon on the desktop the suite runs on. The
+    system halves' own tests make theirs directly, on a private bus."""
+    QuietIcon.made = []
+    monkeypatch.setattr(tray, "_Icon", QuietIcon)

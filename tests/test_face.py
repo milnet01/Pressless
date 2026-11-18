@@ -58,6 +58,11 @@ SENTINEL_WORD = "SENTINEL-SECRET-4f1c"
 SENTINEL_PATH = "/home/sentinel-user/private/draft.txt"
 
 
+# Each system's tray half imports what only that system has, so tray.py
+# imports one (PRESS-0204 § 4.1). Neither defines a failure type.
+_OTHER_SYSTEMS_TRAY = "_tray_linux" if sys.platform == "win32" else "_tray_windows"
+
+
 def _failure_types() -> list[type[Exception]]:
     """Every failure type the package defines, found by walking it (INV-1).
 
@@ -66,6 +71,8 @@ def _failure_types() -> list[type[Exception]]:
     """
     found: list[type[Exception]] = []
     for info in pkgutil.iter_modules(pressless.__path__):
+        if info.name == _OTHER_SYSTEMS_TRAY:
+            continue
         module = importlib.import_module(f"pressless.{info.name}")
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if (
@@ -355,6 +362,39 @@ def test_the_server_answers_only_its_own_origin(
         status = client.request("POST", "/folder/open", origin="http://127.0.0.1:1")[0]
         assert status == 403
         assert opened == []
+    finally:
+        served.stop()
+
+
+@pytest.mark.parametrize("spend_first", [True, False], ids=["spent", "unspent"])
+def test_a_fresh_link_admits_once_and_retires_the_one_before(
+        tmp_path: Path, spend_first: bool) -> None:
+    """PRESS-0204 INV-1 and INV-2: the tray's Open makes a new one-use link.
+    It sets the cookie once; the link before it, spent or not, no longer
+    admits; and a cookie set before it still does.
+
+    Breaks when fresh_link re-arms the old secret, keeps a second secret
+    beside it, or replaces the session."""
+    served = face.serve(tmp_path)
+    try:
+        old = served.url
+        earlier = session_cookie(old) if spend_first else None
+        fresh = served.fresh_link("/settings")
+        assert fresh != old and served.url != old
+        assert urllib.parse.urlsplit(served.url).path == "/"
+
+        # The old link first: once the fresh one is spent, a re-armed old
+        # secret would be spent too, and pass for retired.
+        assert follow_link(old)[0] == 403, "the link before it still admits"
+        status, headers = follow_link(fresh)
+        assert status == 303 and headers.get("Location") == "/settings"
+        assert headers.get("Set-Cookie", "").startswith(f"pressless-{served.port}=")
+        assert follow_link(fresh)[0] == 403, "the fresh link admitted twice"
+
+        if earlier is not None:
+            client = _Client(served, follow=False)
+            client.cookie = earlier
+            assert client.request("GET", "/")[0] == 200, "the session was replaced"
     finally:
         served.stop()
 

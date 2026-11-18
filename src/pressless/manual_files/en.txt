@@ -464,5 +464,16 @@ publishing key.
 
 Every Pressless tab open stops working, and a new one opens.
 
+== tray-icon | Using the Pressless icon by the clock
+While Pressless runs, its icon sits by the clock: in the notification
+area on Windows, and in the system tray on Linux. It works even after
+you close every Pressless tab.
+
+1. Click the Pressless icon to open Pressless in your browser.
+2. Right-click it for Open Pressless, Restart and Stop Pressless.
+
+Stop Pressless stops it as closing its window does. Some Linux desktops
+show no icons by the clock.
+
 == version | Finding which version you have
 1. Click More in the bar, then About.

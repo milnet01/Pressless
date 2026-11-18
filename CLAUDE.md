@@ -38,8 +38,9 @@ stack, and what it rules out owns the choice and the reasoning.
 
 ### Build and test
 
-`keyring` is reached only by `credentials.py` (PRESS-0002) and `Pillow`
-only by `builder.py` (PRESS-0008). That is present state, not a cap.
+`keyring` is reached only by `credentials.py` (PRESS-0002), `jeepney`
+only by `_tray_linux.py`, and `Pillow` only by `builder.py` (PRESS-0008)
+and `_tray_linux.py` (PRESS-0204). That is present state, not a cap.
 The gate needs `pytest`,
 `pytest-randomly` and `ruff` on top, and PyInstaller is the `packaging`
 group beside those, never a runtime dependency (PRESS-0022).

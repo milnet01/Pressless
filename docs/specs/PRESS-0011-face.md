@@ -11,6 +11,8 @@ names (§ 3 decision 2, § 4.5, INV-11).
 **Amended 2026-10-12 by the user's decision** (PRESS-0245): a spent link
 followed by a browser holding the session goes to the page; any other is
 told to start Pressless again (§ 3 decision 3, § 4.5, INV-5).
+**Amended 2026-11-18 for PRESS-0204** (the tray icon): `fresh_link` makes
+a new one-use link and retires the one before it (§ 4.5).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0011 (`docs/design.md` § The parts, § Errors,
 § Logging).
@@ -275,6 +277,11 @@ starts raising one; it then moves inside `capture`.
   the cookie it is refused with 403, whose words say to start Pressless
   again (`face.link_spent` in `words.py`). The check and the spending happen
   under one lock, so two racing requests cannot both win.
+  **`fresh_link(path)` re-arms it** (PRESS-0204 § 4.3): under that lock it
+  replaces the secret with a new one, never equal to the session, and marks
+  it unspent. The link before it no longer admits, spent or not; the
+  session stays. Only an in-process caller reaches it: no route serves a
+  fresh link.
   Every other request must carry the session cookie, or it is refused with
   403, except a GET to a path registered with `add_return_page`
   (PRESS-0122 §4.3). The secret itself is never accepted as a cookie.
