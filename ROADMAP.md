@@ -8691,13 +8691,20 @@ does not wait on them.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
   Lanes: Setup.
 
-- 📋 [PRESS-0423] **A blank site has no way to add a Home page or a menu.**
+- ✅ [PRESS-0423] **A blank site has no way to add a Home page or a menu.**
   Surfaced by PRESS-0419. New page refuses the name index, and no
   screen creates a part, so a site set up without the starter cannot
   gain a Home page or a menu through Pressless. PRESS-0419 now leaves
   both off a blank site's checklist rather than show steps that cannot
   be done.
   User decision 2026-11-17: 1.1.0, not a blocker for 1.0.1.
+  Shipped 2026-11-18. Found on the way: a blank site could not
+  preview or publish anything, since the Builder required all three
+  parts; a missing part now fills as nothing, and a missing header
+  holds the menu alone. Add a Home page and Add a menu are on the
+  Pages screen; Home's first press puts it first in the menu; the
+  checklist shows Home and the menu to do on a blank site.
+  PRESS-0008, PRESS-0012, PRESS-0126 and PRESS-0195 amended.
   **Layman:** On a site started blank, you can add a home page and a menu.
   Kind: feature.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
