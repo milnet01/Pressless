@@ -8738,7 +8738,7 @@ does not wait on them.
   Source: PRESS-0422 follow-up 2026-11-17.
   Lanes: Setup.
 
-- 📋 [PRESS-0426] **A picture whose caption holds a character reference other than &amp;, &lt; or &gt; opens as code.**
+- ✅ [PRESS-0426] **A picture whose caption holds a character reference other than &amp;, &lt; or &gt; opens as code.**
   Found by the owed browser check of PRESS-0373's caption field.
   blocks.read keeps a picture section only where its figcaption's
   character references are &amp;, &lt; or &gt;; "Jerry&#8217;s",
@@ -8748,6 +8748,10 @@ does not wait on them.
   caption in is unverified, and is the first thing to check. The caption field already reads every
   reference (DOMParser). Weigh: accept any reference in the reader, or
   have the import write the characters themselves.
+  Fixed 2026-11-18 (5ac53c9). Wider than captions: text, headings,
+  picture descriptions and buttons too. No import produces one; typing
+  one in the code view does. The reader now accepts it and keeps its
+  bytes (PRESS-0215 § 4.3 step 2, INV-2 amended).
   **Layman:** A picture whose caption has a curly apostrophe or quote written as a code may open as code in the page editor instead of as a picture.
   Kind: fix.
   Source: PRESS-0373 browser check 2026-11-17.
