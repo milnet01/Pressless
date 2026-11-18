@@ -8764,7 +8764,7 @@ does not wait on them.
   Source: PRESS-0373 browser check 2026-11-17.
   Lanes: Editor.
 
-- 🚧 [PRESS-0427] **A stop while a restart waits for a save skips the old Face's stop steps.**
+- ✅ [PRESS-0427] **A stop while a restart waits for a save skips the old Face's stop steps.**
   Found by PRESS-0204's review round. _serve_once's restart path
   waits for editor.LOCK, then calls served.stop() inside the lock. An
   interrupt there (Ctrl+C, a closed console, the tray's Stop) leaves
@@ -8774,6 +8774,12 @@ does not wait on them.
   Lock.acquire; the KeyboardInterrupt lands once the lock is free,
   inside the with block, before served.stop(). A real SIGINT breaks the
   acquire itself and skips the stop the same way. Predates the tray.
+  Shipped 2026-11-18, fdf280a. A stop arriving during the restart's
+  wait is a plain stop: _serve_once stops the Face at once, then lets
+  the interrupt go on. Test:
+  test_a_stop_while_a_restart_waits_still_stops_the_face, red before
+  the fix. PRESS-0013 § 4.5 step 6 already says a plain stop does not
+  wait, so no spec changed.
   **Layman:** Stopping Pressless just as it restarts still tidies up properly.
   Kind: review-fix.
   Source: review-contract-2026-11-18 (PRESS-0204's round).
