@@ -8851,7 +8851,7 @@ does not wait on them.
   Source: user request 2026-10-02.
   Lanes: Launcher.
 
-- 📋 [PRESS-0241] **Pressless speaks more languages than English.**
+- 🚧 [PRESS-0241] **Pressless speaks more languages than English.**
   The user, 2026-10-07, asked whether the app has multilanguage
   support. It has none: every screen's words are English strings in the
   Python modules and the page scripts, with no translation layer. Still
@@ -8876,6 +8876,11 @@ does not wait on them.
   and the shortcut's file names stay English, being file names.
   tests/test_words.py's INV-2 test lets the month and day names
   through until then.
+  Decided by the user 2026-11-18: the first languages are Spanish,
+  Afrikaans, French and German. Each website has its own language
+  setting for its published words (dates, lang=""); it starts as the
+  computer's language and the writer can change it in Settings. The
+  app's screens still follow the computer's language.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
