@@ -191,8 +191,9 @@ today.
 
 - **A new site** — the wizard's *site* step — records `words.in_use()`
   where the identity holds no language yet. Take-in keeps the language the
-  identity it takes in carries. A bring-in writes no identity, so its site
-  has no language recorded until one is chosen (decision 7).
+  identity it takes in carries. A bring-in writes the identity it reads
+  from the site's front page (`pressless_import._folder._write_all`) with
+  no language, so decision 7 applies until one is chosen.
   `carry_name_across` records nothing.
 - **The Settings page** shows a *Site language* row in the identity
   section, offering `words.LANGUAGES` by name, and saves the row's choice.
