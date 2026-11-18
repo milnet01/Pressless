@@ -8787,7 +8787,7 @@ does not wait on them.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
-- 🚧 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+- ✅ [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
   Asked for by the user 2026-10-02 ("perhaps"). Today, once the
   browser is closed the only way back is the console window, and the
   opening link is spent, so reopening means a restart. A tray icon would
@@ -8814,6 +8814,13 @@ does not wait on them.
   an interrupt during a restart's wait for editor.LOCK skips the old
   Face's stop(). Measured: interrupt_main lands only once the lock is
   free. By reading: Ctrl+C has the same gap today.
+  2026-11-18: built in faf98fa. INV-1 to INV-6 tested, each seen
+  to fail by mutation first; INV-5 on the box. CI green on both
+  runners: ubuntu-latest has dbus-daemon and ran INV-4's tests.
+  Real Plasma 6 listed the item and dropped it on close.
+  Owed at the next release: § 7's by-hand check from the built
+  bundles on Linux and the box (icon shows; Open after the browser
+  closed; Restart; Stop), and INV-7's clean-room --self-check.
   **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
   Kind: feature.
   Source: user request 2026-10-02.
