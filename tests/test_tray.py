@@ -1,10 +1,13 @@
 """The tray's shared half: its three actions, on the Face served last
-(PRESS-0204 INV-3), and a tray that cannot start (INV-6).
+(PRESS-0204 INV-3), a tray that cannot start (INV-6), and a tray left to
+the local web-server manager (PRESS-0205).
 
 The system half is conftest's QuietIcon, or one that fails; a fake Face
 records what the actions did to it.
 """
 from __future__ import annotations
+
+from types import SimpleNamespace
 
 import pytest
 from conftest import QuietIcon
@@ -117,4 +120,31 @@ def test_a_tray_that_cannot_start_changes_nothing(monkeypatch, opened) -> None:
     icon.serve(served, lambda: None)
     assert served.notes == ["the tray icon could not start: OSError"]
     assert icon.start() is False
+    icon.close()
+
+
+@pytest.mark.parametrize(("platform", "managed", "shown"), [
+    ("linux", "1", False),
+    ("linux", None, True),
+    ("linux", "0", True),
+    ("linux", "true", True),    # ADR-0006: only "1" is the manager's word
+    ("win32", "1", True),       # Linux only (user, 2026-10-03)
+])
+def test_the_web_server_manager_keeps_the_icon_hidden(
+        monkeypatch, platform, managed, shown) -> None:
+    """PRESS-0205: on Linux, where LWSM_MANAGED is exactly "1", no icon is
+    made and the Face's log says why. Unset, any other value, or on Windows,
+    the icon shows as before.
+
+    Breaks when the check reads any value as set, or runs on Windows."""
+    monkeypatch.setattr(tray, "sys", SimpleNamespace(platform=platform))
+    if managed is not None:
+        monkeypatch.setenv("LWSM_MANAGED", managed)
+    served = _Face("served")
+    icon = tray.Tray(lambda: None)
+    icon.serve(served, lambda: None)
+    icon.serve(_Face("again"), lambda: None)    # a restart asks once more
+    assert len(QuietIcon.made) == (1 if shown else 0)
+    assert served.notes == (
+        [] if shown else ["the tray icon is left to the local web-server manager"])
     icon.close()

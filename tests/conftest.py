@@ -61,6 +61,8 @@ class QuietIcon:
 def _no_tray_on_the_desktop(monkeypatch):
     """Every launch a test runs gets a tray that shows nothing (PRESS-0204).
     The real one would put an icon on the desktop the suite runs on. The
-    system halves' own tests make theirs directly, on a private bus."""
+    system halves' own tests make theirs directly, on a private bus. A suite
+    the local web-server manager started would hide every icon (PRESS-0205)."""
     QuietIcon.made = []
     monkeypatch.setattr(tray, "_Icon", QuietIcon)
+    monkeypatch.delenv("LWSM_MANAGED", raising=False)

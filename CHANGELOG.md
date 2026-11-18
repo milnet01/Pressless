@@ -19,6 +19,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   and the system tray on Linux. Click it to open Pressless again, even after
   closing the browser; right-click it to restart or stop Pressless.
 
+- **No second icon when your web-server manager runs Pressless** (PRESS-0205)
+  On Linux, where the local web-server manager starts Pressless, the manager
+  already opens, restarts and stops it, so Pressless leaves its own icon out.
+
 - **A site started blank can add a Home page and a menu** (PRESS-0423)
   The Pages screen now has an Add a Home page button while your site has no Home
   page, and an Add a menu button while it has no menu. The menu links the pages

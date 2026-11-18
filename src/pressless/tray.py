@@ -13,6 +13,7 @@ system has no tray, and `close()` removes the icon.
 from __future__ import annotations
 
 import functools
+import os
 import sys
 import threading
 import webbrowser
@@ -69,7 +70,10 @@ class Tray:
         face.at_stop(lambda: self._forget(face))
         if not self._started:
             self._started = True
-            self.start()
+            if _left_to_the_manager():
+                self._note("the tray icon is left to the local web-server manager")
+            else:
+                self.start()
 
     def run(self, entry: int) -> None:
         """Run one entry's action. It runs on the tray's own thread, so a
@@ -117,6 +121,14 @@ class Tray:
             face = self._face
         if face is not None:
             face.note(text)
+
+
+def _left_to_the_manager() -> bool:
+    """PRESS-0205: the local web-server manager starts, stops and opens what
+    it runs, and says so with LWSM_MANAGED=1 (its ADR-0006). Linux only
+    (user, 2026-10-03). A hint anyone can set, so nothing but the icon may
+    read it."""
+    return sys.platform != "win32" and os.environ.get("LWSM_MANAGED") == "1"
 
 
 def _open(face: Face) -> None:
