@@ -33,89 +33,107 @@
 # unmeasured check is how the advisory channel above died. Add it here only
 # after running it over your own corpus and counting what it finds.
 #
-# Install: ./scripts/setup-hooks.sh
+# Install: ./scripts/setup-hooks.sh, once in every clone.
 
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 0
 
-# Each document's blocks gather here before they are counted. Inside .git,
-# never /tmp: that is RAM on the maintainer's machine, and a fixed name there
-# can be planted.
+# Each document's blocks gather in this file before they are counted: the
+# `| while` loops below run in subshells, so a counter set inside them would
+# be lost. Inside .git, never /tmp: that is RAM on the maintainer's machine,
+# and a fixed name there can be planted.
 blocks=$(mktemp "$(git rev-parse --git-dir)/pre-commit.XXXXXX") || exit 1
 trap 'rm -f "$blocks"' EXIT
 
 # One side of a document's staged diff, `+` or `-`, without its marker, its
-# `+++`/`---` header, or the spaces around it. Every caller cleans a line this
-# way, so a moved line still matches itself.
+# `+++`/`---` header, or the spaces around it. Every caller cleans a line the
+# same way, so a moved line still matches itself.
 #
 # `^-` minus the literal header, never `^-[^-]`: that reads as "skip the
 # `--- a/file` header" and means "skip every markdown bullet", because git
-# emits a deleted `- text` line as `-- text`. A roadmap is entirely
-# bullets, and a rule stated twice is usually a bullet both times, which
-# is the exact case this check is for. The added side is excluded the same
-# way for symmetry.
+# emits a deleted `- text` line as `-- text`. A roadmap is entirely bullets,
+# and a rule stated twice is usually a bullet both times, which is the exact
+# case this check is for. The added side is excluded the same way for
+# symmetry.
 side() {
-  git diff --cached -- "$2" | grep -e "^$1" | grep -v -e "^$1$1$1 " |
-    sed "s/^$1//; s/^[[:space:]]*//; s/[[:space:]]*\$//"
+    git diff --cached -- "$2" | grep -e "^$1" | grep -v -e "^$1$1$1 " |
+        sed "s/^$1//; s/^[[:space:]]*//; s/[[:space:]]*\$//"
 }
 
 fails=0
 
 # -z, so a name holding a space arrives whole. R, so a document renamed and
-# edited in one commit is checked too.
+# edited in one commit is checked too. D is left out on purpose: deleting a
+# whole document, or merging two into one, is not fixing one copy of a rule.
+# Every read below is of the staged content (`:path`), which is what the
+# commit will hold, not of the working tree.
 while IFS= read -r -d '' f; do
-  case "$f" in *.md) ;; *) continue ;; esac
-  [ -f "$f" ] || continue
-  case "$f" in docs/*) continue ;; esac
-  dir=$(dirname "$f")
-  : >"$blocks"
+    case "$f" in *.md) ;; *) continue ;; esac
+    case "$f" in docs/*) continue ;; esac
+    dir=$(dirname "$f")
+    : >"$blocks"
 
-  # --- broken markdown links ------------------------------------------
-  # Placeholders are skipped: a template path like `foo-<UTC>/` truncates
-  # to something that looks real and does not resolve. An anchor is
-  # dropped: the file must exist, whichever section the link names.
-  grep -noE '\]\(\.{0,2}/?[A-Za-z0-9._/<>{},-]+(#[^)]*)?\)' "$f" |
+    # --- broken markdown links ------------------------------------------
+    # A project with its own link checker calls it here instead, so there is
+    # one checker. This one's skips are deliberate: docs/ and dated lines
+    # (records of the past), placeholders like `foo-<UTC>/` (prescribed paths,
+    # not real ones), and fenced code blocks (they render no link). A web
+    # link never matches: the path class holds no `:`. An anchor is dropped:
+    # the file must exist, whichever section the link names.
+    git show ":$f" |
+    awk '/^[ \t]*(```|~~~)/ { fence = !fence; print ""; next } { print (fence ? "" : $0) }' |
+    grep -noE '\]\(\.{0,2}/?[A-Za-z0-9._/<>{},-]+(#[^)]*)?\)' |
     while IFS=: read -r line link; do
-      p=$(printf '%s\n' "$link" | sed -E 's/^\]\(//; s/\)$//; s/#.*$//; s/[.,;:]$//')
-      [ -n "$p" ] || continue
-      case "$p" in
-      *'<'* | *'>'* | *'{{'* | *'*'* | http* | '#'*) continue ;;
-      *-) continue ;;
-      esac
-      [ -e "$p" ] || [ -e "$dir/$p" ] && continue
-      # A dated line was true when written and is not a claim about now.
-      # Asked of the link's own line, not of every line naming the path.
-      sed -n "${line}p" "$f" | grep -qE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' && continue
-      printf 'BLOCK link %s:%s -> %s\n' "$f" "$line" "$p"
+        p=$(printf '%s\n' "$link" | sed -E 's/^\]\(//; s/\)$//; s/#.*$//; s/[.,;:]$//')
+        [ -n "$p" ] || continue
+        case "$p" in
+            *'<'*|*'>'*|*'{{'*) continue ;;
+        esac
+        # A leading / is the repository's root, as GitHub renders it; any
+        # other link is relative to the file that holds it. The target must
+        # be in the index, which is what the commit will hold. git normalises
+        # `./` and `..` in a plain pathspec, and a folder matches its files.
+        case "$p" in
+            /*) rel=${p#/} ;;
+            *) rel="$dir/$p" ;;
+        esac
+        [ -n "$(git ls-files --cached -- "$rel" 2>/dev/null | head -n 1)" ] && continue
+        # A dated line was true when written and is not a claim about now.
+        # Asked of the link's own line, not of every line naming the path.
+        git show ":$f" | sed -n "${line}p" | grep -qE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' && continue
+        printf 'BLOCK link %s:%s -> %s\n' "$f" "$line" "$p"
     done >>"$blocks"
 
-  # --- surviving copies of deleted text --------------------------------
-  # 45 characters: shorter fragments match everywhere and say nothing.
-  added=$(side + "$f")
-  side - "$f" |
+    # --- surviving copies of deleted text --------------------------------
+    # 45 characters: shorter fragments match everywhere and say nothing.
+    added=$(side + "$f")
+    side - "$f" |
     while IFS= read -r gone; do
-      [ ${#gone} -ge 45 ] || continue
-      grep -qF -- "$gone" <<<"$added" && continue
-      git grep -n -F -- "$gone" -- '*.md' ':!docs/' |
+        # Characters, not bytes: under LC_ALL=C `${#gone}` counts bytes, so
+        # check it again the way commit-msg counts its subject.
+        [ ${#gone} -ge 45 ] || continue
+        [ "$(printf '%s' "$gone" | LC_ALL=C tr -d '\200-\277' | LC_ALL=C wc -c)" -ge 45 ] || continue
+        grep -qF -- "$gone" <<<"$added" && continue
+        git grep --cached -n -F -- "$gone" -- '*.md' ':!docs/' |
         while IFS= read -r hit; do
-          hf=${hit%%:*}
-          [ "$hf" = "$f" ] && continue
-          # A copy in a file this same change ADDED the text to is where
-          # the text went (CFG-0733). Asked per copy, not of the whole
-          # change: a move would otherwise clear every other copy too.
-          side + "$hf" | grep -qF -- "$gone" && continue
-          printf 'BLOCK survivor %s -> %s\n' "$f" "$hit"
+            hf=${hit%%:*}
+            [ "$hf" = "$f" ] && continue
+            # A copy in a file this same change ADDED the text to is where
+            # the text went (CFG-0733). Asked per copy, not of the whole
+            # change: a move would otherwise clear every other copy too.
+            side + "$hf" | grep -qF -- "$gone" && continue
+            printf 'BLOCK survivor %s -> %s\n' "$f" "$hit"
         done
     done >>"$blocks"
 
-  if [ -s "$blocks" ]; then
-    cut -c1-200 "$blocks" >&2
-    fails=$((fails + $(wc -l <"$blocks")))
-  fi
+    if [ -s "$blocks" ]; then
+        cut -c1-200 "$blocks" >&2
+        fails=$((fails + $(wc -l <"$blocks")))
+    fi
 done < <(git diff --cached --name-only -z --diff-filter=ACMR)
 
 if [ "$fails" -gt 0 ]; then
-  cat >&2 <<'MSG'
+    cat >&2 <<'MSG'
 
 pre-commit: blocked.
   rule: ~/.claude/standards/documentation.md §9.0
@@ -127,10 +145,10 @@ pre-commit: blocked.
 
   SURVIVOR -- text this change deleted still exists at the location shown.
               Fix the other copy, or make it a pointer to the one home. If
-              the two are genuinely different claims that happen to share
-              wording, say so in the commit message and use --no-verify.
+              the two are different claims that share wording, reword one.
+              Skipping this hook needs the user's say-so (commits.md § 2.3).
 MSG
-  exit 1
+    exit 1
 fi
 
 exit 0
