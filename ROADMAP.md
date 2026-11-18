@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=426 -->
+<!-- ants-roadmap-id-high-water: PRESS=427 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8764,9 +8764,24 @@ does not wait on them.
   Source: PRESS-0373 browser check 2026-11-17.
   Lanes: Editor.
 
+- 🚧 [PRESS-0427] **A stop while a restart waits for a save skips the old Face's stop steps.**
+  Found by PRESS-0204's review round. _serve_once's restart path
+  waits for editor.LOCK, then calls served.stop() inside the lock. An
+  interrupt there (Ctrl+C, a closed console, the tray's Stop) leaves
+  before served.stop() runs, so the old Face's at_stop steps never run:
+  the AI helper's door file stays behind, for one. Measured with the
+  .venv Python: _thread.interrupt_main() does not break a blocked
+  Lock.acquire; the KeyboardInterrupt lands once the lock is free,
+  inside the with block, before served.stop(). A real SIGINT breaks the
+  acquire itself and skips the stop the same way. Predates the tray.
+  **Layman:** Stopping Pressless just as it restarts still tidies up properly.
+  Kind: review-fix.
+  Source: review-contract-2026-11-18 (PRESS-0204's round).
+  Lanes: Launcher.
+
 ## 1.2.0 — a tray icon, and Pressless in your language
 
-- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+- 🚧 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
   Asked for by the user 2026-10-02 ("perhaps"). Today, once the
   browser is closed the only way back is the console window, and the
   opening link is spent, so reopening means a restart. A tray icon would
@@ -8780,6 +8795,19 @@ does not wait on them.
   Settled 2026-10-03: the user said to go ahead with the
   recommendations. The tray icon waits until after 1.0; moved to 1.2.0
   on 2026-11-11.
+  Started 2026-11-18, every 1.1.0 item left being parked. Spec:
+  docs/specs/PRESS-0204-tray-icon.md. Own code on both systems, no new
+  library: ctypes on Windows, a StatusNotifierItem over jeepney (already
+  shipped via keyring) on Linux. Open re-arms the one-use link
+  (PRESS-0011 § 4.5), so the spec is gated by review-contract.
+  2026-11-18: review-contract, one cold round (two lanes), 540527e.
+  Six verified findings fixed, one dismissed; spec now accepted.
+  Log: docs/reviews/PRESS-0204-tray-icon-loop-log.md. Unrunnable
+  here: the Windows half (§ 4.5, INV-5) and a real tray click; the
+  build and § 7's hand check are their reader. Open, pre-existing:
+  an interrupt during a restart's wait for editor.LOCK skips the old
+  Face's stop(). Measured: interrupt_main lands only once the lock is
+  free. By reading: Ctrl+C has the same gap today.
   **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
   Kind: feature.
   Source: user request 2026-10-02.

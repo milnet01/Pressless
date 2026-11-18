@@ -392,8 +392,16 @@ def _serve_once(own: Path, updates: updating.Updates) -> bool:
             # A save, publish or undo under way ends before its Face does,
             # since the next Face serves the same files. A plain stop does
             # not wait (PRESS-0013 § 4.5 step 6): the process ends with it.
-            with editor.LOCK:
-                served.stop()
+            # A stop arriving during that wait is a plain stop (PRESS-0427).
+            stopped = False
+            try:
+                with editor.LOCK:
+                    served.stop()
+                    stopped = True
+            except KeyboardInterrupt:
+                if not stopped:
+                    served.stop()
+                raise
         else:
             served.stop()
     return again

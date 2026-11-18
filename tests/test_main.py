@@ -153,6 +153,45 @@ def test_restart_serves_a_fresh_face(monkeypatch, tmp_path, capsys):
     main_module.editor.LOCK.release()
 
 
+class _InterruptedOnEntry:
+    """editor.LOCK as a restart meets it when a stop arrives during its wait:
+    _thread.interrupt_main()'s KeyboardInterrupt lands once the lock is
+    taken, before the block runs (measured, PRESS-0427)."""
+
+    def __enter__(self):
+        raise KeyboardInterrupt
+
+    def __exit__(self, *exc):
+        return False
+
+
+def test_a_stop_while_a_restart_waits_still_stops_the_face(monkeypatch, tmp_path, capsys):
+    """PRESS-0427: a stop that arrives while a restart waits for a save still
+    runs the old Face's stop steps, as a plain stop does (PRESS-0013 § 4.5
+    step 6), and the process stops rather than serving a new Face.
+
+    Breaks when the interrupt leaves _serve_once before served.stop()."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+    monkeypatch.setattr(main_module, "_wait", lambda restart: True)
+    monkeypatch.setattr(main_module.editor, "LOCK", _InterruptedOnEntry())
+    ran = []
+    real_register = main_module.restarting.register
+
+    def register(served, restart):
+        served.at_stop(lambda: ran.append("stop steps"))
+        return real_register(served, restart)
+
+    monkeypatch.setattr(main_module.restarting, "register", register)
+
+    assert main_module.main([]) == 130
+    assert len(opened.faces) == 1, "a new Face was served after the stop"
+    assert ran == ["stop steps"], "the old Face's stop steps did not run"
+    assert not opened.faces[0]._thread.is_alive(), "the old Face was not stopped"
+
+
 def test_a_restart_keeps_what_the_update_check_found(monkeypatch, tmp_path, capsys):
     """PRESS-0023 § 4.9: the update offer and a Later last for the life of
     the process, and a restart is the same process.
