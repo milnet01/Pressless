@@ -8885,6 +8885,11 @@ does not wait on them.
   two lanes): 11 verified findings fixed in a7d6a4e, 1 dismissed; no
   deferred tail. The fixes were read by no lane; the build is the next
   reader. Log: docs/reviews/PRESS-0241-more-languages-loop-log.md.
+  2026-11-20: § 4.6's machinery built in 7a70674, with no language
+  file yet; gate green on Linux (archive tests included) and the Windows
+  box. tests/test_words.py's INV-2 test no longer lets month and day
+  names through. Next: one commit per language (table, manual, captions),
+  each made with scripts/translations.py and checked with Gemini.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
