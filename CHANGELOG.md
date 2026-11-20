@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless in Spanish** (PRESS-0241)
+  Pressless shows its screens, its manual and its video captions in your
+  computer's language when it has that language, and in English otherwise.
+  Choose another under More, Language. Each site has a Site language in
+  Settings, which its dates and words such as "Older →" follow. A site
+  made before this keeps building in English.
+
 - **A Pressless icon by the clock** (PRESS-0204)
   While Pressless runs, its icon sits in the notification area on Windows
   and the system tray on Linux. Click it to open Pressless again, even after

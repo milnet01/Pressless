@@ -72,7 +72,9 @@ def test_text_and_media_agree():
                  and not STARTS[first].fullmatch(line.strip())]
     assert not malformed, malformed
     named = {name for name, _ in _named(PICTURE) + _named(VIDEO)}
-    captions = {name.removesuffix(".webm") + ".en.vtt" for name, _ in _named(VIDEO)}
+    # One captions file per video per language (PRESS-0241 § 4.3).
+    captions = {f"{name.removesuffix('.webm')}.{code}.vtt" for name, _ in _named(VIDEO)
+                for code in words.LANGUAGES}
     present = {path.name for path in MEDIA.iterdir()}
     assert named - present == set(), "named in en.txt but missing"
     assert present - named - captions == set(), "in media but named by nothing"

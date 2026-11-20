@@ -208,8 +208,8 @@ def test_a_chosen_language_wins_over_the_computers(tmp_path, monkeypatch) -> Non
     """§ 4.3's order: a choice, then the computer's where Pressless has it,
     then English. Breaks when the computer's outranks the choice."""
     _marked_language.offered(tmp_path / "languages", monkeypatch)
-    monkeypatch.setattr(languages, "computer", lambda: "es")
-    assert languages.for_screens(tmp_path) == ("en", False)    # no Spanish yet
+    monkeypatch.setattr(languages, "computer", lambda: "xh")
+    assert languages.for_screens(tmp_path) == ("en", False)    # a language it does not have
     monkeypatch.setattr(languages, "computer", lambda: _marked_language.CODE)
     assert languages.for_screens(tmp_path) == (_marked_language.CODE, False)
     languages.write_choice(tmp_path, "en")
