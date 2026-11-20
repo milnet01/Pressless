@@ -23,7 +23,7 @@ picture setup-welcome.png | Die eerste opstellingskerm, met die opskrif Stel Pre
 
 As jy Pressless halfpad toemaak, begin dit weer waar jy opgehou het.
 
-== your-writing | Jou pad om te vind
+== your-writing | Hoe om jou pad te vind
 Jou werf is die eerste skerm. Dit het 'n teël vir elke deel van jou
 werf, en die balk bo-aan noem ook elke deel.
 
@@ -135,7 +135,7 @@ binne 'n paar minute. Sien jou werf maak jou werf in 'n nuwe oortjie oop.
 1. Klik Joernaal in die balk, dan die inskrywing onder Op jou werf.
 2. Verander dit. Jou veranderings bly op hierdie rekenaar, en jou werf wys die inskrywing steeds soos dit was.
 3. Klik Pers na werf om die veranderings te publiseer.
-4. Om die veranderings eerder prys te gee, klik Gooi hierdie proef in die snippermandjie.
+4. Om die veranderings eerder te laat vaar, klik Gooi hierdie proef in die snippermandjie.
 
 == undoing | Die laaste publisering ontdoen
 Ontdoen sit jou werf terug soos dit was voor jou laaste publisering. Wat
@@ -202,7 +202,7 @@ Bladsynaam-blokkie. Klik dit, verander die woorde, en klik Pers na werf.
 == renaming-a-page | 'n Bladsy hernoem of verwyder
 1. Maak die bladsy oop.
 2. Klik Hernoem hierdie bladsy en tik sy nuwe naam. Die ou adres bereik steeds die bladsy.
-3. Of klik Verwyder hierdie bladsy. Dit gaan na die snippermandjie in jou Pressless-data-gids, en verlaat jou werf en jou kieslys.
+3. Of klik Verwyder hierdie bladsy. Dit gaan na die snippermandjie in jou Pressless-data-gids, en word van jou werf en jou kieslys verwyder.
 
 Die Tuis-bladsy kan nie hernoem of verwyder word nie.
 
@@ -255,9 +255,9 @@ Vir enigiemand wat HTML ken.
 2. Klik Wys my die kode.
 3. Klik Sien wysiger om terug te gaan.
 
-== site-look | Verander hoe jou werf lyk: uitleg, kleure en fonte
+== site-look | Verander hoe jou werf lyk: uitleg, kleure en lettertipes
 1. Klik Voorkoms in die balk.
-2. Kies 'n uitleg, 'n kleurstyl, kleure, fonte, die teksgrootte, die bladsywydte of effekte. Die voorskou langs elke keuse wys dit dadelik.
+2. Kies 'n uitleg, 'n kleurstyl, kleure, lettertipes, die teksgrootte, die bladsywydte of effekte. Die voorskou langs elke keuse wys dit dadelik.
 picture look.png | Die Voorkoms-skerm, met die uitlegte en kleurstyle om uit te kies en 'n voorskou van die werf daarnaas.
 3. Klik Stoor.
 video changing-the-look.webm | 'n Ander opskrif-lettertipe op die Voorkoms-skerm kies, die voorskou verander om te pas, en Stoor klik.
@@ -302,7 +302,7 @@ picture own-domain.png | Die eerste stap van Jou eie domeinnaam, met 'n blokkie 
 3. Volg elke skerm. Pressless wys wat om in te voer waar jy die naam gekoop het.
 
 Jy kan Pressless tussen stappe toemaak. Gebruik jou eie domeinnaam maak die
-stap oop wat jy bereik het.
+stap oop waarby jy gekom het.
 
 == visitor-numbers | Besoekersyfers aanskakel
 Pressless kan wys hoeveel mense jou werf lees, deur die syfers uit Google
@@ -312,7 +312,7 @@ Analytics te lees. Dit is opsioneel.
 2. Klik Meld met Google aan en meld aan op Google se bladsy.
 3. Kies die werf waarvoor Pressless syfers moet wys, en klik Gebruik hierdie werf.
 
-Skakel besoekersyfers af, op dieselfde skerm, stop dit.
+As jy op dieselfde skerm Skakel besoekersyfers af klik, stop dit.
 
 == who-is-reading | Sien wie jou werf lees
 1. Klik Besoekers in die balk.
@@ -368,7 +368,7 @@ picture move-computer.png | Die boks met die opskrif Skuif Pressless na 'n nuwe 
 
 == backups | Rugsteun, en kies waar dit gehou word
 Elke dag stoor Pressless elke werf vanself in 'n lêer, en hou die mees
-onlangse een. Hulle gaan na die Pressless-backups-gids langs die program.
+onlangse lêers. Hulle gaan na die Pressless-backups-gids langs die program.
 
 1. Klik Werwe in die balk.
 2. Plak onder Daaglikse rugsteun die hele adres van 'n ander gids, soos een op 'n USB-stokkie of in 'n wolkgids.

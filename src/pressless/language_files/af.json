@@ -19,7 +19,7 @@
   ],
   "assistant.about": [
    "832ce931",
-   "'n KI-toep op hierdie rekenaar, soos Claude, kan jou werf deur Pressless skryf en wysig. Niks word gepubliseer, ongedaan gemaak of in die snippermandjie gegooi totdat jy in Pressless Ja pers nie. Dit kan nie by jou sleutels, jou instellings, of enige bladsy se kode uitkom nie."
+   "'n KI-toep op hierdie rekenaar, soos Claude, kan jou werf deur Pressless skryf en wysig. Niks word gepubliseer, ongedaan gemaak of in die snippermandjie gegooi totdat jy in Pressless Ja druk nie. Dit kan nie by jou sleutels, jou instellings, of enige bladsy se kode uitkom nie."
   ],
   "assistant.app.claude_code": [
    "246ef8c1",
@@ -79,11 +79,11 @@
   ],
   "assistant.connect.done": [
    "f6e3aaf4",
-   "Claude Desktop is gekoppel. Sluit Claude Desktop heeltemal af en begin dit weer. As jy sy venster toemaak, kan dit steeds loop."
+   "Claude Desktop is gekoppel. Sluit Claude Desktop heeltemal af en begin dit weer. As jy net sy venster toemaak, kan dit steeds loop."
   ],
   "assistant.connect.not_found": [
    "76f5992b",
-   "Pressless kon nie Claude Desktop op hierdie rekenaar vind nie, so dit het niks verander nie. Installeer Claude Desktop en maak dit een keer oop, en pers dan die knoppie weer."
+   "Pressless kon nie Claude Desktop op hierdie rekenaar vind nie, so dit het niks verander nie. Installeer Claude Desktop en maak dit een keer oop, en druk dan die knoppie weer."
   ],
   "assistant.connect.unreadable": [
    "5b0e5bde",
@@ -103,7 +103,7 @@
   ],
   "assistant.locked_section": [
    "38507359",
-   "Daardie verandering voeg 'n skrip-, styl- of kode-afdeling by, verander, skuif of verwyder dit, wat die KI-helper nie mag doen nie. Hou elke gesluite afdeling soos dit is, op sy plek."
+   "Daardie verandering voeg 'n skrip-, styl- of kode-afdeling by, of verander, skuif of verwyder dit, wat die KI-helper nie mag doen nie. Hou elke gesluite afdeling soos dit is, op sy plek."
   ],
   "assistant.log": [
    "b0fae8b7",
@@ -139,7 +139,7 @@
   ],
   "assistant.next.takeover": [
    "46936a2b",
-   "Die skrywer pers Publiseer in Pressless en volg Skakel jou werf oor na Pressless, wat sê wat eers verander; vra dan om weer te publiseer."
+   "Die skrywer druk Publiseer in Pressless en volg Skakel jou werf oor na Pressless, wat sê wat eers verander; vra dan om weer te publiseer."
   ],
   "assistant.next.too_large": [
    "c4293322",
@@ -155,7 +155,7 @@
   ],
   "assistant.next.would_replace": [
    "992dcafe",
-   "As die skrywer dit wil vervang, pers hulle Publiseer in Pressless en kies Vervang die werf op GitHub; vra dan om weer te publiseer."
+   "As die skrywer dit wil vervang, druk hulle Publiseer in Pressless en kies Vervang die werf op GitHub; vra dan om weer te publiseer."
   ],
   "assistant.no_program": [
    "663b312e",
@@ -211,7 +211,7 @@
   ],
   "assistant.status.refused": [
    "b6688763",
-   "Die skrywer het nog nie gesê nie. Niks het verander nie."
+   "Die skrywer het gesê: nog nie. Niks het verander nie."
   ],
   "assistant.status.running": [
    "a6f05661",
@@ -227,7 +227,7 @@
   ],
   "assistant.steps.claude_code": [
    "30ef7965",
-   "Kopieer hierdie reël, plak dit in 'n terminaal, en pers Enter. Claude Code vind dan Pressless in watter gids dit ook al begin."
+   "Kopieer hierdie reël, plak dit in 'n terminaal, en druk Enter. Claude Code vind dan Pressless in watter gids dit ook al begin."
   ],
   "assistant.steps.claude_desktop": [
    "162c7571",
@@ -239,7 +239,7 @@
   ],
   "assistant.still_working": [
    "38bd395c",
-   "Pressless het te lank gevat om te antwoord, en doen dit dalk nog. Kyk met site_overview, of request_status vir 'n versoek, voordat jy weer probeer."
+   "Pressless het te lank gevat om te antwoord, en is dalk nog besig. Kyk met site_overview, of request_status vir 'n versoek, voordat jy weer probeer."
   ],
   "assistant.switch_off": [
    "73b18d52",
@@ -1383,7 +1383,7 @@
   ],
   "dashboard.channel.unassigned": [
    "bb76b66a",
-   "Google kon nie sê nie"
+   "Google kon nie bepaal nie"
   ],
   "dashboard.count.many": [
    "b7692abe",
@@ -1459,7 +1459,7 @@
   ],
   "dashboard.stale": [
    "79bc2748",
-   "Pressless kon nou-nou nie Google bereik nie, so dit is die syfers van {when}."
+   "Pressless kon sopas nie Google bereik nie, so dit is die syfers van {when}."
   ],
   "dashboard.time_on_page": [
    "b0a87c6b",
@@ -1471,7 +1471,7 @@
   ],
   "dashboard.unknown_country": [
    "6460bed6",
-   "Êrens wat Google nie kon sê nie"
+   "Êrens wat Google nie kon bepaal nie"
   ],
   "dashboard.updated": [
    "ac49c7bf",
@@ -1675,7 +1675,7 @@
   ],
   "domain.change": [
    "38804fcf",
-   "As jy Volgende pers, verander dit hierdie op GitHub:"
+   "As jy Volgende druk, verander dit hierdie op GitHub:"
   ],
   "domain.change.address": [
    "c3689a57",
@@ -1691,7 +1691,7 @@
   ],
   "domain.change.next": [
    "9cedfcec",
-   "Pers Volgende wanneer jy gereed is."
+   "Druk Volgende wanneer jy gereed is."
   ],
   "domain.change.ready": [
    "7c32b914",
@@ -1723,7 +1723,7 @@
   ],
   "domain.hint.certificate_failed": [
    "bcb86cb8",
-   "GitHub kon nie die sertifikaat maak nie. Kyk dat jou domeinverkoper net die rekords het wat in die vorige stap gewys is, wag dan en pers weer Volgende."
+   "GitHub kon nie die sertifikaat maak nie. Kyk dat jou domeinverkoper net die rekords het wat in die vorige stap gewys is, wag dan en druk weer Volgende."
   ],
   "domain.hint.certificate_wait": [
    "10f9fd83",
@@ -1747,7 +1747,7 @@
   ],
   "domain.leave": [
    "b1c80427",
-   "Jy kan dit toemaak en terugkom. Instellings, dan Gebruik jou eie domeinnaam, maak hierdie stap weer oop. Pers Volgende wanneer die naam na GitHub lei."
+   "Jy kan dit toemaak en terugkom. Instellings, dan Gebruik jou eie domeinnaam, maak hierdie stap weer oop. Druk Volgende wanneer die naam na GitHub wys."
   ],
   "domain.records.name": [
    "c7e114e7",
@@ -1775,7 +1775,7 @@
   ],
   "domain.secure": [
    "d79b33df",
-   "GitHub maak nou 'n sekuriteitsertifikaat vir {domain}, wat dit met https laat oopmaak. Dit kan 'n rukkie neem nadat die naam na GitHub lei. Pers Volgende om na te gaan. As dit gereed is, skakel Pressless die veilige adres aan."
+   "GitHub maak nou 'n sekuriteitsertifikaat vir {domain}, wat dit met https laat oopmaak. Dit kan 'n rukkie neem nadat die naam na GitHub wys. Druk Volgende om na te gaan. As dit gereed is, skakel Pressless die veilige adres aan."
   ],
   "domain.set": [
    "a2ed1d0a",
@@ -1787,15 +1787,15 @@
   ],
   "domain.state.elsewhere": [
    "229832ad",
-   "Die naam lei êrens anders as GitHub heen. Kyk vir 'n ander rekord, tensy jy 'n diens soos Cloudflare voor jou werf gebruik."
+   "Die naam wys êrens anders heen as na GitHub. Kyk vir 'n ander rekord, tensy jy 'n diens soos Cloudflare voor jou werf gebruik."
   ],
   "domain.state.not_yet": [
    "ca5b2e5d",
-   "Hierdie rekenaar kan die naam nog nie vind nie. Nadat jy die rekords invoer, kan dit tot 24 uur neem om oral te kom."
+   "Hierdie rekenaar kan die naam nog nie vind nie. Nadat jy die rekords invoer, kan dit tot 24 uur neem om oral deur te kom."
   ],
   "domain.state.ready": [
    "ecd13fe9",
-   "Die naam lei nou na GitHub, sover hierdie rekenaar kan sien."
+   "Die naam wys nou na GitHub, sover hierdie rekenaar kan sien."
   ],
   "domain.step.change": [
    "6eb4bc42",
@@ -1839,7 +1839,7 @@
   ],
   "editor.hint.forwarded": [
    "5d0c22a4",
-   "Die ou adres van 'n ander inskrywing stuur van daar aan."
+   "'n Ander inskrywing se ou adres stuur van daar af aan."
   ],
   "editor.hint.gone": [
    "879ba4ad",
@@ -1867,7 +1867,7 @@
   ],
   "editor.journal.on": [
    "d5265f93",
-   "Jou joernaal is aan: elke gepubliseerde inskrywing het 'n eie bladsy op jou werf, en jou joernaal lys hulle, nuutste eerste."
+   "Jou joernaal is aan: elke gepubliseerde inskrywing het sy eie bladsy op jou werf, en jou joernaal lys hulle met die nuutste eerste."
   ],
   "editor.journal.on_published": [
    "7c42bf2e",
@@ -2227,7 +2227,7 @@
   ],
   "failure.credentials.NoStore.what": [
    "83315ee8",
-   "Pressless het nêrens veilig op hierdie rekenaar gevind om {secret} te bewaar nie."
+   "Pressless het nêrens op hierdie rekenaar 'n veilige plek gevind om {secret} te bêre nie."
   ],
   "failure.credentials.NotStored.next": [
    "8dcf995c",
@@ -2287,7 +2287,7 @@
   ],
   "failure.files.NotAllowed.next": [
    "b8c81905",
-   "Kies 'n MP3-, Ogg-, WAV-, M4A-, MP4-, WebM-, PDF-, ZIP- of gewone-teks-lêer, met die einde wat sy soort het."
+   "Kies 'n MP3-, Ogg-, WAV-, M4A-, MP4-, WebM-, PDF-, ZIP- of gewone tekslêer, met die einde wat by sy soort pas."
   ],
   "failure.files.NotAllowed.what": [
    "8bb26fa2",
@@ -2351,7 +2351,7 @@
   ],
   "failure.google_signin.Declined.what": [
    "4bdf3691",
-   "Jy het gekies om nie vir Pressless toe te laat om jou besoekersyfers te lees nie."
+   "Jy het gekies om nie Pressless toe te laat om jou besoekersyfers te lees nie."
   ],
   "failure.google_signin.Expired.next": [
    "3a295ead",
@@ -2655,7 +2655,7 @@
   ],
   "failure.publisher.UnfetchablePath.what": [
    "bd4cd389",
-   "Die vroeër weergawe van jou werf noem 'n lêer wat hierdie rekenaar nie kan hou nie."
+   "Die vroeër weergawe van jou werf noem 'n lêer wat hierdie rekenaar nie kan bêre nie."
   ],
   "failure.publisher.Unreachable.next": [
    "176afd02",
@@ -2759,7 +2759,7 @@
   ],
   "failure.store.DanglingReply.what": [
    "37fd8092",
-   "'n Antwoord wys na 'n kommentaar wat nie daar is nie, so niks is gestoor nie."
+   "'n Antwoord verwys na 'n kommentaar wat nie daar is nie, so niks is gestoor nie."
   ],
   "failure.store.EntryNotFound.next": [
    "ee32bee4",
@@ -2863,7 +2863,7 @@
   ],
   "failure.youtube.RateLimited.what": [
    "94be8ad5",
-   "Jou sleutel het sy toelaag vir vandag opgebruik."
+   "Jou sleutel het sy limiet vir vandag bereik."
   ],
   "failure.youtube.Refused.next": [
    "bb0a0036",
@@ -2955,11 +2955,11 @@
   ],
   "github_setup.cancelled": [
    "69deb0d4",
-   "Die aanmelding is op GitHub gekanselleer. Pers Volgende om weer te begin."
+   "Die aanmelding is op GitHub gekanselleer. Druk Volgende om weer te begin."
   ],
   "github_setup.cannot_write": [
    "cc7b5b24",
-   "Jy het as {signed_in} by GitHub aangemeld, en daardie rekening kan nie {repository} verander nie. Niks is gestoor nie, so jou vroeëre aanmelding werk steeds. Om 'n ander rekening te gebruik, skakel daarna oor op github.com, en pers dan Volgende om weer aan te meld."
+   "Jy het as {signed_in} by GitHub aangemeld, en daardie rekening kan nie {repository} verander nie. Niks is gestoor nie, so jou vroeëre aanmelding werk steeds. Om 'n ander rekening te gebruik, skakel daarna oor op github.com, en druk dan Volgende om weer aan te meld."
   ],
   "github_setup.code": [
    "eeba8207",
@@ -2967,11 +2967,11 @@
   ],
   "github_setup.how": [
    "7e8447e8",
-   "Pressless meld met 'n kort kode by GitHub aan eerder as met jou wagwoord."
+   "Pressless meld by GitHub aan met 'n kort kode in plaas van jou wagwoord."
   ],
   "github_setup.how.1": [
    "d25e27d7",
-   "Pers <b>Volgende</b>. Pressless wys 'n kode en 'n skakel na GitHub."
+   "Druk <b>Volgende</b>. Pressless wys 'n kode en 'n skakel na GitHub."
   ],
   "github_setup.how.2": [
    "0510dd85",
@@ -2983,11 +2983,11 @@
   ],
   "github_setup.how.4": [
    "ab21827c",
-   "Kom terug hierheen en pers weer <b>Volgende</b>."
+   "Kom terug hierheen en druk weer <b>Volgende</b>."
   ],
   "github_setup.not_heard": [
    "4348ebc1",
-   "GitHub het nog nie van jou gehoor nie. Tik die kode op GitHub se bladsy, klik Authorize, en pers dan hier Volgende."
+   "GitHub het nog nie van jou gehoor nie. Tik die kode op GitHub se bladsy, klik Authorize, en druk dan hier Volgende."
   ],
   "github_setup.title": [
    "47e9895d",
@@ -2999,7 +2999,7 @@
   ],
   "github_setup.type_it": [
    "832b672d",
-   "Tik hierdie kode op GitHub se bladsy, klik Authorize, en pers dan hier Volgende."
+   "Tik hierdie kode op GitHub se bladsy, klik Authorize, en druk dan hier Volgende."
   ],
   "github_setup.unavailable": [
    "f1e70b95",
@@ -3039,7 +3039,7 @@
   ],
   "google_setup.counting.none": [
    "536bd3ba",
-   "Hierdie werf het nog geen webstroom in Google Analytics nie, so telling is af. Maak in Google Analytics Admin oop, dan Data streams, dan Add stream, kies Web en voer jou werf se adres in. Tik dan die meet-ID wat dit wys op die Instellings-bladsy."
+   "Hierdie werf het nog geen webstroom in Google Analytics nie, so telling is af. Maak in Google Analytics Admin oop, dan Data streams, dan Add stream, kies Web en tik jou werf se adres in. Tik dan die meet-ID wat dit wys op die Instellings-bladsy."
   ],
   "google_setup.counting.removed": [
    "da6716e9",
@@ -3063,7 +3063,7 @@
   ],
   "google_setup.not_forgotten": [
    "bdf3c5b3",
-   "Pressless kon nie die laaste eiendom se besoekersyfers van hierdie rekenaar af skoonmaak nie, so die paneelbord kan hulle as hierdie een s'n wys totdat dit weer vir Google vra."
+   "Pressless kon nie die vorige eiendom se besoekersyfers van hierdie rekenaar af skoonmaak nie, so die paneelbord kan hulle as hierdie een s'n wys totdat dit weer vir Google vra."
   ],
   "google_setup.not_removed": [
    "e86972b4",
@@ -3135,7 +3135,7 @@
   ],
   "import.bring": [
    "8f23e6f7",
-   "Pers Volgende om jou werf in te bring. Dit word alles gelyk geskryf, en niks is op die web totdat jy dit publiseer nie."
+   "Druk Volgende om jou werf in te bring. Dit word alles gelyk geskryf, en niks is op die web totdat jy dit publiseer nie."
   ],
   "import.count.comments.many": [
    "3af8a7b7",
@@ -3211,7 +3211,7 @@
   ],
   "import.export.3": [
    "59d8bd83",
-   "Pers <b>Download Export File</b>. Jou blaaier stoor 'n lêer wat op .xml eindig."
+   "Druk <b>Download Export File</b>. Jou blaaier stoor 'n lêer wat op .xml eindig."
   ],
   "import.export.choose": [
    "1e8f4771",
@@ -3219,7 +3219,7 @@
   ],
   "import.export.held": [
    "56822729",
-   "Pressless het jou uitvoer. Pers Volgende."
+   "Pressless het jou uitvoer. Druk Volgende."
   ],
   "import.export.how": [
    "cfda5952",
@@ -3243,7 +3243,7 @@
   ],
   "import.folder.built": [
    "dd3eb83b",
-   "Hierdie gids bevat wat 'n instrument 'n werf uit bou, nie die werf se webbladsye nie. Bou die werf met daardie instrument, en kies dan die gids bladsye wat dit maak."
+   "Hierdie gids bevat wat 'n instrument 'n werf uit bou, nie die werf se webbladsye nie. Bou die werf met daardie instrument, en kies dan die gids met die bladsye wat dit maak."
   ],
   "import.folder.carried_link": [
    "4be8d77e",
@@ -3263,7 +3263,7 @@
   ],
   "import.folder.current_marks": [
    "573c5d29",
-   "Pressless merk nou die huidige skakel met aria-current, so die werf se eie reël vir sy active-, current- of selected-klas geld nie meer nie"
+   "Pressless merk nou die huidige skakel met aria-current, so die werf se eie reël vir sy active-, current- of selected-klas is nie meer van toepassing nie"
   ],
   "import.folder.front": [
    "ae6d9a46",
@@ -3271,7 +3271,7 @@
   ],
   "import.folder.held": [
    "930feb46",
-   "Pressless het jou gids. Pers Volgende."
+   "Pressless het jou gids. Druk Volgende."
   ],
   "import.folder.how": [
    "3785612a",
@@ -3307,15 +3307,15 @@
   ],
   "import.folder.no_footer": [
    "40f1fa1a",
-   "die bladsye deel geen voetstuk nie, so geen is afgeskei nie"
+   "die bladsye deel geen voetstuk nie, so niks is apart gehou nie"
   ],
   "import.folder.no_header": [
    "cd9b8841",
-   "die bladsye deel geen kopstuk nie, so geen is afgeskei nie"
+   "die bladsye deel geen kopstuk nie, so niks is apart gehou nie"
   ],
   "import.folder.no_main": [
    "8fe5dc2a",
-   "sy hoofinhoud kon nie afgebaken word nie, so die visuele wysiger kan dit nie bereik nie"
+   "sy hoofinhoud kon nie uitgeken word nie, so die visuele wysiger kan nie daarby uitkom nie"
   ],
   "import.folder.no_menu": [
    "91dd0aec",
@@ -3351,7 +3351,7 @@
   ],
   "import.folder.refused": [
    "7fa4d4aa",
-   "Pressless kon nie daardie ZIP-lêer of gids lees nie, of kon dit nie op hierdie skyf pas nie, of dit noem 'n lêer buite sy gids. Niks is gehou nie."
+   "Pressless kon nie daardie ZIP-lêer of gids lees nie, of kon dit nie op hierdie skyf laat pas nie, of dit verwys na 'n lêer buite sy gids. Niks is gehou nie."
   ],
   "import.folder.unnamed": [
    "b0c4c598",
@@ -3447,7 +3447,7 @@
   ],
   "import.gaps.how": [
    "dc8a1199",
-   "As jy kan, laai die gids <b>wp-content/uploads</b> as een ZIP-lêer van jou webgasheer af: die meeste gashere se Lêerbestuurder kan 'n gids saampers en aflaai. Kies dan daardie ZIP hier, en Pressless neem wat ontbreek daaruit. Of pers Volgende om sonder hulle voort te gaan; elkeen word aan die einde gelys."
+   "As jy kan, laai die gids <b>wp-content/uploads</b> as een ZIP-lêer van jou webgasheer af: die meeste gashere se Lêerbestuurder kan 'n gids saampers en aflaai. Kies dan daardie ZIP hier, en Pressless neem wat ontbreek daaruit. Of druk Volgende om sonder hulle voort te gaan; elkeen word aan die einde gelys."
   ],
   "import.gaps.list.many": [
    "a43304cc",
@@ -3459,7 +3459,7 @@
   ],
   "import.gaps.none": [
    "c0d48da8",
-   "Niks ontbreek nie. Pers Volgende."
+   "Niks ontbreek nie. Druk Volgende."
   ],
   "import.gaps.refused": [
    "319be7f2",
@@ -3479,7 +3479,7 @@
   ],
   "import.media.done": [
    "5f99519b",
-   "Elke foto en lêer het saamgekom. Pers Volgende."
+   "Elke foto en lêer het saamgekom. Druk Volgende."
   ],
   "import.media.fetching": [
    "d06e32f7",
@@ -3487,11 +3487,11 @@
   ],
   "import.media.missing": [
    "5aef11ef",
-   "{count} kon nie van jou ou werf af gekopieer word nie. Pers Volgende om te sien watter."
+   "{count} kon nie van jou ou werf af gekopieer word nie. Druk Volgende om te sien watter."
   ],
   "import.media.retry": [
    "fb63b71f",
-   "Pers Volgende om weer te probeer kopieer."
+   "Druk Volgende om weer te probeer kopieer."
   ],
   "import.media.wait": [
    "dde03850",
@@ -3555,7 +3555,7 @@
   ],
   "import.report.renamed_file": [
    "b964c619",
-   "{place} het sy naam gedeel, so dit is nou {name}."
+   "{place} het dieselfde naam as 'n ander gehad, so dit is nou {name}."
   ],
   "import.report.review": [
    "e83e7e06",
@@ -3643,7 +3643,7 @@
   ],
   "languages.offer": [
    "dd7d8951",
-   "Pressless kon nie sê wat jou rekenaar se taal is nie. Kies een:"
+   "Pressless kon nie bepaal wat jou rekenaar se taal is nie. Kies een:"
   ],
   "look.extra_note": [
    "c283ab80",
@@ -3803,7 +3803,7 @@
   ],
   "look_screen.restart": [
    "b1cbeef3",
-   "As jy hier 'n uitleg kies, begin dit weer met sy eie kleure en fonte."
+   "As jy hier 'n uitleg kies, begin dit weer met sy eie kleure en lettertipes."
   ],
   "look_screen.route": [
    "df81de8b",
@@ -4107,7 +4107,7 @@
   ],
   "notice.page_editor.stray": [
    "59086b9c",
-   "Die teks wat jy tussen die kopstuk- of voetstukmerkers sit, sal vervang word uit die een Kopstuk of Voetstuk wanneer jou werf gebou word. Wysig eerder die Kopstuk of Voetstuk."
+   "Die teks wat jy tussen die kopstuk- of voetstukmerkers sit, sal vervang word deur die een Kopstuk of Voetstuk wanneer jou werf gebou word. Wysig eerder die Kopstuk of Voetstuk."
   ],
   "notice.pages.menu_unusual": [
    "6303364a",
@@ -4139,11 +4139,11 @@
   ],
   "notice.settings.not_private": [
    "9827a6cb",
-   "die instellingslêer kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net-eienaar, so ander met 'n rekening op hierdie masjien kan dit lees"
+   "die instellingslêer kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net vir die eienaar, so ander met 'n rekening op hierdie rekenaar kan dit lees"
   ],
   "notice.store.not_private": [
    "da4be8e5",
-   "{file} kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net-eienaar, so ander met 'n rekening op hierdie masjien kan dit lees"
+   "{file} kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net vir die eienaar, so ander met 'n rekening op hierdie rekenaar kan dit lees"
   ],
   "notice.store.passed_over": [
    "7ba27a7c",
@@ -4215,11 +4215,11 @@
   ],
   "overview.publish.nothing.many": [
    "ba49d50e",
-   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Elkeen gaan uit vanaf sy eie Pers na werf, nie vanaf Publiseer nie."
+   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Elkeen gaan uit met sy eie Pers na werf, nie met Publiseer nie."
   ],
   "overview.publish.nothing.one": [
    "cfa12edb",
-   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Dit gaan uit vanaf sy eie Pers na werf, nie vanaf Publiseer nie."
+   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Dit gaan uit met sy eie Pers na werf, nie met Publiseer nie."
   ],
   "overview.visitors.none_yet": [
    "8f22773e",
@@ -4243,11 +4243,11 @@
   ],
   "overview.waiting.many": [
    "20f7e292",
-   "{count} veranderings is nog nie op jou werf nie: {kinds}. Elkeen gaan uit vanaf sy eie Pers na werf."
+   "{count} veranderings is nog nie op jou werf nie: {kinds}. Elkeen gaan uit met sy eie Pers na werf."
   ],
   "overview.waiting.one": [
    "29b2a9df",
-   "1 verandering is nog nie op jou werf nie: {kinds}. Dit gaan uit vanaf sy eie Pers na werf."
+   "1 verandering is nog nie op jou werf nie: {kinds}. Dit gaan uit met sy eie Pers na werf."
   ],
   "overview.waiting.pages.many": [
    "d46e57d6",
@@ -4383,7 +4383,7 @@
   ],
   "page_editor.panel.style_note": [
    "f80c0b0f",
-   "Dit stileer die hele bladsy waarop dit is, of elke bladsy vanaf die kopstuk of voetstuk. Prente en fonte van ander webwerwe wys op jou gepubliseerde werf, nie hier nie."
+   "Dit stileer die hele bladsy waarop dit is, of elke bladsy vanaf die kopstuk of voetstuk. Prente en lettertipes van ander webwerwe wys op jou gepubliseerde werf, nie hier nie."
   ],
   "page_editor.panel.title": [
    "b03b2a01",
@@ -4431,7 +4431,7 @@
   ],
   "page_hint.menu_empty": [
    "2a98e168",
-   "Die kieslys skakel na die bladsye op jou werf. Maak 'n bladsy en pers dit na jou werf, voeg dan die kieslys by."
+   "Die kieslys skakel na die bladsye op jou werf. Maak 'n bladsy en pers dit na jou werf, en voeg dan die kieslys by."
   ],
   "page_hint.not_on_site": [
    "0b77c7e9",
@@ -4439,7 +4439,7 @@
   ],
   "page_hint.privacy_remove": [
    "03b0bd55",
-   "Die Privaatheid-bladsy bly terwyl jou werf besoekers tel of Hou van- en Hou nie van-knoppies het."
+   "Die Privaatheid-bladsy bly solank jou werf besoekers tel of Hou van- en Hou nie van-knoppies het."
   ],
   "page_hint.privacy_rename": [
    "7b088b06",
@@ -4459,7 +4459,7 @@
   ],
   "publishing.keep": [
    "3efb0275",
-   "Pressless laat hierdie met rus. Ontmerk enigiets van die ou werf wat moet gaan:"
+   "Pressless laat hierdie met rus. Haal die regmerkie af by enigiets van die ou werf wat moet gaan:"
   ],
   "publishing.keep_none": [
    "5c37018b",
@@ -4587,11 +4587,11 @@
   ],
   "publishing.takeover.intro": [
    "6c1f862c",
-   "Jou werf op die web kom steeds van wat GitHub Actions in {repository} bou. Om dit na Pressless oor te skakel verander hierdie:"
+   "Jou werf op die web kom steeds van wat GitHub Actions in {repository} bou. As jy dit na Pressless oorskakel, verander die volgende:"
   ],
   "publishing.takeover.not_switched": [
    "6a9a7a18",
-   "Jou nuwe werf is op GitHub, maar nog nie op die web nie, omdat GitHub Pages nie oorgeskakel het nie. Jou ou werf is steeds op. Pers die knoppie weer."
+   "Jou nuwe werf is op GitHub, maar nog nie op die web nie, omdat GitHub Pages nie oorgeskakel het nie. Jou ou werf is steeds aanlyn. Klik weer op die knoppie."
   ],
   "publishing.takeover.removed": [
    "a5b82e3f",
@@ -4599,7 +4599,7 @@
   ],
   "publishing.takeover.steps": [
    "022b8a72",
-   "Verwyder eers self die boulêer, want Pressless mag dit nie verander nie. Pers elke skakel hieronder. Dit maak GitHub in 'n nuwe oortjie oop. Pers daar Commit changes, en kom dan terug hierheen."
+   "Verwyder eers self die boulêer, want Pressless mag dit nie verander nie. Klik op elke skakel hieronder. Dit maak GitHub in 'n nuwe oortjie oop. Klik daar op Commit changes, en kom dan terug hierheen."
   ],
   "publishing.takeover.still_there": [
    "385d298e",
@@ -4675,15 +4675,15 @@
   ],
   "script.editor.confirm_throw_entry": [
    "ad76485e",
-   "Gooi hierdie inskrywing weg? Dit skuif nou na die snippermandjie in jou Pressless-data-gids, en verlaat jou werf die volgende keer wat jy na die werf pers. Ontdoen die laaste pers kan dit daarna terugbring."
+   "Gooi hierdie inskrywing weg? Dit skuif nou na die snippermandjie in jou Pressless-data-gids, en word van jou werf verwyder die volgende keer wat jy na die werf pers. Ontdoen die laaste pers kan dit daarna terugbring."
   ],
   "script.editor.missing_many": [
    "fc2de995",
-   "Foto's ontbreek: {names}. Voeg elkeen by met Voeg 'n foto by, of regstel die name, voordat jy pers."
+   "Foto's ontbreek: {names}. Voeg elkeen by met Voeg 'n foto by, of maak die name reg, voordat jy pers."
   ],
   "script.editor.missing_one": [
    "c81fdd69",
-   "Foto ontbreek: {names}. Voeg dit by met Voeg 'n foto by, of regstel sy naam, voordat jy pers."
+   "Foto ontbreek: {names}. Voeg dit by met Voeg 'n foto by, of maak sy naam reg, voordat jy pers."
   ],
   "script.editor.not_saved": [
    "22b3467c",
@@ -4791,7 +4791,7 @@
   ],
   "script.pages.confirm_remove": [
    "a9f578f4",
-   "Verwyder hierdie bladsy? Dit gaan na die snippermandjie in jou Pressless-data-gids, saam met enige veranderings wat jy nie gepubliseer het nie. Dit verlaat nou jou werf en jou kieslys."
+   "Verwyder hierdie bladsy? Dit gaan na die snippermandjie in jou Pressless-data-gids, saam met enige veranderings wat jy nie gepubliseer het nie. Dit word nou van jou werf en jou kieslys verwyder."
   ],
   "script.plan.added": [
    "8fe2f752",
@@ -5055,7 +5055,7 @@
   ],
   "setup.cannot_finish": [
    "52812e2c",
-   "Die opstelling kan nie op hierdie rekenaar klaar maak nie."
+   "Die opstelling kan nie op hierdie rekenaar voltooi word nie."
   ],
   "setup.done": [
    "d5a378c4",
@@ -5239,15 +5239,15 @@
   ],
   "setup.hint.add_to_app": [
    "f73a10d7",
-   "Pressless het die bewaarplek gemaak, maar die Pressless-toep kan dit nog nie bereik nie. Klik op GitHub jou prent, dan Settings, dan Applications. Klik Configure langs Pressless App, klik Select repositories, kies {repository}, en klik Save. Pers dan weer Volgende."
+   "Pressless het die bewaarplek gemaak, maar die Pressless-toep het nog nie toegang daartoe nie. Klik op GitHub jou prent, dan Settings, dan Applications. Klik Configure langs Pressless App, klik Select repositories, kies {repository}, en klik Save. Druk dan weer Volgende."
   ],
   "setup.hint.app_cannot_reach": [
    "ed150a81",
-   "Die Pressless-toep kan nie hierdie bewaarplek bereik nie. Klik op GitHub jou prent, dan Settings, dan Applications, en kyk dat Pressless App se installasie dit insluit. Pers dan weer Volgende."
+   "Die Pressless-toep het nie toegang tot hierdie bewaarplek nie. Klik op GitHub jou prent, dan Settings, dan Applications, en kyk dat Pressless App se installasie dit insluit. Druk dan weer Volgende."
   ],
   "setup.hint.elsewhere": [
    "6ce5b053",
-   "Hierdie bewaarplek sit reeds op 'n ander manier 'n werf op die web, so Pressless kan nie daarheen publiseer nie. Pers Terug en kies 'n ander, nuwe bewaarplek. Laat hierdie een se GitHub Pages-instellings soos hulle is: as jy dit verander, sal die werf wat reeds daar is, vanlyn gaan."
+   "Hierdie bewaarplek sit reeds op 'n ander manier 'n werf op die web, so Pressless kan nie daarheen publiseer nie. Druk Terug en kies 'n ander, nuwe bewaarplek. Laat hierdie een se GitHub Pages-instellings soos hulle is: as jy dit verander, sal die werf wat reeds daar is, vanlyn gaan."
   ],
   "setup.hint.key_malformed": [
    "48b5bf5b",
@@ -5259,11 +5259,11 @@
   ],
   "setup.hint.key_not_granted": [
    "9be0608c",
-   "Hierdie sleutel kan nie daardie bewaarplek bereik nie. Wysig op GitHub die sleutel en kies jou werf se bewaarplek onder Repository access."
+   "Hierdie sleutel het nie toegang tot daardie bewaarplek nie. Wysig op GitHub die sleutel en kies jou werf se bewaarplek onder Repository access."
   ],
   "setup.hint.made_elsewhere": [
    "1bce5cca",
-   "Hierdie bewaarplek bevat wat 'n instrument 'n werf uit bou, nie die werf se webbladsye nie, en Pressless kan dit nog nie inbring nie. Pers Terug en kies 'n ander bewaarplek."
+   "Hierdie bewaarplek bevat wat 'n instrument 'n werf uit bou, nie die werf se webbladsye nie, en Pressless kan dit nog nie inbring nie. Druk Terug en kies 'n ander bewaarplek."
   ],
   "setup.hint.measurement_id": [
    "800be4bf",
@@ -5283,15 +5283,15 @@
   ],
   "setup.hint.no_pages_write": [
    "05f5ce77",
-   "Hierdie sleutel kan nie GitHub Pages aanskakel nie. Wysig op GitHub die sleutel en stel Pages en Administration op Read and write onder Repository permissions, en pers dan weer Volgende."
+   "Hierdie sleutel kan nie GitHub Pages aanskakel nie. Wysig op GitHub die sleutel en stel Pages en Administration op Read and write onder Repository permissions, en druk dan weer Volgende."
   ],
   "setup.hint.no_such_repository": [
    "8fe6ccf9",
-   "GitHub het geen bewaarplek met daardie naam wat hierdie sleutel kan bereik nie."
+   "GitHub het geen bewaarplek met daardie naam waartoe hierdie sleutel toegang het nie."
   ],
   "setup.hint.not_installed": [
    "d861b927",
-   "GitHub wys nog geen Pressless-toep op jou rekening geïnstalleer nie. Volg die stappe hierbo, en pers dan weer Volgende."
+   "GitHub wys nog nie dat die Pressless-toep op jou rekening geïnstalleer is nie. Volg die stappe hierbo, en druk dan weer Volgende."
   ],
   "setup.hint.not_public": [
    "18a10e42",
@@ -5299,7 +5299,7 @@
   ],
   "setup.hint.other_account": [
    "942815db",
-   "Jy het as {signed_in} by GitHub aangemeld, nie {typed} nie. Om {typed} te gebruik, skakel daarna oor op github.com, of regstel die naam hierbo. Pers dan Volgende om weer aan te meld."
+   "Jy het as {signed_in} by GitHub aangemeld, nie {typed} nie. Om {typed} te gebruik, skakel daarna oor op github.com, of maak die naam hierbo reg. Druk dan Volgende om weer aan te meld."
   ],
   "setup.hint.repository": [
    "6b113953",
@@ -5335,7 +5335,7 @@
   ],
   "setup.hint.site_unreadable": [
    "d1b6e116",
-   "GitHub Actions bou hierdie bewaarplek se werf, maar Pressless kon nie sy voorblad by sy adres lees nie. Kyk of die werf in jou blaaier oopmaak, en pers dan weer Volgende. As dit nie oopmaak nie, pers Terug en kies 'n ander bewaarplek. Niks is verander nie."
+   "GitHub Actions bou hierdie bewaarplek se werf, maar Pressless kon nie sy voorblad by sy adres lees nie. Kyk of die werf in jou blaaier oopmaak, en druk dan weer Volgende. As dit nie oopmaak nie, druk Terug en kies 'n ander bewaarplek. Niks is verander nie."
   ],
   "setup.hint.taken": [
    "e0d73217",
@@ -5359,23 +5359,23 @@
   ],
   "setup.install.3": [
    "ac4ea87e",
-   "Laat <b>All repositories</b> gekies onder <b>for these repositories</b>. Pressless maak dit aan die einde nouer."
+   "Laat <b>All repositories</b> gekies onder <b>for these repositories</b>. Pressless beperk dit aan die einde."
   ],
   "setup.install.4": [
    "4d18a292",
-   "Klik <b>Install</b>, kom dan terug hierheen en pers <b>Volgende</b>."
+   "Klik <b>Install</b>, kom dan terug hierheen en druk <b>Volgende</b>."
   ],
   "setup.install.already": [
    "758303b8",
-   "As GitHub eerder instellings wys, sonder 'n <b>Install</b>-knoppie, het Pressless reeds toestemming. Kom terug hierheen en pers <b>Volgende</b>."
+   "As GitHub eerder instellings wys, sonder 'n <b>Install</b>-knoppie, het Pressless reeds toestemming. Kom terug hierheen en druk <b>Volgende</b>."
   ],
   "setup.install.happening": [
    "a77c1b3c",
-   "Pressless werk deur sy eie toep op GitHub, Pressless App, wat net by die bewaarplekke uitkom wat jy toelaat. 'n Bewaarplek is die gids op GitHub waarin 'n werf woon. Pressless maak volgende jou werf se bewaarplek, en sê aan die einde hoe om die toep net by daardie een te laat uitkom."
+   "Pressless werk deur sy eie toep op GitHub, Pressless App, wat net toegang het tot die bewaarplekke wat jy toelaat. 'n Bewaarplek is die gids op GitHub waarin 'n werf woon. Pressless maak volgende jou werf se bewaarplek, en sê aan die einde hoe om die toep se toegang tot net daardie een te beperk."
   ],
   "setup.key": [
    "5b5a0c9e",
-   "Pressless het 'n sleutel nodig wat jou werf se bewaarplek bereik en geen ander nie. Maak een:"
+   "Pressless het 'n sleutel nodig met toegang tot jou werf se bewaarplek en geen ander nie. Maak een:"
   ],
   "setup.key.kept": [
    "55a05d66",
@@ -5383,7 +5383,7 @@
   ],
   "setup.key.safe": [
    "d1680310",
-   "Pressless hou die sleutel in jou rekenaar se eie veilige stoor, nooit in 'n lêer wat dit vir iemand wys nie."
+   "Pressless hou die sleutel in jou rekenaar se eie veilige stoor, nooit in 'n lêer wat dit vir enigiemand wys nie."
   ],
   "setup.key_kept": [
    "a8bb39cc",
@@ -5459,7 +5459,7 @@
   ],
   "setup.narrow": [
    "22dac239",
-   "Die Pressless-toep kan by elke bewaarplek in jou rekening uitkom. Om dit net by jou werf s'n te laat uitkom: klik op GitHub jou prent, dan <b>Settings</b>, dan <b>Applications</b>. Klik <b>Configure</b> langs <b>Pressless App</b>, kies <b>Only select repositories</b>, kies <b>{repository}</b>, en klik <b>Save</b>."
+   "Die Pressless-toep het toegang tot elke bewaarplek in jou rekening. Om dit tot net jou werf s'n te beperk: klik op GitHub jou prent, dan <b>Settings</b>, dan <b>Applications</b>. Klik <b>Configure</b> langs <b>Pressless App</b>, kies <b>Only select repositories</b>, kies <b>{repository}</b>, en klik <b>Save</b>."
   ],
   "setup.new_key.1": [
    "e7612ac1",
@@ -5471,7 +5471,7 @@
   ],
   "setup.new_key.3": [
    "0e2c490e",
-   "Klik <b>Generate new token</b>. Noem dit <b>Pressless</b>, en kies hoe lank dit hou. Wanneer dit verstryk, maak 'n nuwe een op dieselfde manier en plak dit in Instellings."
+   "Klik <b>Generate new token</b>. Noem dit <b>Pressless</b>, en kies hoe lank dit geldig is. Wanneer dit verval, maak 'n nuwe een op dieselfde manier en plak dit in Instellings."
   ],
   "setup.new_key.4": [
    "0cc91817",
@@ -5519,7 +5519,7 @@
   ],
   "setup.pages": [
    "44b7dfe0",
-   "Pers Volgende en Pressless sit jou werf op die web. Enigiets wat reeds in jou werf se tuiste is, gaan ook op die web."
+   "Druk Volgende en Pressless sit jou werf op die web. Enigiets wat reeds in jou werf se tuiste is, gaan ook op die web."
   ],
   "setup.pages.happening": [
    "5719890f",
@@ -5559,7 +5559,7 @@
   ],
   "setup.privacy.page": [
    "bed484e7",
-   "Jou werf het nou 'n Privaatheid-bladsy wat sê wat dit oor besoekers aanteken. Maak dit oop vanuit Jou bladsye en voeg by hoe mense jou kan bereik."
+   "Jou werf het nou 'n Privaatheid-bladsy wat sê wat dit oor besoekers aanteken. Maak dit oop vanuit Jou bladsye en voeg by hoe mense jou kan kontak."
   ],
   "setup.repository": [
    "ac7eb37f",
@@ -5583,7 +5583,7 @@
   ],
   "setup.section.assistant.holds": [
    "f9d558c0",
-   "'n KI-toep op hierdie rekenaar laat werk aan jou werf."
+   "Laat 'n KI-toep op hierdie rekenaar aan jou werf werk."
   ],
   "setup.section.computer": [
    "26f9f95a",
@@ -5611,7 +5611,7 @@
   ],
   "setup.section.journal.holds": [
    "fb93902b",
-   "Inskrywings wat per etiket uit die joernaal gelaat word, en hou-van-klikke."
+   "Inskrywings wat volgens etiket uit die joernaal gelaat word, en Hou van-klikke."
   ],
   "setup.section.saved": [
    "fca046cc",
@@ -5655,11 +5655,11 @@
   ],
   "setup.shortcuts.pinning": [
    "760ee349",
-   "Pressless is in jou toepkieslys. Om dit by jou paneel te voeg, soek dit in die kieslys, regsklik dit en kies die opsie wat dit vasmaak of by die paneel voeg. Die naam verskil tussen lessenaars."
+   "Pressless is in jou toepkieslys. Om dit by jou paneel te voeg, soek dit in die kieslys, regsklik dit en kies die opsie wat dit vaspen of by die paneel voeg. Die naam verskil tussen lessenaars."
   ],
   "setup.shortcuts.pinning.windows": [
    "e06d4168",
-   "Pressless is in die Start-kieslys. Om dit aan die taakbalk vas te maak, soek dit in die Start-kieslys, regsklik dit en kies Pin to taskbar."
+   "Pressless is in die Start-kieslys. Om dit aan die taakbalk vas te pen, soek dit in die Start-kieslys, regsklik dit en kies Pin to taskbar."
   ],
   "setup.shortcuts.removed": [
    "f98ec97d",
@@ -5731,7 +5731,7 @@
   ],
   "setup.site.finish": [
    "6ff88876",
-   "Pers Volgende om alles 'n laaste keer by GitHub na te gaan en klaar te maak."
+   "Druk Volgende om alles 'n laaste keer by GitHub na te gaan en klaar te maak."
   ],
   "setup.starter.box": [
    "9c91ac53",
@@ -5747,7 +5747,7 @@
   ],
   "setup.starter.publish": [
    "758f0e48",
-   "Om dit op die web te sit, maak <b>Tuis</b> op die <b>Bladsye</b>-skerm oop, en pers <b>Pers na werf</b>."
+   "Om dit op die web te sit, maak <b>Tuis</b> op die <b>Bladsye</b>-skerm oop, en druk <b>Pers na werf</b>."
   ],
   "setup.starter.unpublished": [
    "abd9fb52",
@@ -5759,7 +5759,7 @@
   ],
   "setup.step.install": [
    "5878fcbd",
-   "Laat Pressless jou werf bereik"
+   "Gee Pressless toegang tot jou werf"
   ],
   "setup.step.key": [
    "ba46cbad",
@@ -5799,7 +5799,7 @@
   ],
   "setup.takein.finish": [
    "eaed4741",
-   "Pers Volgende om hierdie werf op hierdie rekenaar in Pressless in te kopieer en klaar te maak. Niks op GitHub verander nie."
+   "Druk Volgende om hierdie werf op hierdie rekenaar in Pressless in te kopieer en klaar te maak. Niks op GitHub verander nie."
   ],
   "setup.takein.left": [
    "d6714dd9",
@@ -5827,7 +5827,7 @@
   ],
   "setup.takein.never.settings": [
    "e392377b",
-   "Instellings op jou ander rekenaar gehou: die Google Analytics-meet-ID, die Analytics-eiendom, die Hou van- en Hou nie van-knoppies, die YouTube-kanaal en die Daaglikse-opdrag-filter. Stel hulle weer in Instellings voordat jy enigiets na jou werf pers: tot dan los jou volgende publisering Google Analytics en die Hou van- en Hou nie van-knoppies van elke bladsy af."
+   "Instellings op jou ander rekenaar gehou: die Google Analytics-meet-ID, die Analytics-eiendom, die Hou van- en Hou nie van-knoppies, die YouTube-kanaal en die Daaglikse-opdrag-filter. Stel hulle weer in Instellings voordat jy enigiets na jou werf pers: tot dan laat jou volgende publisering Google Analytics en die Hou van- en Hou nie van-knoppies van elke bladsy weg."
   ],
   "setup.takein.pages": [
    "45aba1a4",
@@ -5843,7 +5843,7 @@
   ],
   "setup.takeover.limits": [
    "5ff4f221",
-   "Pressless kan net vind wat 'n skakel bereik, so 'n bladsy waarna niks skakel nie, is nie afgelaai nie. 'n Bladsy wat 'n skrip in die blaaier bou, het gekom as daardie skrip se leë dop. Kyk deur jou bladsye voor jou eerste publisering."
+   "Pressless kan net vind wat 'n skakel bereik, so 'n bladsy waarna niks skakel nie, is nie afgelaai nie. 'n Bladsy wat 'n skrip in die blaaier bou, het as daardie skrip se leë dop deurgekom. Kyk deur jou bladsye voor jou eerste publisering."
   ],
   "setup.takeover.owed": [
    "ebb02d2c",
@@ -6043,7 +6043,7 @@
   ],
   "sites_screen.move.carry": [
    "77c69ecd",
-   "Kopieer die lêers na 'n USB-stokkie, of in 'n wolkgids wat albei rekenaars bereik. Laai dan Pressless op die nuwe rekenaar af en begin dit."
+   "Kopieer die lêers na 'n USB-stokkie, of in 'n wolkgids waartoe albei rekenaars toegang het. Laai dan Pressless op die nuwe rekenaar af en begin dit."
   ],
   "sites_screen.move.open": [
    "aa1034d0",
@@ -6223,7 +6223,7 @@
   ],
   "takeover.changes": [
    "fbabfeac",
-   "Niks verander op GitHub nie, en die ou werf bly op, tot jou eerste publisering. Pressless sal jou dan weer vra. Daardie publisering sal hierdie verander:"
+   "Niks verander op GitHub nie, en die ou werf bly aanlyn, tot jou eerste publisering. Pressless sal jou dan weer vra. Daardie publisering sal hierdie verander:"
   ],
   "takeover.domain": [
    "88be4932",
@@ -6247,7 +6247,7 @@
   ],
   "templates.about": [
    "ea0a0d5b",
-   "Die sjabloon <strong>{name}</strong>. Dit word nooit as 'n bladsy op\njou werf gesit nie; iets nuuts begin kan daarmee begin."
+   "Die sjabloon <strong>{name}</strong>. Dit word nooit as 'n bladsy op\njou werf gesit nie; jy kan iets nuuts daarmee begin."
   ],
   "templates.bin": [
    "d753b8bf",
@@ -6263,7 +6263,7 @@
   ],
   "templates.lyric": [
    "b405b979",
-   "'n Lirieke met strofes"
+   "'n Liedteks met strofes"
   ],
   "templates.lyric.body": [
    "47f51aa3",
@@ -6475,11 +6475,11 @@
   ],
   "undo.demoted_many": [
    "a23760ac",
-   "{count} teruggedraai na konsepte"
+   "{count} teruggesit as konsepte"
   ],
   "undo.demoted_one": [
    "6eef5137",
-   "{count} teruggedraai na 'n konsep"
+   "{count} teruggesit as 'n konsep"
   ],
   "undo.entries": [
    "d06542eb",
@@ -6755,7 +6755,7 @@
   ],
   "votes_setup.step.4": [
    "5bb19f18",
-   "Pers in <b>Authentication</b> <b>Get started</b>, skakel dan die <b>Anonymous</b>-aanmeldmetode aan."
+   "Druk in <b>Authentication</b> <b>Get started</b>, skakel dan die <b>Anonymous</b>-aanmeldmetode aan."
   ],
   "votes_setup.step.5": [
    "df6ca418",
@@ -6903,19 +6903,19 @@
   ],
   "youtube.step.1": [
    "323eb62c",
-   "Gaan na <b>console.cloud.google.com</b> en meld met jou Google-rekening aan. Klik die projekknoppie links bo, langs \"Google Cloud\", dan <b>New project</b>. Gee dit enige naam en pers <b>Create</b>. Wanneer dit gereed is, kies dit met dieselfde knoppie. 'n Projek wat jy reeds het, werk ook: kies dit eerder."
+   "Gaan na <b>console.cloud.google.com</b> en meld met jou Google-rekening aan. Klik die projekknoppie links bo, langs \"Google Cloud\", dan <b>New project</b>. Gee dit enige naam en druk <b>Create</b>. Wanneer dit gereed is, kies dit met dieselfde knoppie. 'n Projek wat jy reeds het, werk ook: kies dit eerder."
   ],
   "youtube.step.2": [
    "6186ff5d",
-   "Tik in die soekblokkie bo <b>YouTube Data API v3</b>, maak dit oop, en pers <b>Enable</b>."
+   "Tik in die soekblokkie bo <b>YouTube Data API v3</b>, maak dit oop, en druk <b>Enable</b>."
   ],
   "youtube.step.3": [
    "ee7bd5a4",
-   "Maak op daardie bladsy die <b>Credentials</b>-oortjie oop en pers <b>Create credentials</b>, dan <b>API key</b>, 'n nuwe een selfs al het jy ander. Merk onder \"Select API restrictions\" net <b>YouTube Data API v3</b>. Laat \"Application restrictions\" op <b>None</b>: Pressless loop op jou rekenaar, nie op 'n webwerf nie. Pers <b>Create</b>, en kopieer dan die sleutel."
+   "Maak op daardie bladsy die <b>Credentials</b>-oortjie oop en druk <b>Create credentials</b>, dan <b>API key</b>, 'n nuwe een selfs al het jy ander. Merk onder \"Select API restrictions\" net <b>YouTube Data API v3</b>. Laat \"Application restrictions\" op <b>None</b>: Pressless loop op jou rekenaar, nie op 'n webwerf nie. Druk <b>Create</b>, en kopieer dan die sleutel."
   ],
   "youtube.step.4": [
    "14df0c94",
-   "Plak die sleutel hieronder, met jou kanaal se adres, en pers <b>Stoor en kyk na</b>."
+   "Plak die sleutel hieronder, met jou kanaal se adres, en druk <b>Stoor en kyk na</b>."
   ],
   "youtube.subscribers": [
    "a344c89d",
