@@ -155,7 +155,7 @@
   ],
   "assistant.next.would_replace": [
    "992dcafe",
-   "Wenn die schreibende Person sie ersetzen will, klickt sie in Pressless auf Veröffentlichen und wählt Die Website auf GitHub ersetzen. Danach bittet sie noch einmal darum, zu veröffentlichen."
+   "Wenn die schreibende Person sie ersetzen will, klickt sie in Pressless auf Veröffentlichen und wählt Die Website auf GitHub ersetzen. Bitte danach noch einmal darum, zu veröffentlichen."
   ],
   "assistant.no_program": [
    "663b312e",
@@ -1387,15 +1387,15 @@
   ],
   "dashboard.count.many": [
    "b7692abe",
-   "<b>{count}</b> <span>Menschen haben deine Website in den {window} gelesen.</span>"
+   "<b>{count}</b> <span>Menschen haben deine Website in {window} gelesen.</span>"
   ],
   "dashboard.count.none": [
    "4bfdbbf9",
-   "Soweit Google es sagen kann, hat in den {window} niemand deine Website gelesen."
+   "Soweit Google es sagen kann, hat in {window} niemand deine Website gelesen."
   ],
   "dashboard.count.one": [
    "473234ed",
-   "<b>{count}</b> <span>Person hat deine Website in den {window} gelesen.</span>"
+   "<b>{count}</b> <span>Person hat deine Website in {window} gelesen.</span>"
   ],
   "dashboard.country": [
    "701d021d",
@@ -2703,7 +2703,7 @@
   ],
   "failure.publishing.WouldReplaceASite.what": [
    "66b01a4b",
-   "In deinem GitHub-Repository liegt schon eine Website, und deine Startseite würde sie ersetzen. Deshalb hat Pressless angehalten."
+   "In deinem GitHub-Repository liegt schon eine Website, und deine Starter-Website würde sie ersetzen. Deshalb hat Pressless angehalten."
   ],
   "failure.secret.github_sign_in": [
    "8feb3d43",
@@ -3247,7 +3247,7 @@
   ],
   "import.folder.carried_link": [
    "4be8d77e",
-   "ein Link zu {path}, das nur innerhalb der Seiten mitgekommen ist, die es verwenden, nicht als Datei, die ein Link erreichen kann"
+   "ein Link zu {path}, der nur innerhalb der Seiten mitgekommen ist, die ihn verwenden, nicht als Datei, die ein Link erreichen kann"
   ],
   "import.folder.choose": [
    "3edeb529",
@@ -3471,7 +3471,7 @@
   ],
   "import.look.choose": [
    "7411e643",
-   "Wähle eines der Aussehen."
+   "Wähle ein Aussehen."
   ],
   "import.media.counts": [
    "0b20c718",
@@ -4135,7 +4135,7 @@
   ],
   "notice.publishing.starter_kept": [
    "448962aa",
-   "Pressless konnte nicht vermerken, dass deine Startseite jetzt veröffentlicht ist. Bei deiner nächsten Veröffentlichung fragt es deshalb noch einmal, bevor es eine Website ersetzt."
+   "Pressless konnte nicht vermerken, dass deine Starter-Website jetzt veröffentlicht ist. Bei deiner nächsten Veröffentlichung fragt es deshalb noch einmal, bevor es eine Website ersetzt."
   ],
   "notice.settings.not_private": [
    "9827a6cb",
@@ -4475,7 +4475,7 @@
   ],
   "publishing.ready": [
    "a134c216",
-   "Veröffentliche jetzt noch einmal von dort, wo du warst. Deine Startseite ersetzt die Website in {repository}."
+   "Veröffentliche jetzt noch einmal von dort, wo du warst. Deine Starter-Website ersetzt die Website in {repository}."
   ],
   "publishing.ready.heading": [
    "5e14676a",
@@ -4495,7 +4495,7 @@
   ],
   "publishing.replace.intro": [
    "baaf948a",
-   "In deinem Repository {repository} liegt schon eine Website. Wenn du deine Startseite veröffentlichst, ersetzt sie dessen Seiten durch deine."
+   "In deinem Repository {repository} liegt schon eine Website. Wenn du deine Starter-Website veröffentlichst, ersetzt sie deren Seiten durch deine."
   ],
   "publishing.takeover": [
    "3471ff25",
@@ -4599,7 +4599,7 @@
   ],
   "publishing.takeover.steps": [
    "022b8a72",
-   "Entferne zuerst die Build-Datei selbst, weil Pressless sie nicht ändern darf. Klicke nacheinander auf jeden Link unten. Er öffnet GitHub in einem neuen Tab. Klicke dort auf Commit changes und komme dann hierher zurück."
+   "Entferne zuerst die Build-Datei selbst, weil Pressless sie nicht ändern darf. Klicke nacheinander auf jeden Link unten. Er öffnet GitHub in einem neuen Tab. Klicke dort auf Commit changes und komm dann hierher zurück."
   ],
   "publishing.takeover.still_there": [
    "385d298e",
@@ -5091,7 +5091,7 @@
   ],
   "setup.done.starter": [
    "ec2b499e",
-   "Deine Startseite steht bereit. Sie ist nicht im Netz, bis du sie veröffentlichst."
+   "Deine Starter-Website steht bereit. Sie ist nicht im Netz, bis du sie veröffentlichst."
   ],
   "setup.done.take_over": [
    "7115c440",
@@ -5735,7 +5735,7 @@
   ],
   "setup.starter.box": [
    "9c91ac53",
-   "Mit einer Startseite beginnen: eine Startseite, eine Seite Über mich, ein Menü, eine Kopfzeile und eine Fußzeile, bereit zum Ändern."
+   "Mit einer Starter-Website beginnen: eine Startseite, eine Seite Über mich, ein Menü, eine Kopfzeile und eine Fußzeile, bereit zum Ändern."
   ],
   "setup.starter.box.empty": [
    "f18aea9c",
@@ -5751,7 +5751,7 @@
   ],
   "setup.starter.unpublished": [
    "abd9fb52",
-   "Deine Startseite ist noch nicht im Netz."
+   "Deine Starter-Website ist noch nicht im Netz."
   ],
   "setup.step.account": [
    "d9246f26",
