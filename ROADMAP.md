@@ -8890,6 +8890,13 @@ does not wait on them.
   English one does not. The probe was proven on a planted case of
   each. Not covered: boxes a button opens. Gemini still out of
   credits (about 15 hours to reset).
+  2026-11-20: box check (translate/dialog-check.py in the session
+  scratchpad): every box a reached screen holds, opened, plus the
+  script-built publish-plan and failure boxes, in all five languages at
+  both sizes, in Chrome. None wider than the window, none cut off, no
+  button or heading wrapping where the English one does not. The probe
+  was proven on a planted case of each. Not covered: boxes on a
+  wizard's later steps. Gemini still out of credits (about 14 hours).
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
