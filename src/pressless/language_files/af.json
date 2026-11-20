@@ -1,0 +1,6961 @@
+{
+ "name": "Afrikaans",
+ "one": [
+  1
+ ],
+ "thousands": " ",
+ "words": {
+  "about.independent": [
+   "db462f93",
+   "Pressless is 'n onafhanklike projek. Dit word nie deur GitHub, Google of WordPress gemaak nie, is nie aan hulle verbonde nie en word nie deur hulle onderskryf nie. Jy is verantwoordelik vir wat jy publiseer, en om die gebruiksvoorwaardes van GitHub Pages, wat jou werf huisves, na te kom."
+  ],
+  "about.licence": [
+   "1a5d3feb",
+   "Dit is gratis om te gebruik, te verander en te deel, onder die MIT-lisensie. Sy bronkode is op <a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Pressless se bladsy op GitHub</a>."
+  ],
+  "about.version": [
+   "1505db47",
+   "Dit is Pressless {version}."
+  ],
+  "assistant.about": [
+   "832ce931",
+   "'n KI-toep op hierdie rekenaar, soos Claude, kan jou werf deur Pressless skryf en wysig. Niks word gepubliseer, ongedaan gemaak of in die snippermandjie gegooi totdat jy in Pressless Ja pers nie. Dit kan nie by jou sleutels, jou instellings, of enige bladsy se kode uitkom nie."
+  ],
+  "assistant.app.claude_code": [
+   "246ef8c1",
+   "Claude Code"
+  ],
+  "assistant.app.claude_desktop": [
+   "6a7fb117",
+   "Claude Desktop"
+  ],
+  "assistant.app.other": [
+   "3ff585c5",
+   "'n Ander KI-toep"
+  ],
+  "assistant.bad_call": [
+   "12d8e751",
+   "Daardie oproep kan nie loop nie: {why}."
+  ],
+  "assistant.bad_data": [
+   "e221e284",
+   "Die lêer se data is nie base64 nie."
+  ],
+  "assistant.block": [
+   "773d603f",
+   "Of, waar die toep sy instellings as teks vra:"
+  ],
+  "assistant.box.bin": [
+   "8cfa54ae",
+   "Sit {name} in die snippermandjie."
+  ],
+  "assistant.box.discard": [
+   "5d4ac414",
+   "Gooi die veranderings weg wat op {name} wag."
+  ],
+  "assistant.box.remove": [
+   "01ca3786",
+   "Verwyder die bladsy {name} nou van jou werf af."
+  ],
+  "assistant.box.rename": [
+   "8a3f497e",
+   "Hernoem die bladsy {name} nou na {to}."
+  ],
+  "assistant.box.undo": [
+   "7d062601",
+   "Sit jou werf terug soos dit was voor die laaste publisering."
+  ],
+  "assistant.connect": [
+   "87973d1d",
+   "'n KI-toep koppel"
+  ],
+  "assistant.connect.about": [
+   "e6023283",
+   "Pressless kan Claude Desktop vir jou koppel. Die knoppie voeg Pressless by Claude Desktop se instellingslêer en hou alles anders daarin. 'n Kopie van die lêer soos dit was, word langsaan gehou."
+  ],
+  "assistant.connect.button": [
+   "e91e2794",
+   "Koppel Claude Desktop"
+  ],
+  "assistant.connect.done": [
+   "f6e3aaf4",
+   "Claude Desktop is gekoppel. Sluit Claude Desktop heeltemal af en begin dit weer. As jy sy venster toemaak, kan dit steeds loop."
+  ],
+  "assistant.connect.not_found": [
+   "76f5992b",
+   "Pressless kon nie Claude Desktop op hierdie rekenaar vind nie, so dit het niks verander nie. Installeer Claude Desktop en maak dit een keer oop, en pers dan die knoppie weer."
+  ],
+  "assistant.connect.unreadable": [
+   "5b0e5bde",
+   "Pressless kon nie Claude Desktop se instellingslêer lees of verander nie, so dit is soos dit was. Volg eerder die stappe hieronder."
+  ],
+  "assistant.copy": [
+   "e21f935f",
+   "Kopieer"
+  ],
+  "assistant.entry_or_page": [
+   "5c0632b3",
+   "Noem 'n inskrywing of 'n bladsy, nie albei nie."
+  ],
+  "assistant.links_owed": [
+   "6d59398a",
+   "Die navigasie neem skakels, nie afdelings nie."
+  ],
+  "assistant.locked_section": [
+   "38507359",
+   "Daardie verandering voeg 'n skrip-, styl- of kode-afdeling by, verander, skuif of verwyder dit, wat die KI-helper nie mag doen nie. Hou elke gesluite afdeling soos dit is, op sy plek."
+  ],
+  "assistant.log": [
+   "b0fae8b7",
+   "Pressless se logboek ({file}, in die Pressless-data-gids langs die program)"
+  ],
+  "assistant.next.again": [
+   "e8a50681",
+   "Probeer weer. As dit aanhou gebeur, kan die skrywer {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.again_later": [
+   "ee3f6ee1",
+   "Probeer later weer. As dit aanhou gebeur, kan die skrywer {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.build_stopped": [
+   "ec717dc2",
+   "{log} noem die lêer. Die skrywer kan dit nagaan, en dan weer vra. As dit aanhou gebeur, kan hulle die logboek aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.credential": [
+   "f4d3d78f",
+   "As die skrywer se sleutelring gesluit is, maak hulle dit oop, en vra dan weer; andersins voer hulle dit weer in Pressless se Instellings in. As dit aanhou gebeur, kan hulle {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.nothing_to_publish": [
+   "69522758",
+   "Publiseer eers 'n inskrywing, of die skrywer skakel die joernaal af op Pressless se Joernaal-skerm. As inskrywings weg is, kan hulle {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.send_log": [
+   "cd499ccb",
+   "Die skrywer kan {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.settings": [
+   "f5f673f5",
+   "Pressless het niks daarin verander nie. Die skrywer kan {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.takeover": [
+   "46936a2b",
+   "Die skrywer pers Publiseer in Pressless en volg Skakel jou werf oor na Pressless, wat sê wat eers verander; vra dan om weer te publiseer."
+  ],
+  "assistant.next.too_large": [
+   "c4293322",
+   "As 'n groot lêer bygevoeg is, verwyder of krimp dit, en probeer dan weer. As dit aanhou gebeur, kan die skrywer {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.unfetchable": [
+   "befb1dc5",
+   "{log} noem die lêer. Die skrywer hernoem dit op die werf en publiseer; vra dan weer."
+  ],
+  "assistant.next.unforeseen": [
+   "09842849",
+   "Probeer weer, en die skrywer kan {log} aan wie hulle ook al help, stuur."
+  ],
+  "assistant.next.would_replace": [
+   "992dcafe",
+   "As die skrywer dit wil vervang, pers hulle Publiseer in Pressless en kies Vervang die werf op GitHub; vra dan om weer te publiseer."
+  ],
+  "assistant.no_program": [
+   "663b312e",
+   "Pressless kan nie sê waar sy program is nie, so daar is niks vir 'n KI-toep om te begin nie. As Pressless geskuif of verwyder is terwyl dit oop was, begin dit weer van waar dit nou is."
+  ],
+  "assistant.not_json": [
+   "46e57d27",
+   "Daardie oproep kan nie loop nie: dit is nie 'n JSON-voorwerp nie."
+  ],
+  "assistant.off": [
+   "0d2ca6ca",
+   "Af: geen KI-toep kan koppel nie."
+  ],
+  "assistant.on": [
+   "f6d08087",
+   "Aan: 'n KI-toep kan koppel terwyl Pressless oop is."
+  ],
+  "assistant.one_waiting": [
+   "3feee57b",
+   "'n Versoek wag reeds vir die skrywer se antwoord. Vra request_status totdat dit beantwoord is."
+  ],
+  "assistant.open_pressless": [
+   "997d09a2",
+   "Pressless is nie oop nie, of sy KI-helper is afgeskakel. Vra die skrywer om Pressless oop te maak en KI-helper aan te skakel, en probeer dan weer."
+  ],
+  "assistant.own_stylesheets": [
+   "65e7dc90",
+   "Hierdie werf gebruik sy eie stylblaaie, so sy voorkoms word in Pressless se Voorkoms-skerm verander, nie deur die KI-helper nie."
+  ],
+  "assistant.program": [
+   "586765bd",
+   "Die KI-toep begin hierdie program, met hierdie argument:"
+  ],
+  "assistant.restart_app": [
+   "e39dbe99",
+   "Pressless is opgedateer nadat hierdie KI-toep sy helper begin het. Herbegin die KI-toep."
+  ],
+  "assistant.sections_owed": [
+   "33c841df",
+   "Gee die bladsy se afdelings."
+  ],
+  "assistant.status.done": [
+   "ed251864",
+   "Klaar."
+  ],
+  "assistant.status.expired": [
+   "078ba92d",
+   "Niemand het binne 30 minute geantwoord nie. Niks het verander nie."
+  ],
+  "assistant.status.failed": [
+   "e478d55d",
+   "Dit het nie klaargemaak nie."
+  ],
+  "assistant.status.refused": [
+   "b6688763",
+   "Die skrywer het nog nie gesê nie. Niks het verander nie."
+  ],
+  "assistant.status.running": [
+   "a6f05661",
+   "Loop nou."
+  ],
+  "assistant.status.unknown": [
+   "4d86c1cb",
+   "Pressless ken nie daardie versoek nie. Dit is dalk sedertdien herbegin."
+  ],
+  "assistant.status.waiting": [
+   "c3801da7",
+   "Wag vir die skrywer se antwoord in Pressless se eie venster. Sê vir die skrywer, en vra weer sodra hulle sê hulle het geantwoord. Dit wag tot 30 minute."
+  ],
+  "assistant.steps.claude_code": [
+   "30ef7965",
+   "Kopieer hierdie reël, plak dit in 'n terminaal, en pers Enter. Claude Code vind dan Pressless in watter gids dit ook al begin."
+  ],
+  "assistant.steps.claude_desktop": [
+   "162c7571",
+   "Om dit eerder met die hand te doen: maak Settings oop, dan Desktop app. Klik onderaan daardie bladsy Manage langs Extensions, dan Edit config. 'n Gids maak oop met 'n lêer gekies: maak daardie lêer in 'n teksredigeerder oop. Plak die teks hierbo daarin, en hou wat reeds daar is, stoor dit, en begin Claude Desktop weer."
+  ],
+  "assistant.steps.other": [
+   "91903512",
+   "'n Toep wat 'n plaaslike MCP-bediener kan begin, kan ook werk: gee dit die program en argument hierbo. Pressless word net met die twee toepe wat hier genoem word, getoets."
+  ],
+  "assistant.still_working": [
+   "38bd395c",
+   "Pressless het te lank gevat om te antwoord, en doen dit dalk nog. Kyk met site_overview, of request_status vir 'n versoek, voordat jy weer probeer."
+  ],
+  "assistant.switch_off": [
+   "73b18d52",
+   "Skakel af"
+  ],
+  "assistant.switch_on": [
+   "6d30f572",
+   "Skakel aan"
+  ],
+  "assistant.title": [
+   "c22bf759",
+   "KI-helper"
+  ],
+  "backups.trouble": [
+   "0bf0fd99",
+   "Die laaste rugsteun kon nie in die {folder}-gids gemaak word nie: {reason}."
+  ],
+  "cheatsheet.does": [
+   "c74ea9dc",
+   "Wat dit doen"
+  ],
+  "cheatsheet.panel": [
+   "92850bf5",
+   "Spiekbrief: hoe om jou woorde te stileer"
+  ],
+  "cheatsheet.print": [
+   "8d32967d",
+   "'n Bladsy om te druk"
+  ],
+  "cheatsheet.title": [
+   "0a5c8a6c",
+   "Pressless-spiekbrief"
+  ],
+  "cheatsheet.where": [
+   "ee932aa4",
+   "Tik hierdie in die blokkie waar jy 'n inskrywing skryf."
+  ],
+  "cheatsheet.you_type": [
+   "327280db",
+   "Jy tik"
+  ],
+  "checklist.count": [
+   "79e658a3",
+   "{done} van {total} klaar."
+  ],
+  "checklist.describe": [
+   "7413d26e",
+   "Beskryf jou werf in een reël"
+  ],
+  "checklist.done": [
+   "11a6767d",
+   "Klaar"
+  ],
+  "checklist.home": [
+   "b437ac50",
+   "Maak die Tuis-bladsy joune"
+  ],
+  "checklist.icon": [
+   "b70602ac",
+   "Kies jou werf se ikoon"
+  ],
+  "checklist.menu": [
+   "ffa34423",
+   "Stel die kieslys op"
+  ],
+  "checklist.publish": [
+   "72c582e7",
+   "Sit jou werf op die web"
+  ],
+  "checklist.title": [
+   "51eb40d7",
+   "Maak die opstelling klaar"
+  ],
+  "checklist.to_do": [
+   "be2d4e04",
+   "Nog om te doen"
+  ],
+  "country.AD": [
+   "3e340be4",
+   "Andorra"
+  ],
+  "country.AE": [
+   "dd64913c",
+   "Verenigde Arabiese Emirate"
+  ],
+  "country.AF": [
+   "5dbddf91",
+   "Afghanistan"
+  ],
+  "country.AG": [
+   "100c4768",
+   "Antigua en Barbuda"
+  ],
+  "country.AI": [
+   "a4a0c7e7",
+   "Anguilla"
+  ],
+  "country.AL": [
+   "1af00b87",
+   "Albanië"
+  ],
+  "country.AM": [
+   "2ddc5634",
+   "Armenië"
+  ],
+  "country.AO": [
+   "22b96532",
+   "Angola"
+  ],
+  "country.AQ": [
+   "c43f33f0",
+   "Antarktika"
+  ],
+  "country.AR": [
+   "ea0b937e",
+   "Argentinië"
+  ],
+  "country.AS": [
+   "1eb48c03",
+   "Amerikaanse Samoa"
+  ],
+  "country.AT": [
+   "c9cab023",
+   "Oostenryk"
+  ],
+  "country.AU": [
+   "c1ef40ce",
+   "Australië"
+  ],
+  "country.AW": [
+   "b566255e",
+   "Aruba"
+  ],
+  "country.AX": [
+   "6fc656b1",
+   "Ålandeilande"
+  ],
+  "country.AZ": [
+   "efa9150a",
+   "Azerbeidjan"
+  ],
+  "country.BA": [
+   "b0772b9c",
+   "Bosnië en Herzegowina"
+  ],
+  "country.BB": [
+   "8e8dfae9",
+   "Barbados"
+  ],
+  "country.BD": [
+   "2f1d47eb",
+   "Bangladesj"
+  ],
+  "country.BE": [
+   "348841ef",
+   "België"
+  ],
+  "country.BF": [
+   "a564371a",
+   "Burkina Faso"
+  ],
+  "country.BG": [
+   "66b86bf0",
+   "Bulgarye"
+  ],
+  "country.BH": [
+   "94b2859b",
+   "Bahrein"
+  ],
+  "country.BI": [
+   "c835bd1c",
+   "Boeroendi"
+  ],
+  "country.BJ": [
+   "69d0a7b8",
+   "Benin"
+  ],
+  "country.BL": [
+   "d47eb13f",
+   "Saint Barthélemy"
+  ],
+  "country.BM": [
+   "79c89fd4",
+   "Bermuda"
+  ],
+  "country.BN": [
+   "f196e55e",
+   "Broenei"
+  ],
+  "country.BO": [
+   "9621c073",
+   "Bolivië"
+  ],
+  "country.BQ": [
+   "c90faa11",
+   "Bonaire, Sint Eustatius en Saba"
+  ],
+  "country.BR": [
+   "07f62b02",
+   "Brasilië"
+  ],
+  "country.BS": [
+   "58f91a2a",
+   "Bahamas"
+  ],
+  "country.BT": [
+   "d889e217",
+   "Bhoetan"
+  ],
+  "country.BV": [
+   "f6b5c9fb",
+   "Bouveteiland"
+  ],
+  "country.BW": [
+   "1672f60c",
+   "Botswana"
+  ],
+  "country.BY": [
+   "4bef16df",
+   "Wit-Rusland"
+  ],
+  "country.BZ": [
+   "71dc81f1",
+   "Belize"
+  ],
+  "country.CA": [
+   "be55ef3f",
+   "Kanada"
+  ],
+  "country.CC": [
+   "b8e56e41",
+   "Kokoseilande"
+  ],
+  "country.CD": [
+   "098c6424",
+   "Demokratiese Republiek van die Kongo"
+  ],
+  "country.CF": [
+   "e509cda4",
+   "Sentraal-Afrikaanse Republiek"
+  ],
+  "country.CG": [
+   "7491ff18",
+   "Republiek van die Kongo"
+  ],
+  "country.CH": [
+   "22755831",
+   "Switserland"
+  ],
+  "country.CI": [
+   "95ffc51d",
+   "Ivoorkus"
+  ],
+  "country.CK": [
+   "56850f3e",
+   "Cookeilande"
+  ],
+  "country.CL": [
+   "f5273e23",
+   "Chili"
+  ],
+  "country.CM": [
+   "085807f2",
+   "Kameroen"
+  ],
+  "country.CN": [
+   "10436829",
+   "Sjina"
+  ],
+  "country.CO": [
+   "6b615adb",
+   "Colombië"
+  ],
+  "country.CP": [
+   "51814bd9",
+   "Clippertoneiland"
+  ],
+  "country.CR": [
+   "e26742d7",
+   "Costa Rica"
+  ],
+  "country.CU": [
+   "0d0b4e41",
+   "Kuba"
+  ],
+  "country.CV": [
+   "881f7fcc",
+   "Kaap Verde"
+  ],
+  "country.CW": [
+   "9b1d93b3",
+   "Curaçao"
+  ],
+  "country.CX": [
+   "10d025c2",
+   "Kerseiland"
+  ],
+  "country.CY": [
+   "5f1162c5",
+   "Siprus"
+  ],
+  "country.CZ": [
+   "1c769ecb",
+   "Tsjeggië"
+  ],
+  "country.DE": [
+   "80db4ccd",
+   "Duitsland"
+  ],
+  "country.DG": [
+   "409d610c",
+   "Diego Garcia"
+  ],
+  "country.DJ": [
+   "4678a57b",
+   "Djiboeti"
+  ],
+  "country.DK": [
+   "c5270975",
+   "Denemarke"
+  ],
+  "country.DM": [
+   "be2a7f56",
+   "Dominica"
+  ],
+  "country.DO": [
+   "81e884cb",
+   "Dominikaanse Republiek"
+  ],
+  "country.DZ": [
+   "30e23022",
+   "Algerië"
+  ],
+  "country.EC": [
+   "2ca26c60",
+   "Ecuador"
+  ],
+  "country.EE": [
+   "10aeba69",
+   "Estland"
+  ],
+  "country.EG": [
+   "557c1599",
+   "Egipte"
+  ],
+  "country.EH": [
+   "89b94e52",
+   "Wes-Sahara"
+  ],
+  "country.ER": [
+   "01bc4009",
+   "Eritrea"
+  ],
+  "country.ES": [
+   "8ef41e6f",
+   "Spanje"
+  ],
+  "country.ET": [
+   "7d94977e",
+   "Ethiopië"
+  ],
+  "country.EU": [
+   "e595f45d",
+   "Europa"
+  ],
+  "country.FI": [
+   "aed8f531",
+   "Finland"
+  ],
+  "country.FJ": [
+   "679c02dc",
+   "Fidji"
+  ],
+  "country.FK": [
+   "c387e2d5",
+   "Falklandeilande"
+  ],
+  "country.FM": [
+   "14d55e84",
+   "Gefedereerde State van Mikronesië"
+  ],
+  "country.FO": [
+   "773ca4d6",
+   "Faroëreilande"
+  ],
+  "country.FR": [
+   "7a1ca4ef",
+   "Frankryk"
+  ],
+  "country.GA": [
+   "7e222a78",
+   "Gaboen"
+  ],
+  "country.GB": [
+   "8d23a6e3",
+   "Verenigde Koninkryk"
+  ],
+  "country.GD": [
+   "0593aa0c",
+   "Grenada"
+  ],
+  "country.GE": [
+   "46914921",
+   "Georgië"
+  ],
+  "country.GF": [
+   "2b457cd8",
+   "Frans-Guyana"
+  ],
+  "country.GG": [
+   "b9c48cb1",
+   "Guernsey"
+  ],
+  "country.GH": [
+   "583201c1",
+   "Ghana"
+  ],
+  "country.GI": [
+   "097ced58",
+   "Gibraltar"
+  ],
+  "country.GL": [
+   "48e10296",
+   "Groenland"
+  ],
+  "country.GM": [
+   "c6e681b1",
+   "Gambië"
+  ],
+  "country.GN": [
+   "dd591d77",
+   "Guinee"
+  ],
+  "country.GP": [
+   "35c9de3c",
+   "Guadeloupe"
+  ],
+  "country.GQ": [
+   "89946878",
+   "Ekwatoriaal-Guinee"
+  ],
+  "country.GR": [
+   "9c93ad43",
+   "Griekeland"
+  ],
+  "country.GS": [
+   "baf802b2",
+   "Suid-Georgië en die Suidelike Sandwicheilande"
+  ],
+  "country.GT": [
+   "45a15a24",
+   "Guatemala"
+  ],
+  "country.GU": [
+   "5c4b321e",
+   "Guam"
+  ],
+  "country.GW": [
+   "75e8f462",
+   "Guinee-Bissau"
+  ],
+  "country.GY": [
+   "ea3bfc26",
+   "Guyana"
+  ],
+  "country.HK": [
+   "1ed8c7e5",
+   "Hongkong"
+  ],
+  "country.HM": [
+   "e3a00ae6",
+   "Heard- en McDonaldeilande"
+  ],
+  "country.HN": [
+   "b79b5f97",
+   "Honduras"
+  ],
+  "country.HR": [
+   "7328d3f8",
+   "Kroasië"
+  ],
+  "country.HT": [
+   "d090b87e",
+   "Haïti"
+  ],
+  "country.HU": [
+   "504be308",
+   "Hongarye"
+  ],
+  "country.IC": [
+   "a03ef3b6",
+   "Kanariese Eilande"
+  ],
+  "country.ID": [
+   "dbc74a36",
+   "Indonesië"
+  ],
+  "country.IE": [
+   "02bf1dfa",
+   "Ierland"
+  ],
+  "country.IL": [
+   "3552ac0c",
+   "Israel"
+  ],
+  "country.IM": [
+   "34096f96",
+   "Eiland Man"
+  ],
+  "country.IN": [
+   "abd14921",
+   "Indië"
+  ],
+  "country.IO": [
+   "397d494b",
+   "Brits-Indiese Oseaangebied"
+  ],
+  "country.IQ": [
+   "de5008d1",
+   "Irak"
+  ],
+  "country.IR": [
+   "18d4e170",
+   "Iran"
+  ],
+  "country.IS": [
+   "595d6d91",
+   "Ysland"
+  ],
+  "country.IT": [
+   "5a9cf672",
+   "Italië"
+  ],
+  "country.JE": [
+   "764a8c04",
+   "Jersey"
+  ],
+  "country.JM": [
+   "42c298ba",
+   "Jamaika"
+  ],
+  "country.JO": [
+   "e8bfe1ed",
+   "Jordanië"
+  ],
+  "country.JP": [
+   "64729438",
+   "Japan"
+  ],
+  "country.KE": [
+   "74e1891d",
+   "Kenia"
+  ],
+  "country.KG": [
+   "6f189bf0",
+   "Kirgisië"
+  ],
+  "country.KH": [
+   "0c2cb01a",
+   "Kambodja"
+  ],
+  "country.KI": [
+   "81912314",
+   "Kiribati"
+  ],
+  "country.KM": [
+   "e814fdb4",
+   "Comore"
+  ],
+  "country.KN": [
+   "0e89123f",
+   "Saint Kitts en Nevis"
+  ],
+  "country.KP": [
+   "ae6175f1",
+   "Noord-Korea"
+  ],
+  "country.KR": [
+   "c85329e3",
+   "Suid-Korea"
+  ],
+  "country.KW": [
+   "10c3c2e2",
+   "Koeweit"
+  ],
+  "country.KY": [
+   "83f2b333",
+   "Kaaimaneilande"
+  ],
+  "country.KZ": [
+   "75c02b8d",
+   "Kazakstan"
+  ],
+  "country.LA": [
+   "98e18f46",
+   "Laos"
+  ],
+  "country.LB": [
+   "e34dd616",
+   "Libanon"
+  ],
+  "country.LC": [
+   "abe06aae",
+   "Saint Lucia"
+  ],
+  "country.LI": [
+   "6ff080c0",
+   "Liechtenstein"
+  ],
+  "country.LK": [
+   "07f8d114",
+   "Sri Lanka"
+  ],
+  "country.LR": [
+   "c9d2604d",
+   "Liberië"
+  ],
+  "country.LS": [
+   "5c2e4745",
+   "Lesotho"
+  ],
+  "country.LT": [
+   "5c83a631",
+   "Litaue"
+  ],
+  "country.LU": [
+   "ed76f191",
+   "Luxemburg"
+  ],
+  "country.LV": [
+   "988c8160",
+   "Letland"
+  ],
+  "country.LY": [
+   "2aa2fcef",
+   "Libië"
+  ],
+  "country.MA": [
+   "b675f5df",
+   "Marokko"
+  ],
+  "country.MC": [
+   "935018cc",
+   "Monaco"
+  ],
+  "country.MD": [
+   "14ad63a1",
+   "Moldowa"
+  ],
+  "country.ME": [
+   "7ab597e1",
+   "Montenegro"
+  ],
+  "country.MF": [
+   "00d7cbfb",
+   "Saint Martin"
+  ],
+  "country.MG": [
+   "d6804464",
+   "Madagaskar"
+  ],
+  "country.MH": [
+   "fe33c925",
+   "Marshalleilande"
+  ],
+  "country.MK": [
+   "cd847226",
+   "Noord-Macedonië"
+  ],
+  "country.ML": [
+   "ee5721a5",
+   "Mali"
+  ],
+  "country.MM": [
+   "ba2039a4",
+   "Mianmar"
+  ],
+  "country.MN": [
+   "99a7c065",
+   "Mongolië"
+  ],
+  "country.MO": [
+   "a5e28dc5",
+   "Macau"
+  ],
+  "country.MP": [
+   "66545d35",
+   "Noord-Mariana-eilande"
+  ],
+  "country.MQ": [
+   "c65906dc",
+   "Martinique"
+  ],
+  "country.MR": [
+   "bfb0c8d3",
+   "Mauritanië"
+  ],
+  "country.MS": [
+   "127bcfe9",
+   "Montserrat"
+  ],
+  "country.MT": [
+   "71e9eb10",
+   "Malta"
+  ],
+  "country.MU": [
+   "aa8057ec",
+   "Mauritius"
+  ],
+  "country.MV": [
+   "8fb54471",
+   "Maledive"
+  ],
+  "country.MW": [
+   "611025cd",
+   "Malawi"
+  ],
+  "country.MX": [
+   "a7d355b2",
+   "Meksiko"
+  ],
+  "country.MY": [
+   "08450416",
+   "Maleisië"
+  ],
+  "country.MZ": [
+   "c9054826",
+   "Mosambiek"
+  ],
+  "country.NA": [
+   "ea5bd398",
+   "Namibië"
+  ],
+  "country.NC": [
+   "be60011f",
+   "Nieu-Kaledonië"
+  ],
+  "country.NE": [
+   "2cbebc54",
+   "Niger"
+  ],
+  "country.NF": [
+   "4d0dfb87",
+   "Norfolkeiland"
+  ],
+  "country.NG": [
+   "04952a0f",
+   "Nigerië"
+  ],
+  "country.NI": [
+   "94e6bd57",
+   "Nicaragua"
+  ],
+  "country.NL": [
+   "3a386c13",
+   "Nederland"
+  ],
+  "country.NO": [
+   "bea54a34",
+   "Noorweë"
+  ],
+  "country.NP": [
+   "e15a18aa",
+   "Nepal"
+  ],
+  "country.NR": [
+   "57e90088",
+   "Nauru"
+  ],
+  "country.NU": [
+   "4956c209",
+   "Niue"
+  ],
+  "country.NZ": [
+   "2898e16d",
+   "Nieu-Seeland"
+  ],
+  "country.OM": [
+   "c3ce4bf8",
+   "Oman"
+  ],
+  "country.PA": [
+   "c3668f58",
+   "Panama"
+  ],
+  "country.PC": [
+   "27b6b867",
+   "Pasifiese Gemeenskap"
+  ],
+  "country.PE": [
+   "508731a3",
+   "Peru"
+  ],
+  "country.PF": [
+   "0b6e276f",
+   "Frans-Polinesië"
+  ],
+  "country.PG": [
+   "c65742ce",
+   "Papoea-Nieu-Guinee"
+  ],
+  "country.PH": [
+   "c3782c86",
+   "Filippyne"
+  ],
+  "country.PK": [
+   "e2567312",
+   "Pakistan"
+  ],
+  "country.PL": [
+   "7f69649a",
+   "Pole"
+  ],
+  "country.PM": [
+   "0d7ea61e",
+   "Saint Pierre en Miquelon"
+  ],
+  "country.PN": [
+   "0f8a1e6a",
+   "Pitcairn"
+  ],
+  "country.PR": [
+   "d9aa43ea",
+   "Puerto Rico"
+  ],
+  "country.PS": [
+   "1d13389b",
+   "Staat Palestina"
+  ],
+  "country.PT": [
+   "4c7de2c3",
+   "Portugal"
+  ],
+  "country.PW": [
+   "7fa64773",
+   "Palau"
+  ],
+  "country.PY": [
+   "7fb4d179",
+   "Paraguay"
+  ],
+  "country.QA": [
+   "55ccc501",
+   "Katar"
+  ],
+  "country.RE": [
+   "7cdf573b",
+   "Réunion"
+  ],
+  "country.RO": [
+   "ea23726d",
+   "Roemenië"
+  ],
+  "country.RS": [
+   "e8739c83",
+   "Serwië"
+  ],
+  "country.RU": [
+   "33a3d8ed",
+   "Rusland"
+  ],
+  "country.RW": [
+   "12c8f8f4",
+   "Rwanda"
+  ],
+  "country.SA": [
+   "ed9ad136",
+   "Saoedi-Arabië"
+  ],
+  "country.SB": [
+   "cff4c58d",
+   "Salomonseilande"
+  ],
+  "country.SC": [
+   "d1d63320",
+   "Seychelle"
+  ],
+  "country.SD": [
+   "ed68d4de",
+   "Soedan"
+  ],
+  "country.SE": [
+   "85363713",
+   "Swede"
+  ],
+  "country.SG": [
+   "c96dd81d",
+   "Singapoer"
+  ],
+  "country.SH": [
+   "7a80d902",
+   "Saint Helena, Ascension en Tristan da Cunha"
+  ],
+  "country.SI": [
+   "56059e7f",
+   "Slowenië"
+  ],
+  "country.SJ": [
+   "4bfb49f1",
+   "Svalbard en Jan Mayen"
+  ],
+  "country.SK": [
+   "a2ea3384",
+   "Slowakye"
+  ],
+  "country.SL": [
+   "f405b98d",
+   "Sierra Leone"
+  ],
+  "country.SM": [
+   "230450a2",
+   "San Marino"
+  ],
+  "country.SN": [
+   "364e5f65",
+   "Senegal"
+  ],
+  "country.SO": [
+   "bd05d324",
+   "Somalië"
+  ],
+  "country.SR": [
+   "b1cb8eac",
+   "Suriname"
+  ],
+  "country.SS": [
+   "8fe5a931",
+   "Suid-Soedan"
+  ],
+  "country.ST": [
+   "82204175",
+   "São Tomé en Príncipe"
+  ],
+  "country.SV": [
+   "c408d26c",
+   "El Salvador"
+  ],
+  "country.SX": [
+   "bba28b08",
+   "Sint Maarten"
+  ],
+  "country.SY": [
+   "cf6ac29b",
+   "Sirië"
+  ],
+  "country.SZ": [
+   "e0568e4c",
+   "Eswatini"
+  ],
+  "country.TC": [
+   "8cef06ec",
+   "Turks- en Caicoseilande"
+  ],
+  "country.TD": [
+   "4256e512",
+   "Tsjad"
+  ],
+  "country.TF": [
+   "e0591152",
+   "Franse Suidelike Gebiede"
+  ],
+  "country.TG": [
+   "4080343e",
+   "Togo"
+  ],
+  "country.TH": [
+   "6e49e650",
+   "Thailand"
+  ],
+  "country.TJ": [
+   "066b0213",
+   "Tadjikistan"
+  ],
+  "country.TK": [
+   "39fc1503",
+   "Tokelau"
+  ],
+  "country.TL": [
+   "6303e847",
+   "Oos-Timor"
+  ],
+  "country.TM": [
+   "b3dfc850",
+   "Turkmenistan"
+  ],
+  "country.TN": [
+   "4609682a",
+   "Tunisië"
+  ],
+  "country.TO": [
+   "310bc325",
+   "Tonga"
+  ],
+  "country.TR": [
+   "d15b2145",
+   "Turkye"
+  ],
+  "country.TT": [
+   "0c0177b5",
+   "Trinidad en Tobago"
+  ],
+  "country.TV": [
+   "30b1ff9a",
+   "Tuvalu"
+  ],
+  "country.TW": [
+   "dd76af19",
+   "Taiwan"
+  ],
+  "country.TZ": [
+   "9555664f",
+   "Tanzanië"
+  ],
+  "country.UA": [
+   "580eedc6",
+   "Oekraïne"
+  ],
+  "country.UG": [
+   "893d5385",
+   "Uganda"
+  ],
+  "country.UM": [
+   "6691c798",
+   "Klein Eilande van die Verenigde State"
+  ],
+  "country.UN": [
+   "c3c27cfe",
+   "Verenigde Nasies"
+  ],
+  "country.US": [
+   "dbab4112",
+   "Verenigde State van Amerika"
+  ],
+  "country.UY": [
+   "fe2403f2",
+   "Uruguay"
+  ],
+  "country.UZ": [
+   "4bc2f1c2",
+   "Oesbekistan"
+  ],
+  "country.VA": [
+   "5683fdbf",
+   "Vatikaanstad"
+  ],
+  "country.VC": [
+   "b225fd33",
+   "Saint Vincent en die Grenadine"
+  ],
+  "country.VE": [
+   "020e438b",
+   "Venezuela"
+  ],
+  "country.VG": [
+   "9695b367",
+   "Maagde-eilande (Brits)"
+  ],
+  "country.VI": [
+   "d407b5fa",
+   "Maagde-eilande (VSA)"
+  ],
+  "country.VN": [
+   "2e5e8106",
+   "Viëtnam"
+  ],
+  "country.VU": [
+   "c5b2a6de",
+   "Vanuatu"
+  ],
+  "country.WF": [
+   "a9f21d07",
+   "Wallis en Futuna"
+  ],
+  "country.WS": [
+   "0ea781cd",
+   "Samoa"
+  ],
+  "country.XK": [
+   "4a867424",
+   "Kosovo"
+  ],
+  "country.XX": [
+   "b764cdc0",
+   "Onbekend"
+  ],
+  "country.YE": [
+   "21c1903a",
+   "Jemen"
+  ],
+  "country.YT": [
+   "d08b4a0f",
+   "Mayotte"
+  ],
+  "country.ZA": [
+   "3e049d78",
+   "Suid-Afrika"
+  ],
+  "country.ZM": [
+   "b5f9221a",
+   "Zambië"
+  ],
+  "country.ZW": [
+   "c72199a8",
+   "Zimbabwe"
+  ],
+  "dashboard.came_from": [
+   "9cf1e825",
+   "Gekom van"
+  ],
+  "dashboard.channel.direct": [
+   "55728b07",
+   "Die adres getik of 'n boekmerk gebruik"
+  ],
+  "dashboard.channel.email": [
+   "427a953c",
+   "'n E-pos"
+  ],
+  "dashboard.channel.organic_search": [
+   "fbc631bc",
+   "'n Soekenjin"
+  ],
+  "dashboard.channel.organic_social": [
+   "b904a771",
+   "Sosiale media"
+  ],
+  "dashboard.channel.organic_video": [
+   "4d718f6a",
+   "'n Videowerf"
+  ],
+  "dashboard.channel.paid_search": [
+   "32af1487",
+   "'n Soekadvertensie"
+  ],
+  "dashboard.channel.paid_social": [
+   "24dc027d",
+   "'n Sosialemedia-advertensie"
+  ],
+  "dashboard.channel.referral": [
+   "a49859b9",
+   "'n Skakel op 'n ander werf"
+  ],
+  "dashboard.channel.unassigned": [
+   "bb76b66a",
+   "Google kon nie sê nie"
+  ],
+  "dashboard.count.many": [
+   "b7692abe",
+   "<b>{count}</b> <span>mense het jou werf in {window} gelees.</span>"
+  ],
+  "dashboard.count.none": [
+   "4bfdbbf9",
+   "Niemand het jou werf in {window} gelees nie, sover Google kan sien."
+  ],
+  "dashboard.count.one": [
+   "473234ed",
+   "<b>{count}</b> <span>persoon het jou werf in {window} gelees.</span>"
+  ],
+  "dashboard.country": [
+   "701d021d",
+   "Land"
+  ],
+  "dashboard.day": [
+   "89d27939",
+   "{day}: {people}"
+  ],
+  "dashboard.each_day": [
+   "3ec85e36",
+   "Mense elke dag"
+  ],
+  "dashboard.each_month": [
+   "4db23579",
+   "Mense elke maand"
+  ],
+  "dashboard.how": [
+   "e7e003e8",
+   "Hoe hulle jou gevind het"
+  ],
+  "dashboard.minutes": [
+   "c4521614",
+   "{minutes}m {seconds}s"
+  ],
+  "dashboard.nobody": [
+   "6382b3cc",
+   "niemand"
+  ],
+  "dashboard.off": [
+   "49409ef6",
+   "Besoekersyfers is af. Pressless kan hulle uit Google Analytics lees as jy met Google aanmeld: <a href=\"{page}\">skakel besoekersyfers aan</a>."
+  ],
+  "dashboard.page": [
+   "0a30a815",
+   "Bladsy"
+  ],
+  "dashboard.people": [
+   "7db20897",
+   "Mense"
+  ],
+  "dashboard.people.many": [
+   "7dbd74fb",
+   "{count} mense"
+  ],
+  "dashboard.people.one": [
+   "de545d07",
+   "1 persoon"
+  ],
+  "dashboard.region": [
+   "7db4aedb",
+   "Provinsie of staat"
+  ],
+  "dashboard.seconds": [
+   "5307d20d",
+   "{seconds}s"
+  ],
+  "dashboard.sign_in_again": [
+   "621c7620",
+   "As Google nie meer die aanmelding aanvaar nie, <a href=\"{page}\">meld weer aan</a>."
+  ],
+  "dashboard.stale": [
+   "79bc2748",
+   "Pressless kon nou-nou nie Google bereik nie, so dit is die syfers van {when}."
+  ],
+  "dashboard.time_on_page": [
+   "b0a87c6b",
+   "Tyd op bladsy"
+  ],
+  "dashboard.title": [
+   "ea6d49cb",
+   "Wie lees"
+  ],
+  "dashboard.unknown_country": [
+   "6460bed6",
+   "Êrens wat Google nie kon sê nie"
+  ],
+  "dashboard.updated": [
+   "ac49c7bf",
+   "Laas opgedateer {when}."
+  ],
+  "dashboard.views": [
+   "69c40459",
+   "Besigtigings"
+  ],
+  "dashboard.visits": [
+   "f514c310",
+   "Besoeke"
+  ],
+  "dashboard.what": [
+   "9eec6ba2",
+   "Wat hulle gelees het"
+  ],
+  "dashboard.when": [
+   "71b4bbae",
+   "{date} om {clock}"
+  ],
+  "dashboard.where": [
+   "a8609d48",
+   "Waar hulle is"
+  ],
+  "dashboard.where_within": [
+   "83dcd42c",
+   "Watter provinsie of staat"
+  ],
+  "dashboard.window.28": [
+   "91914158",
+   "Laaste 4 weke"
+  ],
+  "dashboard.window.28.phrase": [
+   "ae673a5d",
+   "die laaste 4 weke"
+  ],
+  "dashboard.window.365": [
+   "b77eef69",
+   "Laaste 12 maande"
+  ],
+  "dashboard.window.365.phrase": [
+   "2ac8091b",
+   "die laaste 12 maande"
+  ],
+  "dashboard.window.7": [
+   "0603deca",
+   "Laaste 7 dae"
+  ],
+  "dashboard.window.7.phrase": [
+   "0485c747",
+   "die laaste 7 dae"
+  ],
+  "date.day.0": [
+   "f40d7f51",
+   "Ma"
+  ],
+  "date.day.1": [
+   "d1eb39b0",
+   "Di"
+  ],
+  "date.day.2": [
+   "58339f45",
+   "Wo"
+  ],
+  "date.day.3": [
+   "7da11212",
+   "Do"
+  ],
+  "date.day.4": [
+   "66dab40c",
+   "Vr"
+  ],
+  "date.day.5": [
+   "fdeb71b5",
+   "Sa"
+  ],
+  "date.day.6": [
+   "db18f17f",
+   "So"
+  ],
+  "date.long": [
+   "ade39ee8",
+   "{day} {month} {year}"
+  ],
+  "date.medium": [
+   "70fba1e6",
+   "{day} {mon} {year}"
+  ],
+  "date.mon.1": [
+   "5c5db120",
+   "Jan"
+  ],
+  "date.mon.10": [
+   "6877e849",
+   "Okt"
+  ],
+  "date.mon.11": [
+   "3e630d29",
+   "Nov"
+  ],
+  "date.mon.12": [
+   "f2a0cfbc",
+   "Des"
+  ],
+  "date.mon.2": [
+   "caf71b3f",
+   "Feb"
+  ],
+  "date.mon.3": [
+   "b4b7d381",
+   "Mrt"
+  ],
+  "date.mon.4": [
+   "617531b4",
+   "Apr"
+  ],
+  "date.mon.5": [
+   "8c78fe5b",
+   "Mei"
+  ],
+  "date.mon.6": [
+   "b27fd46e",
+   "Jun"
+  ],
+  "date.mon.7": [
+   "c43f56b9",
+   "Jul"
+  ],
+  "date.mon.8": [
+   "41e1d82a",
+   "Aug"
+  ],
+  "date.mon.9": [
+   "451e2b71",
+   "Sep"
+  ],
+  "date.mon_year": [
+   "d5ea3a95",
+   "{mon} {year}"
+  ],
+  "date.month.1": [
+   "37082e68",
+   "Januarie"
+  ],
+  "date.month.10": [
+   "fdd79178",
+   "Oktober"
+  ],
+  "date.month.11": [
+   "9de6fe1d",
+   "November"
+  ],
+  "date.month.12": [
+   "8fb204ca",
+   "Desember"
+  ],
+  "date.month.2": [
+   "c877c6ff",
+   "Februarie"
+  ],
+  "date.month.3": [
+   "9d95a2cf",
+   "Maart"
+  ],
+  "date.month.4": [
+   "4afe6ea1",
+   "April"
+  ],
+  "date.month.5": [
+   "8c78fe5b",
+   "Mei"
+  ],
+  "date.month.6": [
+   "d5808c0e",
+   "Junie"
+  ],
+  "date.month.7": [
+   "e9cf7a1c",
+   "Julie"
+  ],
+  "date.month.8": [
+   "a66d8970",
+   "Augustus"
+  ],
+  "date.month.9": [
+   "cd559ea0",
+   "September"
+  ],
+  "date.month_year": [
+   "d2d73eec",
+   "{month} {year}"
+  ],
+  "date.short": [
+   "13346039",
+   "{day} {mon}"
+  ],
+  "date.weekday": [
+   "4cb90d35",
+   "{weekday} {day} {mon}"
+  ],
+  "domain.change": [
+   "38804fcf",
+   "As jy Volgende pers, verander dit hierdie op GitHub:"
+  ],
+  "domain.change.address": [
+   "c3689a57",
+   "Jou werf se adres word {domain}."
+  ],
+  "domain.change.file": [
+   "3b037137",
+   "Pressless voeg 'n lêer, CNAME, by wat {domain} bevat. Dit bly in die bewaarplek se geskiedenis."
+  ],
+  "domain.change.gap": [
+   "4ff78d25",
+   "Jou ou adres sal na {domain} aanstuur. Totdat jou domeinverkoper die rekords hieronder het, kan jou werf nie bereik word nie, so hou hulle gereed om dadelik in te voer."
+  ],
+  "domain.change.next": [
+   "9cedfcec",
+   "Pers Volgende wanneer jy gereed is."
+  ],
+  "domain.change.ready": [
+   "7c32b914",
+   "Dit is wat jy by jou domeinverkoper sal invoer:"
+  ],
+  "domain.change.verify": [
+   "5cbbe037",
+   "GitHub raai aan om die naam eers by GitHub te verifieer, sodat geen ander rekening dit kan opeis nie. Dit is opsioneel, en word in jou GitHub-rekening se Pages-instellings gedoen."
+  ],
+  "domain.done": [
+   "f788fa26",
+   "Jou werf se adres is nou {link}, en dit maak veilig oop."
+  ],
+  "domain.done.heading": [
+   "e849d39d",
+   "Jou werf het sy eie domeinnaam"
+  ],
+  "domain.done.publish": [
+   "5228064b",
+   "Publiseer nog een keer, sodat jou werf se kaart vir soekenjins en sy aanstuurskakels die nuwe adres dra."
+  ],
+  "domain.done.remove": [
+   "feae9791",
+   "Om op te hou om hierdie naam te gebruik, verwyder dit in jou bewaarplek se Pages-instellings op GitHub, en verander dan jou werf se adres in Instellings."
+  ],
+  "domain.field": [
+   "4cbcc019",
+   "Jou domeinnaam"
+  ],
+  "domain.hint.certificate_failed": [
+   "bcb86cb8",
+   "GitHub kon nie die sertifikaat maak nie. Kyk dat jou domeinverkoper net die rekords het wat in die vorige stap gewys is, wag dan en pers weer Volgende."
+  ],
+  "domain.hint.certificate_wait": [
+   "10f9fd83",
+   "Die sertifikaat is nog nie gereed nie. Niks is fout nie, en jy kan weggaan en terugkom. GitHub sê dit kan tot 24 uur neem."
+  ],
+  "domain.hint.name": [
+   "6689b686",
+   "Tik die naam wat jy gekoop het, soos example.com."
+  ],
+  "domain.hint.not_serving": [
+   "8bdd65e1",
+   "GitHub Pages bedien nie hierdie bewaarplek se hoofgids nie, so 'n domeinnaam sou nie jou werf bereik nie. Publiseer eers jou werf, en kom dan terug."
+  ],
+  "domain.hint.takeover": [
+   "b4dce39b",
+   "Jou werf word steeds deur GitHub Actions gebou. Skakel dit eers na Pressless oor, deur te publiseer, en kom dan terug."
+  ],
+  "domain.intro": [
+   "6b2d1229",
+   "As jy 'n webadres gekoop het, soos example.com, kan jou werf daar verskyn. Tik dit hieronder. Niks verander nog nie."
+  ],
+  "domain.leave": [
+   "b1c80427",
+   "Jy kan dit toemaak en terugkom. Instellings, dan Gebruik jou eie domeinnaam, maak hierdie stap weer oop. Pers Volgende wanneer die naam na GitHub lei."
+  ],
+  "domain.records.name": [
+   "c7e114e7",
+   "Naam of gasheer"
+  ],
+  "domain.records.part": [
+   "bdabd056",
+   "{domain} is 'n deel van {bought}. Meld aan waar jy {bought} gekoop het, maak sy DNS-instellings oop, en voeg hierdie een by. Verwyder enige ander rekord met die naam {part}, want dit kan keer dat die veilige adres werk:"
+  ],
+  "domain.records.type": [
+   "baaddf70",
+   "Tipe"
+  ],
+  "domain.records.value": [
+   "99fad8cf",
+   "Waarde of wys na"
+  ],
+  "domain.records.whole": [
+   "a0fcce1a",
+   "Meld aan waar jy {domain} gekoop het, maak sy DNS-instellings oop, en voeg elk van hierdie by. Verwyder enige ander A- of AAAA-rekord met die naam @, want dit kan keer dat die veilige adres werk:"
+  ],
+  "domain.records.www": [
+   "4ecab56c",
+   "Jy het {bought} gekoop, en wil {domain} hê. Meld aan waar jy dit gekoop het, maak sy DNS-instellings oop, en voeg elk van hierdie by. Verwyder enige ander rekord met dieselfde naam, want dit kan keer dat die veilige adres werk:"
+  ],
+  "domain.secure": [
+   "d79b33df",
+   "GitHub maak nou 'n sekuriteitsertifikaat vir {domain}, wat dit met https laat oopmaak. Dit kan 'n rukkie neem nadat die naam na GitHub lei. Pers Volgende om na te gaan. As dit gereed is, skakel Pressless die veilige adres aan."
+  ],
+  "domain.set": [
+   "a2ed1d0a",
+   "GitHub weet nou jou werf hoort by {domain}. Voer hierdie nou by jou domeinverkoper in:"
+  ],
+  "domain.settings_link": [
+   "9d3805b8",
+   "Gebruik jou eie domeinnaam"
+  ],
+  "domain.state.elsewhere": [
+   "229832ad",
+   "Die naam lei êrens anders as GitHub heen. Kyk vir 'n ander rekord, tensy jy 'n diens soos Cloudflare voor jou werf gebruik."
+  ],
+  "domain.state.not_yet": [
+   "ca5b2e5d",
+   "Hierdie rekenaar kan die naam nog nie vind nie. Nadat jy die rekords invoer, kan dit tot 24 uur neem om oral te kom."
+  ],
+  "domain.state.ready": [
+   "ecd13fe9",
+   "Die naam lei nou na GitHub, sover hierdie rekenaar kan sien."
+  ],
+  "domain.step.change": [
+   "6eb4bc42",
+   "Wat sal verander"
+  ],
+  "domain.step.name": [
+   "ce3be6a7",
+   "Jou eie domeinnaam"
+  ],
+  "domain.step.records": [
+   "2dc2a535",
+   "Sê vir jou domeinverkoper"
+  ],
+  "domain.step.secure": [
+   "5ad14205",
+   "Die veilige adres"
+  ],
+  "editor.add_photograph": [
+   "c1bab482",
+   "Voeg 'n foto by"
+  ],
+  "editor.address": [
+   "56ef8f20",
+   "Adres"
+  ],
+  "editor.bin_proof": [
+   "21858b04",
+   "Gooi hierdie proef in die snippermandjie"
+  ],
+  "editor.categories": [
+   "b8b1d894",
+   "Kategorieë"
+  ],
+  "editor.change_address": [
+   "924eb001",
+   "Verander adres"
+  ],
+  "editor.hint.bad_address": [
+   "f5d480f3",
+   "'n Adres gebruik net die letters a tot z, die syfers 0 tot 9 en -."
+  ],
+  "editor.hint.forwarded": [
+   "5d0c22a4",
+   "Die ou adres van 'n ander inskrywing stuur van daar aan."
+  ],
+  "editor.hint.gone": [
+   "879ba4ad",
+   "Hierdie inskrywing is nie meer daar nie."
+  ],
+  "editor.hint.proof": [
+   "d3e0e4ad",
+   "'n Proef se adres kan nie verander word nie."
+  ],
+  "editor.hint.proof_waiting": [
+   "afef866f",
+   "Pers jou veranderings na jou werf, of gooi hierdie proef in die snippermandjie, en verander dan die adres."
+  ],
+  "editor.hint.taken": [
+   "17e5d79d",
+   "'n Ander inskrywing gebruik reeds daardie adres."
+  ],
+  "editor.journal.kept_off": [
+   "8afafd72",
+   "Hierdie inskrywings word hier gehou, en is nie op jou werf terwyl die joernaal af is nie."
+  ],
+  "editor.journal.off": [
+   "8b8f6a27",
+   "Jou joernaal is af. 'n Joernaal is die gedateerde deel van 'n werf, soos 'n blog: elke inskrywing kry 'n eie bladsy, en die joernaal lys hulle, nuutste eerste. Terwyl dit af is, bly jou inskrywings hier en is hulle nie op jou werf nie. As jou kieslys na die joernaal skakel, bly daardie skakel totdat jy dit uit die kopstuk of navigasie op die Bladsye-skerm verwyder."
+  ],
+  "editor.journal.on": [
+   "d5265f93",
+   "Jou joernaal is aan: elke gepubliseerde inskrywing het 'n eie bladsy op jou werf, en jou joernaal lys hulle, nuutste eerste."
+  ],
+  "editor.journal.on_published": [
+   "7c42bf2e",
+   "As jy dit afskakel, kom jou gepubliseerde inskrywings by jou volgende publisering van jou werf af; as jy dit weer aanskakel, kom hulle terug."
+  ],
+  "editor.journal.turn_off": [
+   "96578d8e",
+   "Skakel die joernaal af"
+  ],
+  "editor.journal.turn_on": [
+   "a0e2064c",
+   "Skakel die joernaal aan"
+  ],
+  "editor.list.add_home": [
+   "5deea97c",
+   "Voeg 'n Tuis-bladsy by"
+  ],
+  "editor.list.add_menu": [
+   "e949e9be",
+   "Voeg 'n kieslys by"
+  ],
+  "editor.list.blank": [
+   "ccb49471",
+   "'n Leë inskrywing"
+  ],
+  "editor.list.carry_on": [
+   "134be546",
+   "Gaan voort met:"
+  ],
+  "editor.list.changed": [
+   "766017a2",
+   "veranderings wat nog nie op jou werf is nie"
+  ],
+  "editor.list.drafts": [
+   "f592e6a4",
+   "Konsepte"
+  ],
+  "editor.list.later_changes": [
+   "dc04a91e",
+   "jou latere veranderings"
+  ],
+  "editor.list.new": [
+   "a62a7c03",
+   "Nuwe inskrywing"
+  ],
+  "editor.list.new_page": [
+   "40126b0e",
+   "Nuwe bladsy"
+  ],
+  "editor.list.none": [
+   "bd3ce633",
+   "Nog geen."
+  ],
+  "editor.list.on_site": [
+   "c9050e71",
+   "Op jou werf"
+  ],
+  "editor.list.page_name": [
+   "25f322d1",
+   "Bladsynaam"
+  ],
+  "editor.list.pages": [
+   "a14fbf2a",
+   "Jou bladsye"
+  ],
+  "editor.list.pages_unreadable": [
+   "f4cecabb",
+   "Pressless kan nie jou bladsye-gids oopmaak nie."
+  ],
+  "editor.list.parts": [
+   "fd83f20a",
+   "Dele van elke bladsy"
+  ],
+  "editor.list.parts_note": [
+   "dc883e5f",
+   "'n Verandering aan een hiervan wys op elke bladsy van jou werf."
+  ],
+  "editor.list.start_from": [
+   "eb3f51dc",
+   "Begin met"
+  ],
+  "editor.list.undone": [
+   "b15b95cc",
+   "deur Ontdoen van jou werf af gehaal"
+  ],
+  "editor.list.unreadable": [
+   "bdfcabe9",
+   "Pressless kan nie hierdie lêer oopmaak nie"
+  ],
+  "editor.list.untitled": [
+   "630c74b2",
+   "titelloos"
+  ],
+  "editor.pages.footer": [
+   "26c87bb5",
+   "Voetstuk"
+  ],
+  "editor.pages.header": [
+   "ba5caa42",
+   "Kopstuk"
+  ],
+  "editor.pages.home": [
+   "3a786953",
+   "Tuis"
+  ],
+  "editor.pages.navigation": [
+   "3db65f8c",
+   "Navigasie"
+  ],
+  "editor.panel.add": [
+   "f552a1e7",
+   "Voeg by:"
+  ],
+  "editor.panel.add_button": [
+   "9fd728c6",
+   "Voeg by"
+  ],
+  "editor.panel.bold": [
+   "94fee62e",
+   "Vet"
+  ],
+  "editor.panel.caption": [
+   "7e6568d1",
+   "Onderskrif, as daar een is"
+  ],
+  "editor.panel.choose": [
+   "29afaa1f",
+   "Kies 'n foto"
+  ],
+  "editor.panel.colour.accent": [
+   "4caf506b",
+   "Jou werf se aksentkleur"
+  ],
+  "editor.panel.colour.muted": [
+   "00bc622b",
+   "Jou werf se sagter ink"
+  ],
+  "editor.panel.colour.picked": [
+   "b0043728",
+   "Enige kleur:"
+  ],
+  "editor.panel.colour.use": [
+   "a2b26ff7",
+   "Gebruik hierdie kleur"
+  ],
+  "editor.panel.italic": [
+   "9bf37cb5",
+   "Skuinsdruk"
+  ],
+  "editor.panel.link": [
+   "a6a32dbc",
+   "Skakel"
+  ],
+  "editor.panel.marks": [
+   "f9b91c22",
+   "Sy merke"
+  ],
+  "editor.panel.marks_note": [
+   "098cc6aa",
+   "Hierdie deel gebruik merke wat die bladsy nie kan wys terwyl jy tik nie, soos reënboogletters of 'n aantal jare wat vir jou uitgewerk word. Verander sy merke hier."
+  ],
+  "editor.panel.move_down": [
+   "40bb50da",
+   "Skuif af"
+  ],
+  "editor.panel.move_up": [
+   "c66feb5e",
+   "Skuif op"
+  ],
+  "editor.panel.photograph": [
+   "bb1de972",
+   "Foto"
+  ],
+  "editor.panel.remove": [
+   "c3812fc4",
+   "Verwyder"
+  ],
+  "editor.panel.title": [
+   "b03b2a01",
+   "Hierdie afdeling"
+  ],
+  "editor.press": [
+   "b277e095",
+   "Pers na werf"
+  ],
+  "editor.proof_title": [
+   "70b2a0d1",
+   "Proef (voorskou)"
+  ],
+  "editor.show_marks": [
+   "7371b65a",
+   "Wys my die merke"
+  ],
+  "editor.show_visual": [
+   "a49757bd",
+   "Sien wysiger"
+  ],
+  "editor.site_line": [
+   "36c6c8e2",
+   "Besig om <b>{name}</b> by {address} te wysig"
+  ],
+  "editor.site_line.unnamed": [
+   "5af93124",
+   "Jou werf"
+  ],
+  "editor.standing.draft": [
+   "47021a76",
+   "'n Konsep. Dit is nie op jou werf nie."
+  ],
+  "editor.standing.published": [
+   "b0a3405c",
+   "Hierdie inskrywing is op jou werf. Jou veranderings bly op hierdie rekenaar totdat jy dit publiseer."
+  ],
+  "editor.standing.waiting": [
+   "05e9b3fa",
+   "Hierdie veranderings is nog nie op jou werf nie."
+  ],
+  "editor.tags": [
+   "1331275b",
+   "Etikette"
+  ],
+  "editor.throw_draft": [
+   "02c6fc6a",
+   "Gooi hierdie konsep weg"
+  ],
+  "editor.title": [
+   "7e8cd205",
+   "Titel"
+  ],
+  "editor.undo": [
+   "99607c29",
+   "Ontdoen die laaste pers"
+  ],
+  "face.about": [
+   "4efca0d1",
+   "Oor"
+  ],
+  "face.files": [
+   "abc7e989",
+   "Lêers"
+  ],
+  "face.forbidden": [
+   "78342a09",
+   "Verbode"
+  ],
+  "face.help": [
+   "b79cac92",
+   "Hulp"
+  ],
+  "face.journal": [
+   "43b7c75d",
+   "Joernaal"
+  ],
+  "face.link_spent": [
+   "ea6f3577",
+   "Hierdie skakel is reeds gebruik. Maak hierdie oortjie toe en begin Pressless weer."
+  ],
+  "face.look": [
+   "a0de5719",
+   "Voorkoms"
+  ],
+  "face.message.ok": [
+   "565339bc",
+   "OK"
+  ],
+  "face.more": [
+   "d47d7cb0",
+   "Meer"
+  ],
+  "face.not_found": [
+   "e3ebaa16",
+   "Nie gevind nie"
+  ],
+  "face.pages": [
+   "9046da16",
+   "Bladsye"
+  ],
+  "face.report": [
+   "f9154cd7",
+   "Maak 'n voorstel of meld 'n probleem"
+  ],
+  "face.running": [
+   "3011c9a3",
+   "Pressless loop."
+  ],
+  "face.settings": [
+   "74a883a0",
+   "Instellings"
+  ],
+  "face.sites": [
+   "9d769093",
+   "Werwe"
+  ],
+  "face.true_colours": [
+   "971d676a",
+   "Wys die voorskou in sy ware kleure"
+  ],
+  "face.usage": [
+   "accbe5ad",
+   "Gebruiksverslae"
+  ],
+  "face.view_site": [
+   "155a64f0",
+   "Sien jou werf"
+  ],
+  "face.visitors": [
+   "68f7d7fb",
+   "Besoekers"
+  ],
+  "face.your_site": [
+   "5af93124",
+   "Jou werf"
+  ],
+  "failure.again": [
+   "aa3090fa",
+   "Probeer weer. As dit aanhou gebeur, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.assistant.Refused.next": [
+   "874ab5c8",
+   "Niks het verander nie."
+  ],
+  "failure.assistant.Refused.what": [
+   "98146f33",
+   "{said}"
+  ],
+  "failure.blocks.SectionRefused.what": [
+   "8f76a556",
+   "Pressless kon nie daardie deel van jou bladsy skryf nie."
+  ],
+  "failure.builder.BuildStopped.next": [
+   "24708dc0",
+   "Kyk na die lêer wat in die besonderhede hieronder genoem word, en probeer dan weer. As dit aanhou gebeur, stuur die besonderhede aan wie jou ook al help."
+  ],
+  "failure.builder.BuildStopped.what": [
+   "8b31515d",
+   "Pressless kon nie jou werf uit een van jou lêers bou nie."
+  ],
+  "failure.builder.SiteFolderUnusable.what": [
+   "950cabe7",
+   "Pressless kon nie in die gids skryf waarin jou werf gebou word nie."
+  ],
+  "failure.copy_location": [
+   "83bb108f",
+   "Kopieer ligging"
+  ],
+  "failure.credentials.CredentialError.next": [
+   "b9d9e5ef",
+   "As jou sleutelring gesluit is, maak dit oop en probeer weer; andersins voer dit weer in Instellings in. As dit aanhou gebeur, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.credentials.CredentialError.what": [
+   "60275a96",
+   "Pressless kon nie veilig by {secret} in hierdie rekenaar se sleutelring uitkom nie."
+  ],
+  "failure.credentials.NoStore.next": [
+   "12d27946",
+   "Stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.credentials.NoStore.what": [
+   "83315ee8",
+   "Pressless het nêrens veilig op hierdie rekenaar gevind om {secret} te bewaar nie."
+  ],
+  "failure.credentials.NotStored.next": [
+   "8dcf995c",
+   "Voer dit weer in Instellings in."
+  ],
+  "failure.credentials.NotStored.what": [
+   "c16ff192",
+   "Pressless het nog nie {secret} nie."
+  ],
+  "failure.editor.AddressRefused.next": [
+   "c47a6c9f",
+   "Kies 'n ander adres, of hou die een wat dit het."
+  ],
+  "failure.editor.AddressRefused.what": [
+   "e8231168",
+   "{hint}"
+  ],
+  "failure.editor.BlocksUnreadable.next": [
+   "17fb3548",
+   "Maak hierdie inskrywing weer oop om voort te gaan, of gebruik Wys my die merke."
+  ],
+  "failure.editor.BlocksUnreadable.what": [
+   "8761ef49",
+   "Nie gestoor nie: Pressless kon nie jou inskrywing se paragrawe hou soos jy dit gelaat het nie."
+  ],
+  "failure.editor.ChangedElsewhere.next": [
+   "0fc7bebf",
+   "Kopieer alles wat jy sedertdien getik het, en maak die inskrywing dan weer oop vanuit Joernaal."
+  ],
+  "failure.editor.ChangedElsewhere.what": [
+   "c16d3e94",
+   "Hierdie inskrywing is in 'n ander venster of buite Pressless verander, so Pressless het nie daaroor gestoor nie."
+  ],
+  "failure.editor.TooManyCopies.next": [
+   "67292a1b",
+   "Maak jou Pressless-data-gids oop, hou een van daardie konsepte, en skuif die ander uit die konsepte-gids."
+  ],
+  "failure.editor.TooManyCopies.what": [
+   "624d68b1",
+   "Meer as een konsep bevat ongepubliseerde veranderings aan hierdie inskrywing, so Pressless het dit nie oopgemaak nie."
+  ],
+  "failure.face.FolderNotOpened.next": [
+   "984dbe3d",
+   "Gebruik eerder Kopieer ligging, en plak dit in jou lêerbestuurder."
+  ],
+  "failure.face.FolderNotOpened.what": [
+   "ac17c864",
+   "Pressless kon nie die gids oopmaak nie."
+  ],
+  "failure.face.NoRoom.next": [
+   "09cd5804",
+   "Maak spasie op hierdie rekenaar se skyf vry, en stuur die lêer dan weer."
+  ],
+  "failure.face.NoRoom.what": [
+   "b7bce042",
+   "Hierdie rekenaar se skyf het te min vrye spasie vir daardie lêer."
+  ],
+  "failure.files.NotAllowed.next": [
+   "b8c81905",
+   "Kies 'n MP3-, Ogg-, WAV-, M4A-, MP4-, WebM-, PDF-, ZIP- of gewone-teks-lêer, met die einde wat sy soort het."
+  ],
+  "failure.files.NotAllowed.what": [
+   "8bb26fa2",
+   "Daardie lêer is nie 'n soort wat Pressless op jou werf kan sit nie, of sy naam stem nie ooreen met wat binne-in is nie, so dit is nie bygevoeg nie."
+  ],
+  "failure.files.TooLarge.next": [
+   "549bb90a",
+   "Maak die lêer kleiner, of sit dit êrens anders en tik eerder sy adres."
+  ],
+  "failure.files.TooLarge.what": [
+   "e1d6166f",
+   "Daardie lêer is groter as {mib} MiB (ongeveer {mb} MB), so dit is nie bygevoeg nie."
+  ],
+  "failure.files_screen.FileInUse.next": [
+   "328ea32a",
+   "Haal dit eers uit daardie bladsye, publiseer of gooi enige bladsy weg wat nog gewysig word, en verwyder dit dan."
+  ],
+  "failure.files_screen.FileInUse.what": [
+   "3b0a0c8f",
+   "Daardie lêer word op {pages} gebruik, so dit is nie verwyder nie."
+  ],
+  "failure.github_signin.Declined.next": [
+   "21bc03fd",
+   "Meld weer by GitHub aan vanuit Instellings wanneer jy ook al wil."
+  ],
+  "failure.github_signin.Declined.what": [
+   "27af435a",
+   "Die aanmelding is op GitHub gekanselleer."
+  ],
+  "failure.github_signin.Expired.next": [
+   "8ef472f6",
+   "Meld weer by GitHub aan vanuit Instellings."
+  ],
+  "failure.github_signin.Expired.what": [
+   "e815cc08",
+   "Die kode om by GitHub aan te meld het verval."
+  ],
+  "failure.github_signin.Pending.next": [
+   "9e9fd091",
+   "Tik die kode op GitHub se bladsy, klik Authorize, en probeer dan weer."
+  ],
+  "failure.github_signin.Pending.what": [
+   "56f5cf02",
+   "GitHub het nog nie van jou gehoor nie."
+  ],
+  "failure.github_signin.SignedOut.link": [
+   "2e5f7935",
+   "Meld weer by GitHub aan"
+  ],
+  "failure.github_signin.SignedOut.next": [
+   "af9a7566",
+   "Meld weer by GitHub aan in Instellings, en probeer dan weer."
+  ],
+  "failure.github_signin.SignedOut.what": [
+   "5d4e3573",
+   "GitHub het Pressless afgemeld."
+  ],
+  "failure.google_signin.Declined.next": [
+   "4eda45a3",
+   "Meld met Google aan vanuit Instellings wanneer jy ook al wil."
+  ],
+  "failure.google_signin.Declined.what": [
+   "4bdf3691",
+   "Jy het gekies om nie vir Pressless toe te laat om jou besoekersyfers te lees nie."
+  ],
+  "failure.google_signin.Expired.next": [
+   "3a295ead",
+   "Meld weer met Google aan vanuit Instellings."
+  ],
+  "failure.google_signin.Expired.what": [
+   "0330fd79",
+   "Die aanmelding by Google het te lank gevat."
+  ],
+  "failure.insights.InsightsError.next": [
+   "43f14899",
+   "Probeer later weer. As dit aanhou gebeur, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.insights.InsightsError.what": [
+   "6cd49fb1",
+   "Google het 'n antwoord teruggestuur wat Pressless nie kon gebruik nie."
+  ],
+  "failure.insights.NotConfigured.next": [
+   "bf1da4d7",
+   "Stel die paneelbord in Instellings op as jy dit wil sien."
+  ],
+  "failure.insights.NotConfigured.what": [
+   "78e4e2f2",
+   "Die besoekersyfers is nog nie opgestel nie."
+  ],
+  "failure.insights.RateLimited.next": [
+   "ef7fbdb0",
+   "Probeer later weer."
+  ],
+  "failure.insights.RateLimited.what": [
+   "b511ced8",
+   "Google het Pressless gevra om te wag voordat dit weer vra."
+  ],
+  "failure.insights.Refused.next": [
+   "1d81187f",
+   "Meld weer by Google aan vanuit Instellings."
+  ],
+  "failure.insights.Refused.what": [
+   "7b8142da",
+   "Google wou nie vir Pressless toelaat om jou besoekersyfers te lees nie."
+  ],
+  "failure.insights.Unreachable.next": [
+   "176afd02",
+   "Kyk jou internetverbinding na en probeer weer."
+  ],
+  "failure.insights.Unreachable.what": [
+   "c9bce398",
+   "Pressless kon nie Google bereik nie."
+  ],
+  "failure.installer.InstallFailed.next": [
+   "43f14899",
+   "Probeer later weer. As dit aanhou gebeur, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.installer.InstallFailed.what": [
+   "53de59ca",
+   "Pressless kon nie die nuwe weergawe op sy plek kry nie. Hierdie weergawe is steeds geïnstalleer."
+  ],
+  "failure.installer.UpdateError.next": [
+   "0081b8ae",
+   "Hou aan om hierdie weergawe te gebruik, en probeer later weer."
+  ],
+  "failure.installer.UpdateError.what": [
+   "6ddd6d70",
+   "Pressless kon nie homself opdateer nie."
+  ],
+  "failure.jpegxl.NotInstalled.next": [
+   "10d8e131",
+   "Voeg eers JPEG XL-ondersteuning by vanuit Instellings."
+  ],
+  "failure.jpegxl.NotInstalled.what": [
+   "a88c9a6e",
+   "Dit is 'n JPEG XL-foto."
+  ],
+  "failure.log": [
+   "f9dbf2f5",
+   "Die logboek is {log}, en die ouer deel daarvan {old}, in die Pressless-data-gids, langs die program."
+  ],
+  "failure.look.LookUnreadable.next": [
+   "3cebd3fa",
+   "Jou werf behou sy huidige voorkoms. As look/choices.json in Pressless se eie gids met die hand gewysig is, sit die vroeër kopie terug uit die snippermandjie."
+  ],
+  "failure.look.LookUnreadable.what": [
+   "dfdee5ac",
+   "Pressless kon nie die instellings lees waaruit jou werf se voorkoms gemaak word nie, so dit het niks verander nie."
+  ],
+  "failure.look_screen.LookRefused.next": [
+   "61ccabad",
+   "Maak die Voorkoms-skerm weer oop en kies nog 'n keer."
+  ],
+  "failure.look_screen.LookRefused.what": [
+   "17d11667",
+   "Een van die voorkoms se keuses is nie een wat Pressless bied nie, so niks is gestoor nie."
+  ],
+  "failure.manual.ManualMissing.next": [
+   "7757150f",
+   "Alles anders werk nog. Laai Pressless weer af om die handleiding terug te kry."
+  ],
+  "failure.manual.ManualMissing.what": [
+   "7cd26e5c",
+   "Pressless kon nie sy handleiding vind nie, so hierdie kopie van Pressless kan beskadig wees."
+  ],
+  "failure.marks.Unwritable.next": [
+   "952eae21",
+   "Haal die stilering van daardie woorde af, of gebruik Wys my die merke om hulle te sien."
+  ],
+  "failure.marks.Unwritable.what": [
+   "4261755a",
+   "Nie gestoor nie: Pressless kan nie daardie stilering in jou inskrywing se merke hou nie."
+  ],
+  "failure.menu.Refused.next": [
+   "af80b8df",
+   "Maak die kieslys weer oop om voort te gaan, of gebruik Wys my die kode."
+  ],
+  "failure.menu.Refused.what": [
+   "138dff01",
+   "Nie gestoor nie: Pressless kon nie jou kieslys se skakels hou soos jy dit gelaat het nie."
+  ],
+  "failure.menu.Unusual.next": [
+   "31818ced",
+   "Verander die skakel in die Navigasie se kode."
+  ],
+  "failure.menu.Unusual.what": [
+   "af84b27c",
+   "Pressless wysig nie 'n kieslys wat soos joune uitgelê is nie."
+  ],
+  "failure.open_folder": [
+   "6a908402",
+   "Maak gids oop"
+  ],
+  "failure.page_editor.NameRefused.next": [
+   "9e1a5957",
+   "Kies 'n ander naam, of laat die bladsy soos dit is."
+  ],
+  "failure.page_editor.NameRefused.what": [
+   "e8231168",
+   "{hint}"
+  ],
+  "failure.page_editor.SectionsUnreadable.next": [
+   "73a1edd3",
+   "Maak hierdie bladsy weer oop om voort te gaan, of gebruik Wys my die kode."
+  ],
+  "failure.page_editor.SectionsUnreadable.what": [
+   "1793b273",
+   "Nie gestoor nie: Pressless kon nie jou bladsy se afdelings hou soos jy dit gelaat het nie."
+  ],
+  "failure.paths.FolderUnusable.next": [
+   "5953cce2",
+   "Skuif Pressless na 'n gids waarin jy lêers kan stoor, en begin dit dan weer."
+  ],
+  "failure.paths.FolderUnusable.what": [
+   "315082f2",
+   "Pressless kon nie sy Pressless-data-gids skep of daarin skryf nie."
+  ],
+  "failure.paths.NotPackaged.next": [
+   "7ce1618e",
+   "Begin Pressless deur dubbel te klik op die lêer wat jy afgelaai het."
+  ],
+  "failure.paths.NotPackaged.what": [
+   "c9e38700",
+   "Pressless kon nie agterkom waarvandaan dit loop nie."
+  ],
+  "failure.photographs.NotAPhotograph.next": [
+   "8f81cdce",
+   "Kies 'n JPEG-, PNG-, WebP-, GIF-, AVIF- of JPEG XL-foto."
+  ],
+  "failure.photographs.NotAPhotograph.what": [
+   "51719a92",
+   "Daardie lêer is nie 'n prent wat Pressless op jou werf kan sit nie, so dit is nie bygevoeg nie."
+  ],
+  "failure.pressless_import.ImportStopped.next": [
+   "ff3c92cb",
+   "Die besonderhede hieronder sê hoekom. As dit aanhou gebeur, stuur dit aan wie jou ook al help."
+  ],
+  "failure.pressless_import.ImportStopped.what": [
+   "2a198a6a",
+   "Pressless kon nie jou werf inbring nie."
+  ],
+  "failure.publisher.Conflict.next": [
+   "a0c2cc13",
+   "Probeer weer."
+  ],
+  "failure.publisher.Conflict.what": [
+   "4c8f2731",
+   "Jou werf op GitHub het verander terwyl Pressless besig was om te publiseer."
+  ],
+  "failure.publisher.FetchNotWritten.next": [
+   "1cb6acfa",
+   "Maak spasie op hierdie rekenaar se skyf vry, en probeer dan weer."
+  ],
+  "failure.publisher.FetchNotWritten.what": [
+   "85fde611",
+   "Pressless kon nie die vroeër weergawe van jou werf op hierdie rekenaar stoor nie."
+  ],
+  "failure.publisher.NoPreviousState.next": [
+   "6755356e",
+   "Niks hoef ongedaan gemaak te word nie."
+  ],
+  "failure.publisher.NoPreviousState.what": [
+   "3c441739",
+   "Daar is geen vroeër weergawe van jou werf om na terug te gaan nie."
+  ],
+  "failure.publisher.OutcomeUnknown.next": [
+   "c2711176",
+   "Kyk jou internetverbinding na en klik weer op Pers na werf. Om weer te publiseer is veilig en maak dit uit."
+  ],
+  "failure.publisher.OutcomeUnknown.what": [
+   "68259b15",
+   "GitHub se antwoord het nie gesê of jou werf opgedateer is nie."
+  ],
+  "failure.publisher.PublishError.what": [
+   "20bf4b5a",
+   "GitHub het op 'n manier geantwoord wat Pressless nie verwag het nie."
+  ],
+  "failure.publisher.RateLimited.next": [
+   "2c75cedd",
+   "Wag 'n rukkie en probeer dan weer."
+  ],
+  "failure.publisher.RateLimited.what": [
+   "0b19c178",
+   "GitHub het Pressless gevra om stadiger te gaan."
+  ],
+  "failure.publisher.Refused.next": [
+   "f0962cd9",
+   "Voer jou publiseersleutel weer in Instellings in, en probeer dan weer."
+  ],
+  "failure.publisher.Refused.what": [
+   "4783f1a5",
+   "GitHub wou nie jou publiseersleutel aanvaar nie."
+  ],
+  "failure.publisher.RemoteStateMissing.next": [
+   "a0c2cc13",
+   "Probeer weer."
+  ],
+  "failure.publisher.RemoteStateMissing.what": [
+   "a49acd0b",
+   "Iets wat Pressless van GitHub nodig gehad het, was nie daar nie."
+  ],
+  "failure.publisher.RepositoryMissing.next": [
+   "fd060be7",
+   "Kyk die bewaarplek se naam in Instellings na, en klik dan weer op Pers na werf."
+  ],
+  "failure.publisher.RepositoryMissing.what": [
+   "6fcb0f62",
+   "GitHub kon nie jou werf se bewaarplek vind nie."
+  ],
+  "failure.publisher.RepositoryMoved.next": [
+   "dc4e8915",
+   "Voer sy nuwe naam in Instellings in, en klik dan weer op Pers na werf."
+  ],
+  "failure.publisher.RepositoryMoved.what": [
+   "10c7bf8a",
+   "GitHub sê jou werf se bewaarplek is hernoem of geskuif."
+  ],
+  "failure.publisher.SignInRefused.link": [
+   "2e5f7935",
+   "Meld weer by GitHub aan"
+  ],
+  "failure.publisher.SignInRefused.next": [
+   "af9a7566",
+   "Meld weer by GitHub aan in Instellings, en probeer dan weer."
+  ],
+  "failure.publisher.SignInRefused.what": [
+   "ceb97be0",
+   "GitHub wou nie Pressless se aanmelding aanvaar nie."
+  ],
+  "failure.publisher.SiteFolderMissing.next": [
+   "167dbc4d",
+   "Bou jou werf weer, en klik dan weer op Pers na werf. As dit aanhou gebeur, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.publisher.SiteFolderMissing.what": [
+   "67f565b5",
+   "Pressless kon nie die gids vind waarin jou werf gebou word nie."
+  ],
+  "failure.publisher.SiteWouldBeEmptied.next": [
+   "026bd2f4",
+   "Bou jou werf weer, en klik dan weer op Pers na werf."
+  ],
+  "failure.publisher.SiteWouldBeEmptied.what": [
+   "6eb52f00",
+   "As Pressless nou publiseer, sou jou werf leeg wees, so Pressless het gestop."
+  ],
+  "failure.publisher.StrayFile.next": [
+   "927f5f8e",
+   "Verwyder daardie lêer uit jou werf se gids, en klik dan weer op Pers na werf."
+  ],
+  "failure.publisher.StrayFile.what": [
+   "75614c06",
+   "Jou werf se gids bevat 'n lêer wat Pressless nie gemaak het nie."
+  ],
+  "failure.publisher.TooLarge.next": [
+   "6cbc925f",
+   "As jy 'n groot lêer bygevoeg het, verwyder of krimp dit. Probeer dan weer, en as dit aanhou gebeur, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.publisher.TooLarge.what": [
+   "bcfe21c5",
+   "Iets wat jy publiseer is groter as wat GitHub aanvaar."
+  ],
+  "failure.publisher.UnfetchablePath.next": [
+   "fab9c9ab",
+   "Hernoem die lêer wat hieronder genoem word op jou werf, publiseer, en probeer dan weer."
+  ],
+  "failure.publisher.UnfetchablePath.what": [
+   "bd4cd389",
+   "Die vroeër weergawe van jou werf noem 'n lêer wat hierdie rekenaar nie kan hou nie."
+  ],
+  "failure.publisher.Unreachable.next": [
+   "176afd02",
+   "Kyk jou internetverbinding na en probeer weer."
+  ],
+  "failure.publisher.Unreachable.what": [
+   "611332c7",
+   "Pressless kon nie GitHub bereik nie."
+  ],
+  "failure.publishing.JournalOff.next": [
+   "29c2c049",
+   "Skakel die joernaal aan vanaf die Joernaal-skerm, en publiseer dan hierdie inskrywing weer."
+  ],
+  "failure.publishing.JournalOff.what": [
+   "378794e6",
+   "Jou joernaal is af, so inskrywings is nie op jou werf nie. Hierdie inskrywing is steeds as 'n konsep gestoor."
+  ],
+  "failure.publishing.KeptFolderBuilt.next": [
+   "8aefb81c",
+   "Hernoem of skuif {folder} in jou bewaarplek op GitHub, stoor dan die Instellings-bladsy weer en publiseer."
+  ],
+  "failure.publishing.KeptFolderBuilt.what": [
+   "306da5a1",
+   "Jou werf maak nou {folder}, en Instellings hou {folder} op GitHub soos dit is, so publisering sou jou nuwe lêers uitlaat."
+  ],
+  "failure.publishing.NothingToPublish.next": [
+   "7e324b55",
+   "Publiseer eers 'n inskrywing, of klik Skakel die joernaal af op die Joernaal-skerm. As inskrywings van jou weg is, stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.publishing.NothingToPublish.what": [
+   "6dd87fa3",
+   "As Pressless nou publiseer, sou jou werf geen inskrywings hê nie, so Pressless het gestop."
+  ],
+  "failure.publishing.TakeoverOwed.next": [
+   "b1442736",
+   "Volg die skakel hieronder om dit na Pressless oor te skakel. Jy word eers gesê wat verander."
+  ],
+  "failure.publishing.TakeoverOwed.what": [
+   "bb3a951a",
+   "Jou werf word steeds deur GitHub Actions gebou, so niks is gepubliseer nie."
+  ],
+  "failure.publishing.WouldReplaceASite.next": [
+   "2c432687",
+   "As jy dit wil vervang, kies hieronder Vervang die werf op GitHub, en publiseer dan weer."
+  ],
+  "failure.publishing.WouldReplaceASite.what": [
+   "66b01a4b",
+   "Jou GitHub-bewaarplek bevat reeds 'n webwerf, en om jou beginwerf te publiseer sou dit vervang, so Pressless het gestop."
+  ],
+  "failure.secret.github_sign_in": [
+   "8feb3d43",
+   "jou GitHub-aanmelding"
+  ],
+  "failure.secret.google_sign_in": [
+   "31e7ed82",
+   "jou Google-aanmelding"
+  ],
+  "failure.secret.publishing_key": [
+   "fb417fb1",
+   "jou publiseersleutel"
+  ],
+  "failure.secret.youtube_key": [
+   "b91874e7",
+   "jou YouTube-sleutel"
+  ],
+  "failure.settings.NotSetUp.next": [
+   "e625bb8c",
+   "Gaan eers deur die opstelling."
+  ],
+  "failure.settings.NotSetUp.what": [
+   "c9bc0ce4",
+   "Pressless is nog nie opgestel nie."
+  ],
+  "failure.settings.SettingsError.next": [
+   "e48c19c8",
+   "Pressless het niks daarin verander nie. Stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.settings.SettingsError.what": [
+   "4b0de841",
+   "Pressless kon nie sy instellings lees nie."
+  ],
+  "failure.shortcuts.ShortcutError.what": [
+   "a0f1bcf8",
+   "Pressless kon nie sy kortpad in die kieslys of op die lessenaar verander nie."
+  ],
+  "failure.show_details": [
+   "1af77ee2",
+   "Wys besonderhede"
+  ],
+  "failure.sitefile.Refused.next": [
+   "ce1f0a68",
+   "Kies 'n lêer wat Pressless gestoor het, en maak dit weer oop."
+  ],
+  "failure.sitefile.Refused.what": [
+   "376d86f5",
+   "Pressless kon nie daardie lêer as 'n werf oopmaak nie."
+  ],
+  "failure.store.DanglingReply.next": [
+   "12d27946",
+   "Stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.store.DanglingReply.what": [
+   "37fd8092",
+   "'n Antwoord wys na 'n kommentaar wat nie daar is nie, so niks is gestoor nie."
+  ],
+  "failure.store.EntryNotFound.next": [
+   "ee32bee4",
+   "Gaan terug na Joernaal en kies die inskrywing weer."
+  ],
+  "failure.store.EntryNotFound.what": [
+   "439a6745",
+   "Pressless kon nie daardie inskrywing vind nie."
+  ],
+  "failure.store.SlugInUse.next": [
+   "75d7eb6e",
+   "Kies 'n ander adres en stoor weer."
+  ],
+  "failure.store.SlugInUse.what": [
+   "7bb388ea",
+   "'n Ander inskrywing gebruik reeds daardie adres, so niks is geskuif nie."
+  ],
+  "failure.store.StoreError.what": [
+   "8715fc6e",
+   "Pressless kon nie een van jou lêers gebruik nie."
+  ],
+  "failure.takein.TakeInStopped.next": [
+   "bd568bcf",
+   "Niks is verander nie. Maak daardie werf oop vanuit Werwe, of stel hierdie een in 'n nuwe gids op."
+  ],
+  "failure.takein.TakeInStopped.what": [
+   "0cd23c6d",
+   "Pressless hou reeds 'n werf op hierdie rekenaar, so dit het nie hierdie een ingekopieer nie."
+  ],
+  "failure.undo.FetchAreaInUse.next": [
+   "dd117890",
+   "'n Ander program het dalk 'n lêer oop in Pressless se eie gids. Maak dit toe en probeer dan weer."
+  ],
+  "failure.undo.FetchAreaInUse.what": [
+   "04add40c",
+   "Pressless kon nie sy eie werkgids skoonmaak nie, so dit het niks verander nie."
+  ],
+  "failure.undo.NothingToUndo.next": [
+   "3c441739",
+   "Daar is geen vroeër weergawe van jou werf om na terug te gaan nie."
+  ],
+  "failure.undo.NothingToUndo.what": [
+   "d42ccd28",
+   "Pressless kan nie jou allereerste publisering ongedaan maak nie."
+  ],
+  "failure.unforeseen.next": [
+   "1cfd21ff",
+   "Probeer weer, en stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.unforeseen.what": [
+   "3a35733a",
+   "Iets het skeefgeloop wat Pressless nie verwag het nie."
+  ],
+  "failure.unnamed_secret": [
+   "dca0d328",
+   "daardie geheim"
+  ],
+  "failure.updater.DiskFull.next": [
+   "fef6cb29",
+   "Maak spasie op hierdie rekenaar vry, en klik dan weer op Dateer nou op."
+  ],
+  "failure.updater.DiskFull.what": [
+   "66e6055a",
+   "Daar is nie genoeg spasie op hierdie rekenaar om die nuwe weergawe af te laai nie."
+  ],
+  "failure.updater.DownloadEndedEarly.next": [
+   "00746f37",
+   "Klik weer op Dateer nou op."
+  ],
+  "failure.updater.DownloadEndedEarly.what": [
+   "56b98f51",
+   "Die aflaai het gestop voordat dit klaar was."
+  ],
+  "failure.updater.DownloadFailed.next": [
+   "8704c9b4",
+   "Kyk jou internetverbinding na en klik weer op Dateer nou op."
+  ],
+  "failure.updater.DownloadFailed.what": [
+   "e0e68c42",
+   "Pressless kon nie die nuwe weergawe aflaai nie."
+  ],
+  "failure.updater.UpdateRejected.next": [
+   "4c1823b8",
+   "Hou aan om hierdie weergawe te gebruik, en stuur die besonderhede hieronder aan wie jou ook al help."
+  ],
+  "failure.updater.UpdateRejected.what": [
+   "785916d9",
+   "Die aflaai het nie bewys dat dit van Pressless af kom nie, so niks is geïnstalleer nie."
+  ],
+  "failure.youtube.ChannelNotFound.next": [
+   "0e55d9a8",
+   "Kyk die kanaal se adres in die YouTube-opstelling na."
+  ],
+  "failure.youtube.ChannelNotFound.what": [
+   "553c3a2f",
+   "YouTube ken geen kanaal met daardie naam nie."
+  ],
+  "failure.youtube.RateLimited.next": [
+   "46b96bda",
+   "Probeer môre weer."
+  ],
+  "failure.youtube.RateLimited.what": [
+   "94be8ad5",
+   "Jou sleutel het sy toelaag vir vandag opgebruik."
+  ],
+  "failure.youtube.Refused.next": [
+   "bb0a0036",
+   "Kyk die sleutel in die YouTube-opstelling na. Wys besonderhede het YouTube se woorde."
+  ],
+  "failure.youtube.Refused.what": [
+   "848dc37c",
+   "YouTube wou nie jou sleutel aanvaar nie."
+  ],
+  "failure.youtube.Unreachable.next": [
+   "176afd02",
+   "Kyk jou internetverbinding na en probeer weer."
+  ],
+  "failure.youtube.Unreachable.what": [
+   "08536e4d",
+   "Pressless kon nie YouTube bereik nie."
+  ],
+  "failure.youtube.YouTubeError.next": [
+   "4e983278",
+   "Probeer later weer. Wys besonderhede het YouTube se woorde."
+  ],
+  "failure.youtube.YouTubeError.what": [
+   "af01c083",
+   "YouTube het op 'n manier geantwoord wat Pressless nie verwag het nie."
+  ],
+  "files_screen.about": [
+   "c7dc8fdd",
+   "Die liedjies, video's, PDF's, ZIP-lêers en tekslêers wat jy opgelaai het. 'n Lêer gaan op jou webwerf wanneer 'n bladsy dit gebruik."
+  ],
+  "files_screen.bytes": [
+   "0d2a0d3c",
+   "{n} grepe"
+  ],
+  "files_screen.footer": [
+   "5bd1ea30",
+   "die voetstuk"
+  ],
+  "files_screen.header": [
+   "ea0d8b25",
+   "die kopstuk"
+  ],
+  "files_screen.kb": [
+   "eb236725",
+   "{n} KB"
+  ],
+  "files_screen.look": [
+   "5e5076e7",
+   "die voorkoms"
+  ],
+  "files_screen.mb": [
+   "47bee220",
+   "{n} MB"
+  ],
+  "files_screen.name": [
+   "50009ce1",
+   "Lêer"
+  ],
+  "files_screen.navigation": [
+   "b24ccab7",
+   "die kieslys"
+  ],
+  "files_screen.none": [
+   "9998d7de",
+   "Jy het nog geen lêers opgelaai nie. Laai een op vanuit 'n video-, musiek- of aflaaiafdeling op 'n bladsy."
+  ],
+  "files_screen.remove": [
+   "c3812fc4",
+   "Verwyder"
+  ],
+  "files_screen.removed": [
+   "6771fb4c",
+   "Die lêer is na die snippermandjie geskuif."
+  ],
+  "files_screen.size": [
+   "1af85190",
+   "Grootte"
+  ],
+  "files_screen.title": [
+   "a2b8baaa",
+   "Jou lêers"
+  ],
+  "files_screen.unused": [
+   "bd1ead47",
+   "Geen bladsy"
+  ],
+  "files_screen.used_by": [
+   "d5b46b2b",
+   "Gebruik op"
+  ],
+  "github_setup.cancelled": [
+   "69deb0d4",
+   "Die aanmelding is op GitHub gekanselleer. Pers Volgende om weer te begin."
+  ],
+  "github_setup.cannot_write": [
+   "cc7b5b24",
+   "Jy het as {signed_in} by GitHub aangemeld, en daardie rekening kan nie {repository} verander nie. Niks is gestoor nie, so jou vroeëre aanmelding werk steeds. Om 'n ander rekening te gebruik, skakel daarna oor op github.com, en pers dan Volgende om weer aan te meld."
+  ],
+  "github_setup.code": [
+   "eeba8207",
+   "Jou kode: <strong>{code}</strong>"
+  ],
+  "github_setup.how": [
+   "7e8447e8",
+   "Pressless meld met 'n kort kode by GitHub aan eerder as met jou wagwoord."
+  ],
+  "github_setup.how.1": [
+   "d25e27d7",
+   "Pers <b>Volgende</b>. Pressless wys 'n kode en 'n skakel na GitHub."
+  ],
+  "github_setup.how.2": [
+   "0510dd85",
+   "Maak die skakel oop, meld by GitHub aan as dit vra, en tik die kode."
+  ],
+  "github_setup.how.3": [
+   "53fb70b5",
+   "Klik <b>Authorize</b> op GitHub se bladsy."
+  ],
+  "github_setup.how.4": [
+   "ab21827c",
+   "Kom terug hierheen en pers weer <b>Volgende</b>."
+  ],
+  "github_setup.not_heard": [
+   "4348ebc1",
+   "GitHub het nog nie van jou gehoor nie. Tik die kode op GitHub se bladsy, klik Authorize, en pers dan hier Volgende."
+  ],
+  "github_setup.title": [
+   "47e9895d",
+   "Meld by GitHub aan"
+  ],
+  "github_setup.type_at": [
+   "85e49155",
+   "Tik dit by {link}"
+  ],
+  "github_setup.type_it": [
+   "832b672d",
+   "Tik hierdie kode op GitHub se bladsy, klik Authorize, en pers dan hier Volgende."
+  ],
+  "github_setup.unavailable": [
+   "f1e70b95",
+   "Hierdie kopie van Pressless kan nie by GitHub aanmeld nie. Plak eerder 'n publiseersleutel in Instellings."
+  ],
+  "google_setup.choose_hint": [
+   "0aa2b0d0",
+   "Kies een van die werwe in die lys."
+  ],
+  "google_setup.choose_other": [
+   "73a89b89",
+   "Kies 'n ander werf"
+  ],
+  "google_setup.continue": [
+   "31fbef16",
+   "Gaan voort"
+  ],
+  "google_setup.counting.also": [
+   "c0b6e864",
+   "Google lys ook {ids} vir hierdie werf."
+  ],
+  "google_setup.counting.failed": [
+   "95f74f14",
+   "Pressless kon nie hierdie werf se tellingkode van Google lees nie, so telling is steeds af. Jy kan sy meet-ID op die Instellings-bladsy tik."
+  ],
+  "google_setup.counting.failed_kept": [
+   "9ccadac8",
+   "Pressless kon nie hierdie werf se tellingkode van Google lees nie, so telling bly aan met {id}. Jy kan dit op die Instellings-bladsy verander."
+  ],
+  "google_setup.counting.found": [
+   "21e98d91",
+   "Pressless het hierdie werf se tellingkode ({id}) gevind en sal dit op elke bladsy sit wat jy publiseer."
+  ],
+  "google_setup.counting.kept": [
+   "88d1f426",
+   "Telling bly aan met {id}."
+  ],
+  "google_setup.counting.none": [
+   "536bd3ba",
+   "Hierdie werf het nog geen webstroom in Google Analytics nie, so telling is af. Maak in Google Analytics Admin oop, dan Data streams, dan Add stream, kies Web en voer jou werf se adres in. Tik dan die meet-ID wat dit wys op die Instellings-bladsy."
+  ],
+  "google_setup.counting.removed": [
+   "da6716e9",
+   "Pressless het {id}, die vorige werf se tellingkode, verwyder."
+  ],
+  "google_setup.counting.several": [
+   "348268f3",
+   "Google lys etlike webstrome vir hierdie werf: {ids}. Tik die regte meet-ID op die Instellings-bladsy om te begin tel."
+  ],
+  "google_setup.list_expired": [
+   "a205914c",
+   "Daardie lys werwe het verval, so niks is verander nie. Vra hieronder vir 'n nuwe lys."
+  ],
+  "google_setup.none_found": [
+   "8ec6329f",
+   "Hierdie Google-rekening kan geen Google Analytics-eiendom sien nie. Meld aan met die rekening wat dit wel kan."
+  ],
+  "google_setup.none_found.title": [
+   "58ad4b86",
+   "Geen Analytics-werf gevind nie"
+  ],
+  "google_setup.not_forgotten": [
+   "bdf3c5b3",
+   "Pressless kon nie die laaste eiendom se besoekersyfers van hierdie rekenaar af skoonmaak nie, so die paneelbord kan hulle as hierdie een s'n wys totdat dit weer vir Google vra."
+  ],
+  "google_setup.not_removed": [
+   "e86972b4",
+   "Pressless kon nie die Google-sleutel of die besoekersyfers verwyder nie, so hulle kan nog op hierdie rekenaar wees."
+  ],
+  "google_setup.not_told": [
+   "92e357ae",
+   "Pressless kon nie vir Google sê om sy toestemming te vergeet nie. Jy kan dit self by {link} verwyder."
+  ],
+  "google_setup.off": [
+   "401edb07",
+   "Besoekersyfers is af."
+  ],
+  "google_setup.offer": [
+   "3e12a457",
+   "Pressless kan wys hoeveel mense jou werf lees, en uit watter lande, deur dit uit Google Analytics te lees. Dit is opsioneel: daarsonder ontbreek net die besoekersyfers."
+  ],
+  "google_setup.privacy": [
+   "b5190c41",
+   "<a href=\"{url}\" target=\"_blank\" rel=\"noopener\">Privaatheid: hoe Pressless jou Google-data hanteer</a>"
+  ],
+  "google_setup.privacy_failed": [
+   "92435822",
+   "Besoekerstelling is aan, maar die Privaatheid-bladsy of sy skakel kon nie bygevoeg word nie. As jy Instellings stoor, probeer dit nog 'n keer."
+  ],
+  "google_setup.reading": [
+   "a6e97bd0",
+   "Pressless lees besoekersyfers vir Analytics-eiendom {property}."
+  ],
+  "google_setup.ready": [
+   "f8b7cb95",
+   "Besoekersyfers is gereed."
+  ],
+  "google_setup.sign_in": [
+   "1dbcee68",
+   "Meld met Google aan"
+  ],
+  "google_setup.sign_in_again": [
+   "51fbe1dc",
+   "Meld weer aan"
+  ],
+  "google_setup.signed_in": [
+   "5cc04d1e",
+   "Jy is by Google aangemeld."
+  ],
+  "google_setup.title": [
+   "a2768400",
+   "Besoekersyfers"
+  ],
+  "google_setup.turn_off": [
+   "e7df10ea",
+   "Skakel besoekersyfers af"
+  ],
+  "google_setup.unavailable": [
+   "8330b6b8",
+   "Hierdie kopie van Pressless kan nie aan Google koppel nie, so dit kan nie jou besoekersyfers wys nie."
+  ],
+  "google_setup.unverified": [
+   "64e8c90d",
+   "Google kyk nog na Pressless, so dit sal sê dit het nie hierdie toep geverifieer nie. Pressless lees net jou besoekersyfers. Om voort te gaan, klik <strong>Advanced</strong>, dan <strong>Go to Pressless</strong>."
+  ],
+  "google_setup.use": [
+   "f86b5282",
+   "Gebruik hierdie werf"
+  ],
+  "google_setup.which": [
+   "9e6e2b7f",
+   "Vir watter werf moet Pressless syfers wys?"
+  ],
+  "import.bring": [
+   "8f23e6f7",
+   "Pers Volgende om jou werf in te bring. Dit word alles gelyk geskryf, en niks is op die web totdat jy dit publiseer nie."
+  ],
+  "import.count.comments.many": [
+   "3af8a7b7",
+   "{count} kommentare"
+  ],
+  "import.count.comments.one": [
+   "3fd2c20e",
+   "1 kommentaar"
+  ],
+  "import.count.drafts.many": [
+   "edbc8a6d",
+   "{count} konsepte"
+  ],
+  "import.count.drafts.one": [
+   "19cc4a50",
+   "1 konsep"
+  ],
+  "import.count.files.many": [
+   "63352fdc",
+   "{count} lêers"
+  ],
+  "import.count.files.one": [
+   "41d899a9",
+   "1 lêer"
+  ],
+  "import.count.held.many": [
+   "085f5ad3",
+   "{count} foto's en lêers"
+  ],
+  "import.count.held.one": [
+   "a01507e6",
+   "1 foto of lêer"
+  ],
+  "import.count.pages.many": [
+   "d46e57d6",
+   "{count} bladsye"
+  ],
+  "import.count.pages.one": [
+   "0d8a4426",
+   "1 bladsy"
+  ],
+  "import.count.photographs.many": [
+   "f2b1e954",
+   "{count} foto's"
+  ],
+  "import.count.photographs.one": [
+   "e78e4450",
+   "1 foto"
+  ],
+  "import.count.posts.many": [
+   "c778d9da",
+   "{count} plasings"
+  ],
+  "import.count.posts.one": [
+   "709f0967",
+   "1 plasing"
+  ],
+  "import.count.published.many": [
+   "9afb20e3",
+   "{count} gepubliseerde inskrywings"
+  ],
+  "import.count.published.one": [
+   "f6a9d019",
+   "1 gepubliseerde inskrywing"
+  ],
+  "import.export.1": [
+   "90374d51",
+   "Kies <b>Tools</b>, dan <b>Export</b>."
+  ],
+  "import.export.2": [
+   "1ebc2690",
+   "Kies <b>All content</b>."
+  ],
+  "import.export.3": [
+   "59d8bd83",
+   "Pers <b>Download Export File</b>. Jou blaaier stoor 'n lêer wat op .xml eindig."
+  ],
+  "import.export.choose": [
+   "1e8f4771",
+   "Kies die uitvoerlêer"
+  ],
+  "import.export.held": [
+   "56822729",
+   "Pressless het jou uitvoer. Pers Volgende."
+  ],
+  "import.export.how": [
+   "cfda5952",
+   "Pressless lees die lêer wat WordPress van jou hele werf maak. Om dit te maak, meld by jou WordPress-werf aan en:"
+  ],
+  "import.export.none": [
+   "3ca6e74c",
+   "Kies eers jou WordPress-uitvoerlêer."
+  ],
+  "import.export.refused": [
+   "d9b0aec7",
+   "Daardie lêer is nie 'n WordPress-uitvoer wat Pressless kan lees nie, so dit is nie gehou nie. Kies die .xml-lêer wat WordPress gemaak het."
+  ],
+  "import.export.too_large": [
+   "da5e2ab9",
+   "Daardie lêer is groter as enige WordPress-uitvoer wat Pressless lees, so dit is nie gehou nie."
+  ],
+  "import.folder.base": [
+   "6cd52d56",
+   "dit het 'n basiselement, wat verander wat sy skakels beteken, so hulle is gelaat soos geskryf"
+  ],
+  "import.folder.built": [
+   "dd3eb83b",
+   "Hierdie gids bevat wat 'n instrument 'n werf uit bou, nie die werf se webbladsye nie. Bou die werf met daardie instrument, en kies dan die gids bladsye wat dit maak."
+  ],
+  "import.folder.carried_link": [
+   "4be8d77e",
+   "'n skakel na {path}, wat net binne die bladsye wat dit gebruik saamgekom het, nie as 'n lêer wat 'n skakel kan bereik nie"
+  ],
+  "import.folder.choose": [
+   "3edeb529",
+   "Kies 'n ZIP-lêer"
+  ],
+  "import.folder.choose_folder": [
+   "10471dd3",
+   "Kies die gids"
+  ],
+  "import.folder.counts": [
+   "3d4857a9",
+   "Pressless het {pages}, {photographs} en {files} gevind."
+  ],
+  "import.folder.current_marks": [
+   "573c5d29",
+   "Pressless merk nou die huidige skakel met aria-current, so die werf se eie reël vir sy active-, current- of selected-klas geld nie meer nie"
+  ],
+  "import.folder.front": [
+   "ae6d9a46",
+   "sonder 'n indeksbladsy het {path} die voorblad geword"
+  ],
+  "import.folder.held": [
+   "930feb46",
+   "Pressless het jou gids. Pers Volgende."
+  ],
+  "import.folder.how": [
+   "3785612a",
+   "Kies jou werf se gids. As dit reeds in 'n ZIP-lêer is, kies eerder dit."
+  ],
+  "import.folder.left": [
+   "d6714dd9",
+   "Hierdie sal nie saamkom nie:"
+  ],
+  "import.folder.linux": [
+   "33108959",
+   "Op Linux, regsklik die gids in jou lêerbestuurder en kies <b>Compress</b>, met <b>.zip</b> as die soort."
+  ],
+  "import.folder.look": [
+   "feb5fef5",
+   "Jou werf behou sy eie voorkoms. Sy stylblaaie word die werf se stylkode, wat jy later kan verander."
+  ],
+  "import.folder.make_zip": [
+   "4337c9ec",
+   "Hoe om 'n ZIP-lêer te maak"
+  ],
+  "import.folder.marks": [
+   "b7d46752",
+   "dit het merke bevat wat Pressless self gebruik, wat verwyder is"
+  ],
+  "import.folder.menu_stays": [
+   "5eec02f2",
+   "die kieslys bly in elke bladsy, so die Kieslys-skerm verander niks wat die werf wys nie"
+  ],
+  "import.folder.menu_unusual": [
+   "5d4d5d6c",
+   "hierdie kieslys word gehou soos geskryf, so 'n nuwe bladsy sal nie vanself daarby aansluit nie"
+  ],
+  "import.folder.no_footer": [
+   "40f1fa1a",
+   "die bladsye deel geen voetstuk nie, so geen is afgeskei nie"
+  ],
+  "import.folder.no_header": [
+   "cd9b8841",
+   "die bladsye deel geen kopstuk nie, so geen is afgeskei nie"
+  ],
+  "import.folder.no_main": [
+   "8fe5dc2a",
+   "sy hoofinhoud kon nie afgebaken word nie, so die visuele wysiger kan dit nie bereik nie"
+  ],
+  "import.folder.no_menu": [
+   "91dd0aec",
+   "die bladsye deel geen kieslys nie, so die Kieslys-skerm verander niks wat gewys word nie"
+  ],
+  "import.folder.no_page": [
+   "914dc77d",
+   "Daardie ZIP-lêer of gids bevat geen webbladsy nie, so niks is gehou nie."
+  ],
+  "import.folder.none": [
+   "fe39b0e2",
+   "Kies eers jou werf se gids."
+  ],
+  "import.folder.not_carried": [
+   "cac9e024",
+   "'n skakel na {path}, wat nie saamgekom het nie"
+  ],
+  "import.folder.older": [
+   "34901c38",
+   "dit was in 'n ouer enkodering, en is nou UTF-8"
+  ],
+  "import.folder.own_footer": [
+   "38f5be2c",
+   "dit behou sy eie voetstuk"
+  ],
+  "import.folder.own_header": [
+   "e1f065e3",
+   "dit behou sy eie kopstuk"
+  ],
+  "import.folder.own_menu": [
+   "90670c30",
+   "dit behou sy eie kieslys, wat die Kieslys-skerm nie verander nie"
+  ],
+  "import.folder.refused": [
+   "7fa4d4aa",
+   "Pressless kon nie daardie ZIP-lêer of gids lees nie, of kon dit nie op hierdie skyf pas nie, of dit noem 'n lêer buite sy gids. Niks is gehou nie."
+  ],
+  "import.folder.unnamed": [
+   "b0c4c598",
+   "niks noem hierdie lêer nie, so dit word gehou maar nie gepubliseer nie"
+  ],
+  "import.folder.up": [
+   "5db71ae7",
+   "dit bevat die woorde {{{{UP}}}}, wat Pressless vul met die pad op na die werf se wortel"
+  ],
+  "import.folder.why.cname": [
+   "01f497cc",
+   "dit sê watter webadres GitHub bedien, en bly op GitHub"
+  ],
+  "import.folder.why.deep": [
+   "71bd5cbb",
+   "dit word net bereik deur meer as {most} stylblaaie, wat elk die volgende invoer"
+  ],
+  "import.folder.why.dot": [
+   "90b99ce2",
+   "sy naam begin met 'n punt, wat 'n lêer merk wat nie vir die werf is nie"
+  ],
+  "import.folder.why.kind": [
+   "b07ad1ff",
+   "dit is nie 'n soort lêer wat Pressless hou nie"
+  ],
+  "import.folder.why.large": [
+   "3187c5a1",
+   "dit is groter as die {mib} MiB wat Pressless hou"
+  ],
+  "import.folder.why.long": [
+   "6155c9d9",
+   "'n naam in sy pad is langer as wat Linux kan hou"
+  ],
+  "import.folder.why.lost": [
+   "49f54f84",
+   "GitHub sou dit by elke ontbrekende adres bedien, waar 'n ou adres se aanstuur vir ewig sou herlaai"
+  ],
+  "import.folder.why.script": [
+   "3f26aa83",
+   "geen bladsy gebruik hierdie skrip op 'n manier wat Pressless binne die bladsy kan dra nie"
+  ],
+  "import.folder.why.segment": [
+   "403b1edc",
+   "Windows kan nie 'n naam in sy pad hou nie"
+  ],
+  "import.folder.why.sheet": [
+   "39b94d10",
+   "geen bladsy skakel na hierdie stylblad nie"
+  ],
+  "import.folder.why.svg": [
+   "25d2e9f8",
+   "Pressless hou 'n SVG net as 'n klein prentjie wat 'n bladsy wys, en dit is nie een nie"
+  ],
+  "import.folder.why.too_long": [
+   "b3faceea",
+   "sy hele pad is langer as wat hierdie rekenaar kan hou"
+  ],
+  "import.folder.why.twin": [
+   "2414e117",
+   "'n ander lêer het dieselfde naam, behalwe vir hoofletters"
+  ],
+  "import.folder.why.twin_folder": [
+   "475aeb5d",
+   "'n gids in sy pad het dieselfde naam as 'n ander, behalwe vir hoofletters"
+  ],
+  "import.folder.why.undecodable": [
+   "ab8b29c9",
+   "Pressless kon nie sy woorde lees nie"
+  ],
+  "import.folder.why.unwritable": [
+   "174f1c23",
+   "hierdie rekenaar kon dit nie daar skryf nie ({why})"
+  ],
+  "import.folder.why.verification": [
+   "fa79a2f4",
+   "dit bewys vir 'n soekenjin dat die werf joune is"
+  ],
+  "import.folder.windows": [
+   "542703ba",
+   "Op Windows, regsklik die gids in File Explorer, kies <b>Send to</b>, dan <b>Compressed (zipped) folder</b>. Op Windows 11, kies eers <b>Show more options</b>."
+  ],
+  "import.gaps.choose": [
+   "d4d9d3c5",
+   "Kies die ZIP-lêer"
+  ],
+  "import.gaps.filled.many": [
+   "4ca9a647",
+   "{count} is uit die ZIP-lêer geneem."
+  ],
+  "import.gaps.filled.one": [
+   "36a5608f",
+   "1 is uit die ZIP-lêer geneem."
+  ],
+  "import.gaps.how": [
+   "dc8a1199",
+   "As jy kan, laai die gids <b>wp-content/uploads</b> as een ZIP-lêer van jou webgasheer af: die meeste gashere se Lêerbestuurder kan 'n gids saampers en aflaai. Kies dan daardie ZIP hier, en Pressless neem wat ontbreek daaruit. Of pers Volgende om sonder hulle voort te gaan; elkeen word aan die einde gelys."
+  ],
+  "import.gaps.list.many": [
+   "a43304cc",
+   "Hierdie {count} kon nie van jou ou werf af gekopieer word nie:"
+  ],
+  "import.gaps.list.one": [
+   "e3589494",
+   "Hierdie een kon nie van jou ou werf af gekopieer word nie:"
+  ],
+  "import.gaps.none": [
+   "c0d48da8",
+   "Niks ontbreek nie. Pers Volgende."
+  ],
+  "import.gaps.refused": [
+   "319be7f2",
+   "Daardie lêer kon nie gebruik word nie. Kies 'n ZIP-lêer van die uploads-gids."
+  ],
+  "import.look": [
+   "67434d3f",
+   "Jou WordPress-tema kom nie saam nie, so kies hoe jou werf lyk. Jy kan dit later op die Voorkoms-skerm verander."
+  ],
+  "import.look.choose": [
+   "7411e643",
+   "Kies een van die voorkomste."
+  ],
+  "import.media.counts": [
+   "0b20c718",
+   "Jou uitvoer bevat {posts}, {pages} en {files}."
+  ],
+  "import.media.done": [
+   "5f99519b",
+   "Elke foto en lêer het saamgekom. Pers Volgende."
+  ],
+  "import.media.fetching": [
+   "d06e32f7",
+   "Pressless kopieer hulle van jou ou werf af: {done} van {total} tot dusver. Hou hierdie bladsy oop; as Pressless toemaak, gaan dit volgende keer vanaf hier voort."
+  ],
+  "import.media.missing": [
+   "5aef11ef",
+   "{count} kon nie van jou ou werf af gekopieer word nie. Pers Volgende om te sien watter."
+  ],
+  "import.media.retry": [
+   "fb63b71f",
+   "Pers Volgende om weer te probeer kopieer."
+  ],
+  "import.media.wait": [
+   "dde03850",
+   "Pressless kopieer nog. Wag totdat dit sê dit is klaar."
+  ],
+  "import.offer": [
+   "94356e3e",
+   "Het jy 'n WordPress-werf? <a href=\"{link}\">Bring dit in Pressless in</a>: sy plasings, bladsye, kieslys, kommentaar, foto's en lêers."
+  ],
+  "import.offer.folder": [
+   "77aa4a88",
+   "Is jou werf 'n gids webbladsye? <a href=\"{link}\">Bring dit eerder in</a>: dit behou sy voorkoms en sy adresse."
+  ],
+  "import.report.about": [
+   "7edf5467",
+   "Dit is wat saamgekom het, en alles wat nie soos geskryf saamgekom het nie. Dit word ook in die invoergids gehou, as report.txt."
+  ],
+  "import.report.counts": [
+   "d60f6022",
+   "{published}, {drafts}, {comments}, {photographs} en {files}."
+  ],
+  "import.report.counts.folder": [
+   "885f596d",
+   "{photographs} en {files}."
+  ],
+  "import.report.dropped": [
+   "7b407092",
+   "{where}: {what}."
+  ],
+  "import.report.inside": [
+   "a2d5be15",
+   "{path} is nou deel van elke bladsy wat dit gebruik het. Kyk of enige skrip nog werk: een wat 'n lêer by sy ou adres noem, sal dit nie vind nie."
+  ],
+  "import.report.menu": [
+   "2686a43e",
+   "Die kieslys het van {menu} gekom."
+  ],
+  "import.report.moved": [
+   "da71dcaf",
+   "{path} is nou die bladsy {name}. Sy ou adres stuur daarheen aan."
+  ],
+  "import.report.other_menus": [
+   "92a1b068",
+   "Ander kieslyste, nie ingebring nie: {menus}."
+  ],
+  "import.report.other_type.many": [
+   "3c06ea61",
+   "{count} items van die soort {kind} is nie ingebring nie."
+  ],
+  "import.report.other_type.one": [
+   "2ca18199",
+   "1 item van die soort {kind} is nie ingebring nie."
+  ],
+  "import.report.pages": [
+   "d36f7d8d",
+   "Bladsye: {pages}."
+  ],
+  "import.report.renamed": [
+   "812d7e68",
+   "{wanted} was reeds in gebruik, so dit is nou {given}."
+  ],
+  "import.report.renamed_file": [
+   "b964c619",
+   "{place} het sy naam gedeel, so dit is nou {name}."
+  ],
+  "import.report.review": [
+   "e83e7e06",
+   "{slug} het as 'n konsep aangekom: dit het op hersiening gewag."
+  ],
+  "import.report.scheduled": [
+   "e81370f7",
+   "{slug} het as 'n konsep aangekom: dit was geskeduleer vir {date}."
+  ],
+  "import.report.sheet_for_some": [
+   "49622ea1",
+   "{path} is deur net sommige bladsye gebruik. Sy reëls bereik nou elke bladsy."
+  ],
+  "import.report.title": [
+   "1776f776",
+   "Jou werf is in Pressless"
+  ],
+  "import.report.unfetched": [
+   "e35892ce",
+   "{place} het nie saamgekom nie: {why}."
+  ],
+  "import.step.bring": [
+   "321f12cb",
+   "Bring dit in"
+  ],
+  "import.step.export": [
+   "6f0ef038",
+   "Jou WordPress-uitvoer"
+  ],
+  "import.step.folder": [
+   "ecf42c87",
+   "Jou gids webbladsye"
+  ],
+  "import.step.found": [
+   "89853bc6",
+   "Wat sal saamkom"
+  ],
+  "import.step.gaps": [
+   "a8b1908a",
+   "Enigiets wat ontbreek"
+  ],
+  "import.step.look": [
+   "d130118b",
+   "'n Voorkoms"
+  ],
+  "import.step.media": [
+   "09a4ac0b",
+   "Jou foto's en lêers"
+  ],
+  "jpegxl.add": [
+   "dd145d3e",
+   "Voeg JPEG XL-ondersteuning by ({size} MB)"
+  ],
+  "jpegxl.disk_full": [
+   "fcb76801",
+   "Daar is nie genoeg spasie op hierdie rekenaar vir JPEG XL-ondersteuning nie. Maak spasie vry, en probeer dan weer."
+  ],
+  "jpegxl.line": [
+   "334e81e8",
+   "JPEG XL-foto's: nog nie bygevoeg nie."
+  ],
+  "jpegxl.no_connection": [
+   "ad13ac93",
+   "JPEG XL-ondersteuning kon nie afgelaai word nie. Kyk jou internetverbinding na en probeer weer."
+  ],
+  "jpegxl.no_decoder": [
+   "5d310a82",
+   "JPEG XL-foto's kan nie op hierdie rekenaar gelees word nie. Pressless se ontkodeerder loop op Windows, en op Linux op 64-bis Intel of AMD."
+  ],
+  "jpegxl.ready": [
+   "15422327",
+   "JPEG XL-foto's: gereed."
+  ],
+  "jpegxl.rejected": [
+   "1481ac92",
+   "Die aflaai was nie die verwagte lêer nie, so dit is weggegooi."
+  ],
+  "languages.follow": [
+   "e2332d2a",
+   "Volg die rekenaar"
+  ],
+  "languages.label": [
+   "a4fe6526",
+   "Taal"
+  ],
+  "languages.offer": [
+   "dd7d8951",
+   "Pressless kon nie sê wat jou rekenaar se taal is nie. Kies een:"
+  ],
+  "look.extra_note": [
+   "c283ab80",
+   "Jou eie CSS, uit die blokkie onderaan die Voorkoms-skerm."
+  ],
+  "look.journal_note": [
+   "9d714014",
+   "Die joernaal se bladsye, as jy dit sou aanskakel."
+  ],
+  "look.style_note": [
+   "c9e85910",
+   "Jou werf se voorkoms, gemaak deur Pressless se Voorkoms-skerm. Verander dit daar: 'n verandering wat hier met die hand gemaak word, word by die volgende stoor vervang, met 'n kopie in die snippermandjie gehou."
+  ],
+  "look_screen.about": [
+   "139563aa",
+   "Verander 'n keuse en die voorskou daarnaas wys dit dadelik. Stoor hou dit, en jou webwerf wys dit nadat jy volgende publiseer."
+  ],
+  "look_screen.back": [
+   "5e49efc3",
+   "As jy stoor, kom jou werf se eie stylblaaie terug. Pressless hou 'n kopie van die huidige stylkode in die snippermandjie."
+  ],
+  "look_screen.body_font": [
+   "b39fa052",
+   "Teks-lettertipe"
+  ],
+  "look_screen.colour.accent": [
+   "7c97e7df",
+   "Kieslysmerker"
+  ],
+  "look_screen.colour.band": [
+   "488d5d16",
+   "Kopstukagtergrond"
+  ],
+  "look_screen.colour.band-soft": [
+   "3bb2865a",
+   "Kopstukbeskrywing"
+  ],
+  "look_screen.colour.foot": [
+   "a750600f",
+   "Voetstukagtergrond"
+  ],
+  "look_screen.colour.foot-link": [
+   "b8e78ad4",
+   "Voetstukskakels"
+  ],
+  "look_screen.colour.heading": [
+   "a3e7821c",
+   "Opskrifte"
+  ],
+  "look_screen.colour.ink": [
+   "71988c4d",
+   "Teks"
+  ],
+  "look_screen.colour.line": [
+   "3b26a542",
+   "Lyne"
+  ],
+  "look_screen.colour.link": [
+   "9024c197",
+   "Skakels"
+  ],
+  "look_screen.colour.on-band": [
+   "a16987ba",
+   "Kopstukteks"
+  ],
+  "look_screen.colour.on-foot": [
+   "0b02725a",
+   "Voetstukteks"
+  ],
+  "look_screen.colour.paper": [
+   "54962022",
+   "Bladsyagtergrond"
+  ],
+  "look_screen.colour.soft": [
+   "4ef09d1d",
+   "Sagter teks"
+  ],
+  "look_screen.colours": [
+   "88f20221",
+   "Kleure"
+  ],
+  "look_screen.colours.about": [
+   "b314f30c",
+   "Lig word gebruik wanneer 'n besoeker se rekenaar op lig gestel is, en donker wanneer dit op donker gestel is."
+  ],
+  "look_screen.colours_kept": [
+   "15250786",
+   "As jy 'n ander uitleg kies, behou dit jou kleure."
+  ],
+  "look_screen.effect.lift": [
+   "197eaec4",
+   "Prente lig effens onder die wyser"
+  ],
+  "look_screen.effect.reveal": [
+   "540695d2",
+   "Elke deel van 'n bladsy vervaag in soos dit in sig rol"
+  ],
+  "look_screen.effect.smooth": [
+   "3a0ef598",
+   "Skakels binne 'n bladsy gly eerder as om te spring"
+  ],
+  "look_screen.effects": [
+   "358511c8",
+   "Effekte"
+  ],
+  "look_screen.effects.about": [
+   "84859946",
+   "'n Besoeker wat sy rekenaar vir minder beweging gevra het, sien geeneen hiervan nie."
+  ],
+  "look_screen.extra": [
+   "7551db76",
+   "Jou eie CSS"
+  ],
+  "look_screen.extra.about": [
+   "7b9a3fe8",
+   "Vir enigiemand wat CSS ken: dit word laaste bygevoeg, ná alles hierbo."
+  ],
+  "look_screen.extra.own_about": [
+   "4755b1e0",
+   "Vir enigiemand wat CSS ken: dit word ná jou werf se eie stylblaaie bygevoeg."
+  ],
+  "look_screen.font.humanist": [
+   "679370d4",
+   "Rond en vriendelik"
+  ],
+  "look_screen.font.mono": [
+   "b15b792b",
+   "Tikmasjien"
+  ],
+  "look_screen.font.serif": [
+   "0aac3dba",
+   "Klassiek, met seriewe"
+  ],
+  "look_screen.font.system": [
+   "1bd1b9ff",
+   "Jou besoeker se rekenaar se eie"
+  ],
+  "look_screen.heading_font": [
+   "070d746c",
+   "Opskrif-lettertipe"
+  ],
+  "look_screen.layout": [
+   "a5119091",
+   "Uitleg"
+  ],
+  "look_screen.own_colours": [
+   "eac98611",
+   "Gebruik hierdie uitleg se eie kleure"
+  ],
+  "look_screen.preview_title": [
+   "d00c21c9",
+   "Jou tuisblad met hierdie voorkoms"
+  ],
+  "look_screen.replaces": [
+   "ccce5e62",
+   "As jy stoor, vervang dit jou werf se huidige stylkode met een wat uit hierdie keuses gemaak is. Pressless hou 'n kopie van die huidige een in die snippermandjie."
+  ],
+  "look_screen.restart": [
+   "b1cbeef3",
+   "As jy hier 'n uitleg kies, begin dit weer met sy eie kleure en fonte."
+  ],
+  "look_screen.route": [
+   "df81de8b",
+   "Hoe jou werf gestileer word"
+  ],
+  "look_screen.route.own": [
+   "813b0220",
+   "Hou sy eie stylblaaie, en voeg CSS bo-op by"
+  ],
+  "look_screen.route.pressless": [
+   "b0545604",
+   "Gebruik 'n Pressless-ontwerp"
+  ],
+  "look_screen.save": [
+   "1509f561",
+   "Stoor"
+  ],
+  "look_screen.saved": [
+   "b66205b8",
+   "Gestoor. Jou webwerf wys hierdie voorkoms nadat jy volgende publiseer."
+  ],
+  "look_screen.size.large": [
+   "ab80540d",
+   "Groot"
+  ],
+  "look_screen.size.larger": [
+   "b05e2520",
+   "Groter"
+  ],
+  "look_screen.size.normal": [
+   "a7248eeb",
+   "Normaal"
+  ],
+  "look_screen.style.coral": [
+   "56ac628a",
+   "Koraal"
+  ],
+  "look_screen.style.coral.about": [
+   "ab93e345",
+   "'n gesin of 'n kindergroep"
+  ],
+  "look_screen.style.harbour": [
+   "d712d28b",
+   "Hawe"
+  ],
+  "look_screen.style.harbour.about": [
+   "b89a4307",
+   "nuus of 'n nuusbrief"
+  ],
+  "look_screen.style.ink": [
+   "f089d622",
+   "Ink"
+  ],
+  "look_screen.style.ink.about": [
+   "94b4e64f",
+   "enige werf, die maklikste om te lees"
+  ],
+  "look_screen.style.meadow": [
+   "02957438",
+   "Weiveld"
+  ],
+  "look_screen.style.meadow.about": [
+   "baaed471",
+   "skryfwerk, soos gedigte of stories"
+  ],
+  "look_screen.style.night": [
+   "4e9f8db8",
+   "Nag"
+  ],
+  "look_screen.style.night.about": [
+   "f477b3c2",
+   "'n groep of 'n aandgeleentheid"
+  ],
+  "look_screen.style.plum": [
+   "c8b2fae9",
+   "Pruim"
+  ],
+  "look_screen.style.plum.about": [
+   "8ddf1b92",
+   "'n kunstenaar of 'n maker"
+  ],
+  "look_screen.style.sand": [
+   "82855c11",
+   "Sand"
+  ],
+  "look_screen.style.sand.about": [
+   "dacc7088",
+   "'n kafee, 'n winkel of 'n kunsvlyt"
+  ],
+  "look_screen.style.sky": [
+   "b72804af",
+   "Lug"
+  ],
+  "look_screen.style.sky.about": [
+   "a600c739",
+   "'n skool of 'n gemeenskapsgroep"
+  ],
+  "look_screen.style.slate": [
+   "10ad4c38",
+   "Leisteen"
+  ],
+  "look_screen.style.slate.about": [
+   "96339945",
+   "'n besigheid of 'n diens"
+  ],
+  "look_screen.style.sunrise": [
+   "9c7c53e8",
+   "Sonopkoms"
+  ],
+  "look_screen.style.sunrise.about": [
+   "6829eb08",
+   "'n persoonlike werf of joernaal"
+  ],
+  "look_screen.style.teal": [
+   "fa15a5c1",
+   "Blougroen"
+  ],
+  "look_screen.style.teal.about": [
+   "f0b585ef",
+   "gesondheid of welstand"
+  ],
+  "look_screen.styles": [
+   "296ebb48",
+   "Kleurstyle"
+  ],
+  "look_screen.styles.about": [
+   "7263bc04",
+   "As jy een kies, vul dit die kleurblokkies hieronder. Jy kan daarna enige kleur verander."
+  ],
+  "look_screen.text_size": [
+   "d68761cc",
+   "Teksgrootte"
+  ],
+  "look_screen.title": [
+   "517f6627",
+   "Jou werf se voorkoms"
+  ],
+  "look_screen.type": [
+   "38ecfc9a",
+   "Teks en wydte"
+  ],
+  "look_screen.width": [
+   "217fbef1",
+   "Bladsywydte"
+  ],
+  "look_screen.width.medium": [
+   "07b6af29",
+   "Die uitleg se eie"
+  ],
+  "look_screen.width.narrow": [
+   "ba227109",
+   "Smal"
+  ],
+  "look_screen.width.wide": [
+   "147170e7",
+   "Wyd"
+  ],
+  "main.already": [
+   "b4dff8ff",
+   "Pressless loop reeds. Gebruik die blaaieroortjie wat dit oopgemaak het, of maak sy venster toe en begin dit weer."
+  ],
+  "main.could_not_start": [
+   "f2983d0b",
+   "Pressless kon nie begin nie ({kind}). Maak hierdie venster toe en begin Pressless weer. As dit aanhou gebeur, stuur daardie naam aan wie jou ook al help."
+  ],
+  "main.moving_in": [
+   "75b96938",
+   "Pressless kon nie jou werf na die werwe-gids in sy {folder}-gids skuif nie: {reason}. Niks is verlore nie. Maak toe enigiets wat daardie gids gebruik en begin Pressless weer."
+  ],
+  "main.open_link": [
+   "b07fafb2",
+   "Maak hierdie skakel in jou blaaier oop: {link}"
+  ],
+  "main.running": [
+   "c37fe663",
+   "Pressless loop. Hou hierdie venster oop terwyl jy dit gebruik, en maak dit toe om Pressless te stop."
+  ],
+  "manual.captions": [
+   "ba118bf7",
+   "Afrikaans"
+  ],
+  "manual.search": [
+   "34259ab4",
+   "Soek in die handleiding"
+  ],
+  "manual.title": [
+   "754d8e78",
+   "Pressless-handleiding"
+  ],
+  "mark.accent": [
+   "65483a56",
+   "Die werf se eie aksentkleur."
+  ],
+  "mark.accent.example": [
+   "b529bbbe",
+   "{{accent}}his own name{{/}}"
+  ],
+  "mark.bold": [
+   "6141b6af",
+   "Vet, vir 'n woord wat jy harder wil hê."
+  ],
+  "mark.bold.example": [
+   "19877635",
+   "**said out loud**"
+  ],
+  "mark.colour": [
+   "19ccb079",
+   "Enige kleur wat jy kies, geskryf as 'n hekkie en sy heks-kode."
+  ],
+  "mark.colour.example": [
+   "8e1e21d0",
+   "{{#c0453a}}the red line{{/}}"
+  ],
+  "mark.italic": [
+   "f27a25b6",
+   "Skuinsdruk, vir 'n woord wat van die res af leun."
+  ],
+  "mark.italic.example": [
+   "2007e7f6",
+   "*whispered*"
+  ],
+  "mark.link": [
+   "9bfb74bd",
+   "'n Skakel: die adres, dan die woorde waarop 'n leser klik."
+  ],
+  "mark.link.example": [
+   "7a42826e",
+   "{{link: https://example.org}}the words{{/}}"
+  ],
+  "mark.muted": [
+   "0f5519f8",
+   "Die werf se eie sagter ink, vir 'n reël wat terugsit."
+  ],
+  "mark.muted.example": [
+   "0fbc2df8",
+   "{{muted}}a quieter aside{{/}}"
+  ],
+  "mark.photo": [
+   "5023f781",
+   "'n Foto op 'n reël van sy eie, met 'n onderskrif as jy een wil hê."
+  ],
+  "mark.photo.example": [
+   "7e40d8ea",
+   "{{photo: seaside.jpg | Late light}}"
+  ],
+  "mark.quote": [
+   "3e49953a",
+   "'n Aanhaling: begin elkeen van sy reëls met >. 'n Leë reël beëindig dit."
+  ],
+  "mark.quote.example": [
+   "04352220",
+   "> a line someone else wrote"
+  ],
+  "mark.rainbow": [
+   "087840aa",
+   "Elke letter 'n ander kleur. Merke daarin bly soos getik."
+  ],
+  "mark.rainbow.example": [
+   "c02e1315",
+   "{{rainbow}}every colour at once{{/}}"
+  ],
+  "mark.years_since": [
+   "c8c6cebe",
+   "Hoeveel hele jare sedert 'n datum, elke keer uitgewerk wanneer jy publiseer."
+  ],
+  "mark.years_since.example": [
+   "0388bfb8",
+   "{{years_since: 2010-01-01}}"
+  ],
+  "notice.editor.left_out.categories": [
+   "316ba6c1",
+   "“{name}” is uit die kategorieë gelaat: Pressless kan dit nie deel van 'n webadres maak nie. Gee dit 'n ander naam."
+  ],
+  "notice.editor.left_out.tags": [
+   "ba2839a2",
+   "“{name}” is uit die etikette gelaat: Pressless kan dit nie deel van 'n webadres maak nie. Gee dit 'n ander naam."
+  ],
+  "notice.next": [
+   "913ee744",
+   "Niks is verlore nie. Stuur dit aan wie jou ook al help as jy dit nie verwag het nie."
+  ],
+  "notice.page_editor.code_only": [
+   "883f03e3",
+   "Pressless kan nie die hoofdeel van hierdie bladsy vind om op die bladsy te wysig nie, so dit maak as kode oop."
+  ],
+  "notice.page_editor.furniture_code_only": [
+   "f8d01dc5",
+   "Pressless kan nie vind waar hierdie deel van jou werf begin en eindig nie, so dit maak as kode oop."
+  ],
+  "notice.page_editor.kept_copy": [
+   "11f4425e",
+   "Jou veranderings is gepubliseer, maar hul wagtende kopie is op sy plek gelaat. Jy kan dit weggooi."
+  ],
+  "notice.page_editor.kept_copy_unknown": [
+   "33d1142b",
+   "Pressless kan nie sê of jou veranderings gepubliseer is nie, en hul wagtende kopie is op sy plek gelaat. Jy kan dit weggooi."
+  ],
+  "notice.page_editor.menu_code_only": [
+   "b52a0c7c",
+   "Pressless wysig 'n kieslys wat een lys skakels is. Joune is op 'n ander manier uitgelê, so dit maak as kode oop."
+  ],
+  "notice.page_editor.stray": [
+   "59086b9c",
+   "Die teks wat jy tussen die kopstuk- of voetstukmerkers sit, sal vervang word uit die een Kopstuk of Voetstuk wanneer jou werf gebou word. Wysig eerder die Kopstuk of Voetstuk."
+  ],
+  "notice.pages.menu_unusual": [
+   "6303364a",
+   "Jou kieslys is op 'n manier uitgelê wat Pressless nie wysig nie, so dit is gelaat soos dit is. Verander die skakel na hierdie bladsy in die Navigasie se kode."
+  ],
+  "notice.pages.no_link": [
+   "6afda825",
+   "Pressless het geen skakel na hierdie bladsy in jou kieslys gevind nie. Kyk die Navigasie se kode na."
+  ],
+  "notice.pages.other_links": [
+   "65333654",
+   "Jou kopstuk of voetstuk skakel steeds na hierdie bladsy. Verwyder daardie skakel in sy kode."
+  ],
+  "notice.publishing.import_kept": [
+   "c7aba2f0",
+   "Pressless kon nie aanteken dat jou werf nou gepubliseer is nie, so Maak die opstelling klaar lys steeds om dit op die web te sit tot by jou volgende publisering."
+  ],
+  "notice.publishing.kept_copy": [
+   "5b858eb6",
+   "'n Wagtende konsep van hierdie publisering is ná die publisering op sy plek gelaat. Jy kan dit weggooi."
+  ],
+  "notice.publishing.kept_copy_unknown": [
+   "8b5b0692",
+   "Pressless kan nie sê of jou veranderings gepubliseer is nie, en 'n wagtende konsep van hierdie publisering is op sy plek gelaat. Jy kan dit weggooi."
+  ],
+  "notice.publishing.starter_kept": [
+   "448962aa",
+   "Pressless kon nie aanteken dat jou beginwerf nou gepubliseer is nie, so jou volgende publisering sal nog een keer vra voordat dit 'n werf vervang."
+  ],
+  "notice.settings.not_private": [
+   "9827a6cb",
+   "die instellingslêer kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net-eienaar, so ander met 'n rekening op hierdie masjien kan dit lees"
+  ],
+  "notice.store.not_private": [
+   "da4be8e5",
+   "{file} kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net-eienaar, so ander met 'n rekening op hierdie masjien kan dit lees"
+  ],
+  "notice.store.passed_over": [
+   "7ba27a7c",
+   "{file} is oorgeslaan: {reason}"
+  ],
+  "notice.store.twin": [
+   "d1a4edf9",
+   "{twin} noem dieselfde inskrywing as {target} en is nie die lêer wat Pressless lees nie; ná hierdie skuif bevat die gids albei, en {twin} kan net bereik word deur dit te hernoem"
+  ],
+  "notice.undo.look_kept": [
+   "9440d3d3",
+   "Die voorkoms in die toestand waarheen jy teruggegaan het, kon nie gelees word nie, so jou werf behou sy huidige voorkoms; alles anders is teruggebring"
+  ],
+  "overview.drafts.many": [
+   "edbc8a6d",
+   "{count} konsepte"
+  ],
+  "overview.drafts.one": [
+   "19cc4a50",
+   "1 konsep"
+  ],
+  "overview.files.many": [
+   "3a8e322e",
+   "{count} lêers."
+  ],
+  "overview.files.one": [
+   "a16fdca5",
+   "1 lêer."
+  ],
+  "overview.journal.figures": [
+   "231f47fc",
+   "{published} op jou werf, {drafts}."
+  ],
+  "overview.journal.off": [
+   "c1fc792d",
+   "Af."
+  ],
+  "overview.open_files": [
+   "433fa20d",
+   "Maak jou lêers oop"
+  ],
+  "overview.open_journal": [
+   "d2fb3b68",
+   "Maak jou joernaal oop"
+  ],
+  "overview.open_look": [
+   "5b28e28a",
+   "Verander die voorkoms"
+  ],
+  "overview.open_pages": [
+   "7320e4c5",
+   "Maak jou bladsye oop"
+  ],
+  "overview.open_visitors": [
+   "37a424fe",
+   "Sien wie lees"
+  ],
+  "overview.parts": [
+   "b5c74681",
+   "Kieslys, kopstuk en voetstuk"
+  ],
+  "overview.parts.none": [
+   "a833973d",
+   "Nog nie opgestel nie."
+  ],
+  "overview.publish": [
+   "859390eb",
+   "Publiseer"
+  ],
+  "overview.publish.nothing.many": [
+   "ba49d50e",
+   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Elkeen gaan uit vanaf sy eie Pers na werf, nie vanaf Publiseer nie."
+  ],
+  "overview.publish.nothing.one": [
+   "cfa12edb",
+   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Dit gaan uit vanaf sy eie Pers na werf, nie vanaf Publiseer nie."
+  ],
+  "overview.visitors.none_yet": [
+   "8f22773e",
+   "Nog geen syfers nie."
+  ],
+  "overview.visitors.not_set_up": [
+   "a833973d",
+   "Nog nie opgestel nie."
+  ],
+  "overview.visitors.read": [
+   "05085723",
+   "{people} het jou werf in {window} gelees."
+  ],
+  "overview.waiting.entries.many": [
+   "e5e8e1c7",
+   "{count} joernaalinskrywings"
+  ],
+  "overview.waiting.entries.one": [
+   "0d3f726c",
+   "1 joernaalinskrywing"
+  ],
+  "overview.waiting.many": [
+   "20f7e292",
+   "{count} veranderings is nog nie op jou werf nie: {kinds}. Elkeen gaan uit vanaf sy eie Pers na werf."
+  ],
+  "overview.waiting.one": [
+   "29b2a9df",
+   "1 verandering is nog nie op jou werf nie: {kinds}. Dit gaan uit vanaf sy eie Pers na werf."
+  ],
+  "overview.waiting.pages.many": [
+   "d46e57d6",
+   "{count} bladsye"
+  ],
+  "overview.waiting.pages.one": [
+   "0d8a4426",
+   "1 bladsy"
+  ],
+  "overview.waiting.parts.many": [
+   "1e920871",
+   "{count} dele van elke bladsy"
+  ],
+  "overview.waiting.parts.one": [
+   "71efbc01",
+   "1 deel van elke bladsy"
+  ],
+  "page_editor.drag": [
+   "442e96ec",
+   "Sleep"
+  ],
+  "page_editor.menu.add": [
+   "b1109578",
+   "Voeg 'n skakel by"
+  ],
+  "page_editor.menu.address": [
+   "c485e60e",
+   "Gaan na"
+  ],
+  "page_editor.menu.title": [
+   "5dcb3d37",
+   "Die kieslys se skakels"
+  ],
+  "page_editor.menu.words": [
+   "0a8be89a",
+   "Woorde"
+  ],
+  "page_editor.newest": [
+   "7de8a7df",
+   "Jou nuutste inskrywing"
+  ],
+  "page_editor.panel.add": [
+   "f552a1e7",
+   "Voeg by:"
+  ],
+  "page_editor.panel.add_button": [
+   "9fd728c6",
+   "Voeg by"
+  ],
+  "page_editor.panel.add_file": [
+   "e44f3a85",
+   "Laai 'n lêer op"
+  ],
+  "page_editor.panel.add_picture": [
+   "4058365d",
+   "Voeg 'n prent by"
+  ],
+  "page_editor.panel.add_question": [
+   "8d62c67a",
+   "Voeg 'n vraag by"
+  ],
+  "page_editor.panel.add_to_column": [
+   "f6aec72a",
+   "Voeg by kolom {number}"
+  ],
+  "page_editor.panel.address": [
+   "56ef8f20",
+   "Adres"
+  ],
+  "page_editor.panel.alt": [
+   "2a65964d",
+   "Woorde wat dit beskryf"
+  ],
+  "page_editor.panel.bold": [
+   "94fee62e",
+   "Vet"
+  ],
+  "page_editor.panel.caption": [
+   "7e6568d1",
+   "Onderskrif, as daar een is"
+  ],
+  "page_editor.panel.code": [
+   "4395a602",
+   "Sy kode"
+  ],
+  "page_editor.panel.columns": [
+   "7cf5c34b",
+   "Hoeveel kolomme"
+  ],
+  "page_editor.panel.ends": [
+   "866e3f08",
+   "Wanneer dit eindig"
+  ],
+  "page_editor.panel.italic": [
+   "9bf37cb5",
+   "Skuinsdruk"
+  ],
+  "page_editor.panel.label": [
+   "bf27dd42",
+   "Woorde daarop"
+  ],
+  "page_editor.panel.level": [
+   "18720478",
+   "Opskrifgrootte, 1 die grootste"
+  ],
+  "page_editor.panel.link": [
+   "a6a32dbc",
+   "Skakel"
+  ],
+  "page_editor.panel.move": [
+   "6ecc3df6",
+   "Skuif"
+  ],
+  "page_editor.panel.move_down": [
+   "40bb50da",
+   "Skuif af"
+  ],
+  "page_editor.panel.move_to": [
+   "beb8194b",
+   "Skuif na"
+  ],
+  "page_editor.panel.move_up": [
+   "c66feb5e",
+   "Skuif op"
+  ],
+  "page_editor.panel.photograph": [
+   "d377becb",
+   "'n Foto wat jy het, of 'n adres"
+  ],
+  "page_editor.panel.remove": [
+   "c3812fc4",
+   "Verwyder"
+  ],
+  "page_editor.panel.style_note": [
+   "f80c0b0f",
+   "Dit stileer die hele bladsy waarop dit is, of elke bladsy vanaf die kopstuk of voetstuk. Prente en fonte van ander webwerwe wys op jou gepubliseerde werf, nie hier nie."
+  ],
+  "page_editor.panel.title": [
+   "b03b2a01",
+   "Hierdie afdeling"
+  ],
+  "page_editor.remove": [
+   "1ec1e329",
+   "Verwyder hierdie bladsy"
+  ],
+  "page_editor.rename": [
+   "1d8a5510",
+   "Hernoem hierdie bladsy"
+  ],
+  "page_editor.show_code": [
+   "76a1de59",
+   "Wys my die kode"
+  ],
+  "page_editor.show_on": [
+   "eae20d52",
+   "Wys dit op:"
+  ],
+  "page_editor.show_visual": [
+   "a49757bd",
+   "Sien wysiger"
+  ],
+  "page_editor.standing": [
+   "541b7167",
+   "Jou veranderings bly op hierdie rekenaar totdat jy hierdie bladsy publiseer."
+  ],
+  "page_hint.changes": [
+   "0ee20088",
+   "Pers jou veranderings na jou werf, of gooi dit weg, en hernoem dan hierdie bladsy."
+  ],
+  "page_hint.empty": [
+   "5a0e0f80",
+   "Gee die bladsy 'n naam met minstens een letter of syfer daarin."
+  ],
+  "page_hint.forwarded": [
+   "f24e9067",
+   "'n Hernoemde bladsy se ou adres stuur van daar aan. Kies 'n ander naam."
+  ],
+  "page_hint.home": [
+   "e4233998",
+   "Die tuisblad kan nie verwyder of hernoem word nie."
+  ],
+  "page_hint.menu_empty": [
+   "2a98e168",
+   "Die kieslys skakel na die bladsye op jou werf. Maak 'n bladsy en pers dit na jou werf, voeg dan die kieslys by."
+  ],
+  "page_hint.not_on_site": [
+   "0b77c7e9",
+   "Hierdie bladsy is nog nie op jou werf nie. Gooi sy veranderings weg om dit te verwyder."
+  ],
+  "page_hint.privacy_remove": [
+   "03b0bd55",
+   "Die Privaatheid-bladsy bly terwyl jou werf besoekers tel of Hou van- en Hou nie van-knoppies het."
+  ],
+  "page_hint.privacy_rename": [
+   "7b088b06",
+   "Die Privaatheid-bladsy behou sy naam: Pressless soek dit onder daardie naam."
+  ],
+  "page_hint.taken": [
+   "0b818bf4",
+   "Jy het reeds 'n bladsy met daardie naam."
+  ],
+  "page_hint.unusable": [
+   "7be6636a",
+   "Daardie naam kan nie 'n bladsy se adres wees nie. Kies 'n ander naam."
+  ],
+  "publishing.hint": [
+   "9567d670",
+   "Tik die bewaarplek se naam presies soos hierbo gewys."
+  ],
+  "publishing.keep": [
+   "3efb0275",
+   "Pressless laat hierdie met rus. Ontmerk enigiets van die ou werf wat moet gaan:"
+  ],
+  "publishing.keep_none": [
+   "5c37018b",
+   "Niks daarop is gemerk om met rus gelaat te word nie."
+  ],
+  "publishing.nothing": [
+   "f7494b96",
+   "Jou werf is reeds gepubliseer."
+  ],
+  "publishing.nothing.heading": [
+   "c7a8ce9a",
+   "Niks om te vervang nie"
+  ],
+  "publishing.ready": [
+   "a134c216",
+   "Publiseer nou weer van waar jy was. Jou beginwerf sal die werf in {repository} vervang."
+  ],
+  "publishing.ready.heading": [
+   "5e14676a",
+   "Gereed om jou werf te vervang"
+  ],
+  "publishing.replace": [
+   "e1fbba80",
+   "Vervang die werf op GitHub"
+  ],
+  "publishing.replace.button": [
+   "7485abff",
+   "Vervang dit"
+  ],
+  "publishing.replace.confirm": [
+   "3bdb95cf",
+   "Tik <strong>{repository}</strong> om te bevestig"
+  ],
+  "publishing.replace.intro": [
+   "baaf948a",
+   "Jou bewaarplek, {repository}, bevat reeds 'n webwerf. As jy jou beginwerf publiseer, vervang dit sy bladsye met joune."
+  ],
+  "publishing.takeover": [
+   "3471ff25",
+   "Skakel jou werf oor na Pressless"
+  ],
+  "publishing.takeover.already.elsewhere": [
+   "5c77340c",
+   "GitHub Pages is reeds verander, en bedien nou 'n ander gids of tak, so wat Pressless publiseer sal nie die web bereik totdat jy dit terugverander nie."
+  ],
+  "publishing.takeover.already.off": [
+   "df092691",
+   "GitHub Pages is reeds verander, en is nou af, so wat Pressless publiseer sal nie die web bereik totdat jy dit aanskakel nie."
+  ],
+  "publishing.takeover.already.root": [
+   "adb40c6f",
+   "GitHub Pages is reeds verander, en bedien nou hierdie bewaarplek se hoofgids. Pressless sal van nou af daar publiseer."
+  ],
+  "publishing.takeover.button": [
+   "c771c27e",
+   "Publiseer en skakel oor na Pressless"
+  ],
+  "publishing.takeover.delete": [
+   "ea357dfe",
+   "Verwyder {file} op GitHub"
+  ],
+  "publishing.takeover.done.added": [
+   "79ded52e",
+   "Pressless het 'n leë lêer bygevoeg, .nojekyll."
+  ],
+  "publishing.takeover.done.added_domain": [
+   "702f68e4",
+   "Pressless het seker gemaak dat 'n lêer, CNAME, daardie domein bevat."
+  ],
+  "publishing.takeover.done.address": [
+   "0f9f32ba",
+   "Jou werf het sy adres behou, {address}."
+  ],
+  "publishing.takeover.done.branch": [
+   "bd1298dc",
+   "Die tak {branch} is steeds in die bewaarplek, en GitHub Pages bedien dit nie meer nie."
+  ],
+  "publishing.takeover.done.counts": [
+   "4dd3d07c",
+   "{uploaded}, en {removed}. Alles bly in die bewaarplek se geskiedenis."
+  ],
+  "publishing.takeover.done.domain": [
+   "6d5f2f68",
+   "Jou werf het sy eie domein behou, {domain}."
+  ],
+  "publishing.takeover.done.earlier": [
+   "bbf100ac",
+   "'n Vroeëre pers het die werf reeds gepubliseer."
+  ],
+  "publishing.takeover.done.file": [
+   "a0b4d87f",
+   "{file} is weg, en bly in die bewaarplek se geskiedenis."
+  ],
+  "publishing.takeover.done.heading": [
+   "ecce9eac",
+   "Jou werf publiseer nou vanaf Pressless"
+  ],
+  "publishing.takeover.done.pages": [
+   "d2781d2d",
+   "GitHub Pages het oorgeskakel na wat Pressless publiseer."
+  ],
+  "publishing.takeover.done.removed.many": [
+   "7b37e3b6",
+   "{count} is verwyder"
+  ],
+  "publishing.takeover.done.removed.one": [
+   "98fb4de8",
+   "1 is verwyder"
+  ],
+  "publishing.takeover.done.stale": [
+   "610ee8cf",
+   "Pressless het 'n lêer, CNAME, verwyder wat 'n domein genoem het wat hierdie werf nie gebruik nie."
+  ],
+  "publishing.takeover.done.uploaded.many": [
+   "4912dda6",
+   "{count} lêers is opgelaai of verander"
+  ],
+  "publishing.takeover.done.uploaded.one": [
+   "7703628b",
+   "1 lêer is opgelaai of verander"
+  ],
+  "publishing.takeover.done.wait": [
+   "d27310c9",
+   "GitHub neem 'n paar minute om die werf die eerste keer te bou, so die ou werf kan tot dan wys."
+  ],
+  "publishing.takeover.intro": [
+   "6c1f862c",
+   "Jou werf op die web kom steeds van wat GitHub Actions in {repository} bou. Om dit na Pressless oor te skakel verander hierdie:"
+  ],
+  "publishing.takeover.not_switched": [
+   "6a9a7a18",
+   "Jou nuwe werf is op GitHub, maar nog nie op die web nie, omdat GitHub Pages nie oorgeskakel het nie. Jou ou werf is steeds op. Pers die knoppie weer."
+  ],
+  "publishing.takeover.removed": [
+   "a5b82e3f",
+   "Die boulêer is uit die bewaarplek weg, so dit is gereed."
+  ],
+  "publishing.takeover.steps": [
+   "022b8a72",
+   "Verwyder eers self die boulêer, want Pressless mag dit nie verander nie. Pers elke skakel hieronder. Dit maak GitHub in 'n nuwe oortjie oop. Pers daar Commit changes, en kom dan terug hierheen."
+  ],
+  "publishing.takeover.still_there": [
+   "385d298e",
+   "Die boulêer is steeds in die bewaarplek. Verwyder dit eers op GitHub. Niks is verander nie."
+  ],
+  "report.open": [
+   "cdf87d16",
+   "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Maak die verslag op GitHub oop</a>"
+  ],
+  "report.public": [
+   "cb233f0a",
+   "<strong>'n Kwessie is openbaar</strong>: enigiemand kan dit lees. Los jou werf se adres, jou skryfwerk en jou publiseersleutel uit."
+  ],
+  "report.security": [
+   "6e122766",
+   "'n Sekuriteitsprobleem gevind? Moet dit asseblief nie hier meld nie. Gebruik eerder GitHub se <a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">private verslag</a>."
+  ],
+  "report.what": [
+   "b5ef92b1",
+   "Dit maak 'n nuwe kwessie op Pressless se bladsy op GitHub oop, met 'n kort vorm reeds ingevul: watter Pressless jy het, die stelsel waarop dit loop, en drie vrae vir jou om te beantwoord. Niks anders word gestuur nie, en jy kan alles lees en verander voordat jy dit indien."
+  ],
+  "restarting.ask": [
+   "d82393ed",
+   "Pressless sal toemaak en in 'n nuwe oortjie weer oopmaak. Elke Pressless-oortjie wat nou oop is, hou op werk, so stoor eers enigiets wat jy in 'n ander oortjie skryf."
+  ],
+  "restarting.ask.title": [
+   "bcdf11e1",
+   "Herbegin Pressless?"
+  ],
+  "restarting.back": [
+   "be7700e4",
+   "Gaan terug na Instellings"
+  ],
+  "restarting.going": [
+   "5ce91cbb",
+   "Dit maak oor 'n oomblik weer in 'n nuwe oortjie oop. Jy kan hierdie een toemaak."
+  ],
+  "restarting.going.title": [
+   "56281953",
+   "Pressless herbegin."
+  ],
+  "restarting.link": [
+   "510b6dc6",
+   "Herbegin Pressless"
+  ],
+  "restarting.restart": [
+   "6b983a81",
+   "Herbegin"
+  ],
+  "script.assistant.go": [
+   "8d7dd5ec",
+   "Ja, doen dit"
+  ],
+  "script.assistant.title": [
+   "76730b3b",
+   "Jou KI-helper vra om jou werf te verander"
+  ],
+  "script.assistant.wait": [
+   "a9549d7d",
+   "Nog nie"
+  ],
+  "script.editor.adding_photograph": [
+   "5788f365",
+   "Voeg tans die foto by…"
+  ],
+  "script.editor.confirm_address": [
+   "4f36dc2c",
+   "Verander hierdie inskrywing se adres? Dit skuif nou in jou Pressless-data-gids, en op jou werf die volgende keer wat jy na die werf pers. Skakels na die ou adres sal dit steeds bereik."
+  ],
+  "script.editor.confirm_throw_draft": [
+   "e8e53920",
+   "Gooi hierdie konsep weg? Dit skuif na die snippermandjie in jou Pressless-data-gids."
+  ],
+  "script.editor.confirm_throw_entry": [
+   "ad76485e",
+   "Gooi hierdie inskrywing weg? Dit skuif nou na die snippermandjie in jou Pressless-data-gids, en verlaat jou werf die volgende keer wat jy na die werf pers. Ontdoen die laaste pers kan dit daarna terugbring."
+  ],
+  "script.editor.missing_many": [
+   "fc2de995",
+   "Foto's ontbreek: {names}. Voeg elkeen by met Voeg 'n foto by, of regstel die name, voordat jy pers."
+  ],
+  "script.editor.missing_one": [
+   "c81fdd69",
+   "Foto ontbreek: {names}. Voeg dit by met Voeg 'n foto by, of regstel sy naam, voordat jy pers."
+  ],
+  "script.editor.not_saved": [
+   "22b3467c",
+   "Nie gestoor nie"
+  ],
+  "script.editor.photograph_added": [
+   "a73d8b5a",
+   "{name} is bygevoeg."
+  ],
+  "script.editor.saved": [
+   "b5c120b3",
+   "Gestoor"
+  ],
+  "script.editor.saving": [
+   "096b7362",
+   "Stoor tans"
+  ],
+  "script.editor.throw_entry": [
+   "9ef7fd7e",
+   "Gooi hierdie inskrywing weg"
+  ],
+  "script.entry.below": [
+   "5ca94fe2",
+   "Dit gaan onder die deel wat jy gekies het."
+  ],
+  "script.entry.end": [
+   "97ee0fe2",
+   "Dit gaan aan die einde van jou inskrywing."
+  ],
+  "script.entry.kind.paragraph": [
+   "c3b03dd2",
+   "Paragraaf"
+  ],
+  "script.entry.kind.photo": [
+   "bb1de972",
+   "Foto"
+  ],
+  "script.entry.kind.quote": [
+   "0d0c6df9",
+   "Aanhaling"
+  ],
+  "script.entry.link_refused": [
+   "233e03c6",
+   "'n Skakel in 'n inskrywing het 'n adres nodig wat met https:// of http:// begin."
+  ],
+  "script.entry.nothing": [
+   "162851ff",
+   "Klik op 'n paragraaf, foto of aanhaling om dit te verander."
+  ],
+  "script.entry.unpaired": [
+   "7936f3df",
+   "Pressless kon nie jou inskrywing se paragrawe op die bladsy vind nie, so dit wys eerder die merke."
+  ],
+  "script.file_box.sending_folder": [
+   "e1c27aa7",
+   "Stuur tans die gids…"
+  ],
+  "script.file_box.too_large": [
+   "db7ad1af",
+   "Daardie gids is te groot om in een slag te stuur, so niks is gestuur nie. Sit dit in 'n ZIP-lêer, en kies dan dit."
+  ],
+  "script.file_box.unreachable": [
+   "ca9944b0",
+   "Pressless kon nie homself bereik nie, so die lêer is nie gestuur nie. Niks het verander nie. Kyk of Pressless nog loop, en probeer dan weer."
+  ],
+  "script.file_box.unreadable": [
+   "e72cc64e",
+   "Pressless kon nie 'n lêer in daardie gids lees nie, so niks is gestuur nie. Kyk of die gids nog daar is, en probeer dan weer."
+  ],
+  "script.look.dark": [
+   "60acc53f",
+   "Donker"
+  ],
+  "script.look.light": [
+   "dbcd5e7b",
+   "Lig"
+  ],
+  "script.look.no_preview": [
+   "d2f46949",
+   "Die voorskou kon nie jou laaste verandering wys nie. Jou keuses is steeds hier; Stoor hou hulle."
+  ],
+  "script.look.warning": [
+   "4d9e62a6",
+   "Moeilik om te lees in {scheme}: {text} op {background} is {ratio}:1, onder 4.5:1."
+  ],
+  "script.manual.found": [
+   "0f76bd3e",
+   "{count} take pas."
+  ],
+  "script.manual.found_one": [
+   "09664552",
+   "1 taak pas."
+  ],
+  "script.manual.none": [
+   "1cbdd43e",
+   "Geen taak pas nie. Probeer minder woorde."
+  ],
+  "script.message.ok": [
+   "565339bc",
+   "OK"
+  ],
+  "script.pages.ask_rename": [
+   "a36a0f29",
+   "Wat moet hierdie bladsy genoem word? Jou werf verander nou, en die ou adres sal steeds die bladsy bereik."
+  ],
+  "script.pages.confirm_remove": [
+   "a9f578f4",
+   "Verwyder hierdie bladsy? Dit gaan na die snippermandjie in jou Pressless-data-gids, saam met enige veranderings wat jy nie gepubliseer het nie. Dit verlaat nou jou werf en jou kieslys."
+  ],
+  "script.plan.added": [
+   "8fe2f752",
+   "{count} ander lêers sal bygevoeg of verander word."
+  ],
+  "script.plan.added_one": [
+   "2aa74735",
+   "1 ander lêer sal bygevoeg of verander word."
+  ],
+  "script.plan.go": [
+   "bf74ddc5",
+   "Publiseer nou"
+  ],
+  "script.plan.nothing": [
+   "ea6ac433",
+   "Niks op jou werf sal verander nie."
+  ],
+  "script.plan.pages": [
+   "89ec71ff",
+   "Hierdie bladsye sal verander:"
+  ],
+  "script.plan.removed": [
+   "0a1e9a88",
+   "{count} lêers sal verwyder word."
+  ],
+  "script.plan.removed_one": [
+   "da09c390",
+   "1 lêer sal verwyder word."
+  ],
+  "script.plan.title": [
+   "8c9c9b01",
+   "Voordat jou werf verander"
+  ],
+  "script.plan.wait": [
+   "a9549d7d",
+   "Nog nie"
+  ],
+  "script.press.checking": [
+   "d5331b91",
+   "Kyk tans wat op jou werf sal verander…"
+  ],
+  "script.press.not_published": [
+   "a2223bc0",
+   "Nie gepubliseer nie. Die rede is hieronder."
+  ],
+  "script.press.not_undone": [
+   "e4fedb6b",
+   "Jou werf is nie teruggesit nie. Die rede is hieronder."
+  ],
+  "script.press.published": [
+   "3b1e53b9",
+   "Gepubliseer. Jou werf wys dit binne 'n paar minute."
+  ],
+  "script.press.publishing": [
+   "8689979a",
+   "Publiseer tans… dit kan die eerste keer 'n paar minute neem."
+  ],
+  "script.press.undoing": [
+   "7c922372",
+   "Sit tans jou werf terug… dit kan 'n paar minute neem."
+  ],
+  "script.press.undone": [
+   "99bc4b8f",
+   "Jou werf is teruggesit."
+  ],
+  "script.press.unreachable": [
+   "79b80f2b",
+   "Pressless kon nie homself bereik nie, so hierdie bladsy kan nie sê hoe die pers geëindig het nie. Kyk of Pressless nog loop."
+  ],
+  "script.sites.opening": [
+   "c926c2c5",
+   "Maak tans oop…"
+  ],
+  "script.standing.changes": [
+   "007d0282",
+   "Veranderings nog nie gepubliseer nie"
+  ],
+  "script.standing.off_site": [
+   "57163c8f",
+   "Nog nie op jou werf nie"
+  ],
+  "script.standing.on_site": [
+   "c9050e71",
+   "Op jou werf"
+  ],
+  "script.undo.back": [
+   "78cc4f9e",
+   "Terug na Jou werf"
+  ],
+  "script.undo.unreachable": [
+   "478fff3b",
+   "Pressless kon nie homself bereik nie. Jou werf is nie verander nie."
+  ],
+  "script.visual.ask_link": [
+   "4127c879",
+   "Die adres om na te skakel:"
+  ],
+  "script.visual.below": [
+   "fb30d1a5",
+   "Dit gaan onder die afdeling wat jy gekies het."
+  ],
+  "script.visual.caption_linked": [
+   "d44678b2",
+   "Hierdie onderskrif bevat 'n skakel. Verander dit in die kodeaansig, sodat die skakel behou word."
+  ],
+  "script.visual.end": [
+   "941ec19a",
+   "Dit gaan aan die einde van die bladsy."
+  ],
+  "script.visual.fewer_columns": [
+   "733b3608",
+   "Skuif of verwyder eers wat in die laaste kolom is."
+  ],
+  "script.visual.file_too_large": [
+   "9094961b",
+   "Daardie lêer is groter as {mib} MiB (ongeveer {mb} MB), so dit is nie gestuur nie."
+  ],
+  "script.visual.kind.button": [
+   "707eab0c",
+   "Knoppie"
+  ],
+  "script.visual.kind.code": [
+   "340f4630",
+   "Kode"
+  ],
+  "script.visual.kind.columns": [
+   "53aade77",
+   "Kolomme"
+  ],
+  "script.visual.kind.countdown": [
+   "a9b7f3f1",
+   "Aftelling"
+  ],
+  "script.visual.kind.download": [
+   "d6eafe82",
+   "Aflaai"
+  ],
+  "script.visual.kind.enlarge": [
+   "236ca859",
+   "Prent wat vergroot"
+  ],
+  "script.visual.kind.heading": [
+   "b34f17f0",
+   "Opskrif"
+  ],
+  "script.visual.kind.music": [
+   "6eb00b4b",
+   "Musiek"
+  ],
+  "script.visual.kind.picture": [
+   "9a1c54f5",
+   "Prent"
+  ],
+  "script.visual.kind.pictures": [
+   "385434f2",
+   "Ry prente"
+  ],
+  "script.visual.kind.questions": [
+   "402ad619",
+   "Vrae wat oopvou"
+  ],
+  "script.visual.kind.script": [
+   "382b5dc6",
+   "Jou eie skrip"
+  ],
+  "script.visual.kind.slideshow": [
+   "dee52690",
+   "Prent-skyfievertoning"
+  ],
+  "script.visual.kind.style": [
+   "7551db76",
+   "Jou eie CSS"
+  ],
+  "script.visual.kind.text": [
+   "c3b03dd2",
+   "Paragraaf"
+  ],
+  "script.visual.kind.top": [
+   "b05d95c6",
+   "Terug na bo"
+  ],
+  "script.visual.kind.video": [
+   "d534be82",
+   "Video"
+  ],
+  "script.visual.link_refused": [
+   "9a39afe8",
+   "'n Skakel kan nie na daardie adres gaan nie. Gebruik een wat met https://, http:// of mailto: begin."
+  ],
+  "script.visual.move.below": [
+   "ad9341ca",
+   "Onder die kolomme"
+  ],
+  "script.visual.move.column": [
+   "e9a03bca",
+   "Kolom {number}"
+  ],
+  "script.visual.move.nowhere": [
+   "67d34be5",
+   "Geen ander plek nie"
+  ],
+  "script.visual.needs_address": [
+   "243ea7f3",
+   "Tik eers sy adres."
+  ],
+  "script.visual.nothing": [
+   "7ef07750",
+   "Klik op 'n opskrif, paragraaf of enige afdeling op die bladsy om dit te verander."
+  ],
+  "script.visual.picked": [
+   "fcb745d7",
+   "Verander tans: {kind}"
+  ],
+  "script.visual.top_label": [
+   "b05d95c6",
+   "Terug na bo"
+  ],
+  "setup.account.have": [
+   "535869e2",
+   "As jy reeds 'n GitHub-rekening het, tik sy naam hieronder."
+  ],
+  "setup.account.make": [
+   "16ab0ad1",
+   "Indien nie, maak een:"
+  ],
+  "setup.account.need": [
+   "047d4fd4",
+   "Jy het 'n GitHub-rekening nodig. As jy nog nie een het nie, maak nou een:"
+  ],
+  "setup.back": [
+   "ea37ec29",
+   "Terug na Instellings"
+  ],
+  "setup.bringin": [
+   "917d90cb",
+   "Hierdie bewaarplek bevat 'n werf wat uit webbladsye gemaak is, wat Pressless nie gemaak het nie. Pressless kan dit inbring, met sy voorkoms en sy adresse. Dit het gevind:"
+  ],
+  "setup.bringin.gone": [
+   "4e4715ac",
+   "Onder hulle sal hierdie nie saamkom nie, so daardie publisering vervang of verwyder hulle:"
+  ],
+  "setup.bringin.kept": [
+   "813a6bbb",
+   "Onder daardie sal hierdie nie in Pressless saamkom nie:"
+  ],
+  "setup.bringin.link": [
+   "dd55503b",
+   "{page} skakel na {path}, so daardie skakel sal dan ophou werk."
+  ],
+  "setup.bringin.not_kept": [
+   "7b69093f",
+   "Hierdie sal nie in Pressless saamkom nie:"
+  ],
+  "setup.bringin.publish": [
+   "46f25722",
+   "Jou volgende publisering sal dan hierdie op GitHub verander. Die ou bladsye word aanstuurskakels na hul nuwe adresse, en enigiets anders hier word vervang of verwyder. Alles bly in die bewaarplek se geskiedenis:"
+  ],
+  "setup.bringin.stays": [
+   "ad43d80d",
+   "Hierdie bly op GitHub, en Pressless sal hulle nie aanraak nie:"
+  ],
+  "setup.cannot_finish": [
+   "52812e2c",
+   "Die opstelling kan nie op hierdie rekenaar klaar maak nie."
+  ],
+  "setup.done": [
+   "d5a378c4",
+   "Die opstelling is klaar."
+  ],
+  "setup.done.address": [
+   "c90b949f",
+   "Jou werf se adres is {link}."
+  ],
+  "setup.done.brought": [
+   "a514cc23",
+   "Jou werf het ingekom. Dit is wat saamgekom het:"
+  ],
+  "setup.done.in_a_file": [
+   "fce09c97",
+   "Geen sleutelring is op hierdie rekenaar gevind nie, so dit word gehou in 'n lêer wat net jou rekening kan lees, in die Pressless-data-gids."
+  ],
+  "setup.done.kept_key": [
+   "291dca5b",
+   "Jou publiseersleutel word in {store} gehou."
+  ],
+  "setup.done.kept_sign_in": [
+   "657cea78",
+   "Jou GitHub-aanmelding word in {store} gehou."
+  ],
+  "setup.done.left_alone": [
+   "e1932b2a",
+   "Pressless sal hierdie op jou werf met rus laat:"
+  ],
+  "setup.done.nothing_left_alone": [
+   "6368d046",
+   "Pressless het niks op jou werf gevind wat dit met rus moet laat nie."
+  ],
+  "setup.done.starter": [
+   "ec2b499e",
+   "Jou beginwerf is op sy plek. Dit is nie op die web voordat jy dit publiseer nie."
+  ],
+  "setup.done.take_over": [
+   "7115c440",
+   "Jou werf op die web het nie verander nie. Kyk eers hier deur jou bladsye. Jou eerste publisering sal jou vra om die boulêer te verwyder, en skakel dan die werf oor na Pressless."
+  ],
+  "setup.done.taken_in": [
+   "c638685b",
+   "Jou werf het van GitHub af ingekom. Pressless hou nou:"
+  ],
+  "setup.field.account": [
+   "2f6afca6",
+   "Jou GitHub-rekeningnaam"
+  ],
+  "setup.field.daily_prompt_filter": [
+   "f0faec9c",
+   "Los inskrywings uit met 'n etiket wat pas by (opsioneel, byvoorbeeld dailyprompt-*)"
+  ],
+  "setup.field.home_name": [
+   "80be9928",
+   "Sy naam"
+  ],
+  "setup.field.key": [
+   "5eea8cc6",
+   "Jou publiseersleutel"
+  ],
+  "setup.field.measurement_id": [
+   "33131be3",
+   "Google se meet-ID, om jou besoekers te tel (opsioneel, begin met G-)"
+  ],
+  "setup.field.paste_key": [
+   "e2ef3c9c",
+   "Plak die sleutel hier"
+  ],
+  "setup.field.repository": [
+   "197019fd",
+   "Jou werf se bewaarplek op GitHub (eienaar/naam)"
+  ],
+  "setup.field.repository_name": [
+   "c201b15b",
+   "Die bewaarplek se naam"
+  ],
+  "setup.field.site_address": [
+   "a1143188",
+   "Jou werf se adres"
+  ],
+  "setup.field.site_description": [
+   "704e2ae9",
+   "'n Kort beskrywing van jou werf (opsioneel)"
+  ],
+  "setup.field.site_icon": [
+   "0f8bf84f",
+   "Jou werf se ikoon (opsioneel)"
+  ],
+  "setup.field.site_language": [
+   "e35b28cd",
+   "Werftaal"
+  ],
+  "setup.field.site_name": [
+   "9f3726d0",
+   "Jou werf se naam"
+  ],
+  "setup.field.site_picture": [
+   "b8efe721",
+   "Jou werf se deelprent (opsioneel)"
+  ],
+  "setup.first": [
+   "3c5ad849",
+   "Stel eers Pressless op, <a href=\"/setup\">op die opstellingsbladsy</a>."
+  ],
+  "setup.google.offer": [
+   "229c3d44",
+   "Opsioneel: <a href=\"/setup/google\">sien hoeveel mense jou werf lees</a>, vanaf Google Analytics."
+  ],
+  "setup.google.on": [
+   "07b16a0e",
+   "Besoekersyfers is aan: <a href=\"/setup/google\">verander die werf of skakel hulle af</a>."
+  ],
+  "setup.help.daily_prompt_filter": [
+   "6c89385c",
+   "Pressless laat elke inskrywing met 'n etiket wat hiermee pas, van jou werf af. 'n <b>*</b> staan vir enige letters, so <b>dailyprompt-*</b> pas by dailyprompt-1 en dailyprompt-2024. Hoofletters moet ook pas."
+  ],
+  "setup.help.daily_prompt_filter.empty": [
+   "cbecb753",
+   "Laat dit leeg om elke inskrywing te hou."
+  ],
+  "setup.help.key": [
+   "ae329dc4",
+   "Die sleutel laat Pressless jou werf se bewaarplek en sy instellings verander, en geen ander bewaarplek nie. Laat die blokkie leeg om die sleutel te hou wat Pressless reeds het. Om 'n nuwe een te maak:"
+  ],
+  "setup.help.measurement_id": [
+   "b5787eb4",
+   "Dit sê vir Google Analytics op watter teller jou besoekers getel word. Laat dit leeg en Pressless voeg geen tellingkode by jou werf nie. Om dit te vind:"
+  ],
+  "setup.help.measurement_id.1": [
+   "1b5db3bc",
+   "Maak <a href=\"https://analytics.google.com\" target=\"_blank\" rel=\"noopener\">analytics.google.com</a> oop en meld aan."
+  ],
+  "setup.help.measurement_id.2": [
+   "79104a28",
+   "Klik <b>Admin</b>, die rat links onder."
+  ],
+  "setup.help.measurement_id.3": [
+   "34eb63d7",
+   "Klik onder <b>Data collection and modification</b> op <b>Data streams</b>, dan jou werf se stroom. As daar geen is nie, klik <b>Add stream</b>, dan <b>Web</b>, en tik jou werf se adres."
+  ],
+  "setup.help.measurement_id.4": [
+   "e70ce3b9",
+   "Kopieer die <b>Measurement ID</b>. Dit begin met G-."
+  ],
+  "setup.help.repository": [
+   "79cec522",
+   "Tik die bewaarplek se eienaar en naam met 'n skuinsstreep tussen, soos GitHub hulle bo-aan die bewaarplek se bladsy wys: <b>eienaar/naam</b>. Hulle is ook die einde van daardie bladsy se adres, ná github.com/."
+  ],
+  "setup.help.repository.new": [
+   "0806c9e0",
+   "Om 'n nuwe bewaarplek te maak:"
+  ],
+  "setup.help.site_address": [
+   "1a26d74f",
+   "Die adres wat mense tik om jou werf te bereik, wat met https:// begin. Maak op GitHub jou werf se bewaarplek oop en klik <b>Settings</b>, dan <b>Pages</b>: sodra die werf lewendig is, word sy adres daar gewys."
+  ],
+  "setup.help.site_address.named": [
+   "0ff3494b",
+   "'n Bewaarplek genaamd <b>jou-naam.github.io</b> is by https://jou-naam.github.io. Enige ander naam is by https://jou-naam.github.io/<i>die-naam</i>/. As jy jou werf 'n eie domein gegee het onder <b>Custom domain</b> op daardie bladsy, tik dit eerder."
+  ],
+  "setup.help.site_description": [
+   "50d940f5",
+   "Een reël oor jou werf, in jou eie woorde. Pressless sit dit waar jou werf se kopstuk en voetstuk 'n plek daarvoor het. Laat dit leeg as jy nie een wil hê nie."
+  ],
+  "setup.help.site_icon": [
+   "e23d01dd",
+   "Die klein prentjie in 'n blaaier se oortjie langs jou werf se naam. Pressless sny die middel van jou prent tot 'n vierkant, so 'n prent met sy onderwerp in die middel werk die beste."
+  ],
+  "setup.help.site_language": [
+   "8be30159",
+   "Die taal van die woorde wat Pressless op jou werf skryf, soos sy datums en “Ouer →”. Hierdie skerms behou hul eie taal, gekies onder Meer."
+  ],
+  "setup.help.site_name": [
+   "5194ca7e",
+   "Jou eie keuse. Pressless sit dit waar jou werf se kopstuk en voetstuk 'n plek vir die werf se naam het."
+  ],
+  "setup.help.site_picture": [
+   "4cddcb86",
+   "Die prent wat mense langs 'n skakel na jou werf sien wanneer dit gedeel word, byvoorbeeld op Facebook. 'n Breë prent werk die beste. 'n Bladsy wat reeds sy eie deelprent noem, behou dit."
+  ],
+  "setup.hint.add_to_app": [
+   "f73a10d7",
+   "Pressless het die bewaarplek gemaak, maar die Pressless-toep kan dit nog nie bereik nie. Klik op GitHub jou prent, dan Settings, dan Applications. Klik Configure langs Pressless App, klik Select repositories, kies {repository}, en klik Save. Pers dan weer Volgende."
+  ],
+  "setup.hint.app_cannot_reach": [
+   "ed150a81",
+   "Die Pressless-toep kan nie hierdie bewaarplek bereik nie. Klik op GitHub jou prent, dan Settings, dan Applications, en kyk dat Pressless App se installasie dit insluit. Pers dan weer Volgende."
+  ],
+  "setup.hint.elsewhere": [
+   "6ce5b053",
+   "Hierdie bewaarplek sit reeds op 'n ander manier 'n werf op die web, so Pressless kan nie daarheen publiseer nie. Pers Terug en kies 'n ander, nuwe bewaarplek. Laat hierdie een se GitHub Pages-instellings soos hulle is: as jy dit verander, sal die werf wat reeds daar is, vanlyn gaan."
+  ],
+  "setup.hint.key_malformed": [
+   "48b5bf5b",
+   "'n Publiseersleutel het geen spasies of reëlbreuke nie. Plak dit weer."
+  ],
+  "setup.hint.key_missing": [
+   "a6d5102c",
+   "Plak jou publiseersleutel."
+  ],
+  "setup.hint.key_not_granted": [
+   "9be0608c",
+   "Hierdie sleutel kan nie daardie bewaarplek bereik nie. Wysig op GitHub die sleutel en kies jou werf se bewaarplek onder Repository access."
+  ],
+  "setup.hint.made_elsewhere": [
+   "1bce5cca",
+   "Hierdie bewaarplek bevat wat 'n instrument 'n werf uit bou, nie die werf se webbladsye nie, en Pressless kan dit nog nie inbring nie. Pers Terug en kies 'n ander bewaarplek."
+  ],
+  "setup.hint.measurement_id": [
+   "800be4bf",
+   "Tik die meet-ID soos Google dit wys: G- en dan hoofletters en syfers, of laat dit leeg."
+  ],
+  "setup.hint.name_alone": [
+   "dc6f333b",
+   "Tik net die bewaarplek se naam, soos GitHub dit ná jou rekeningnaam wys."
+  ],
+  "setup.hint.no_account": [
+   "4d954191",
+   "GitHub het geen rekening met daardie naam nie. Kyk die spelling na, of maak dit eers klaar."
+  ],
+  "setup.hint.no_pages_read": [
+   "8019e313",
+   "Hierdie sleutel kan nie GitHub Pages sien nie. Wysig op GitHub die sleutel en stel Pages op Read and write onder Repository permissions."
+  ],
+  "setup.hint.no_pages_write": [
+   "05f5ce77",
+   "Hierdie sleutel kan nie GitHub Pages aanskakel nie. Wysig op GitHub die sleutel en stel Pages en Administration op Read and write onder Repository permissions, en pers dan weer Volgende."
+  ],
+  "setup.hint.no_such_repository": [
+   "8fe6ccf9",
+   "GitHub het geen bewaarplek met daardie naam wat hierdie sleutel kan bereik nie."
+  ],
+  "setup.hint.not_installed": [
+   "d861b927",
+   "GitHub wys nog geen Pressless-toep op jou rekening geïnstalleer nie. Volg die stappe hierbo, en pers dan weer Volgende."
+  ],
+  "setup.hint.not_public": [
+   "18a10e42",
+   "GitHub wys geen openbare bewaarplek met daardie naam nie. Kyk die spelling na, en dat jy Public gekies het toe jy dit gemaak het."
+  ],
+  "setup.hint.other_account": [
+   "942815db",
+   "Jy het as {signed_in} by GitHub aangemeld, nie {typed} nie. Om {typed} te gebruik, skakel daarna oor op github.com, of regstel die naam hierbo. Pers dan Volgende om weer aan te meld."
+  ],
+  "setup.hint.repository": [
+   "6b113953",
+   "Tik dit as eienaar/naam, soos GitHub dit wys."
+  ],
+  "setup.hint.sign_in_gone": [
+   "16636b4d",
+   "Daardie aanmelding is nie meer op hierdie rekenaar nie. Meld hieronder as iemand anders aan."
+  ],
+  "setup.hint.site_address": [
+   "b257ed1d",
+   "Tik die werf se volle adres, wat met https:// begin."
+  ],
+  "setup.hint.site_description": [
+   "aee6cfa0",
+   "Skryf die beskrywing op een reël, of laat dit leeg."
+  ],
+  "setup.hint.site_icon": [
+   "bfd99683",
+   "Kies die prent weer, of verwyder dit."
+  ],
+  "setup.hint.site_language": [
+   "08376646",
+   "Kies een van die tale wat aangebied word."
+  ],
+  "setup.hint.site_name": [
+   "7dd593dd",
+   "Tik die werf se naam op een reël."
+  ],
+  "setup.hint.site_picture": [
+   "bfd99683",
+   "Kies die prent weer, of verwyder dit."
+  ],
+  "setup.hint.site_unreadable": [
+   "d1b6e116",
+   "GitHub Actions bou hierdie bewaarplek se werf, maar Pressless kon nie sy voorblad by sy adres lees nie. Kyk of die werf in jou blaaier oopmaak, en pers dan weer Volgende. As dit nie oopmaak nie, pers Terug en kies 'n ander bewaarplek. Niks is verander nie."
+  ],
+  "setup.hint.taken": [
+   "e0d73217",
+   "'n Bewaarplek met daardie naam bestaan reeds in jou rekening. Kies 'n ander naam."
+  ],
+  "setup.hint.type_account": [
+   "a7a0a5f3",
+   "Tik jou GitHub-rekeningnaam, soos GitHub dit wys."
+  ],
+  "setup.install": [
+   "2bccb307",
+   "Jou werf sal op GitHub woon, wat dit gratis huisves. Gee Pressless toestemming om dit daar te sit:"
+  ],
+  "setup.install.1": [
+   "6057c012",
+   "Maak {link} oop."
+  ],
+  "setup.install.2": [
+   "83eadfbb",
+   "As GitHub vra dat jy 'n gebruiker kies, klik <b>Continue</b> langs <b>{account}</b>."
+  ],
+  "setup.install.3": [
+   "ac4ea87e",
+   "Laat <b>All repositories</b> gekies onder <b>for these repositories</b>. Pressless maak dit aan die einde nouer."
+  ],
+  "setup.install.4": [
+   "4d18a292",
+   "Klik <b>Install</b>, kom dan terug hierheen en pers <b>Volgende</b>."
+  ],
+  "setup.install.already": [
+   "758303b8",
+   "As GitHub eerder instellings wys, sonder 'n <b>Install</b>-knoppie, het Pressless reeds toestemming. Kom terug hierheen en pers <b>Volgende</b>."
+  ],
+  "setup.install.happening": [
+   "a77c1b3c",
+   "Pressless werk deur sy eie toep op GitHub, Pressless App, wat net by die bewaarplekke uitkom wat jy toelaat. 'n Bewaarplek is die gids op GitHub waarin 'n werf woon. Pressless maak volgende jou werf se bewaarplek, en sê aan die einde hoe om die toep net by daardie een te laat uitkom."
+  ],
+  "setup.key": [
+   "5b5a0c9e",
+   "Pressless het 'n sleutel nodig wat jou werf se bewaarplek bereik en geen ander nie. Maak een:"
+  ],
+  "setup.key.kept": [
+   "55a05d66",
+   "Pressless het reeds die sleutel wat jy gegee het. Laat die blokkie leeg om dit te hou, of plak 'n nuwe een."
+  ],
+  "setup.key.safe": [
+   "d1680310",
+   "Pressless hou die sleutel in jou rekenaar se eie veilige stoor, nooit in 'n lêer wat dit vir iemand wys nie."
+  ],
+  "setup.key_kept": [
+   "a8bb39cc",
+   "Laat die sleutelblokkie leeg om die sleutel te hou wat Pressless reeds het."
+  ],
+  "setup.look.commons": [
+   "6aa9f1a4",
+   "Gemeenskap"
+  ],
+  "setup.look.commons.about": [
+   "eb83496f",
+   "'n klub of gemeenskap"
+  ],
+  "setup.look.harbour": [
+   "d712d28b",
+   "Hawe"
+  ],
+  "setup.look.harbour.about": [
+   "b89a4307",
+   "nuus of 'n nuusbrief"
+  ],
+  "setup.look.letter": [
+   "1bf163f2",
+   "Brief"
+  ],
+  "setup.look.letter.about": [
+   "d0b465c6",
+   "'n gewone dokument"
+  ],
+  "setup.look.market": [
+   "5238d9bd",
+   "Mark"
+  ],
+  "setup.look.market.about": [
+   "4ca6b44b",
+   "'n klein besigheid"
+  ],
+  "setup.look.meadow": [
+   "02957438",
+   "Weiveld"
+  ],
+  "setup.look.meadow.about": [
+   "baaed471",
+   "skryfwerk, soos gedigte of stories"
+  ],
+  "setup.look.stage": [
+   "de838855",
+   "Verhoog"
+  ],
+  "setup.look.stage.about": [
+   "d27c3b28",
+   "'n musikant of groep"
+  ],
+  "setup.look.studio": [
+   "0aa91af2",
+   "Ateljee"
+  ],
+  "setup.look.studio.about": [
+   "a9b0755b",
+   "'n portefeulje"
+  ],
+  "setup.look.sunrise": [
+   "9c7c53e8",
+   "Sonopkoms"
+  ],
+  "setup.look.sunrise.about": [
+   "6829eb08",
+   "'n persoonlike werf of joernaal"
+  ],
+  "setup.name_not_moved": [
+   "4c459c5c",
+   "Pressless kon nie jou werf se naam na jou werf se eie lêers skuif nie, en sal weer probeer wanneer dit volgende begin: {reason}"
+  ],
+  "setup.narrow": [
+   "22dac239",
+   "Die Pressless-toep kan by elke bewaarplek in jou rekening uitkom. Om dit net by jou werf s'n te laat uitkom: klik op GitHub jou prent, dan <b>Settings</b>, dan <b>Applications</b>. Klik <b>Configure</b> langs <b>Pressless App</b>, kies <b>Only select repositories</b>, kies <b>{repository}</b>, en klik <b>Save</b>."
+  ],
+  "setup.new_key.1": [
+   "e7612ac1",
+   "Klik op GitHub jou prent regs bo, dan <b>Settings</b>."
+  ],
+  "setup.new_key.2": [
+   "1ff5c047",
+   "Klik onderaan die lys aan die linkerkant <b>Developer settings</b>, dan <b>Personal access tokens</b>, dan <b>Fine-grained tokens</b>."
+  ],
+  "setup.new_key.3": [
+   "0e2c490e",
+   "Klik <b>Generate new token</b>. Noem dit <b>Pressless</b>, en kies hoe lank dit hou. Wanneer dit verstryk, maak 'n nuwe een op dieselfde manier en plak dit in Instellings."
+  ],
+  "setup.new_key.4": [
+   "0cc91817",
+   "Kies onder <b>Repository access</b> <b>Only select repositories</b>, dan jou werf se bewaarplek."
+  ],
+  "setup.new_key.5": [
+   "a2b102d9",
+   "Stel onder <b>Repository permissions</b> <b>Contents</b>, <b>Pages</b> en <b>Administration</b> elk op <b>Read and write</b>. Pressless het Administration nodig om jou werf aan te skakel."
+  ],
+  "setup.new_key.6": [
+   "a2d8db20",
+   "Klik <b>Generate token</b>, en kopieer dit dan. GitHub wys dit net een keer."
+  ],
+  "setup.new_repository": [
+   "5a37d17f",
+   "Pressless maak nou 'n tuiste vir jou werf op GitHub. Sy naam bepaal jou werf se adres."
+  ],
+  "setup.new_repository.1": [
+   "696c612a",
+   "Maak <a href=\"https://github.com/new\" target=\"_blank\" rel=\"noopener\">github.com/new</a> oop. Of klik op GitHub die <b>+</b> regs bo, dan <b>New repository</b>."
+  ],
+  "setup.new_repository.2": [
+   "9c107e11",
+   "Tik <b>{account}.github.io</b> onder <b>Repository name</b>. Jou werf se adres is dan https://{account}.github.io. Enige ander naam werk ook, en gee https://{account}.github.io/<i>die-naam</i>/."
+  ],
+  "setup.new_repository.3": [
+   "fa131e81",
+   "Kies <b>Public</b>. GitHub huisves werwe net vanaf openbare bewaarplekke gratis."
+  ],
+  "setup.new_repository.4": [
+   "bad217a0",
+   "Klik <b>Create repository</b>. Laat alles anders soos dit is."
+  ],
+  "setup.new_repository.happening": [
+   "cc93ef31",
+   "Die tuiste is 'n bewaarplek: die gids op GitHub waarin jou werf woon. Pressless maak dit Public, omdat GitHub werwe net vanaf openbare bewaarplekke gratis huisves."
+  ],
+  "setup.new_repository.named": [
+   "39156c52",
+   "As dit <b>{account}.github.io</b> genoem word, is jou werf se adres https://{account}.github.io. Enige ander naam werk ook, en gee https://{account}.github.io/<i>die-naam</i>/."
+  ],
+  "setup.onward": [
+   "8b7290b0",
+   "Gaan na jou werf"
+  ],
+  "setup.pages": [
+   "44b7dfe0",
+   "Pers Volgende en Pressless sit jou werf op die web. Enigiets wat reeds in jou werf se tuiste is, gaan ook op die web."
+  ],
+  "setup.pages.happening": [
+   "5719890f",
+   "GitHub Pages is wat jou bewaarplek op die web sit. Pressless kyk dit na, en skakel dit aan as dit af is."
+  ],
+  "setup.pages.nojekyll": [
+   "df70a052",
+   "Dit voeg ook 'n leë lêer genaamd .nojekyll by jou bewaarplek, wat vir GitHub sê om jou werf se lêers presies te wys soos Pressless dit maak."
+  ],
+  "setup.pick.new": [
+   "82f142a5",
+   "Maak 'n nuwe een"
+  ],
+  "setup.pick.unlisted": [
+   "fb0e4c75",
+   "Pressless kon nie die werwe lys wat reeds in jou GitHub-rekening is nie. Om een te gebruik, tik sy naam hieronder."
+  ],
+  "setup.pick.which": [
+   "a1d08a70",
+   "Jou GitHub-rekening het reeds hierdie werwe. Kies een om in Pressless in te bring, of maak 'n nuwe een."
+  ],
+  "setup.picture.choose": [
+   "2132f604",
+   "Kies 'n prent"
+  ],
+  "setup.picture.remove": [
+   "c3812fc4",
+   "Verwyder"
+  ],
+  "setup.privacy.failed": [
+   "04c085ed",
+   "Jou instellings is gestoor, maar die Privaatheid-bladsy of sy skakel kon nie bygevoeg word nie. As jy weer stoor, probeer dit nog 'n keer."
+  ],
+  "setup.privacy.link": [
+   "2a059c6a",
+   "Jou voetstuk skakel nou na die Privaatheid-bladsy."
+  ],
+  "setup.privacy.page": [
+   "bed484e7",
+   "Jou werf het nou 'n Privaatheid-bladsy wat sê wat dit oor besoekers aanteken. Maak dit oop vanuit Jou bladsye en voeg by hoe mense jou kan bereik."
+  ],
+  "setup.repository": [
+   "ac7eb37f",
+   "'n Bewaarplek is die gids op GitHub waarin jou werf woon. Maak een:"
+  ],
+  "setup.save": [
+   "bd10af12",
+   "Kyk die bewaarplek weer na en stoor"
+  ],
+  "setup.section.address": [
+   "a1143188",
+   "Jou werf se adres"
+  ],
+  "setup.section.address.holds": [
+   "ca8aed93",
+   "Waar jou werf op die web is, en jou eie domeinnaam."
+  ],
+  "setup.section.assistant": [
+   "c22bf759",
+   "KI-helper"
+  ],
+  "setup.section.assistant.holds": [
+   "f9d558c0",
+   "'n KI-toep op hierdie rekenaar laat werk aan jou werf."
+  ],
+  "setup.section.computer": [
+   "26f9f95a",
+   "Hierdie rekenaar"
+  ],
+  "setup.section.computer.holds": [
+   "d63a87a8",
+   "Pressless in die kieslys en op die lessenaar, herbegin, opdaterings en JPEG XL."
+  ],
+  "setup.section.connection": [
+   "f911e414",
+   "GitHub"
+  ],
+  "setup.section.connection.holds": [
+   "23384fff",
+   "Die bewaarplek waarheen jou werf gepubliseer word, en sy sleutel."
+  ],
+  "setup.section.elsewhere": [
+   "f9ae5003",
+   "Nie gestoor nie. Verander eers hierdie in {section}: {hint}"
+  ],
+  "setup.section.journal": [
+   "43b7c75d",
+   "Joernaal"
+  ],
+  "setup.section.journal.holds": [
+   "fb93902b",
+   "Inskrywings wat per etiket uit die joernaal gelaat word, en hou-van-klikke."
+  ],
+  "setup.section.saved": [
+   "fca046cc",
+   "Gestoor."
+  ],
+  "setup.section.site": [
+   "b4aa72b0",
+   "Jou werf se naam en prente"
+  ],
+  "setup.section.site.holds": [
+   "34c5f01c",
+   "Sy naam, die reël wat dit beskryf, sy ikoon en sy deelprent."
+  ],
+  "setup.section.visitors": [
+   "60d3f52a",
+   "Besoekers en Google"
+  ],
+  "setup.section.visitors.holds": [
+   "57d91151",
+   "Jou besoekers met Google tel, en jou YouTube-video's."
+  ],
+  "setup.shortcuts.app_menu": [
+   "5c8d4186",
+   "jou toepkieslys"
+  ],
+  "setup.shortcuts.desktop": [
+   "0b01fa67",
+   "Sit 'n Pressless-ikoon op die lessenaar"
+  ],
+  "setup.shortcuts.icon_added": [
+   "7a3baf14",
+   "Daar is 'n Pressless-ikoon op jou lessenaar."
+  ],
+  "setup.shortcuts.icon_removed": [
+   "8af7b672",
+   "Die Pressless-ikoon is van jou lessenaar af weg."
+  ],
+  "setup.shortcuts.menu": [
+   "b6510faf",
+   "Sit Pressless in {menu}"
+  ],
+  "setup.shortcuts.pinning": [
+   "760ee349",
+   "Pressless is in jou toepkieslys. Om dit by jou paneel te voeg, soek dit in die kieslys, regsklik dit en kies die opsie wat dit vasmaak of by die paneel voeg. Die naam verskil tussen lessenaars."
+  ],
+  "setup.shortcuts.pinning.windows": [
+   "e06d4168",
+   "Pressless is in die Start-kieslys. Om dit aan die taakbalk vas te maak, soek dit in die Start-kieslys, regsklik dit en kies Pin to taskbar."
+  ],
+  "setup.shortcuts.removed": [
+   "f98ec97d",
+   "Pressless is nie meer in {menu} nie."
+  ],
+  "setup.shortcuts.save": [
+   "f15a6c70",
+   "Stoor hierdie"
+  ],
+  "setup.shortcuts.start_menu": [
+   "c3e61eb1",
+   "die Start-kieslys"
+  ],
+  "setup.shortcuts.title": [
+   "809c0f8f",
+   "Toepkieslys en lessenaar"
+  ],
+  "setup.shortcuts.title.windows": [
+   "63ae8b15",
+   "Start-kieslys en lessenaar"
+  ],
+  "setup.shortcuts.unavailable": [
+   "ee2f6fd2",
+   "Pressless kan homself net by die kieslys en die lessenaar voeg wanneer dit vanaf die lêer loop wat jy afgelaai het."
+  ],
+  "setup.shortcuts.unchanged": [
+   "3d4a49e6",
+   "Niks hoef verander te word nie."
+  ],
+  "setup.shortcuts.untick": [
+   "50cd5e85",
+   "Ontmerk 'n blokkie en stoor om daardie een weer weg te neem."
+  ],
+  "setup.sign_up.1": [
+   "8d45e9d1",
+   "Maak <a href=\"https://github.com/signup\" target=\"_blank\" rel=\"noopener\">github.com/signup</a> oop."
+  ],
+  "setup.sign_up.2": [
+   "d61a6c56",
+   "Tik jou e-posadres, 'n wagwoord en 'n gebruikersnaam, en volg GitHub se stappe. Dit stuur 'n kode na jou e-pos om te kyk dat dit joune is."
+  ],
+  "setup.sign_up.3": [
+   "d34536d5",
+   "Wanneer GitHub vra watter plan, is die gratis een al wat Pressless nodig het."
+  ],
+  "setup.signed_in": [
+   "23eb87a8",
+   "Pressless is by GitHub aangemeld. As jy hieronder 'n sleutel tik, vervang dit die aanmelding. <a href=\"/setup/github\">Meld weer by GitHub aan</a>."
+  ],
+  "setup.signin.account": [
+   "104b73d1",
+   "Tik die naam van die GitHub-rekening waarin jou werf sal woon. As jy meer as een het, kyk Pressless dat jy by hierdie een aanmeld."
+  ],
+  "setup.signin.continue_as": [
+   "07863def",
+   "Gaan voort as {account}"
+  ],
+  "setup.signin.someone_else": [
+   "7fdf109b",
+   "Meld as iemand anders aan"
+  ],
+  "setup.signin.which": [
+   "06488a1f",
+   "'n Ander een van jou werwe is reeds by GitHub aangemeld."
+  ],
+  "setup.site": [
+   "b82de6bd",
+   "Jou werf se adres is {link}. Dit kan 'n paar minute ná jou eerste publisering neem voordat dit wys."
+  ],
+  "setup.site.finish": [
+   "6ff88876",
+   "Pers Volgende om alles 'n laaste keer by GitHub na te gaan en klaar te maak."
+  ],
+  "setup.starter.box": [
+   "9c91ac53",
+   "Begin met 'n beginwerf: 'n tuisblad, 'n Oor-bladsy, 'n kieslys, 'n kopstuk en 'n voetstuk, gereed vir jou om te verander."
+  ],
+  "setup.starter.box.empty": [
+   "f18aea9c",
+   "Los dit ongemerk as jy 'n werf wat jy reeds het gaan inbring: dit het 'n leë kopie van Pressless nodig."
+  ],
+  "setup.starter.look": [
+   "5f584679",
+   "Sy voorkoms (jy kan later enigiets daarin verander)"
+  ],
+  "setup.starter.publish": [
+   "758f0e48",
+   "Om dit op die web te sit, maak <b>Tuis</b> op die <b>Bladsye</b>-skerm oop, en pers <b>Pers na werf</b>."
+  ],
+  "setup.starter.unpublished": [
+   "abd9fb52",
+   "Jou beginwerf is nog nie op die web nie."
+  ],
+  "setup.step.account": [
+   "d9246f26",
+   "'n GitHub-rekening"
+  ],
+  "setup.step.install": [
+   "5878fcbd",
+   "Laat Pressless jou werf bereik"
+  ],
+  "setup.step.key": [
+   "ba46cbad",
+   "'n Sleutel vir Pressless"
+  ],
+  "setup.step.pages": [
+   "38162e61",
+   "Skakel die werf aan"
+  ],
+  "setup.step.repository": [
+   "e934e6e2",
+   "'n Tuiste vir jou werf"
+  ],
+  "setup.step.site": [
+   "5af93124",
+   "Jou werf"
+  ],
+  "setup.step.welcome": [
+   "68058b67",
+   "Stel Pressless op"
+  ],
+  "setup.takein": [
+   "8bd007c8",
+   "Hierdie bewaarplek bevat reeds 'n werf wat Pressless gemaak het. Pressless het gevind:"
+  ],
+  "setup.takein.comments": [
+   "cdedde3e",
+   "Inskrywings met kommentaar: {count}"
+  ],
+  "setup.takein.entries": [
+   "6f35b08c",
+   "Gepubliseerde inskrywings: {count}"
+  ],
+  "setup.takein.files": [
+   "6cc1174c",
+   "Ander lêers: {count}"
+  ],
+  "setup.takein.finish": [
+   "eaed4741",
+   "Pers Volgende om hierdie werf op hierdie rekenaar in Pressless in te kopieer en klaar te maak. Niks op GitHub verander nie."
+  ],
+  "setup.takein.left": [
+   "d6714dd9",
+   "Hierdie sal nie saamkom nie:"
+  ],
+  "setup.takein.left.path": [
+   "7cf3b401",
+   "{path}, wat Pressless nie gebruik nie"
+  ],
+  "setup.takein.moved": [
+   "d17040b2",
+   "Jou werf op GitHub het verander nadat Pressless dit gewys het. Niks is gekopieer nie. Gaan Terug na die GitHub Pages-stap om dit te sien soos dit nou is."
+  ],
+  "setup.takein.name": [
+   "f692ce9a",
+   "Die werf se naam: {name}"
+  ],
+  "setup.takein.never.drafts": [
+   "8c4bc8a8",
+   "Jou konsepte. GitHub hou hulle nooit nie, omdat hulle nooit gepubliseer is nie."
+  ],
+  "setup.takein.never.originals": [
+   "638dbdb7",
+   "Die volgrootte-foto's. GitHub hou die kleiner kopieë wat jou werf wys, en daardie kom saam."
+  ],
+  "setup.takein.never.settings": [
+   "e392377b",
+   "Instellings op jou ander rekenaar gehou: die Google Analytics-meet-ID, die Analytics-eiendom, die Hou van- en Hou nie van-knoppies, die YouTube-kanaal en die Daaglikse-opdrag-filter. Stel hulle weer in Instellings voordat jy enigiets na jou werf pers: tot dan los jou volgende publisering Google Analytics en die Hou van- en Hou nie van-knoppies van elke bladsy af."
+  ],
+  "setup.takein.pages": [
+   "45aba1a4",
+   "Bladsye: {count}"
+  ],
+  "setup.takein.photographs": [
+   "6fb564f7",
+   "Foto's: {count}"
+  ],
+  "setup.takeover": [
+   "4d5bf7a4",
+   "GitHub Actions bou hierdie werf uit wat hierdie bewaarplek bevat. Pressless het die werf van sy adres af afgelaai, en kan van daardie bou oorneem, met sy voorkoms en sy adresse. Dit het gevind:"
+  ],
+  "setup.takeover.limits": [
+   "5ff4f221",
+   "Pressless kan net vind wat 'n skakel bereik, so 'n bladsy waarna niks skakel nie, is nie afgelaai nie. 'n Bladsy wat 'n skrip in die blaaier bou, het gekom as daardie skrip se leë dop. Kyk deur jou bladsye voor jou eerste publisering."
+  ],
+  "setup.takeover.owed": [
+   "ebb02d2c",
+   "Jou werf op die web kom steeds van GitHub se bou."
+  ],
+  "setup.takeover.unread": [
+   "66194fc5",
+   "Hierdie kon nie van die werf af gelees word nie, so hulle sal nie saamkom nie:"
+  ],
+  "setup.welcome": [
+   "9c5f9b94",
+   "Pressless publiseer jou werf op GitHub, wat dit gratis huisves. Hierdie stappe lei jou deur om dit gereed te kry, een skerm op 'n slag. Jy het 'n e-posadres en ongeveer vyftien minute nodig."
+  ],
+  "setup.welcome.beside": [
+   "3bc24a27",
+   "Sommige stappe gebeur op GitHub se eie bladsye. Hou hierdie bladsy langs hulle oop. As jy Pressless halfpad toemaak, begin dit weer waar jy opgehou het."
+  ],
+  "setup.welcome.moving": [
+   "f14a1101",
+   "Skuif jy Pressless van 'n ander rekenaar af? Gebruik Maak 'n werflêer oop op die Werwe-skerm vir elke werf wat jy daar gestoor het, in plaas van hierdie stappe."
+  ],
+  "setup.welcome.sites": [
+   "3c8d2fee",
+   "Gaan na die Werwe-skerm"
+  ],
+  "shortcuts.comment": [
+   "79219e42",
+   "Skryf en publiseer jou eie werf"
+  ],
+  "site.all_entries": [
+   "7c4c8197",
+   "← Alle joernaalinskrywings"
+  ],
+  "site.anonymous": [
+   "e7a8aa2d",
+   "Anoniem"
+  ],
+  "site.archive": [
+   "66f4804e",
+   "Argief"
+  ],
+  "site.archive.description": [
+   "043c926a",
+   "Al {entries} volgens jaar."
+  ],
+  "site.archive.lead": [
+   "0ec795a8",
+   "Al {entries}, nuutste eerste."
+  ],
+  "site.category": [
+   "58fb160f",
+   "{entries} in {category}."
+  ],
+  "site.comments": [
+   "355f79f2",
+   "Kommentaar"
+  ],
+  "site.comments.closed": [
+   "1972d498",
+   "Nuwe kommentaar is tans nie oop nie."
+  ],
+  "site.comments.kept": [
+   "b3749dde",
+   "Kommentaar van die oorspronklike joernaal, gehou soos dit geskryf is."
+  ],
+  "site.comments.many": [
+   "3af8a7b7",
+   "{count} kommentare"
+  ],
+  "site.comments.one": [
+   "e9791dd3",
+   "{count} kommentaar"
+  ],
+  "site.entries.many": [
+   "d06542eb",
+   "{count} inskrywings"
+  ],
+  "site.entries.one": [
+   "c2448afb",
+   "{count} inskrywing"
+  ],
+  "site.eyebrow": [
+   "43b7c75d",
+   "Joernaal"
+  ],
+  "site.journal": [
+   "0284923e",
+   "Die joernaal"
+  ],
+  "site.journal.none": [
+   "43cc5ef0",
+   "{entries}."
+  ],
+  "site.journal.span": [
+   "6c21f3f9",
+   "{entries}, van {first} tot {last}."
+  ],
+  "site.moved.entry": [
+   "8694a882",
+   "Hierdie inskrywing het verskuif na <a href=\"{link}\">{title}</a>."
+  ],
+  "site.moved.page": [
+   "689f7a36",
+   "Hierdie bladsy het verskuif na <a href=\"{link}\">{title}</a>."
+  ],
+  "site.newer": [
+   "71d4194e",
+   "← Nuwer"
+  ],
+  "site.older": [
+   "ea0de0a0",
+   "Ouer →"
+  ],
+  "site.page_of": [
+   "e212d603",
+   "Bladsy {number} van {pages}"
+  ],
+  "site.pagination": [
+   "7b3f674b",
+   "Bladsynommering"
+  ],
+  "site.tag": [
+   "fe4eb0ac",
+   "{entries} met die etiket “{tag}”."
+  ],
+  "site.unchanged": [
+   "c5108391",
+   "Jou werf het nie verander nie."
+  ],
+  "site.unknown": [
+   "906c50a7",
+   "Pressless kan nie sê of jou werf verander het nie."
+  ],
+  "site.updated": [
+   "2a43a476",
+   "Jou werf is opgedateer."
+  ],
+  "sites_screen.about": [
+   "0ac06d57",
+   "Pressless kan meer as een webwerf versorg. As jy 'n ander een oopmaak, herbegin Pressless in 'n nuwe oortjie, so stoor eers enigiets wat jy skryf."
+  ],
+  "sites_screen.backups.about": [
+   "9eb6bbe3",
+   "Elke dag stoor Pressless elke werf vanself in 'n lêer, en hou die laaste sewe van elk. 'n Rugsteun op 'n ander skyf, 'n USB-stokkie of 'n wolkgids is veilig selfs as hierdie rekenaar verlore raak."
+  ],
+  "sites_screen.backups.chosen": [
+   "299e603d",
+   "Rugsteun gaan nou na die gids wat jy gekies het."
+  ],
+  "sites_screen.backups.chosen_folder": [
+   "90b0e09d",
+   "Rugsteun gaan na die gids wat jy gekies het."
+  ],
+  "sites_screen.backups.default_folder": [
+   "d4c31027",
+   "Rugsteun gaan na die Pressless-backups-gids langs die program."
+  ],
+  "sites_screen.backups.folder": [
+   "60049b2d",
+   "'n Ander gids: plak sy hele adres"
+  ],
+  "sites_screen.backups.not_a_folder": [
+   "e3b298bf",
+   "Dit is nie die adres van 'n gids nie. Maak die gids oop, kopieer sy hele adres, en plak dit hier."
+  ],
+  "sites_screen.backups.title": [
+   "63289f00",
+   "Daaglikse rugsteun"
+  ],
+  "sites_screen.backups.use": [
+   "30cbaeca",
+   "Gebruik hierdie gids"
+  ],
+  "sites_screen.file_about": [
+   "f937fbbd",
+   "'n Hele werf, sy skryfwerk, foto's en instellings, word as een lêer gestoor. Maak daardie lêer hier oop, of in Pressless op 'n ander rekenaar, en dit word weer 'n werf. Die publiseersleutel is nie in die lêer nie, so Instellings vra dit een keer wanneer die werf oopmaak."
+  ],
+  "sites_screen.file_newer": [
+   "ad569715",
+   "'n Nuwer Pressless het daardie lêer gestoor. Geen werf het verander nie. Dateer Pressless op, en maak die lêer dan weer oop."
+  ],
+  "sites_screen.file_refused": [
+   "d11408a7",
+   "Daardie lêer kon nie as 'n werf oopgemaak word nie. Geen werf het verander nie. Kies 'n lêer wat Pressless gestoor het."
+  ],
+  "sites_screen.file_title": [
+   "6b5eaf0e",
+   "Stoor of maak 'n hele werf oop"
+  ],
+  "sites_screen.file_unnamed": [
+   "cc183fe4",
+   "Pressless-werf"
+  ],
+  "sites_screen.move.button": [
+   "8fb33101",
+   "Skuif Pressless na 'n nuwe rekenaar"
+  ],
+  "sites_screen.move.carry": [
+   "77c69ecd",
+   "Kopieer die lêers na 'n USB-stokkie, of in 'n wolkgids wat albei rekenaars bereik. Laai dan Pressless op die nuwe rekenaar af en begin dit."
+  ],
+  "sites_screen.move.open": [
+   "aa1034d0",
+   "Gaan op die nuwe rekenaar na die Werwe-skerm en gebruik Maak 'n werflêer oop vir elke lêer. Die publiseersleutel is nooit in 'n lêer nie, so voer dit een keer in Instellings in wanneer elke werf oopmaak."
+  ],
+  "sites_screen.move.save": [
+   "ceb734ba",
+   "Stoor elke werf wat jy wil saamneem. Elkeen word as 'n lêer afgelaai, gewoonlik in jou Downloads-gids."
+  ],
+  "sites_screen.move.save_one": [
+   "45983840",
+   "Stoor {site}"
+  ],
+  "sites_screen.move.step_carry": [
+   "8922df10",
+   "2. Neem die lêers na die nuwe rekenaar"
+  ],
+  "sites_screen.move.step_open": [
+   "a837d971",
+   "3. Maak elke lêer daar oop"
+  ],
+  "sites_screen.move.step_save": [
+   "95d1e75f",
+   "1. Stoor elke werf in 'n lêer"
+  ],
+  "sites_screen.move.title": [
+   "8fb33101",
+   "Skuif Pressless na 'n nuwe rekenaar"
+  ],
+  "sites_screen.new": [
+   "f9269a4c",
+   "Begin 'n nuwe werf"
+  ],
+  "sites_screen.not_a_site": [
+   "d75ef7e8",
+   "Daardie werf is nie meer hier nie. Kies een uit die lys."
+  ],
+  "sites_screen.open": [
+   "ed077f3d",
+   "Maak oop"
+  ],
+  "sites_screen.open_file": [
+   "e946f62d",
+   "Maak 'n werflêer oop"
+  ],
+  "sites_screen.open_now": [
+   "7ffdd653",
+   "(nou oop)"
+  ],
+  "sites_screen.remove": [
+   "c3812fc4",
+   "Verwyder"
+  ],
+  "sites_screen.remove.keep": [
+   "fdce5da2",
+   "Hou dit"
+  ],
+  "sites_screen.remove.title": [
+   "ac34126b",
+   "Verwyder {site} van hierdie lys?"
+  ],
+  "sites_screen.remove.what": [
+   "4f9e84b3",
+   "Pressless stoor dit eers as een lêer in die {folder}-gids, waar jou rugsteun heen gaan, en vee dit dan van hierdie rekenaar af uit. Sy werf op GitHub bly op die web. Om dit terug te bring, maak daardie lêer hier oop."
+  ],
+  "sites_screen.removed": [
+   "83cb53fb",
+   "Verwyder. Dit is as {file} in die {folder}-gids gestoor, wat jy hier kan oopmaak om dit terug te bring."
+  ],
+  "sites_screen.save": [
+   "73b9c22a",
+   "Stoor hierdie werf in 'n lêer"
+  ],
+  "sites_screen.title": [
+   "775fb009",
+   "Jou werwe"
+  ],
+  "sites_screen.unnamed": [
+   "a379f8be",
+   "Nuwe werf"
+  ],
+  "starter.about": [
+   "4efca0d1",
+   "Oor"
+  ],
+  "starter.about.title": [
+   "ad153adc",
+   "Oor — {name}"
+  ],
+  "starter.about.words": [
+   "d057efb3",
+   "Sê wie jy is en waarvoor hierdie werf is."
+  ],
+  "starter.footer_note": [
+   "b1cf29f0",
+   "Die werf se voetstuk: elke bladsy word daarmee gebou."
+  ],
+  "starter.header_note": [
+   "77817bca",
+   "Die werf se kopstuk: elke bladsy word daarmee gebou."
+  ],
+  "starter.home": [
+   "3a786953",
+   "Tuis"
+  ],
+  "starter.home.words": [
+   "b8f9a62c",
+   "Dit is jou tuisblad. Verander hierdie woorde om te sê waaroor jou werf gaan."
+  ],
+  "starter.menu": [
+   "efe10c80",
+   "Primêr"
+  ],
+  "starter.new_page.words": [
+   "3f4f4266",
+   "Skryf hierdie bladsy se woorde hier."
+  ],
+  "starter.privacy": [
+   "54a57c31",
+   "Privaatheid"
+  ],
+  "starter.privacy.counted": [
+   "a9e8897a",
+   "Wat getel word: die bladsye gelees, die land en streek waarvandaan 'n besoek kom, en die soort toestel en blaaier gebruik. Die tellings word net gebruik om te sien hoe die werf gelees word."
+  ],
+  "starter.privacy.counting": [
+   "79964aa6",
+   "Hierdie werf tel sy besoeke met Google Analytics, 'n diens wat deur Google bedryf word. Google Analytics gebruik koekies, klein lêers wat jou blaaier hou, om een besoek van 'n ander te onderskei."
+  ],
+  "starter.privacy.policy": [
+   "fcdfae96",
+   "Google se eie privaatheidsbeleid sê wat Google met hierdie inligting doen: <a href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>. Om te keer dat Google Analytics jou besoeke aan enige werf tel, kan jy Google se <a href=\"https://tools.google.com/dlpage/gaoptout\">blaaier-byvoeging om uit te tree</a> installeer."
+  ],
+  "starter.privacy.questions": [
+   "20d25518",
+   "Vrae oor jou inligting: vervang hierdie sin met hoe om die persoon te bereik wat hierdie werf bestuur."
+  ],
+  "starter.privacy.recaptcha": [
+   "a2a9b27c",
+   "Om outomatiese stemme uit te hou, laai elke inskrywingsbladsy Google se reCAPTCHA en Firebase se App Check by elke besoek, voordat enige knoppie gedruk word."
+  ],
+  "starter.privacy.title": [
+   "9cc8e601",
+   "Privaatheid — {name}"
+  ],
+  "starter.privacy.votes": [
+   "d4ef51df",
+   "Inskrywings op hierdie werf het Hou van- en Hou nie van-knoppies. As jy een druk, word 'n ewekansige ID in jou blaaier gehou en jou stem in 'n Google Firebase-databasis. Jou stem en die ewekansige ID kan deur enigiemand gelees word."
+  ],
+  "starter.privacy.votes.who": [
+   "02450a8d",
+   "Geen naam, e-posadres of rekening is betrokke nie. Google sien jou internetadres wanneer jy 'n knoppie druk of die tellings lees. Google se eie privaatheidsbeleid sê wat Google met hierdie inligting doen: <a href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>."
+  ],
+  "starter.this_site": [
+   "fb625242",
+   "hierdie werf"
+  ],
+  "starter.welcome": [
+   "bfd3c224",
+   "Welkom by {name}"
+  ],
+  "takeover.added": [
+   "6a015ed7",
+   "Pressless voeg 'n leë lêer, .nojekyll, by, sodat GitHub jou bladsye bedien soos hulle is."
+  ],
+  "takeover.added_domain": [
+   "a2b63a32",
+   "Pressless maak seker dat 'n lêer, CNAME, {domain} bevat, wat daardie domein op die werf hou."
+  ],
+  "takeover.address": [
+   "bbd7659d",
+   "Jou werf behou sy adres, {address}."
+  ],
+  "takeover.branch": [
+   "6fbe604a",
+   "Die tak {branch} bly soos dit is in die bewaarplek, maar GitHub Pages hou op om dit te bedien."
+  ],
+  "takeover.changes": [
+   "fbabfeac",
+   "Niks verander op GitHub nie, en die ou werf bly op, tot jou eerste publisering. Pressless sal jou dan weer vra. Daardie publisering sal hierdie verander:"
+  ],
+  "takeover.domain": [
+   "88be4932",
+   "Jou werf behou sy eie domein, {domain}."
+  ],
+  "takeover.file": [
+   "b53d2a4b",
+   "Jy verwyder die boulêer {file} op GitHub. Dit bly in die bewaarplek se geskiedenis."
+  ],
+  "takeover.other_files": [
+   "90eec23e",
+   "Enige ander lêer in .github/workflows bly."
+  ],
+  "takeover.pages": [
+   "62753140",
+   "GitHub Pages skakel oor van die bou na wat Pressless publiseer."
+  ],
+  "takeover.stale": [
+   "659f2614",
+   "Pressless verwyder 'n lêer, CNAME, wat 'n domein noem wat hierdie werf nie gebruik nie."
+  ],
+  "templates.about": [
+   "ea0a0d5b",
+   "Die sjabloon <strong>{name}</strong>. Dit word nooit as 'n bladsy op\njou werf gesit nie; iets nuuts begin kan daarmee begin."
+  ],
+  "templates.bin": [
+   "d753b8bf",
+   "Gooi hierdie sjabloon in die snippermandjie"
+  ],
+  "templates.journal": [
+   "b3434c06",
+   "'n Gewone joernaalinskrywing"
+  ],
+  "templates.journal.body": [
+   "e9d366dc",
+   "Wat gebeur het, in jou eie woorde."
+  ],
+  "templates.lyric": [
+   "b405b979",
+   "'n Lirieke met strofes"
+  ],
+  "templates.lyric.body": [
+   "47f51aa3",
+   "{{muted}}Strofe 1{{/}}\nDie eerste reël van die strofe\nDie volgende reël\n\n{{muted}}Koor{{/}}\nDie koor, een keer geskryf\n\n{{muted}}Strofe 2{{/}}\nDie tweede strofe"
+  ],
+  "templates.name": [
+   "dcd1d522",
+   "Naam"
+  ],
+  "templates.new": [
+   "30d87ec4",
+   "Nuwe sjabloon"
+  ],
+  "templates.photograph": [
+   "6a640ac4",
+   "'n Inskrywing rondom een foto"
+  ],
+  "templates.photograph.body": [
+   "569e395d",
+   "{{photo: your-photograph.jpg | 'n Onderskrif daarvoor}}\n\n'n Paar reëls oor die foto."
+  ],
+  "templates.poem": [
+   "3af49622",
+   "'n Gedig"
+  ],
+  "templates.poem.body": [
+   "66c928ba",
+   "Die eerste reël van die gedig\nDie tweede reël\n\n'n Leë reël begin die volgende strofe."
+  ],
+  "templates.save": [
+   "1509f561",
+   "Stoor"
+  ],
+  "templates.unreadable": [
+   "0a54f0e2",
+   "Pressless kan nie jou sjablone-gids oopmaak nie."
+  ],
+  "templates.yours": [
+   "bc183962",
+   "Jou sjablone"
+  ],
+  "themes.blocky_overworld": [
+   "b3b39675",
+   "Blokkerige bowêreld"
+  ],
+  "themes.bonfire": [
+   "f5d1dce6",
+   "Vuurmaakplek"
+  ],
+  "themes.bounty_hunter": [
+   "498f1172",
+   "Kopgeldjagter"
+  ],
+  "themes.contrast_dark": [
+   "aee3457a",
+   "Hoë kontras, donker"
+  ],
+  "themes.contrast_light": [
+   "85ca5680",
+   "Hoë kontras, lig"
+  ],
+  "themes.dark": [
+   "60acc53f",
+   "Donker"
+  ],
+  "themes.desert_lab": [
+   "0b8e6c0e",
+   "Woestynlaboratorium"
+  ],
+  "themes.digital_rain": [
+   "d6ccc2e6",
+   "Digitale reën"
+  ],
+  "themes.dream_house": [
+   "ae1b6a6b",
+   "Droomhuis"
+  ],
+  "themes.follow": [
+   "bdc54772",
+   "Volg my rekenaar"
+  ],
+  "themes.forest_hero": [
+   "60a9e311",
+   "Woudheld"
+  ],
+  "themes.group.basic": [
+   "0e35f6e9",
+   "Basies"
+  ],
+  "themes.group.films": [
+   "ffac2ae2",
+   "Geïnspireer deur films"
+  ],
+  "themes.group.games": [
+   "f43590e7",
+   "Geïnspireer deur speletjies"
+  ],
+  "themes.group.tv": [
+   "ca7d7734",
+   "Geïnspireer deur TV"
+  ],
+  "themes.hyperspace": [
+   "919df005",
+   "Hiperruimte"
+  ],
+  "themes.label": [
+   "efb52e71",
+   "Tema"
+  ],
+  "themes.light": [
+   "dbcd5e7b",
+   "Lig"
+  ],
+  "themes.middle_realm": [
+   "cd6ed488",
+   "Middelryk"
+  ],
+  "themes.neon_city": [
+   "c92c1c20",
+   "Neonstad"
+  ],
+  "themes.pipe_land": [
+   "40ee5503",
+   "Pypland"
+  ],
+  "themes.replicant_night": [
+   "1912dbeb",
+   "Replikant-nag"
+  ],
+  "themes.ringworld": [
+   "9eba3257",
+   "Ringwêreld"
+  ],
+  "themes.silver_sword": [
+   "2b22b355",
+   "Silwersweerd"
+  ],
+  "themes.size.label": [
+   "d68761cc",
+   "Teksgrootte"
+  ],
+  "themes.size.large": [
+   "ab80540d",
+   "Groot"
+  ],
+  "themes.size.larger": [
+   "b05e2520",
+   "Groter"
+  ],
+  "themes.size.largest": [
+   "5511a4b7",
+   "Grootste"
+  ],
+  "themes.size.normal": [
+   "a7248eeb",
+   "Normaal"
+  ],
+  "themes.speed_zone": [
+   "4846b5ee",
+   "Spoedsone"
+  ],
+  "themes.spice_desert": [
+   "fd4388f7",
+   "Speseryewoestyn"
+  ],
+  "themes.test_chamber": [
+   "cbea25ce",
+   "Toetskamer"
+  ],
+  "themes.time_box": [
+   "933be42a",
+   "Tydkis"
+  ],
+  "themes.upside_down": [
+   "f07f0eef",
+   "Onderstebo"
+  ],
+  "themes.valley_farm": [
+   "c0856021",
+   "Valleiplaas"
+  ],
+  "themes.wasteland": [
+   "5a2b4539",
+   "Woesteny-terminaal"
+  ],
+  "themes.winter_is_near": [
+   "068894ae",
+   "Winter is naby"
+  ],
+  "themes.yellow_town": [
+   "3861ac50",
+   "Geel dorp"
+  ],
+  "tray.open": [
+   "07d55f2a",
+   "Maak Pressless oop"
+  ],
+  "tray.restart": [
+   "6b983a81",
+   "Herbegin"
+  ],
+  "tray.stop": [
+   "dc86111c",
+   "Stop Pressless"
+  ],
+  "tray.tooltip": [
+   "8afecbf2",
+   "Pressless loop"
+  ],
+  "undo.demoted_many": [
+   "a23760ac",
+   "{count} teruggedraai na konsepte"
+  ],
+  "undo.demoted_one": [
+   "6eef5137",
+   "{count} teruggedraai na 'n konsep"
+  ],
+  "undo.entries": [
+   "d06542eb",
+   "{count} inskrywings"
+  ],
+  "undo.kept_many": [
+   "e44c9638",
+   "jou eie weergawes van {count} as konsepte gehou"
+  ],
+  "undo.kept_one": [
+   "fa733e32",
+   "jou eie weergawe van {count} as 'n konsep gehou"
+  ],
+  "undo.one_entry": [
+   "17a2552e",
+   "1 inskrywing"
+  ],
+  "undo.one_page": [
+   "0d8a4426",
+   "1 bladsy"
+  ],
+  "undo.pages": [
+   "d46e57d6",
+   "{count} bladsye"
+  ],
+  "undo.restored": [
+   "e4cb041d",
+   "{count} teruggesit"
+  ],
+  "undo.summary": [
+   "4d7a1137",
+   "Jou werf is terug soos dit was: {clauses}."
+  ],
+  "undo.unchanged": [
+   "7714ec9e",
+   "Jou werf was reeds soos dit was voor die laaste publisering."
+  ],
+  "undo.waiting": [
+   "ba5b2b2b",
+   "{count} van jou werf af gehaal en aan die wag gehou"
+  ],
+  "updating.changes": [
+   "9f0f4eb7",
+   "Wat nuut is sedert weergawe {version}"
+  ],
+  "updating.changes.version": [
+   "a1874512",
+   "Weergawe {version}"
+  ],
+  "updating.checking": [
+   "8ab7260e",
+   "Pressless soek elke keer as dit begin na 'n nuwe weergawe."
+  ],
+  "updating.console": [
+   "7cfc5018",
+   "Pressless dateer op. Jy kan hierdie venster toemaak."
+  ],
+  "updating.installing": [
+   "3a5a96ad",
+   "Pressless installeer weergawe {version} en sal oor 'n oomblik vanself weer oopmaak. Jy kan hierdie oortjie toemaak."
+  ],
+  "updating.later": [
+   "73b6e48a",
+   "Later"
+  ],
+  "updating.look": [
+   "8c18e33f",
+   "Soek wanneer Pressless begin"
+  ],
+  "updating.not_checking": [
+   "79f81c0f",
+   "Pressless soek nie na nuwe weergawes nie."
+  ],
+  "updating.not_reopened": [
+   "180977cd",
+   "Pressless is opgedateer na weergawe {version} maar kon nie vanself weer oopmaak nie. Maak sy venster toe en begin dit weer."
+  ],
+  "updating.offer": [
+   "4fd99886",
+   "Pressless {version} is gereed om te installeer. Jou werwe bly waar hulle is."
+  ],
+  "updating.skip": [
+   "6f4676c4",
+   "Slaan hierdie weergawe oor"
+  ],
+  "updating.stop_looking": [
+   "86f92968",
+   "Hou op soek"
+  ],
+  "updating.update_now": [
+   "63bf0452",
+   "Dateer nou op"
+  ],
+  "usage.agree": [
+   "ec54804e",
+   "Stuur anonieme gebruiksverslae"
+  ],
+  "usage.explain": [
+   "a3875d82",
+   "Pressless kan anonieme verslae stuur oor watter skerms jy gebruik, waar die opstelling stop en wat skeefloop, met sy weergawe en jou stelsel. Hulle help ons om reg te maak wat in mense se pad staan. Hulle bevat nooit jou skryfwerk, jou bladsye se name, jou werf se adres of jou lêers nie. Jy kan elke verslag sien wat gestuur is, en hulle te eniger tyd afskakel, onder Gebruiksverslae."
+  ],
+  "usage.no": [
+   "49780701",
+   "Nee dankie"
+  ],
+  "usage.none_sent": [
+   "25e7e466",
+   "Geen verslae is gestuur nie."
+  ],
+  "usage.off": [
+   "cb89d62a",
+   "Gebruiksverslae is af. Niks word gestuur nie."
+  ],
+  "usage.on": [
+   "a3936d8e",
+   "Gebruiksverslae is aan."
+  ],
+  "usage.sent": [
+   "209449f5",
+   "Verslae gestuur, nuutste eerste"
+  ],
+  "usage.title": [
+   "accbe5ad",
+   "Gebruiksverslae"
+  ],
+  "usage.turn_off": [
+   "bc9bff47",
+   "Skakel gebruiksverslae af"
+  ],
+  "usage.turn_on": [
+   "cc591c78",
+   "Skakel gebruiksverslae aan"
+  ],
+  "usage.unavailable": [
+   "244bbe61",
+   "Gebruiksverslae is nie in hierdie kopie van Pressless beskikbaar nie, so niks word gestuur nie."
+  ],
+  "usage.yes": [
+   "c7f45be5",
+   "Ja, stuur hulle"
+  ],
+  "votes.dislike": [
+   "119cec41",
+   "Hou nie van nie"
+  ],
+  "votes.like": [
+   "64f915cb",
+   "Hou van"
+  ],
+  "votes_setup.about": [
+   "618e5f62",
+   "Die tellings woon in jou eie gratis Firebase-databasis, van Google. Hierdie stappe maak een. Jy het nie 'n faktuurrekening nodig nie, en sonder een kan niks jou geld kos nie."
+  ],
+  "votes_setup.app_check": [
+   "ba5b1b80",
+   "App Check maak dit moeiliker om stemme te skrip, maar dit sit Google se reCAPTCHA op elke inskrywingsbladsy, en elke besoek gebruik sy gratis toelaag van 10 000 kontroles 'n maand op. Sonder 'n faktuurrekening hou die knoppies dan op werk tot die volgende maand."
+  ],
+  "votes_setup.app_check.box": [
+   "64730ad2",
+   "Die reCAPTCHA Enterprise-werfsleutel"
+  ],
+  "votes_setup.app_check.steps": [
+   "58f904e7",
+   "Om dit tog te gebruik, registreer jou webtoep in Firebase se App Check met reCAPTCHA Enterprise, en plak die werfsleutel hieronder. Pressless kan dit nie van jou rekenaar af nagaan nie."
+  ],
+  "votes_setup.app_check.title": [
+   "070c78d8",
+   "Opsioneel, en die beste afgelaat: App Check"
+  ],
+  "votes_setup.back": [
+   "3f8e94e3",
+   "Terug na die knoppies se bladsy"
+  ],
+  "votes_setup.box": [
+   "c86d1c3d",
+   "Die firebaseConfig-teks"
+  ],
+  "votes_setup.check": [
+   "6ba7dc7c",
+   "Kyk of dit gereed is"
+  ],
+  "votes_setup.check.anonymous": [
+   "faad4ebd",
+   "Google het 'n anonieme aanmelding geweier. Skakel Anonymous-aanmelding aan (stap 4)."
+  ],
+  "votes_setup.check.database": [
+   "2056fe1c",
+   "Daar is nog geen databasis nie. Skep dit (stap 2)."
+  ],
+  "votes_setup.check.key": [
+   "0b1873a7",
+   "Google het die projek se sleutel geweier. Plak die firebaseConfig-teks weer (stap 5). As jy die sleutel in Google Cloud beperk het, kan dit nie van jou rekenaar af nagegaan word nie: probeer die knoppies op jou gepubliseerde werf."
+  ],
+  "votes_setup.check.ready": [
+   "71067583",
+   "Gereed: Google het elke kontrole beantwoord soos dit moet."
+  ],
+  "votes_setup.check.recaptcha": [
+   "c2f7daa2",
+   "Met App Check aan, kan dit nie van jou rekenaar af nagegaan word nie. Probeer die knoppies op jou gepubliseerde werf."
+  ],
+  "votes_setup.check.rules": [
+   "b14c18b6",
+   "Google het 'n stem geweier. Plak die reëls en publiseer hulle (stap 3)."
+  ],
+  "votes_setup.check.rules_wrong": [
+   "c979c388",
+   "Die databasis se reëls is nie die wat gewys word nie. Vervang hulle en publiseer (stap 3)."
+  ],
+  "votes_setup.check.unreachable": [
+   "0141f235",
+   "Pressless kon nie Google bereik nie, so niks is nog verkeerd nie. Probeer later weer."
+  ],
+  "votes_setup.copied": [
+   "d249818e",
+   "Gekopieer."
+  ],
+  "votes_setup.copy": [
+   "07234cc9",
+   "Kopieer die reëls"
+  ],
+  "votes_setup.hint": [
+   "40ac60d2",
+   "Dit is nie die hele firebaseConfig-teks nie. Dit het apiKey, projectId en appId nodig, soos Firebase hulle wys. Niks is gestoor nie."
+  ],
+  "votes_setup.hint.recaptcha": [
+   "6bba5fc1",
+   "Dit is nie 'n reCAPTCHA-werfsleutel nie. Laat die blokkie leeg tensy jy App Check gekies het. Niks is gestoor nie."
+  ],
+  "votes_setup.not_on": [
+   "248d7c45",
+   "Die knoppies is af. Jou werf publiseer geen knoppies totdat dit opgestel is nie."
+  ],
+  "votes_setup.off": [
+   "404e7c33",
+   "Skakel die knoppies af"
+  ],
+  "votes_setup.off.done": [
+   "fccb1f9e",
+   "Die knoppies gaan by jou volgende Pers na werf. Die stemme bly in jou databasis, en jou Privaatheid-bladsy behou sy woorde."
+  ],
+  "votes_setup.on": [
+   "2e2d4600",
+   "Die knoppies is aan, en tel in die Firebase-projek {project}."
+  ],
+  "votes_setup.save": [
+   "0a9315c0",
+   "Stoor en kyk na"
+  ],
+  "votes_setup.saved": [
+   "814d3cca",
+   "Die knoppies verskyn by jou volgende Pers na werf, en jou Privaatheid-bladsy sê wat hulle aanteken."
+  ],
+  "votes_setup.saved.title": [
+   "fca046cc",
+   "Gestoor."
+  ],
+  "votes_setup.settings_link": [
+   "91ccf932",
+   "Hou van- en Hou nie van-knoppies onder jou inskrywings, as jy hulle wil hê"
+  ],
+  "votes_setup.step.1": [
+   "28088834",
+   "Maak <a href=\"https://console.firebase.google.com\" target=\"_blank\" rel=\"noopener\">console.firebase.google.com</a> oop en voeg 'n projek by. Weier enige aanbod van 'n betaalde plan. Google Analytics is nie nodig nie."
+  ],
+  "votes_setup.step.2": [
+   "d2a1cf28",
+   "Skep 'n <b>Firestore</b>-databasis in produksiemodus, in die ligging die naaste aan jou."
+  ],
+  "votes_setup.step.3": [
+   "2f4220a7",
+   "Vervang in die databasis se <b>Rules</b> die teks met die teks hieronder, en publiseer."
+  ],
+  "votes_setup.step.4": [
+   "5bb19f18",
+   "Pers in <b>Authentication</b> <b>Get started</b>, skakel dan die <b>Anonymous</b>-aanmeldmetode aan."
+  ],
+  "votes_setup.step.5": [
+   "df6ca418",
+   "Voeg 'n webtoep by die projek, kopieer die <code>firebaseConfig</code>-teks wat dit wys, en plak dit in die blokkie hieronder."
+  ],
+  "votes_setup.title": [
+   "8fa25537",
+   "Hou van- en Hou nie van-knoppies"
+  ],
+  "votes_setup.warning": [
+   "6ce429dc",
+   "Sodra jou werf gepubliseer is, kan GitHub die sleutel in daardie teks merk, en Google kan jou daaroor e-pos. Dit is te wagte: Firebase se websleutel is ontwerp om openbaar te wees."
+  ],
+  "wizard.back": [
+   "76900f1b",
+   "Terug"
+  ],
+  "wizard.close": [
+   "7d9eb7ac",
+   "Maak toe"
+  ],
+  "wizard.happening": [
+   "336d92e9",
+   "Wat aan die gebeur is"
+  ],
+  "wizard.help": [
+   "7a753a07",
+   "Hulp: {label}"
+  ],
+  "wizard.next": [
+   "1ff57a29",
+   "Volgende"
+  ],
+  "wizard.step": [
+   "3dd79311",
+   "Stap {number} van {total}"
+  ],
+  "youtube.about": [
+   "7ec6038b",
+   "ongeveer {count}"
+  ],
+  "youtube.about_key": [
+   "3711154d",
+   "YouTube gee sy openbare syfers aan enigiemand met 'n sleutel. Jy maak jou eie, vanaf jou Google-rekening, en dit bly op hierdie rekenaar. Hierdie stappe maak een."
+  ],
+  "youtube.box.channel": [
+   "59277551",
+   "Jou kanaal se adres, soos youtube.com/@jounaam"
+  ],
+  "youtube.box.key": [
+   "9d9c9fa2",
+   "Die API-sleutel"
+  ],
+  "youtube.card.ask": [
+   "91563a0d",
+   "<a href=\"{page}\">Sien jou kanaal se syfers</a>."
+  ],
+  "youtube.card.read": [
+   "4bb3fe2c",
+   "{title}: {views} kyke, vanaf {when}. <a href=\"{page}\">Sien meer</a>."
+  ],
+  "youtube.comments": [
+   "355f79f2",
+   "Kommentaar"
+  ],
+  "youtube.hidden": [
+   "e564b408",
+   "versteek"
+  ],
+  "youtube.hint.channel": [
+   "ea2afa8a",
+   "Dit is nie 'n kanaal se adres nie. Gebruik die een met 'n @ daarin, of die een met /channel/ daarin."
+  ],
+  "youtube.hint.key": [
+   "07c97c64",
+   "Plak ook jou API-sleutel. Niks is gestoor nie."
+  ],
+  "youtube.hint.not_found": [
+   "efa185e1",
+   "YouTube ken geen kanaal met daardie naam nie. Niks is gestoor nie."
+  ],
+  "youtube.hint.refused": [
+   "3c2f21e2",
+   "YouTube wou nie daardie sleutel aanvaar nie. Kyk stappe 2 en 3 na. Niks is gestoor nie."
+  ],
+  "youtube.hint.unreachable": [
+   "2fbeee57",
+   "Pressless kon nie YouTube vra nie, so niks is gestoor nie. Probeer later weer."
+  ],
+  "youtube.key_kept": [
+   "fe59f988",
+   "Laat die sleutel leeg om die een te hou wat jy het."
+  ],
+  "youtube.likes": [
+   "cca0662f",
+   "Hou-van's"
+  ],
+  "youtube.not_on": [
+   "9721be43",
+   "Geen kanaal is opgestel nie."
+  ],
+  "youtube.not_removed": [
+   "490f0982",
+   "Pressless kon nie alles verwyder wat dit gehou het nie. Jy kan ook die sleutel in Google se konsole uitvee."
+  ],
+  "youtube.off": [
+   "7563080d",
+   "Geen kanaal is opgestel nie. <a href=\"{page}\">Stel een op</a> om sy syfers te sien."
+  ],
+  "youtube.off.done": [
+   "e7e8e820",
+   "Dit is af. Pressless het die sleutel en die syfers wat dit gehou het, verwyder."
+  ],
+  "youtube.on": [
+   "6e6accef",
+   "Wys die kanaal {channel}."
+  ],
+  "youtube.published": [
+   "2ef42ec2",
+   "Gepubliseer"
+  ],
+  "youtube.save": [
+   "0a9315c0",
+   "Stoor en kyk na"
+  ],
+  "youtube.saved": [
+   "b52095e4",
+   "Gestoor. YouTube ken die kanaal {title}. <a href=\"{page}\">Sien sy syfers</a>."
+  ],
+  "youtube.settings_link": [
+   "3c7d0b22",
+   "Jou YouTube-kanaal se openbare syfers, as jy hulle wil hê"
+  ],
+  "youtube.some": [
+   "0752ea06",
+   "Wys {shown} van die {read} gelees, uit {total} op die kanaal."
+  ],
+  "youtube.source": [
+   "eba3bcc2",
+   "Van YouTube: sy openbare syfers, nie deur Pressless uitgewerk nie."
+  ],
+  "youtube.stale": [
+   "6f57aa9a",
+   "YouTube kon nie gevra word nie, so hierdie syfers is van {when}."
+  ],
+  "youtube.step.1": [
+   "323eb62c",
+   "Gaan na <b>console.cloud.google.com</b> en meld met jou Google-rekening aan. Klik die projekknoppie links bo, langs \"Google Cloud\", dan <b>New project</b>. Gee dit enige naam en pers <b>Create</b>. Wanneer dit gereed is, kies dit met dieselfde knoppie. 'n Projek wat jy reeds het, werk ook: kies dit eerder."
+  ],
+  "youtube.step.2": [
+   "6186ff5d",
+   "Tik in die soekblokkie bo <b>YouTube Data API v3</b>, maak dit oop, en pers <b>Enable</b>."
+  ],
+  "youtube.step.3": [
+   "ee7bd5a4",
+   "Maak op daardie bladsy die <b>Credentials</b>-oortjie oop en pers <b>Create credentials</b>, dan <b>API key</b>, 'n nuwe een selfs al het jy ander. Merk onder \"Select API restrictions\" net <b>YouTube Data API v3</b>. Laat \"Application restrictions\" op <b>None</b>: Pressless loop op jou rekenaar, nie op 'n webwerf nie. Pers <b>Create</b>, en kopieer dan die sleutel."
+  ],
+  "youtube.step.4": [
+   "14df0c94",
+   "Plak die sleutel hieronder, met jou kanaal se adres, en pers <b>Stoor en kyk na</b>."
+  ],
+  "youtube.subscribers": [
+   "a344c89d",
+   "Intekenare"
+  ],
+  "youtube.table": [
+   "3872f607",
+   "Jou mees gekykte video's"
+  ],
+  "youtube.terms": [
+   "1901aa79",
+   "Dit gebruik YouTube se eie dienste: sien <a href=\"{terms}\">YouTube se Diensvoorwaardes</a> en <a href=\"{privacy}\">Google se Privaatheidsbeleid</a>."
+  ],
+  "youtube.title": [
+   "fb7accff",
+   "YouTube"
+  ],
+  "youtube.to_setup": [
+   "65b266d1",
+   "Verander die kanaal of die sleutel"
+  ],
+  "youtube.turn_off": [
+   "1780e028",
+   "Skakel dit af en verwyder die sleutel"
+  ],
+  "youtube.updated": [
+   "1563a89d",
+   "Gehaal {when}."
+  ],
+  "youtube.video": [
+   "d534be82",
+   "Video"
+  ],
+  "youtube.videos": [
+   "c9a96394",
+   "Video's"
+  ],
+  "youtube.views": [
+   "69c40459",
+   "Kyke"
+  ]
+ }
+}

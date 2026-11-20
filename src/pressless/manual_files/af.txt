@@ -1,0 +1,484 @@
+Hierdie handleiding wys hoe om elke ding te doen wat Pressless kan doen.
+Tik in die soekblokkie om net die take te wys wat daardie woorde bevat.
+
+== finding-help | Hulp kry
+Hulp is in die balk bo-aan elke Pressless-skerm.
+
+1. Klik Hulp in die balk bo-aan die skerm.
+picture help-link.png | Die balk bo-aan 'n Pressless-skerm, met Hulp ná Lêers.
+2. Tik in die soekblokkie wat jy wil doen.
+3. Lees die stappe onder die taak wat pas.
+video searching.webm | 'n Woord in die soekblokkie tik, en die take wat dit nie bevat nie, verdwyn.
+
+== setting-up | Pressless die eerste keer opstel
+Die eerste keer wat Pressless begin, lei dit jou een skerm op 'n slag
+deur die opstelling. Jy het 'n e-posadres nodig. Jou werf woon op
+GitHub, wat dit gratis huisves.
+
+1. Lees elke skerm en doen wat dit sê. Sommige stappe gebeur op GitHub se eie bladsye, en die skerm sê waarop om daar te klik.
+picture setup-welcome.png | Die eerste opstellingskerm, met die opskrif Stel Pressless op, en 'n Volgende-knoppie.
+2. Klik Volgende om voort te gaan, of Terug om na die vorige skerm terug te gaan.
+3. Klik Wat aan die gebeur is op 'n skerm om te lees wat daardie stap doen.
+4. Klik op die laaste skerm Gaan na jou werf.
+
+As jy Pressless halfpad toemaak, begin dit weer waar jy opgehou het.
+
+== your-writing | Jou pad om te vind
+Jou werf is die eerste skerm. Dit het 'n teël vir elke deel van jou
+werf, en die balk bo-aan noem ook elke deel.
+
+1. Klik Jou werf in die balk.
+picture your-writing.png | Die Jou werf-skerm, met 'n teël vir elke deel van die werf.
+2. Klik 'n teël se skakel, soos Maak jou bladsye oop, om daardie deel oop te maak.
+3. Of klik 'n deel in die balk: Bladsye, Joernaal, Voorkoms, Lêers of Besoekers.
+
+Bladsye is bladsye soos Tuis en Oor. Die joernaal bevat jou inskrywings:
+Konsepte is net op hierdie rekenaar, en Op jou werf lys die inskrywings
+wat jy gepubliseer het. Die kieslys, kopstuk en voetstuk is dele van
+elke bladsy.
+
+== finishing-setup | Die opstelling klaarmaak
+Ná die opstelling wys die Jou werf-skerm 'n lys met die opskrif Maak die
+opstelling klaar, onder sy teëls. 'n Regmerkie merk elke ding wat reeds gedoen is.
+
+1. Klik 'n reël wat nie gemerk is nie. Pressless maak die skerm oop waar dit gedoen word.
+picture finish-setting-up.png | Die Maak die opstelling klaar-lys, met twee reëls gemerk en drie nog om te doen.
+2. Doen dit daar, en klik dan Jou werf om die lys weer te sien.
+
+== writing-an-entry | 'n Nuwe inskrywing skryf
+'n Inskrywing is 'n gedateerde stuk skryfwerk, soos 'n blogplasing. Jou
+joernaal lys jou inskrywings, nuutste eerste.
+
+1. Klik Joernaal in die balk.
+2. Tik die inskrywing se naam in die Titel-blokkie.
+3. Klik Nuwe inskrywing.
+picture new-entry.png | Die Titel-blokkie met die woorde Low tide, met die Begin met-lys en die Nuwe inskrywing-knoppie daarnaas.
+4. Klik onder die titel op die bladsy en tik jou woorde. Die bladsy wys die inskrywing soos jou werf dit sal wys.
+video writing-an-entry.webm | 'n Nuwe inskrywing 'n naam gee, Nuwe inskrywing klik, en dan woorde op die bladsy tik.
+
+Pressless stoor terwyl jy tik, en sê Gestoor bo-aan. Die inskrywing is 'n
+konsep, net op hierdie rekenaar, totdat jy dit publiseer.
+
+== styling-words | Woorde vet, skuins of gekleur maak, en 'n skakel byvoeg
+1. Maak die inskrywing oop en klik die paragraaf.
+2. Kies die woorde om te verander.
+3. Klik Vet of Skuinsdruk.
+picture style-buttons.png | Die knoppies Vet, Skuinsdruk en Skakel, met die kleurknoppies daaronder.
+4. Vir 'n skakel, klik Skakel en tik die adres wat die woorde moet oopmaak.
+5. Vir 'n kleur, klik Jou werf se aksentkleur of Jou werf se sagter ink. Vir enige ander kleur, kies dit langs Enige kleur, en klik dan Gebruik hierdie kleur.
+
+== adding-a-paragraph | 'n Paragraaf of aanhaling by 'n inskrywing voeg
+1. Maak die inskrywing oop.
+2. Klik die deel wat die nuwe een moet volg. As niks geklik is nie, gaan dit aan die einde.
+3. Kies langs Voeg by, Paragraaf of Aanhaling.
+4. Klik Voeg by, en tik dan sy woorde op die bladsy.
+
+== adding-a-photograph | 'n Foto of prent by 'n inskrywing voeg
+1. Maak die inskrywing oop.
+2. Klik die deel wat die foto moet volg.
+3. Kies langs Voeg by, Foto, en klik dan Voeg by.
+4. Klik Voeg 'n foto by en kies die prentlêer op jou rekenaar.
+picture photograph-part.png | 'n Inskrywing met 'n foto van 'n hawe, en daarnaas die Foto-lys en die Onderskrif-blokkie.
+5. Tik 'n onderskrif in die Onderskrif-blokkie, as jy een wil hê.
+
+'n Foto wat jy vroeër bygevoeg het, is in die Foto-lys, so jy kan dit
+weer gebruik sonder om die lêer te kies.
+
+== moving-parts | Deel van 'n inskrywing skuif of verwyder
+1. Maak die inskrywing oop en klik die paragraaf, foto of aanhaling.
+2. Klik Skuif op of Skuif af om dit te skuif.
+3. Klik Verwyder om dit uit te haal.
+
+== writing-in-marks | Met merke eerder as knoppies skryf
+Merke is 'n paar tekens wat tussen jou woorde getik word. Twee sterretjies
+aan elke kant van 'n woord maak dit vet.
+
+1. Maak die inskrywing oop en klik Wys my die merke.
+picture marks.png | Die blokkie met 'n inskrywing se woorde, met die spiekbrief daaronder oop.
+2. Tik jou woorde in die blokkie, met merke waar jy hulle wil hê.
+3. Klik Spiekbrief: hoe om jou woorde te stileer, onder die blokkie, om elke merk te sien.
+4. Klik Sien wysiger om terug te gaan na skryf op die bladsy.
+
+Die spiekbrief se 'n Bladsy om te druk-skakel maak dit as 'n bladsy van sy
+eie oop.
+
+== categories-and-tags | 'n Inskrywing kategorieë en etikette gee
+1. Maak die inskrywing oop.
+2. Tik die kategorieë in die Kategorieë-blokkie, of die etikette in die Etikette-blokkie.
+
+== entry-address | 'n Inskrywing se adres verander
+Die adres is die laaste deel van die inskrywing se webadres. Pressless
+maak dit uit die titel.
+
+1. Maak die inskrywing oop.
+2. Tik die nuwe adres in die Adres-blokkie.
+3. Klik Verander adres.
+
+== publishing | Publiseer: jou skryfwerk op jou werf sit
+Niks bereik jou werf voordat jy dit publiseer nie. Elke inskrywing en
+bladsy word vanuit sy eie wysiger gepubliseer. Jou werf sê hoeveel
+veranderings nog nie op jou werf is nie, en skakel na waar hulle is.
+Publiseer op Jou werf publiseer die werf soos dit reeds is, soos ná 'n
+verandering van voorkoms.
+
+1. Maak die inskrywing of bladsy oop.
+2. Klik Pers na werf.
+3. Pressless wys 'n boks met die opskrif Voordat jou werf verander, wat die bladsye lys wat sal verander.
+picture publish-plan.png | Die boks met die opskrif Voordat jou werf verander, met die knoppies Publiseer nou en Nog nie.
+4. Klik Publiseer nou. Klik Nog nie om jou werf te laat soos dit is.
+video publishing.webm | Pers na werf klik, dan Publiseer nou, en die reël Gepubliseer verskyn.
+
+Pressless sê Gepubliseer wanneer dit klaar is. Jou werf wys die verandering
+binne 'n paar minute. Sien jou werf maak jou werf in 'n nuwe oortjie oop.
+
+== changing-published | 'n Inskrywing verander wat reeds op jou werf is
+1. Klik Joernaal in die balk, dan die inskrywing onder Op jou werf.
+2. Verander dit. Jou veranderings bly op hierdie rekenaar, en jou werf wys die inskrywing steeds soos dit was.
+3. Klik Pers na werf om die veranderings te publiseer.
+4. Om die veranderings eerder prys te gee, klik Gooi hierdie proef in die snippermandjie.
+
+== undoing | Die laaste publisering ontdoen
+Ontdoen sit jou werf terug soos dit was voor jou laaste publisering. Wat
+jy geskryf het, bly as 'n konsep op hierdie rekenaar.
+
+1. Klik Jou werf in die balk.
+2. Klik Ontdoen die laaste pers.
+
+Pressless kan nie jou allereerste publisering ontdoen nie.
+
+== throwing-away | 'n Inskrywing weggooi
+1. Maak die inskrywing oop.
+2. Klik Gooi hierdie konsep weg, onder die inskrywing. Vir 'n inskrywing op jou werf sê die knoppie Gooi hierdie inskrywing weg.
+3. Klik OK wanneer Pressless vra.
+
+Die inskrywing skuif na die snippermandjie in jou Pressless-data-gids.
+
+== using-a-template | 'n Inskrywing met 'n sjabloon begin
+'n Sjabloon is 'n voorafgemaakte begin: 'n gedig, 'n lirieke met strofes,
+'n inskrywing rondom een foto, of 'n gewone joernaalinskrywing.
+
+1. Klik Joernaal in die balk.
+2. Tik die inskrywing se naam in die Titel-blokkie.
+3. Kies 'n sjabloon in die Begin met-lys.
+4. Klik Nuwe inskrywing.
+
+== making-a-template | Jou eie sjabloon maak of verander
+1. Klik Joernaal in die balk.
+2. Tik onder Jou sjablone 'n naam in die Naam-blokkie en klik Nuwe sjabloon. Om een te verander, klik sy naam.
+3. Tik die titel en die woorde waarmee elke inskrywing wat daaruit begin is, moet begin.
+4. Klik Stoor.
+
+Gooi hierdie sjabloon in die snippermandjie verwyder dit. 'n Sjabloon word
+nooit op jou werf gesit nie.
+
+== journal | Die joernaal aan- of afskakel
+Die joernaal is die gedateerde deel van 'n werf, soos 'n blog. Met dit af,
+is jou werf net bladsye.
+
+1. Klik Joernaal in die balk.
+2. Klik Skakel die joernaal af, of Skakel die joernaal aan.
+
+As jy dit afskakel, kom jou gepubliseerde inskrywings by jou volgende
+publisering van jou werf af. As jy dit weer aanskakel, kom hulle terug.
+
+== changing-a-page | 'n Bladsy verander, soos Tuis of Oor
+1. Klik Bladsye in die balk, dan die bladsy.
+2. Klik 'n opskrif, paragraaf of enige afdeling op die bladsy.
+picture page-editor.png | Die Tuis-bladsy oop vir verandering, met die bladsy aan die een kant en die Voeg by-lys aan die ander.
+3. Tik op die bladsy om woorde te verander. Die blokkies langs die bladsy verander enigiets anders oor daardie afdeling.
+4. Klik Pers na werf om die bladsy te publiseer.
+
+== adding-a-page | 'n Nuwe bladsy byvoeg
+1. Klik Bladsye in die balk.
+2. Tik die bladsy se naam in die Bladsynaam-blokkie.
+3. Klik Nuwe bladsy.
+picture new-page.png | Die Jou bladsye-kaart op die Bladsye-skerm, met die Bladsynaam-blokkie en die Nuwe bladsy-knoppie.
+
+Pressless maak die nuwe bladsy oop en voeg 'n skakel daarna in jou kieslys by.
+
+'n Werf sonder Tuis-bladsy het 'n Voeg 'n Tuis-bladsy by-knoppie bo die
+Bladsynaam-blokkie. Klik dit, verander die woorde, en klik Pers na werf.
+
+== renaming-a-page | 'n Bladsy hernoem of verwyder
+1. Maak die bladsy oop.
+2. Klik Hernoem hierdie bladsy en tik sy nuwe naam. Die ou adres bereik steeds die bladsy.
+3. Of klik Verwyder hierdie bladsy. Dit gaan na die snippermandjie in jou Pressless-data-gids, en verlaat jou werf en jou kieslys.
+
+Die Tuis-bladsy kan nie hernoem of verwyder word nie.
+
+== adding-a-section | 'n Afdeling by 'n bladsy voeg: 'n opskrif, prent, knoppie, video, musiek of aflaai
+1. Maak die bladsy oop.
+2. Klik die afdeling wat die nuwe een moet volg. As niks geklik is nie, gaan dit aan die einde van die bladsy.
+3. Kies wat om by te voeg in die Voeg by-lys.
+picture add-section.png | Die Voeg by-lys met elke soort afdeling sigbaar, van Paragraaf en Opskrif af tot by Jou eie CSS.
+4. Klik Voeg by.
+5. Vul die blokkies in wat daarvoor verskyn, soos Woorde wat dit beskryf vir 'n prent.
+
+'n Video-, musiek- of aflaaiafdeling het 'n Laai 'n lêer op-knoppie vir 'n
+lêer op jou rekenaar. Die lys het ook kolomme, 'n ry prente, 'n
+prent-skyfievertoning, vrae wat oopvou, 'n prent wat vergroot, 'n terug
+na bo-skakel en 'n aftelling.
+
+== moving-a-section | 'n Afdeling van 'n bladsy skuif of verwyder
+1. Maak die bladsy oop en klik die afdeling.
+2. Klik Skuif op of Skuif af.
+3. Om dit in 'n kolom te sit, kies die kolom in die Skuif na-lys en klik Skuif.
+4. Klik Verwyder om dit uit te haal.
+
+== changing-the-menu | Die kieslys verander
+Die kieslys is die ry skakels op elke bladsy van jou werf. Pressless noem
+dit Navigasie.
+
+1. Klik Bladsye in die balk, dan Navigasie onder Dele van elke bladsy.
+picture menu.png | Die kieslys se skakels, elk met 'n Woorde-blokkie, 'n Gaan na-blokkie, en die knoppies Skuif op, Skuif af en Verwyder.
+2. Verander die woorde van 'n skakel in sy Woorde-blokkie.
+3. Klik Skuif op of Skuif af om die volgorde te verander, of Verwyder om 'n skakel uit te haal.
+4. Klik Voeg 'n skakel by vir 'n nuwe een.
+5. Klik Pers na werf om die kieslys te publiseer.
+
+Geen Navigasie onder Dele van elke bladsy nie? Klik Voeg 'n kieslys by daar. Dit
+skakel na die bladsye wat reeds op jou werf is.
+
+== header-and-footer | Die kopstuk of voetstuk verander
+Die kopstuk is die bokant van elke bladsy van jou werf, en die voetstuk is
+die onderkant.
+
+1. Klik Bladsye in die balk, dan Kopstuk of Voetstuk onder Dele van elke bladsy.
+2. Verander dit soos jy 'n bladsy sou verander.
+3. Klik langs Wys dit op 'n bladsy se naam om die verandering op daardie bladsy te sien.
+4. Klik Pers na werf om dit te publiseer.
+
+== page-code | 'n Bladsy se kode sien of verander
+Vir enigiemand wat HTML ken.
+
+1. Maak die bladsy, die kopstuk, die voetstuk of Navigasie oop.
+2. Klik Wys my die kode.
+3. Klik Sien wysiger om terug te gaan.
+
+== site-look | Verander hoe jou werf lyk: uitleg, kleure en fonte
+1. Klik Voorkoms in die balk.
+2. Kies 'n uitleg, 'n kleurstyl, kleure, fonte, die teksgrootte, die bladsywydte of effekte. Die voorskou langs elke keuse wys dit dadelik.
+picture look.png | Die Voorkoms-skerm, met die uitlegte en kleurstyle om uit te kies en 'n voorskou van die werf daarnaas.
+3. Klik Stoor.
+video changing-the-look.webm | 'n Ander opskrif-lettertipe op die Voorkoms-skerm kies, die voorskou verander om te pas, en Stoor klik.
+
+Jou werf wys die nuwe voorkoms nadat jy volgende publiseer. Elke kleur het
+'n lig en 'n donker keuse: 'n besoeker wie se rekenaar op donker gestel
+is, sien die donker een.
+
+Elke uitleg en elke kleurstyl sê watter soort werf dit pas. Enige uitleg
+kan enige kleurstyl dra. As jy 'n kleurstyl kies, vul dit die
+kleurblokkies, en jy kan daarna steeds enige kleur verander.
+
+As jy 'n ander uitleg kies, behou dit jou kleure. Klik Gebruik hierdie
+uitleg se eie kleure om hulle na daardie uitleg s'n te verander, en dan
+Stoor om hulle te hou.
+
+== files | Die lêers sien of verwyder wat jy opgelaai het
+Lêers is die liedjies, video's, PDF's, ZIP-lêers en tekslêers wat jy vir
+jou bladsye opgelaai het.
+
+1. Klik Lêers in die balk.
+2. Die lys wys elke lêer, sy grootte en die bladsye wat dit gebruik.
+3. Klik Verwyder langs 'n lêer om dit na die snippermandjie te skuif.
+
+Jy laai 'n lêer op vanuit 'n video-, musiek- of aflaaiafdeling op 'n bladsy.
+
+== site-name | Jou werf se naam, beskrywing, ikoon of deelprent verander
+1. Klik Instellings in die balk, dan Jou werf se naam en prente.
+picture settings.png | Die deel van Instellings vir jou werf se naam en prente, met blokkies vir die naam en die beskrywing.
+2. Tik in die blokkie vir jou werf se naam of sy kort beskrywing.
+3. Vir die ikoon of die deelprent, klik Kies 'n prent.
+4. Klik die ? langs 'n blokkie om te lees waarvoor dit is.
+5. Klik Kyk die bewaarplek weer na en stoor.
+
+== own-domain | Jou eie domeinnaam gebruik
+As jy 'n webadres gekoop het, soos example.com, kan jou werf daar
+verskyn. Publiseer eers een keer jou werf.
+
+1. Klik Instellings, dan Jou werf se adres, dan Gebruik jou eie domeinnaam.
+2. Tik die naam wat jy gekoop het en klik Volgende.
+picture own-domain.png | Die eerste stap van Jou eie domeinnaam, met 'n blokkie vir die naam en 'n Volgende-knoppie.
+3. Volg elke skerm. Pressless wys wat om in te voer waar jy die naam gekoop het.
+
+Jy kan Pressless tussen stappe toemaak. Gebruik jou eie domeinnaam maak die
+stap oop wat jy bereik het.
+
+== visitor-numbers | Besoekersyfers aanskakel
+Pressless kan wys hoeveel mense jou werf lees, deur die syfers uit Google
+Analytics te lees. Dit is opsioneel.
+
+1. Klik Instellings, dan Besoekers en Google, dan die reël oor sien hoeveel mense jou werf lees.
+2. Klik Meld met Google aan en meld aan op Google se bladsy.
+3. Kies die werf waarvoor Pressless syfers moet wys, en klik Gebruik hierdie werf.
+
+Skakel besoekersyfers af, op dieselfde skerm, stop dit.
+
+== who-is-reading | Sien wie jou werf lees
+1. Klik Besoekers in die balk.
+picture who-is-reading.png | Die Wie lees-skerm, met 'n telling van mense, 'n grafiek van mense elke dag en 'n tabel van lande.
+2. Klik Laaste 7 dae, Laaste 4 weke of Laaste 12 maande.
+
+Die skerm wys hoeveel mense jou werf lees, waar hulle is, hoe hulle jou
+gevind het en wat hulle gelees het.
+
+== like-buttons | Hou van- en Hou nie van-knoppies onder jou inskrywings byvoeg
+Die tellings woon in jou eie gratis Firebase-databasis, van Google.
+
+1. Klik Instellings, dan Joernaal, dan Hou van- en Hou nie van-knoppies onder jou inskrywings, as jy hulle wil hê.
+2. Volg die stappe op die skerm om die databasis te maak.
+3. Plak die firebaseConfig-teks in die blokkie en klik Stoor en kyk na.
+
+== youtube | Jou YouTube-kanaal se syfers wys
+1. Klik Instellings, dan Besoekers en Google, dan Jou YouTube-kanaal se openbare syfers, as jy hulle wil hê.
+2. Volg die stappe op die skerm om 'n sleutel te maak.
+3. Tik jou kanaal se adres, plak die sleutel en klik Stoor en kyk na.
+
+== publishing-key | Weer by GitHub aanmeld, of jou publiseersleutel verander
+1. Klik Instellings in die balk, dan GitHub.
+2. Klik Meld weer by GitHub aan, en volg die skerm. Of plak 'n nuwe sleutel in die Jou publiseersleutel-blokkie.
+3. Klik Kyk die bewaarplek weer na en stoor.
+
+Laat die sleutelblokkie leeg om die sleutel te hou wat Pressless reeds het.
+
+== more-sites | Meer as een werf versorg
+1. Klik Werwe in die balk.
+picture sites.png | Die Werwe-skerm, wat een werf lys wat as nou oop gemerk is, met die Begin 'n nuwe werf-knoppie.
+2. Klik Begin 'n nuwe werf om nog een te maak. Pressless maak weer oop en lei jou deur die opstelling daarvoor.
+3. Klik Maak oop langs 'n werf om aan daardie een te werk.
+4. Klik Verwyder langs 'n werf om dit van hierdie rekenaar af te haal. Pressless stoor dit eers as een lêer, en sy werf bly op die web.
+
+As jy 'n ander werf oopmaak, herbegin Pressless in 'n nuwe oortjie, so maak
+eers klaar met wat jy skryf.
+
+== saving-a-site | 'n Hele werf in een lêer stoor, en dit weer oopmaak
+Die lêer bevat die werf se skryfwerk, foto's en instellings. Dit bevat nooit
+die publiseersleutel nie.
+
+1. Klik Werwe in die balk.
+2. Klik Stoor hierdie werf in 'n lêer. Jou blaaier stoor die lêer.
+3. Om 'n werf terug te bring, klik Maak 'n werflêer oop en kies die lêer.
+4. Maak Instellings, dan GitHub, vir daardie werf oop en voer die publiseersleutel een keer in.
+
+== moving-computer | Pressless na 'n nuwe rekenaar skuif
+1. Klik Werwe in die balk.
+2. Klik Skuif Pressless na 'n nuwe rekenaar.
+picture move-computer.png | Die boks met die opskrif Skuif Pressless na 'n nuwe rekenaar, by sy eerste stap, Stoor elke werf in 'n lêer.
+3. Volg sy stappe met Volgende: stoor elke werf in 'n lêer, neem die lêers na die nuwe rekenaar, en maak elke lêer daar oop.
+
+== backups | Rugsteun, en kies waar dit gehou word
+Elke dag stoor Pressless elke werf vanself in 'n lêer, en hou die mees
+onlangse een. Hulle gaan na die Pressless-backups-gids langs die program.
+
+1. Klik Werwe in die balk.
+2. Plak onder Daaglikse rugsteun die hele adres van 'n ander gids, soos een op 'n USB-stokkie of in 'n wolkgids.
+3. Klik Gebruik hierdie gids.
+
+'n Rugsteun maak oop met Maak 'n werflêer oop, soos enige gestoorde werf.
+
+== bringing-in-wordpress | 'n WordPress-werf inbring
+'n Werf wat nog niks bevat nie, bied dit aan, aan die einde van die opstelling.
+
+1. Klik Bring dit in Pressless in.
+2. Kies in WordPress Tools, dan Export, dan All content, en klik Download Export File.
+3. Klik in Pressless Kies die uitvoerlêer en kies daardie lêer.
+4. Volg elke skerm met Volgende. Pressless kopieer jou foto's en lêers van jou ou werf af, en lys enige wat dit nie kon kopieer nie.
+5. Kies 'n voorkoms, want 'n WordPress-tema kom nie saam nie.
+
+Plasings, bladsye, die kieslys, kommentaar, foto's en lêers kom saam.
+Niks is op die web totdat jy publiseer nie.
+
+== bringing-in-a-folder | 'n Werf inbring wat 'n gids webbladsye is
+'n Werf wat nog niks bevat nie, bied dit aan, aan die einde van die opstelling.
+
+1. Klik Bring dit eerder in.
+2. Klik Kies die gids en kies jou werf se gids. As dit in 'n ZIP-lêer is, klik Kies 'n ZIP-lêer.
+3. Klik Volgende. Pressless wys wat sal saamkom en wat nie.
+
+Die werf behou sy voorkoms en sy adresse.
+
+== theme | Verander hoe Pressless self lyk: lig, donker of hoë kontras
+1. Klik Meer in die balk.
+picture more.png | Meer oop, wat Maak 'n voorstel of meld 'n probleem, Gebruiksverslae, Oor, en die Tema- en Teksgrootte-lyste wys.
+2. Kies 'n tema in die Tema-lys. Volg my rekenaar gebruik lig of donker soos jou rekenaar gestel is.
+
+Dit verander net Pressless op jou skerm, nooit jou werf nie.
+
+== text-size | Pressless se teks groter maak
+1. Klik Meer in die balk.
+2. Kies Groot, Groter of Grootste in die Teksgrootte-lys.
+
+== updating | Pressless opdateer
+Wanneer 'n nuwe weergawe uit is, sê die Jou werf-skerm dit.
+Klik Wat nuut is sedert weergawe, onder die knoppies, om te lees wat verander het.
+
+1. Klik Dateer nou op. Pressless installeer dit en maak vanself weer oop.
+2. Of klik Later, of Slaan hierdie weergawe oor.
+
+Jou werwe bly waar hulle is. Om te keer dat Pressless na nuwe weergawes
+soek, klik Instellings, dan Hierdie rekenaar, dan Hou op soek.
+
+== jpeg-xl | JPEG XL-foto's gebruik
+JPEG XL is 'n soort fotolêer. Pressless het een aflaai nodig voordat dit
+hulle kan gebruik.
+
+1. Klik Instellings in die balk, dan Hierdie rekenaar.
+2. Klik Voeg JPEG XL-ondersteuning by.
+
+== shortcuts | Pressless in die kieslys of op die lessenaar sit
+1. Klik Instellings in die balk, dan Hierdie rekenaar.
+2. Merk die blokkie vir die kieslys, die lessenaar, of albei. Ontmerk een om dit weg te neem.
+3. Klik Stoor hierdie.
+
+Dit werk wanneer Pressless vanaf die lêer loop wat jy afgelaai het.
+
+== ai-helper | 'n KI-toep laat help
+'n KI-toep op jou rekenaar, soos Claude, kan jou werf deur Pressless skryf
+en wysig. Dit is af totdat jy dit aanskakel.
+
+1. Klik Jou werf in die balk, dan KI-helper, naby die bopunt.
+2. Klik Skakel aan.
+picture ai-helper.png | Die bopunt van die KI-helper-skerm, wat sê Af: geen KI-toep kan koppel nie, met die Skakel aan-knoppie.
+3. Vir Claude Desktop, klik Koppel Claude Desktop, sluit dan Claude Desktop heeltemal af en begin dit weer. Vir 'n ander toep, volg die stappe op die skerm.
+
+Niks word gepubliseer, ongedaan gemaak of in die snippermandjie gegooi
+totdat jy in Pressless Ja, doen dit klik nie. Die toep kan nie by jou
+sleutels, jou instellings of enige bladsy se kode uitkom nie. Pressless
+moet oop wees terwyl die toep werk.
+
+== usage-reports | Gebruiksverslae aan- of afskakel
+Gebruiksverslae is anoniem: watter skerms gebruik word, waar die opstelling
+stop en wat skeefloop. Hulle bevat nooit jou skryfwerk of jou werf se adres nie.
+
+1. Klik Meer in die balk, dan Gebruiksverslae.
+2. Klik Skakel gebruiksverslae aan, of skakel hulle daar af.
+
+Dieselfde skerm lys elke verslag wat gestuur is.
+
+== reporting-a-problem | Iets voorstel of 'n probleem meld
+1. Klik Meer in die balk, dan Maak 'n voorstel of meld 'n probleem.
+2. Klik Maak die verslag op GitHub oop.
+3. Beantwoord die vrae op GitHub se bladsy en dien dit in.
+
+'n Verslag is openbaar. Los jou werf se adres, jou skryfwerk en jou
+publiseersleutel uit.
+
+== restarting | Pressless herbegin
+1. Klik Instellings in die balk, dan Hierdie rekenaar.
+2. Klik Herbegin Pressless, dan Herbegin.
+
+Elke Pressless-oortjie wat oop is, hou op werk, en 'n nuwe een maak oop.
+
+== tray-icon | Die Pressless-ikoon by die horlosie gebruik
+Terwyl Pressless loop, sit sy ikoon by die horlosie: in die kennisgewingarea
+op Windows, en in die stelselbalk op Linux. Dit werk selfs nadat jy elke
+Pressless-oortjie toegemaak het.
+
+1. Klik die Pressless-ikoon om Pressless in jou blaaier oop te maak.
+2. Regsklik dit vir Maak Pressless oop, Herbegin en Stop Pressless.
+
+Stop Pressless stop dit soos wat die venster toemaak dit doen. Sommige
+Linux-lessenaars wys geen ikone by die horlosie nie.
+
+== version | Vind watter weergawe jy het
+1. Klik Meer in die balk, dan Oor.
