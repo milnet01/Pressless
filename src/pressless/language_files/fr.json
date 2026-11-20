@@ -1448,7 +1448,7 @@
   ],
   "dashboard.region": [
    "7db4aedb",
-   "Région ou département"
+   "Province ou État"
   ],
   "dashboard.seconds": [
    "5307d20d",
@@ -1500,7 +1500,7 @@
   ],
   "dashboard.where_within": [
    "83dcd42c",
-   "Quelle région ou quel département"
+   "Quelle province ou quel État"
   ],
   "dashboard.window.28": [
    "91914158",
@@ -1756,7 +1756,7 @@
   ],
   "domain.records.part": [
    "bdabd056",
-   "{domain} fait partie de {bought}. Connectez-vous là où vous avez acheté {bought}, ouvrez ses réglages DNS, et ajoutez celui-ci. Supprimez tout autre enregistrement portant le nom {part}, car il peut empêcher l'adresse sécurisée de fonctionner :"
+   "{domain} fait partie de {bought}. Connectez-vous là où vous avez acheté {bought}, ouvrez ses réglages DNS, et ajoutez cet enregistrement. Supprimez tout autre enregistrement portant le nom {part}, car il peut empêcher l'adresse sécurisée de fonctionner :"
   ],
   "domain.records.type": [
    "baaddf70",
@@ -1768,11 +1768,11 @@
   ],
   "domain.records.whole": [
    "a0fcce1a",
-   "Connectez-vous là où vous avez acheté {domain}, ouvrez ses réglages DNS, et ajoutez chacun de ceux-ci. Supprimez tout autre enregistrement A ou AAAA portant le nom @, car il peut empêcher l'adresse sécurisée de fonctionner :"
+   "Connectez-vous là où vous avez acheté {domain}, ouvrez ses réglages DNS, et ajoutez chacun de ces enregistrements. Supprimez tout autre enregistrement A ou AAAA portant le nom @, car il peut empêcher l'adresse sécurisée de fonctionner :"
   ],
   "domain.records.www": [
    "4ecab56c",
-   "Vous avez acheté {bought}, et vous voulez {domain}. Connectez-vous là où vous l'avez acheté, ouvrez ses réglages DNS, et ajoutez chacun de ceux-ci. Supprimez tout autre enregistrement portant le même nom, car il peut empêcher l'adresse sécurisée de fonctionner :"
+   "Vous avez acheté {bought}, et vous voulez {domain}. Connectez-vous là où vous l'avez acheté, ouvrez ses réglages DNS, et ajoutez chacun de ces enregistrements. Supprimez tout autre enregistrement portant le même nom, car il peut empêcher l'adresse sécurisée de fonctionner :"
   ],
   "domain.secure": [
    "d79b33df",
@@ -1920,7 +1920,7 @@
   ],
   "editor.list.none": [
    "bd3ce633",
-   "Aucun pour l'instant."
+   "Rien pour l'instant."
   ],
   "editor.list.on_site": [
    "c9050e71",
@@ -2436,7 +2436,7 @@
   ],
   "failure.look.LookUnreadable.what": [
    "dfdee5ac",
-   "Pressless n'a pas pu lire les réglages dont l'apparence de votre site est faite, donc il n'a rien modifié."
+   "Pressless n'a pas pu lire les réglages qui font l'apparence de votre site, donc il n'a rien modifié."
   ],
   "failure.look_screen.LookRefused.next": [
    "61ccabad",
@@ -2556,7 +2556,7 @@
   ],
   "failure.publisher.OutcomeUnknown.next": [
    "c2711176",
-   "Vérifiez votre connexion internet et cliquez de nouveau sur Envoyer sur le site. Publier de nouveau est sans risque et règle la question."
+   "Vérifiez votre connexion internet et cliquez de nouveau sur Envoyer sur le site. Refaire l'envoi est sans risque et règle la question."
   ],
   "failure.publisher.OutcomeUnknown.what": [
    "68259b15",
@@ -3056,7 +3056,7 @@
   ],
   "google_setup.none_found": [
    "8ec6329f",
-   "Ce compte Google ne voit aucune propriété Google Analytics. Connectez-vous avec le compte qui en voit."
+   "Ce compte Google n'a accès à aucune propriété Google Analytics. Connectez-vous avec le compte qui y a accès."
   ],
   "google_setup.none_found.title": [
    "58ad4b86",
@@ -3352,7 +3352,7 @@
   ],
   "import.folder.refused": [
    "7fa4d4aa",
-   "Pressless n'a pas pu lire ce fichier ZIP ou ce dossier, ou n'a pas pu le faire tenir sur ce disque, ou il nomme un fichier hors de son dossier. Rien n'a été conservé."
+   "Pressless n'a pas pu lire ce fichier ZIP ou ce dossier, ou n'a pas pu le faire tenir sur ce disque, ou il fait référence à un fichier hors de son dossier. Rien n'a été conservé."
   ],
   "import.folder.unnamed": [
    "b0c4c598",
@@ -3360,7 +3360,7 @@
   ],
   "import.folder.up": [
    "5db71ae7",
-   "il contient les mots {{{{UP}}}}, que Pressless remplit par le chemin vers la racine du site"
+   "il contient les mots {{{{UP}}}}, que Pressless remplace par le chemin vers la racine du site"
   ],
   "import.folder.why.cname": [
    "01f497cc",
@@ -3392,11 +3392,11 @@
   ],
   "import.folder.why.script": [
    "3f26aa83",
-   "aucune page n'utilise ce script d'une façon que Pressless peut porter dans la page"
+   "aucune page n'utilise ce script d'une façon que Pressless peut intégrer à la page"
   ],
   "import.folder.why.segment": [
    "403b1edc",
-   "Windows ne peut pas contenir un nom de son chemin"
+   "Windows n'accepte pas un des noms de son chemin"
   ],
   "import.folder.why.sheet": [
    "39b94d10",
@@ -3448,7 +3448,7 @@
   ],
   "import.gaps.how": [
    "dc8a1199",
-   "Si vous le pouvez, téléchargez le dossier <b>wp-content/uploads</b> depuis votre hébergeur sous la forme d'un seul fichier ZIP : le gestionnaire de fichiers de la plupart des hébergeurs peut compresser un dossier et le télécharger. Choisissez ensuite ce ZIP ici, et Pressless y prend ce qui manque. Ou cliquez sur Suivant pour continuer sans eux ; chacun est listé à la fin."
+   "Si vous le pouvez, téléchargez le dossier <b>wp-content/uploads</b> depuis votre hébergeur sous la forme d'un seul fichier ZIP : le gestionnaire de fichiers de la plupart des hébergeurs peut compresser un dossier et le télécharger. Choisissez ensuite ce ZIP ici, et Pressless y récupère ce qui manque. Ou cliquez sur Suivant pour continuer sans eux ; chacun est indiqué à la fin."
   ],
   "import.gaps.list.many": [
    "a43304cc",
@@ -3524,7 +3524,7 @@
   ],
   "import.report.inside": [
    "a2d5be15",
-   "{path} fait maintenant partie de chaque page qui l'utilisait. Vérifiez que chaque script fonctionne encore : un script qui nomme un fichier par son ancienne adresse ne le trouvera pas."
+   "{path} fait maintenant partie de chaque page qui l'utilisait. Vérifiez que chaque script fonctionne encore : un script qui désigne un fichier par son ancienne adresse ne le trouvera pas."
   ],
   "import.report.menu": [
    "2686a43e",
@@ -3556,7 +3556,7 @@
   ],
   "import.report.renamed_file": [
    "b964c619",
-   "{place} partageait son nom, donc il s'appelle maintenant {name}."
+   "{place} avait le même nom qu'un autre élément, donc il s'appelle maintenant {name}."
   ],
   "import.report.review": [
    "e83e7e06",
@@ -3616,7 +3616,7 @@
   ],
   "jpegxl.line": [
    "334e81e8",
-   "Photos JPEG XL : pas encore ajouté."
+   "Photos JPEG XL : pas encore ajoutées."
   ],
   "jpegxl.no_connection": [
    "ad13ac93",
@@ -3628,7 +3628,7 @@
   ],
   "jpegxl.ready": [
    "15422327",
-   "Photos JPEG XL : prêt."
+   "Photos JPEG XL : prêtes."
   ],
   "jpegxl.rejected": [
    "1481ac92",
@@ -4156,7 +4156,7 @@
   ],
   "notice.undo.look_kept": [
    "9440d3d3",
-   "L'apparence dans l'état auquel vous êtes revenu n'a pas pu être lue, donc votre site garde son apparence actuelle ; tout le reste a été restauré"
+   "L'apparence de l'état auquel vous êtes revenu n'a pas pu être lue, donc votre site garde son apparence actuelle ; tout le reste a été restauré"
   ],
   "overview.drafts.many": [
    "edbc8a6d",
@@ -4416,7 +4416,7 @@
   ],
   "page_hint.changes": [
    "0ee20088",
-   "Envoyez vos modifications sur votre site, ou abandonnez-les, puis renommez cette page."
+   "Envoyez vos modifications sur votre site, ou jetez-les, puis renommez cette page."
   ],
   "page_hint.empty": [
    "5a0e0f80",
@@ -4436,7 +4436,7 @@
   ],
   "page_hint.not_on_site": [
    "0b77c7e9",
-   "Cette page n'est pas encore sur votre site. Abandonnez ses modifications pour la supprimer."
+   "Cette page n'est pas encore sur votre site. Jetez ses modifications pour la supprimer."
   ],
   "page_hint.privacy_remove": [
    "03b0bd55",
@@ -5296,7 +5296,7 @@
   ],
   "setup.hint.not_public": [
    "18a10e42",
-   "GitHub n'affiche aucun dépôt public de ce nom. Vérifiez l'orthographe, et que vous avez choisi Public en le créant."
+   "GitHub n'affiche aucun dépôt public de ce nom. Vérifiez l'orthographe, et assurez-vous d'avoir choisi Public en le créant."
   ],
   "setup.hint.other_account": [
    "942815db",
@@ -5404,7 +5404,7 @@
   ],
   "setup.look.harbour.about": [
    "b89a4307",
-   "des nouvelles ou une lettre d'information"
+   "des actualités ou une lettre d'information"
   ],
   "setup.look.letter": [
    "1bf163f2",
@@ -5828,7 +5828,7 @@
   ],
   "setup.takein.never.settings": [
    "e392377b",
-   "Les réglages conservés sur votre autre ordinateur : l'identifiant de mesure Google Analytics, la propriété Analytics, les boutons J'aime et Je n'aime pas, la chaîne YouTube et le filtre Daily Prompt. Réglez-les de nouveau dans les Réglages avant d'envoyer quoi que ce soit sur votre site : d'ici là, votre prochaine publication laisse Google Analytics et les boutons J'aime et Je n'aime pas hors de chaque page."
+   "Les réglages conservés sur votre autre ordinateur : l'identifiant de mesure Google Analytics, la propriété Analytics, les boutons J'aime et Je n'aime pas, la chaîne YouTube et le filtre Daily Prompt. Renseignez-les de nouveau dans les Réglages avant d'envoyer quoi que ce soit sur votre site : d'ici là, votre prochaine publication retire Google Analytics et les boutons J'aime et Je n'aime pas de chaque page."
   ],
   "setup.takein.pages": [
    "45aba1a4",
@@ -6020,7 +6020,7 @@
   ],
   "sites_screen.file_about": [
    "f937fbbd",
-   "Un site entier, ses textes, ses photos et ses réglages, s'enregistre dans un seul fichier. Ouvrez ce fichier ici, ou dans Pressless sur un autre ordinateur, et il redevient un site. La clé de publication n'est pas dans le fichier, donc les Réglages la demandent une fois le site ouvert."
+   "Un site entier, avec ses textes, ses photos et ses réglages, s'enregistre dans un seul fichier. Ouvrez ce fichier ici, ou dans Pressless sur un autre ordinateur, et il redevient un site. La clé de publication n'est pas dans le fichier, donc les Réglages la demandent une fois le site ouvert."
   ],
   "sites_screen.file_newer": [
    "ad569715",
@@ -6052,7 +6052,7 @@
   ],
   "sites_screen.move.save": [
    "ceb734ba",
-   "Enregistrez chaque site que vous voulez emporter. Chacun se télécharge comme un fichier, en général dans votre dossier Téléchargements."
+   "Enregistrez chaque site que vous voulez emporter. Chacun est téléchargé sous forme de fichier, en général dans votre dossier Téléchargements."
   ],
   "sites_screen.move.save_one": [
    "45983840",
@@ -6476,11 +6476,11 @@
   ],
   "undo.demoted_many": [
    "a23760ac",
-   "{count} redevenus brouillons"
+   "{count} redevenues brouillons"
   ],
   "undo.demoted_one": [
    "6eef5137",
-   "{count} redevenu brouillon"
+   "{count} redevenue brouillon"
   ],
   "undo.entries": [
    "d06542eb",
@@ -6508,7 +6508,7 @@
   ],
   "undo.restored": [
    "e4cb041d",
-   "{count} remis en place"
+   "{count} remises en place"
   ],
   "undo.summary": [
    "4d7a1137",
@@ -6912,7 +6912,7 @@
   ],
   "youtube.step.3": [
    "ee7bd5a4",
-   "Sur cette page, ouvrez l'onglet <b>Credentials</b> et cliquez sur <b>Create credentials</b>, puis sur <b>API key</b>, une nouvelle même si vous en avez d'autres. Sous « Select API restrictions », cochez uniquement <b>YouTube Data API v3</b>. Laissez « Application restrictions » sur <b>None</b> : Pressless fonctionne sur votre ordinateur, pas sur un site web. Cliquez sur <b>Create</b>, puis copiez la clé."
+   "Sur cette page, ouvrez l'onglet <b>Credentials</b> et cliquez sur <b>Create credentials</b>, puis sur <b>API key</b> : créez-en une nouvelle même si vous en avez d'autres. Sous « Select API restrictions », cochez uniquement <b>YouTube Data API v3</b>. Laissez « Application restrictions » sur <b>None</b> : Pressless fonctionne sur votre ordinateur, pas sur un site web. Cliquez sur <b>Create</b>, puis copiez la clé."
   ],
   "youtube.step.4": [
    "14df0c94",
