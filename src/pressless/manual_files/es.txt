@@ -120,7 +120,7 @@ Pressless la hace a partir del título.
 Nada llega a tu sitio hasta que lo publicas. Cada entrada y cada página se
 publica desde su propio editor. Tu sitio dice cuántos cambios todavía no
 están en tu sitio, y enlaza a dónde están. Publicar, en Tu sitio, publica
-el sitio tal como está ya, por ejemplo tras un cambio de aspecto.
+el sitio tal como está ahora, por ejemplo tras un cambio de aspecto.
 
 1. Abre la entrada o la página.
 2. Haz clic en Enviar al sitio.
@@ -136,7 +136,7 @@ minutos. Ver tu sitio abre tu sitio en una pestaña nueva.
 1. Haz clic en Diario en la barra y luego en la entrada, bajo En tu sitio.
 2. Cámbiala. Tus cambios se quedan en este ordenador, y tu sitio sigue mostrando la entrada como estaba.
 3. Haz clic en Enviar al sitio para publicar los cambios.
-4. Para renunciar a los cambios, haz clic en Tirar esta prueba.
+4. Para descartar los cambios, haz clic en Tirar esta prueba.
 
 == undoing | Deshacer la última publicación
 Deshacer devuelve tu sitio a como estaba antes de tu última publicación.
@@ -206,7 +206,7 @@ y haz clic en Enviar al sitio.
 2. Haz clic en Cambiar el nombre de esta página y escribe su nombre nuevo. La dirección antigua sigue llegando a la página.
 3. O haz clic en Quitar esta página. Pasa a la papelera de tu carpeta Pressless-data, y sale de tu sitio y de tu menú.
 
-La página de Inicio no se puede renombrar ni quitar.
+La página de Inicio no se puede cambiar de nombre ni quitar.
 
 == adding-a-section | Añadir una sección a una página: un título, una imagen, un botón, un vídeo, música o una descarga
 1. Abre la página.
@@ -402,7 +402,7 @@ configuración.
 
 1. Haz clic en Trae esa en su lugar.
 2. Haz clic en Elegir la carpeta y elige la carpeta de tu sitio. Si está en un archivo ZIP, haz clic en Elegir un archivo ZIP.
-3. Haz clic en Siguiente. Pressless muestra qué pasará y qué no.
+3. Haz clic en Siguiente. Pressless muestra qué se traerá y qué no.
 
 El sitio conserva su aspecto y sus direcciones.
 
@@ -452,7 +452,7 @@ picture ai-helper.png | La parte superior de la pantalla Ayudante de IA, que dic
 3. Para Claude Desktop, haz clic en Conectar Claude Desktop, sal de Claude Desktop por completo y vuelve a iniciarlo. Para otra aplicación, sigue los pasos de la pantalla.
 
 Nada se publica, se deshace ni se tira a la papelera hasta que hagas clic
-en Sí en Pressless. La aplicación no puede llegar a tus claves, a tus
+en Sí en Pressless. La aplicación no puede acceder a tus claves, a tus
 ajustes ni al código de ninguna página. Pressless debe estar abierto
 mientras la aplicación trabaja.
 

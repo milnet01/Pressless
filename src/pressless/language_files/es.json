@@ -19,7 +19,7 @@
   ],
   "assistant.about": [
    "832ce931",
-   "Una aplicación de IA de este ordenador, como Claude, puede escribir y editar tu sitio a través de Pressless. Nada se publica, se deshace ni se tira a la papelera hasta que pulses Sí en Pressless. No puede llegar a tus claves, a tus ajustes ni al código de ninguna página."
+   "Una aplicación de IA de este ordenador, como Claude, puede escribir y editar tu sitio a través de Pressless. Nada se publica, se deshace ni se tira a la papelera hasta que pulses Sí en Pressless. No puede acceder a tus claves, a tus ajustes ni al código de ninguna página."
   ],
   "assistant.app.claude_code": [
    "246ef8c1",
@@ -2027,7 +2027,7 @@
   ],
   "editor.panel.marks_note": [
    "098cc6aa",
-   "Esta parte usa marcas que la página no puede mostrar mientras escribes, como letras de arcoíris o un número de años calculado por ti. Cambia sus marcas aquí."
+   "Esta parte usa marcas que la página no puede mostrar mientras escribes, como letras de arcoíris o un número de años calculado automáticamente. Cambia sus marcas aquí."
   ],
   "editor.panel.move_down": [
    "40bb50da",
@@ -2227,7 +2227,7 @@
   ],
   "failure.credentials.NoStore.what": [
    "83315ee8",
-   "Pressless no encontró en este ordenador ningún lugar seguro donde guardar {secret}."
+   "Pressless no encontró ningún lugar seguro en este ordenador para guardar {secret}."
   ],
   "failure.credentials.NotStored.next": [
    "8dcf995c",
@@ -2351,7 +2351,7 @@
   ],
   "failure.google_signin.Declined.what": [
    "4bdf3691",
-   "Decidiste no dejar que Pressless lea las cifras de tus visitas."
+   "Decidiste no dejar que Pressless leyera las cifras de tus visitas."
   ],
   "failure.google_signin.Expired.next": [
    "3a295ead",
@@ -2675,7 +2675,7 @@
   ],
   "failure.publishing.KeptFolderBuilt.next": [
    "8aefb81c",
-   "Cambia el nombre de {folder} o muévela en tu repositorio de GitHub, guarda otra vez la página de Ajustes y publica."
+   "Cambia el nombre de {folder} o muévela en tu repositorio de GitHub, vuelve a guardar la página de Ajustes y publica."
   ],
   "failure.publishing.KeptFolderBuilt.what": [
    "306da5a1",
@@ -3003,7 +3003,7 @@
   ],
   "github_setup.unavailable": [
    "f1e70b95",
-   "Esta copia de Pressless no puede iniciar sesión en GitHub. Pega mejor una clave de publicación en Ajustes."
+   "Esta copia de Pressless no puede iniciar sesión en GitHub. En su lugar, pega una clave de publicación en Ajustes."
   ],
   "google_setup.choose_hint": [
    "0aa2b0d0",
@@ -3055,7 +3055,7 @@
   ],
   "google_setup.none_found": [
    "8ec6329f",
-   "Esta cuenta de Google no ve ninguna propiedad de Google Analytics. Inicia sesión con la cuenta que sí la vea."
+   "Esta cuenta de Google no puede ver ninguna propiedad de Google Analytics. Inicia sesión con la cuenta que pueda verla."
   ],
   "google_setup.none_found.title": [
    "58ad4b86",
@@ -3279,7 +3279,7 @@
   ],
   "import.folder.left": [
    "d6714dd9",
-   "Esto no pasará:"
+   "Esto no se traerá:"
   ],
   "import.folder.linux": [
    "33108959",
@@ -3615,7 +3615,7 @@
   ],
   "jpegxl.line": [
    "334e81e8",
-   "Fotografías JPEG XL: todavía no añadido."
+   "Fotografías JPEG XL: todavía no añadidas."
   ],
   "jpegxl.no_connection": [
    "ad13ac93",
@@ -3627,7 +3627,7 @@
   ],
   "jpegxl.ready": [
    "15422327",
-   "Fotografías JPEG XL: listo."
+   "Fotografías JPEG XL: listas."
   ],
   "jpegxl.rejected": [
    "1481ac92",
@@ -4479,7 +4479,7 @@
   ],
   "publishing.ready.heading": [
    "5e14676a",
-   "Listo para reemplazar tu sitio"
+   "Todo listo para reemplazar tu sitio"
   ],
   "publishing.replace": [
    "e1fbba80",
@@ -4503,7 +4503,7 @@
   ],
   "publishing.takeover.already.elsewhere": [
    "5c77340c",
-   "GitHub Pages ya se cambió, y ahora sirve otra carpeta o rama, así que lo que publique Pressless no llegará a la web hasta que lo devuelvas a como estaba."
+   "GitHub Pages ya se cambió, y ahora sirve otra carpeta o rama, así que lo que publique Pressless no llegará a la web hasta que lo dejes como estaba."
   ],
   "publishing.takeover.already.off": [
    "df092691",
@@ -4859,7 +4859,7 @@
   ],
   "script.press.unreachable": [
    "79b80f2b",
-   "Pressless no pudo conectarse consigo mismo, así que esta página no puede saber cómo terminó el envío. Comprueba que Pressless siga funcionando."
+   "Pressless no pudo conectarse consigo mismo, así que esta página no puede saber cómo terminó el envío. Comprueba que Pressless sigue funcionando."
   ],
   "script.sites.opening": [
    "c926c2c5",
@@ -5239,11 +5239,11 @@
   ],
   "setup.hint.add_to_app": [
    "f73a10d7",
-   "Pressless creó el repositorio, pero la aplicación Pressless todavía no puede llegar a él. En GitHub, haz clic en tu imagen, luego en Settings y luego en Applications. Haz clic en Configure junto a Pressless App, haz clic en Select repositories, escoge {repository} y haz clic en Save. Después pulsa Siguiente otra vez."
+   "Pressless creó el repositorio, pero la aplicación Pressless todavía no puede acceder a él. En GitHub, haz clic en tu imagen, luego en Settings y luego en Applications. Haz clic en Configure junto a Pressless App, haz clic en Select repositories, elige {repository} y haz clic en Save. Después pulsa Siguiente otra vez."
   ],
   "setup.hint.app_cannot_reach": [
    "ed150a81",
-   "La aplicación Pressless no puede llegar a este repositorio. En GitHub, haz clic en tu imagen, luego en Settings y luego en Applications, y comprueba que la instalación de Pressless App lo incluya. Después pulsa Siguiente otra vez."
+   "La aplicación Pressless no puede acceder a este repositorio. En GitHub, haz clic en tu imagen, luego en Settings y luego en Applications, y comprueba que la instalación de Pressless App lo incluya. Después pulsa Siguiente otra vez."
   ],
   "setup.hint.elsewhere": [
    "6ce5b053",
@@ -5259,7 +5259,7 @@
   ],
   "setup.hint.key_not_granted": [
    "9be0608c",
-   "Esta clave no puede llegar a ese repositorio. En GitHub, edita la clave y elige el repositorio de tu sitio en Repository access."
+   "Esta clave no puede acceder a ese repositorio. En GitHub, edita la clave y elige el repositorio de tu sitio en Repository access."
   ],
   "setup.hint.made_elsewhere": [
    "1bce5cca",
@@ -5287,7 +5287,7 @@
   ],
   "setup.hint.no_such_repository": [
    "8fe6ccf9",
-   "GitHub no tiene ningún repositorio con ese nombre al que esta clave pueda llegar."
+   "GitHub no tiene ningún repositorio con ese nombre al que esta clave pueda acceder."
   ],
   "setup.hint.not_installed": [
    "d861b927",
@@ -5371,11 +5371,11 @@
   ],
   "setup.install.happening": [
    "a77c1b3c",
-   "Pressless funciona mediante su propia aplicación en GitHub, Pressless App, que solo llega a los repositorios que le permitas. Un repositorio es la carpeta de GitHub en la que vive un sitio. Pressless crea a continuación el repositorio de tu sitio y al final te dice cómo dejar que la aplicación llegue solo a ese."
+   "Pressless funciona mediante su propia aplicación en GitHub, Pressless App, que solo accede a los repositorios que le permitas. Un repositorio es la carpeta de GitHub en la que vive un sitio. Pressless crea a continuación el repositorio de tu sitio y al final te dice cómo dejar que la aplicación llegue solo a ese."
   ],
   "setup.key": [
    "5b5a0c9e",
-   "Pressless necesita una clave que llegue al repositorio de tu sitio y a ningún otro. Crea una:"
+   "Pressless necesita una clave que acceda al repositorio de tu sitio y a ningún otro. Crea una:"
   ],
   "setup.key.kept": [
    "55a05d66",
@@ -5459,7 +5459,7 @@
   ],
   "setup.narrow": [
    "22dac239",
-   "La aplicación Pressless puede llegar a todos los repositorios de tu cuenta. Para que llegue solo al de tu sitio: en GitHub, haz clic en tu imagen, luego en <b>Settings</b> y luego en <b>Applications</b>. Haz clic en <b>Configure</b> junto a <b>Pressless App</b>, elige <b>Only select repositories</b>, escoge <b>{repository}</b> y haz clic en <b>Save</b>."
+   "La aplicación Pressless puede acceder a todos los repositorios de tu cuenta. Para que acceda solo al de tu sitio: en GitHub, haz clic en tu imagen, luego en <b>Settings</b> y luego en <b>Applications</b>. Haz clic en <b>Configure</b> junto a <b>Pressless App</b>, elige <b>Only select repositories</b>, escoge <b>{repository}</b> y haz clic en <b>Save</b>."
   ],
   "setup.new_key.1": [
    "e7612ac1",
@@ -5759,7 +5759,7 @@
   ],
   "setup.step.install": [
    "5878fcbd",
-   "Deja que Pressless llegue a tu sitio"
+   "Permite que Pressless acceda a tu sitio"
   ],
   "setup.step.key": [
    "ba46cbad",
@@ -5823,7 +5823,7 @@
   ],
   "setup.takein.never.originals": [
    "638dbdb7",
-   "Las fotografías a tamaño completo. GitHub guarda las copias más pequeñas que muestra tu sitio, y esas sí pasan."
+   "Las fotografías a tamaño completo. GitHub guarda las copias más pequeñas que muestra tu sitio, y esas sí se traen."
   ],
   "setup.takein.never.settings": [
    "e392377b",
@@ -6043,7 +6043,7 @@
   ],
   "sites_screen.move.carry": [
    "77c69ecd",
-   "Copia los archivos a una memoria USB, o a una carpeta en la nube a la que lleguen los dos ordenadores. Luego descarga Pressless en el ordenador nuevo e inícialo."
+   "Copia los archivos a una memoria USB, o a una carpeta en la nube a la que accedan los dos ordenadores. Luego descarga Pressless en el ordenador nuevo e inícialo."
   ],
   "sites_screen.move.open": [
    "aa1034d0",
@@ -6719,7 +6719,7 @@
   ],
   "votes_setup.off.done": [
    "fccb1f9e",
-   "Los botones desaparecen en tu próximo Enviar al sitio. Los votos se quedan en tu base de datos, y tu página de Privacidad conserva sus palabras."
+   "Los botones desaparecen con tu próximo Enviar al sitio. Los votos se quedan en tu base de datos, y tu página de Privacidad conserva sus palabras."
   ],
   "votes_setup.on": [
    "2e2d4600",
@@ -6731,7 +6731,7 @@
   ],
   "votes_setup.saved": [
    "814d3cca",
-   "Los botones aparecen en tu próximo Enviar al sitio, y tu página de Privacidad dice qué registran."
+   "Los botones aparecen con tu próximo Enviar al sitio, y tu página de Privacidad dice qué registran."
   ],
   "votes_setup.saved.title": [
    "fca046cc",
