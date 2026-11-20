@@ -4232,7 +4232,7 @@
   ],
   "overview.visitors.read": [
    "05085723",
-   "{people} ont lu votre site en {window}."
+   "{people} ont lu votre site pendant {window}."
   ],
   "overview.waiting.entries.many": [
    "e5e8e1c7",
