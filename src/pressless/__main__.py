@@ -49,6 +49,7 @@ from pressless import (
     importing,
     installer,
     jpegxl_screen,
+    languages,
     look_screen,
     manual,
     os_reason,
@@ -70,6 +71,7 @@ from pressless import (
     updating,
     usage,
     votes_setup,
+    words,
     youtube_screen,
 )
 from pressless.words import say
@@ -113,6 +115,8 @@ def main(argv: list[str]) -> int:
     except (paths.NotPackaged, paths.FolderUnusable) as exc:
         print(f"folder: unanswered -- {exc}")
         return 1
+    # PRESS-0241 § 4.3: before the Face, the tray or a translated line.
+    words.choose(languages.for_screens(own)[0])
 
     try:
         choice = credentials.choose()

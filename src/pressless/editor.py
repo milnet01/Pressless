@@ -50,7 +50,7 @@ from pressless.face import (
     true_colours,
     within,
 )
-from pressless.words import say
+from pressless.words import medium_date, say
 
 PREVIEW_FOLDER = "preview"          # inside Pressless's own folder; the Face's alone
 REPLACES = "Replaces"               # the header naming the published entry a copy changes
@@ -523,7 +523,7 @@ def _rows(entries: list[store.Entry], broken: list[str], notes: dict[str, str]) 
         items.append(
             f'<li><a href="{html.escape(_edit_address(entry.slug), quote=True)}">'
             f"{html.escape(entry.title or say('editor.list.untitled'))}</a> "
-            f"<small>{entry.date:%d %b %Y}</small>{note}</li>")
+            f"<small>{medium_date(entry.date)}</small>{note}</li>")
     items.extend(f"<li>{html.escape(slug)} <em>{say('editor.list.unreadable')}</em></li>"
                  for slug in broken)
     return "<ul>" + "".join(items) + "</ul>" if items else f"<p>{say('editor.list.none')}</p>"

@@ -13,9 +13,9 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, cheatsheet, editor, photographs, store
+from pressless import builder, cheatsheet, editor, languages, photographs, store
 from pressless.face import Face, Reply, Request, render_notices
-from pressless.words import say
+from pressless.words import say, say_in
 
 # A starter's date is never used: picking a template takes its body,
 # categories and tags alone (PRESS-0017 § 4.3). Fixed, so every install
@@ -28,28 +28,30 @@ def _starter(name: str, title: str, body: str) -> store.Entry:
                        body=body, extra=())
 
 
-def starters() -> tuple[store.Entry, ...]:
-    """The four starters, in the words in use when they are written. Shipped
+def starters(code: str = "en") -> tuple[store.Entry, ...]:
+    """The four starters, in the language `code` (PRESS-0241 § 4.4). Shipped
     to every install, so they name nobody and assume nothing about the
     writer's life (§ 3 decision 6). The names are file names and stay."""
     return (
-        _starter("poem", say("templates.poem"), say("templates.poem.body")),
-        _starter("lyric", say("templates.lyric"), say("templates.lyric.body")),
-        _starter("photograph", say("templates.photograph"),
-                 say("templates.photograph.body")),
-        _starter("journal", say("templates.journal"), say("templates.journal.body")),
+        _starter("poem", say_in(code, "templates.poem"), say_in(code, "templates.poem.body")),
+        _starter("lyric", say_in(code, "templates.lyric"), say_in(code, "templates.lyric.body")),
+        _starter("photograph", say_in(code, "templates.photograph"),
+                 say_in(code, "templates.photograph.body")),
+        _starter("journal", say_in(code, "templates.journal"),
+                 say_in(code, "templates.journal.body")),
     )
 
 
-def seed(folder: Path) -> bool:
-    """Write the starters where the templates folder does not exist (§ 4.2).
+def seed(folder: Path, code: str | None = None) -> bool:
+    """Write the starters where the templates folder does not exist (§ 4.2),
+    in the language `code`, or else the site's.
 
     False where it existed, empty or not: it is his. A StoreError propagates,
     and the folder the first write made stays, so a failure is final.
     """
     if (Path(folder) / store.TEMPLATES_FOLDER).exists():
         return False
-    for starter in starters():
+    for starter in starters(languages.of_site(folder) if code is None else code):
         store.write_template(folder, starter)
     return True
 

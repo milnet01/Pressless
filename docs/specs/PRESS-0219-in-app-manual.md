@@ -85,8 +85,8 @@ module on import. `manual.py` finds it with
 the source tree when run from source and the bundle when frozen.
 
 **Translating is adding files**: `<lang>.txt` with the same task names,
-and `<name>.<lang>.vtt` per video. Which language is in use is
-PRESS-0241's; this item reads `en.txt` and `.en.vtt` only.
+and `<name>.<lang>.vtt` per video. PRESS-0241 § 4.3 picks the language
+in use, and reads the English file where that language's is missing.
 
 ### 4.2 The text format
 

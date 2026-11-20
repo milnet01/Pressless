@@ -1,9 +1,11 @@
 """Every word Pressless shows, in one table (PRESS-0242).
 
-English is the only table. Each word is looked up when it is shown, so a
-second table put in front of it with `use` changes every screen at once --
-the hook PRESS-0241's language choice takes. A key is a dotted name grouped
-by screen, never the English words, so rewording English changes no key.
+English is `ENGLISH`; every other language is a JSON file in
+`language_files`, whose entries count only while the English they were
+made from is unchanged (PRESS-0241 § 4.1). Each word is looked up when it
+is shown, so the table `choose` puts in front of English changes every
+screen at once. A key is a dotted name grouped by screen, never the
+English words, so rewording English changes no key.
 
 A word a page script reads lives under `script.`, once, and Python reads
 that same key where it shows the word too. An entry holds words and the
@@ -13,15 +15,19 @@ markup its sentence needs, never a page's template, and names its gaps as
 Two families come from their own sources: `country.<code>` from
 `_flag_data.NAMES`, which scripts/make_flags.py goes on generating, and
 `mark.<name>` and `mark.<name>.example` from `marks.MARKS`, whose `example`
-stays the parse fixture. This module touches no disk and no network, and
-imports only the standard library and those two modules.
+stays the parse fixture. This module reads only its own language files,
+touches no network, and imports only the standard library and those two
+modules.
 """
 
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import importlib.resources
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from pathlib import Path
 
 from pressless import _flag_data, marks
 
@@ -2751,6 +2757,59 @@ _WORDS: dict[str, str] = {
     "face.forbidden": "Forbidden",
     "face.link_spent": "This link has already been used. Close this tab and start Pressless again.",
     "face.not_found": "Not found",
+    # The top bar's language picker, and the list offered where the
+    # computer's language cannot be told (PRESS-0241 § 4.3).
+    "languages.label": "Language",
+    "languages.follow": "Follow the computer",
+    "languages.offer": "Pressless could not tell your computer's language. Choose one:",
+    "setup.field.site_language": "Site language",
+    "setup.help.site_language": (
+        "The language of the words Pressless writes on your site, such as its dates and "
+        "“Older →”. These screens keep their own language, chosen under More."
+    ),
+    "setup.hint.site_language": "Choose one of the languages offered.",
+    # Months and days (PRESS-0241 § 4.2): filled by the date functions below.
+    # A day is its short name; Monday is 0, as datetime.weekday() counts.
+    **{f"date.month.{number}": month for number, month in enumerate((
+        "January", "February", "March", "April", "May", "June", "July", "August",
+        "September", "October", "November", "December"), start=1)},
+    **{f"date.mon.{number}": mon for number, mon in enumerate((
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
+        "Dec"), start=1)},
+    **{f"date.day.{number}": day for number, day in enumerate((
+        "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))},
+    "date.long": "{day} {month} {year}",
+    "date.medium": "{day} {mon} {year}",
+    "date.short": "{day} {mon}",
+    "date.month_year": "{month} {year}",
+    "date.mon_year": "{mon} {year}",
+    "date.weekday": "{weekday} {day} {mon}",
+    # The words the Builder writes onto a published site, in the site's own
+    # language (PRESS-0241 § 4.4). Its counts keep unmarked digits.
+    "site.entries.one": "{count} entry",
+    "site.entries.many": "{count} entries",
+    "site.journal": "The journal",
+    "site.journal.span": "{entries}, from {first} to {last}.",
+    "site.journal.none": "{entries}.",
+    "site.category": "{entries} in {category}.",
+    "site.tag": "{entries} tagged “{tag}”.",
+    "site.eyebrow": "Journal",
+    "site.newer": "← Newer",
+    "site.older": "Older →",
+    "site.page_of": "Page {number} of {pages}",
+    "site.pagination": "Pagination",
+    "site.all_entries": "← All journal entries",
+    "site.archive": "Archive",
+    "site.archive.description": "All {entries} by year.",
+    "site.archive.lead": "All {entries}, newest first.",
+    "site.comments": "Comments",
+    "site.comments.one": "{count} comment",
+    "site.comments.many": "{count} comments",
+    "site.comments.kept": "Comments from the original journal, kept as they were written.",
+    "site.comments.closed": "New comments are not open at the moment.",
+    "site.anonymous": "Anonymous",
+    "site.moved.entry": 'This entry has moved to <a href="{link}">{title}</a>.',
+    "site.moved.page": 'This page has moved to <a href="{link}">{title}</a>.',
 }
 
 def _literal(text: str) -> str:
@@ -2785,12 +2844,16 @@ def say(key: str, **slots: str) -> str:
     return _lookup(key).format_map(slots)
 
 
-def say_count(number: int, one: str, many: str, **slots: str) -> str:
-    """`say` for `number` of something: key `one` for exactly one, `many`
-    otherwise. The `count` gap is `number` as written unless the caller
-    passes its own, such as one with its thousands marked."""
-    slots.setdefault("count", str(number))
-    return say(one if number == 1 else many, **slots)
+def say_count(amount: int, one: str, many: str, *, code: str | None = None,
+              **slots: str) -> str:
+    """`say` for `amount` of something: key `one` where `code`'s language
+    (default: the one in use) takes its one form for `amount`, `many`
+    otherwise. The `count` gap is `number(amount, code)` unless the caller
+    passes its own."""
+    language = _chosen if code is None else code
+    slots.setdefault("count", number(amount, language))
+    key = one if amount in _ones(language) else many
+    return say(key, **slots) if code is None else say_in(code, key, **slots)
 
 
 @contextlib.contextmanager
@@ -2814,3 +2877,157 @@ def for_scripts() -> str:
     (`</script>`) or open a comment that hides its close (`<!--<script`)."""
     chosen = {key: _lookup(key) for key in ENGLISH if key.startswith("script.")}
     return json.dumps(chosen).replace("<", "\\u003c")
+
+
+# ------------------------------------------------- languages (PRESS-0241) --
+
+# Read through importlib.resources so a frozen bundle finds it as the source
+# tree does (as manual.FOLDER is).
+FOLDER = Path(str(importlib.resources.files("pressless") / "language_files"))
+# The order the pickers show; each language § 4.6 adds puts its code here.
+LANGUAGES: tuple[str, ...] = ("en",)
+
+_chosen = "en"
+_files: dict[tuple[Path, str], dict] = {}     # a file as read, by folder and code
+_tables: dict[tuple[Path, str], dict[str, str]] = {}
+_unreadable: set[str] = set()
+
+
+def made_from(english: str) -> str:
+    """What a translation records of the English it was made from (§ 4.1)."""
+    return hashlib.sha256(english.encode("utf-8")).hexdigest()[:8]
+
+
+def _file(code: str) -> dict:
+    """The language's file as an object; {} for English, a code with no
+    file, or a file that will not load, which unreadable() then names."""
+    if code == "en":
+        return {}
+    place = (FOLDER, code)
+    found = _files.get(place)
+    if found is None:
+        try:
+            found = json.loads((FOLDER / f"{code}.json").read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            found = {}
+        except (OSError, ValueError):
+            found = None
+        if not isinstance(found, dict):
+            _unreadable.add(code)
+            found = {}
+        _files[place] = found
+    return found
+
+
+def unreadable() -> list[str]:
+    """The codes whose file was there but would not load (§ 6), for a log line."""
+    return sorted(_unreadable)
+
+
+def table(code: str) -> dict[str, str]:
+    """The language's entries whose made-from matches today's English. "en",
+    or a code with no file, gives {}."""
+    place = (FOLDER, code)
+    found = _tables.get(place)
+    if found is None:
+        held = _file(code).get("words")
+        found = {}
+        if isinstance(held, dict):
+            for key, pair in held.items():
+                english = ENGLISH.get(key)
+                if (english is not None and isinstance(pair, list) and len(pair) == 2
+                        and all(isinstance(part, str) for part in pair)
+                        and pair[0] == made_from(english)):
+                    found[key] = pair[1]
+        _tables[place] = found
+    return found
+
+
+def name(code: str) -> str:
+    """The language in its own words, for the pickers; the code itself where
+    its file gives none."""
+    if code == "en":
+        return "English"
+    given = _file(code).get("name")
+    return given if isinstance(given, str) and given else code
+
+
+def choose(code: str) -> None:
+    """Put `code`'s table in front of ENGLISH from now on, every thread
+    included, and make `code` the language in use."""
+    global _in_use, _chosen
+    _in_use = dict(table(code))
+    _chosen = code
+
+
+def in_use() -> str:
+    """The code chosen; "en" before any."""
+    return _chosen
+
+
+def say_in(code: str, key: str, **slots: str) -> str:
+    """`say` with `code`'s table in front of ENGLISH, whatever is in use."""
+    found = table(code).get(key)
+    return (found if found is not None else ENGLISH[key]).format_map(slots)
+
+
+def _ones(code: str) -> frozenset[int]:
+    """The amounts that take a key's one form in `code`'s language."""
+    given = _file(code).get("one")
+    if isinstance(given, list) and given and all(type(item) is int for item in given):
+        return frozenset(given)
+    return frozenset({1})
+
+
+def number(value: int, code: str | None = None) -> str:
+    """`value` with its thousands marked as `code` (default: the language in
+    use) marks them."""
+    given = _file(_chosen if code is None else code).get("thousands")
+    mark = given if isinstance(given, str) else ","
+    return f"{value:,}".replace(",", mark)
+
+
+# A date is anything with day, month and year, and weekday() for a weekday.
+def _sayer(code: str | None) -> Callable[..., str]:
+    return say if code is None else (lambda key, **slots: say_in(code, key, **slots))
+
+
+def long_date(when, code: str | None = None) -> str:
+    """`5 March 2026`."""
+    said = _sayer(code)
+    return said("date.long", day=str(when.day), month=said(f"date.month.{when.month}"),
+                year=str(when.year))
+
+
+def medium_date(when, code: str | None = None) -> str:
+    """`05 Mar 2026`: the day in two digits, as the screens' lists have
+    always written it, so a column of dates lines up."""
+    said = _sayer(code)
+    return said("date.medium", day=f"{when.day:02d}", mon=said(f"date.mon.{when.month}"),
+                year=str(when.year))
+
+
+def short_date(when, code: str | None = None) -> str:
+    """`5 Mar`."""
+    said = _sayer(code)
+    return said("date.short", day=str(when.day), mon=said(f"date.mon.{when.month}"))
+
+
+def month_year(when, code: str | None = None) -> str:
+    """`March 2026`."""
+    said = _sayer(code)
+    return said("date.month_year", month=said(f"date.month.{when.month}"),
+                year=str(when.year))
+
+
+def mon_year(when, code: str | None = None) -> str:
+    """`Mar 2026`."""
+    said = _sayer(code)
+    return said("date.mon_year", mon=said(f"date.mon.{when.month}"), year=str(when.year))
+
+
+def weekday(when, code: str | None = None) -> str:
+    """`Thu 5 Mar`."""
+    said = _sayer(code)
+    return said("date.weekday", weekday=said(f"date.day.{when.weekday()}"),
+                day=str(when.day), mon=said(f"date.mon.{when.month}"))

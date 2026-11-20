@@ -53,7 +53,7 @@ as it does today.
 3. **Out of scope: the words the Builder writes on every build of the
    published site** ("Archive", "Older →", month names). The user named the
    sample pages, not these. They follow the site's language, which is a
-   separate choice.
+   separate choice, and PRESS-0241 § 4.4 makes them its own.
 4. **Show details, the log, exception messages, git commit messages, the
    self-check line and the command-line tools stay English.** *(decided
    here)* They are read by whoever helps, and searched for online.
@@ -69,6 +69,9 @@ Every "(decided here)" is open to the maintainer to overturn.
 ## 4. Design
 
 ### 4.1 The table
+
+*PRESS-0241 § 4.2 adds `choose`, `say_in`, `number`, the date functions,
+and `say_count`'s `code`, whose language decides its one form.*
 
 ```python
 # src/pressless/words.py — new
@@ -86,8 +89,8 @@ def say_count(number: int, one: str, many: str, **slots: str) -> str: ...
 
 def use(table: dict[str, str]) -> contextlib.AbstractContextManager: ...
     # Puts `table` in front of ENGLISH for the whole process, every server
-    # thread included, while the block runs. The tests' seam, and the hook
-    # PRESS-0241's language choice uses once at startup.
+    # thread included, while the block runs. The tests' seam; startup
+    # calls PRESS-0241's `choose` instead.
 
 def for_scripts() -> str: ...
     # Every "script." entry, as a JSON object safe inside <script>.

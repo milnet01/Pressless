@@ -33,6 +33,7 @@ COLLECT_ALL: list[str] = []
 # reads a relative one from --specpath, the work folder, not from here.
 DATA: list[tuple[Path, str]] = [
     (ROOT / "src" / "pressless" / "manual_files", "pressless/manual_files"),
+    (ROOT / "src" / "pressless" / "language_files", "pressless/language_files"),  # PRESS-0241
 ]
 
 

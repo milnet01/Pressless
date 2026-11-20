@@ -17,3 +17,4 @@
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0375: § 4.6 step 6, an encoder's failure is `BuildStopped` naming the photograph. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-11 admits `pressless.os_reason`, which imports nothing. |
 | amend | 2026-11-18 | none — PRESS-0423; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4, § 6: an absent furniture file fills as nothing; a missing header holds the menu alone. |
+| amend | 2026-11-20 | none — PRESS-0241; no reviewer dispatched | 0 | 0 | 0 | 0 | INV-11 admits `pressless.words`; INV-12's date is in the site's language, and `builder._MONTHS` is gone. |

@@ -12,8 +12,10 @@ from __future__ import annotations
 import html
 import importlib.resources
 import re
+from collections.abc import Callable
 from pathlib import Path
 
+from pressless import words
 from pressless.face import SENTENCES, Face, Request, Sentence, Site, within
 from pressless.words import say
 
@@ -22,7 +24,7 @@ MEDIA = ADDRESS + "/media/"
 # Not `manual`, which would shadow this module on import (§ 4.1). Read through
 # importlib.resources so a frozen bundle finds it as the source tree does.
 FOLDER = Path(str(importlib.resources.files("pressless") / "manual_files"))
-LANGUAGE = "en"   # PRESS-0241 chooses; until then the manual is English
+ENGLISH = "en"   # the file every other language falls back to (PRESS-0241 § 4.3)
 
 # The task id, picture name and video stem go into id= and src= unescaped.
 # These character classes are what keeps them safe: widen one, escape it.
@@ -53,14 +55,15 @@ def _picture(name: str, alt: str) -> str:
     return f'<img src="{MEDIA}{name}" alt="{_e(alt)}" loading="lazy">'
 
 
-def _video(stem: str, label: str) -> str:
+def _video(stem: str, label: str, captions: str) -> str:
     return (f'<video controls preload="none" src="{MEDIA}{stem}.webm" aria-label="{_e(label)}">'
-            f'<track kind="captions" src="{MEDIA}{stem}.{LANGUAGE}.vtt" srclang="{LANGUAGE}" '
+            f'<track kind="captions" src="{MEDIA}{stem}.{captions}.vtt" srclang="{captions}" '
             f'label="{_e(say("manual.captions"))}" default></video>')
 
 
-def render(text: str) -> str:
-    """The manual's tasks as HTML, from the text of one language's file."""
+def render(text: str, captions: Callable[[str], str] = lambda stem: ENGLISH) -> str:
+    """The manual's tasks as HTML, from the text of one language's file.
+    `captions` names the language of a video's captions, by its stem."""
     out: list[str] = []
     words: list[str] = []      # the paragraph being gathered
     steps: list[str] = []      # the run of steps being gathered
@@ -95,7 +98,7 @@ def render(text: str) -> str:
             out.append(_picture(*picture.groups()))
         elif (video := _VIDEO.fullmatch(line)):
             flush()
-            out.append(_video(*video.groups()))
+            out.append(_video(*video.groups(), captions(video.group(1))))
         elif not line:
             flush()
         else:
@@ -141,15 +144,27 @@ _SCRIPT = r"""
 """
 
 
+def _text(folder: Path, code: str) -> Path:
+    """The manual's file in `code`'s language, else the English one."""
+    found = folder / f"{code}.txt"
+    return found if found.is_file() else folder / f"{ENGLISH}.txt"
+
+
+def _captions(folder: Path, stem: str, code: str) -> str:
+    """The language of the captions shown for video `stem`: `code`'s where
+    they exist, else English."""
+    return code if (folder / "media" / f"{stem}.{code}.vtt").is_file() else ENGLISH
+
+
 def _page(folder: Path):
     def page(request: Request) -> str:
         try:
             # utf-8-sig: a byte-order mark, which older Windows editors write,
             # would otherwise turn a first-line construct into paragraph words.
-            text = (folder / f"{LANGUAGE}.txt").read_text(encoding="utf-8-sig")
+            text = _text(folder, words.in_use()).read_text(encoding="utf-8-sig")
         except (OSError, UnicodeDecodeError) as exc:
             raise ManualMissing("the manual's text could not be read") from exc
-        body = render(text)
+        body = render(text, lambda stem: _captions(folder, stem, words.in_use()))
         # The search box sits between the opening paragraph and the tasks.
         cut = body.find("<section")
         cut = len(body) if cut < 0 else cut

@@ -31,6 +31,7 @@ from pressless import (
     editor,
     files,
     github_setup,
+    languages,
     menu,
     pressing,
     publisher,
@@ -54,7 +55,7 @@ from pressless.face import (
     true_colours,
 )
 from pressless.photographs import ACCEPT as PHOTOGRAPH_TYPES
-from pressless.words import say
+from pressless.words import say, say_in
 
 VISUAL = "visual"
 CODE = "code"
@@ -902,7 +903,7 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
         try:
             gathered(lambda: changes.write(kind, name, new))
             if first:
-                words = (say("starter.home") if name == HOME
+                words = (say_in(languages.of_site(folder), "starter.home") if name == HOME
                          else _title(new) or builder.label(name))
                 if not gathered(lambda: _edit_menu(folder, changes,
                                                    lambda text: menu.add(text, name, words))):
@@ -1086,7 +1087,8 @@ def new_page(folder: Path, named: str) -> str:
     if refused is not None:
         raise NameRefused(editor.PAGE_HINTS[refused], refused)
     store.write_html(folder, store.PAGES_FOLDER, page,
-                     starter.new_page(page, named, builder.stylesheets(folder)), waiting=True)
+                     starter.new_page(page, named, builder.stylesheets(folder),
+                                      code=languages.of_site(folder)), waiting=True)
     pressing.forget()
     return page
 
@@ -1114,7 +1116,8 @@ def add_home(folder: Path) -> None:
         return
     identity = store.read_identity(folder) or store.Identity("")
     store.write_html(folder, store.PAGES_FOLDER, HOME,
-                     starter.home_page(identity.name, builder.stylesheets(folder)),
+                     starter.home_page(identity.name, builder.stylesheets(folder),
+                                       code=languages.of_site(folder)),
                      waiting=True)
     written = store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, HOME,
                                                   waiting=True))
@@ -1132,11 +1135,12 @@ def add_menu(folder: Path) -> bool:
     live = sorted(store.list_html(folder, store.PAGES_FOLDER), key=lambda page: page != HOME)
     if not live:
         return False
-    links = [(page, say("starter.home") if page == HOME else
+    code = languages.of_site(folder)
+    links = [(page, say_in(code, "starter.home") if page == HOME else
               _title(store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, page)))
               or builder.label(page)) for page in live]
     store.write_html(folder, store.FURNITURE_FOLDER, "navigation",
-                     starter.menu_linking(links), waiting=True)
+                     starter.menu_linking(links, code), waiting=True)
     # The menu he added is his own: the checklist's step is done.
     starter.note_filled(folder, {})
     pressing.forget()

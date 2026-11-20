@@ -50,6 +50,7 @@ from pressless import (
     usage,
     votes,
     wizard,
+    words,
 )
 from pressless.face import Face, Reply, Request, message_box, render_notices
 from pressless.store import StoreError
@@ -60,11 +61,12 @@ SITE_FOLDER = "site"                  # inside Pressless's own folder
 # The answers a refused SettingsError can name; any other key is a failure.
 _ANSWERED = ("repository", "site_address", "measurement_id")
 _FIELDS = ("repository", "site_name", "site_description", "site_icon", "site_picture",
-           "site_address", "daily_prompt_filter", "measurement_id")
+           "site_language", "site_address", "daily_prompt_filter", "measurement_id")
 # PRESS-0213 § 4.6: the answers the Store keeps, by the field each is given in;
-# the two pictures are PRESS-0227 § 4.2's.
+# the two pictures are PRESS-0227 § 4.2's, the language PRESS-0241 § 4.4's.
 _IDENTITY_FIELDS = {"name": "site_name", "description": "site_description",
-                    "icon": "site_icon", "picture": "site_picture"}
+                    "icon": "site_icon", "picture": "site_picture",
+                    "language": "site_language"}
 
 _HINTS = {          # the words key for each refused answer
     "repository": "setup.hint.repository",
@@ -72,6 +74,7 @@ _HINTS = {          # the words key for each refused answer
     "site_description": "setup.hint.site_description",
     "site_icon": "setup.hint.site_icon",                # PRESS-0227 § 4.2
     "site_picture": "setup.hint.site_picture",
+    "site_language": "setup.hint.site_language",       # PRESS-0241 § 4.4
     "site_address": "setup.hint.site_address",
     "measurement_id": "setup.hint.measurement_id",     # PRESS-0199 § 4.4
 }
@@ -100,6 +103,7 @@ _HELP_PARAGRAPHS = {
     "site_description": ("setup.help.site_description",),
     "site_icon": ("setup.help.site_icon",),
     "site_picture": ("setup.help.site_picture",),
+    "site_language": ("setup.help.site_language",),
     "site_address": ("setup.help.site_address", "setup.help.site_address.named"),
     "daily_prompt_filter": ("setup.help.daily_prompt_filter",
                             "setup.help.daily_prompt_filter.empty"),
@@ -458,7 +462,8 @@ def _fill(face: Face, folder: Path, candidate: settings.Settings,
     with face.capture() as captured:
         try:
             if starter_ticked and starter.offered(folder):
-                starter.fill(folder, identity.name, look)
+                starter.fill(folder, identity.name, look,
+                             code=identity.language or "en")
                 filled = True
             store.write_identity(folder, identity)
         except StoreError as exc:
@@ -531,7 +536,15 @@ def _values_from(folder: Path, saved: settings.Settings) -> dict[str, str]:
 
 
 def _identity(values: dict[str, str]) -> store.Identity:
-    return store.Identity(**{key: values[field] for key, field in _IDENTITY_FIELDS.items()})
+    held = {key: values[field] for key, field in _IDENTITY_FIELDS.items()}
+    return store.Identity(**{**held, "language": recorded_language(held["language"])})
+
+
+def recorded_language(code: str) -> str:
+    """What an identity records for `code`: English is never recorded, so a
+    site in English keeps the identity an older Pressless wrote
+    (PRESS-0241 § 4.4)."""
+    return "" if code == "en" else code
 
 
 def _identity_hint(identity: store.Identity) -> str | None:
@@ -605,7 +618,8 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         held += (field("site_name", say("setup.field.site_name"))
                  + field("site_description", say("setup.field.site_description"))
                  + _picture_row("site_icon", say("setup.field.site_icon"), values, hints)
-                 + _picture_row("site_picture", say("setup.field.site_picture"), values, hints))
+                 + _picture_row("site_picture", say("setup.field.site_picture"), values, hints)
+                 + _language_row(values, hints))
     if shown("address"):
         held += field("site_address", say("setup.field.site_address"))
     if shown("journal"):
@@ -641,7 +655,8 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
 # PRESS-0353 § 4.5: each section of Settings, by its address, and the answers
 # it holds; the AI helper's section is its own screen, at assistant.SETUP.
 _SECTION_FIELDS = {
-    "site": ("site_name", "site_description", "site_icon", "site_picture", "start", "look"),
+    "site": ("site_name", "site_description", "site_icon", "site_picture", "site_language",
+             "start", "look"),
     "address": ("site_address",),
     "connection": ("repository", "key"),
     "visitors": ("measurement_id",),
@@ -723,6 +738,25 @@ def _section_saved(folder: Path, final: settings.Settings, name: str) -> str:
     return (message_box("section-saved", f"<p>{say('setup.section.saved')}</p>")
             + _form(_values_from(folder, final), {}, google_on=_google_on(final),
                     signed_in=_signed_in(folder, final), section=name))
+
+
+def _language_row(values: dict[str, str], hints: dict[str, str]) -> str:
+    """PRESS-0241 § 4.4: the site's language, each named in its own words. A
+    code this Pressless does not know, from a newer one, is offered as
+    written, so a save keeps it (§ 6)."""
+    name, label = "site_language", say("setup.field.site_language")
+    chosen = values.get(name) or "en"
+    codes = (*words.LANGUAGES, *(() if chosen in words.LANGUAGES else (chosen,)))
+    options = "".join(
+        f'<option value="{html.escape(code, quote=True)}" lang="{html.escape(code, quote=True)}"'
+        f'{" selected" if code == chosen else ""}>{html.escape(words.name(code))}</option>'
+        for code in codes)
+    refused = name in hints
+    shown = message_box(f"{name}-hint", html.escape(hints[name]), focus=name) if refused else ""
+    invalid = f' aria-invalid="true" aria-describedby="{name}-hint"' if refused else ""
+    button, dialog = wizard.help_parts(name, label, _settings_help(name))
+    return (f'<p><label>{html.escape(label)} <select name="{name}"{invalid}>{options}</select>'
+            f"</label>{button}</p>{dialog}{shown}")
 
 
 def _picture_row(name: str, label: str, values: dict[str, str], hints: dict[str, str]) -> str:
@@ -1194,8 +1228,11 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                 held = store.read_identity(folder) or store.Identity("")
             except StoreError as exc:
                 return wizard.Stop(face.fail(exc, publishing=False))
-            identity = dataclasses.replace(held, name=answers.get("site_name", ""),
-                                           description=answers.get("site_description", ""))
+            # PRESS-0241 § 4.4: a new site speaks the screens' language.
+            identity = dataclasses.replace(
+                held, name=answers.get("site_name", ""),
+                description=answers.get("site_description", ""),
+                language=held.language or recorded_language(words.in_use()))
             refused_identity = _identity_hint(identity)
             if refused_identity is not None:
                 return wizard.Hint(refused_identity, say(_HINTS[refused_identity]))

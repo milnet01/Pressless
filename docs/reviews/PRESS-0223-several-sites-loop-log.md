@@ -7,3 +7,4 @@
 | amend | 2026-11-17 | none: PRESS-0383 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1: `made` in sites.json, and an unreadable file is left alone; § 4.2 gains `starter.FILLED`. |
 | pointer | 2026-11-17 | none: pointer from PRESS-0381; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4: `_serve_once` is named without its arguments, since it now also takes the process's `updating.Updates`. |
 | amend | 2026-11-17 | none: PRESS-0398; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1: sites.json is read and written by `json_record`, version last; `sites.py` imports only it. |
+| amend | 2026-11-20 | none: PRESS-0241; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.2: `language.json` is a machine name. |

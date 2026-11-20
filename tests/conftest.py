@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from pressless import face, github_signin, pressing, tray, usage
+from pressless import face, github_signin, languages, pressing, tray, usage, words
 
 # Stopping a Face waits for its loop's next check, half a second in the app.
 # The suite stops hundreds of them, and waited about a minute on that alone.
@@ -66,3 +66,16 @@ def _no_tray_on_the_desktop(monkeypatch):
     QuietIcon.made = []
     monkeypatch.setattr(tray, "_Icon", QuietIcon)
     monkeypatch.delenv("LWSM_MANAGED", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _an_english_computer(monkeypatch):
+    """Every test runs on a computer set to English, with the screens in
+    English and put back after it (PRESS-0241). CI's runners say C.UTF-8,
+    which cannot be told, so every screen there would offer the list."""
+    for name in ("LANGUAGE", "LC_ALL", "LC_MESSAGES"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("LANG", "en_GB.UTF-8")
+    monkeypatch.setattr(languages, "_ui_language", lambda: 0x0809)   # English (UK)
+    monkeypatch.setattr(words, "_in_use", {})
+    monkeypatch.setattr(words, "_chosen", "en")

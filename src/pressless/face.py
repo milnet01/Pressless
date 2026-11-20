@@ -41,6 +41,7 @@ from pressless import (
     github_signin,
     google_signin,
     insights,
+    languages,
     log,
     look,
     os_reason,
@@ -652,6 +653,20 @@ document.addEventListener("change", (event) => {
   else document.documentElement.dataset.size = picker.value;
   fetch("/text-size", {method: "POST", body: picker.value});
 });
+// PRESS-0241 § 4.3: a language is kept, then the page reloads in it. From
+// the top bar's picker, or from the list offered where it cannot be told.
+async function chooseLanguage(code) {
+  const answer = await fetch("/language", {method: "POST", body: code});
+  if (answer.ok) location.reload();
+}
+document.addEventListener("change", (event) => {
+  const picker = event.target.closest("select[data-language-picker]");
+  if (picker) chooseLanguage(picker.value);
+});
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-language]");
+  if (button) chooseLanguage(button.dataset.language);
+});
 // PRESS-0228: a "?" beside a box opens its help; Close or Escape shuts it.
 document.addEventListener("click", (event) => {
   const opener = event.target.closest("button[data-help]");
@@ -1158,9 +1173,12 @@ _ICON = "data:image/svg+xml," + urllib.parse.quote(
 
 
 def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
-          size: int = themes.NO_ZOOM, after: str = "") -> str:
+          size: int = themes.NO_ZOOM, after: str = "", *,
+          language: str = languages.FOLLOW, offer_languages: bool = False) -> str:
     """The whole document a Face screen is: `body` inside the top bar, whose
-    first link names the open site, or says Sites before there is one."""
+    first link names the open site, or says Sites before there is one.
+    `language` is the picker's choice; `offer_languages` puts the list at
+    the top of <main> (PRESS-0241 § 4.3)."""
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
     if size != themes.NO_ZOOM:
         chosen += f' data-size="{size}"'
@@ -1172,7 +1190,7 @@ def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
              ("/setup", say("face.settings")), ("/manual", say("face.help")))
     bar = "".join(f'<a href="{address}">{words_}</a>' for address, words_ in links)
     return (
-        f'<!doctype html><html lang="en"{chosen}><head><meta charset="utf-8">'
+        f'<!doctype html><html lang="{words.in_use()}"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f'<title>Pressless</title><link rel="icon" href="{_ICON}">'
         f"<style>{_STYLE}</style>"
@@ -1188,8 +1206,10 @@ def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
         f'<a href="{usage.ADDRESS}">{say("face.usage")}</a>'
         # PRESS-0278: beside Usage reports.
         f'<a href="/about">{say("face.about")}</a>'
-        f'{themes.picker(theme)}{themes.size_picker(size)}</div></details></header>'
-        f"<main>{body}</main><script>{_SCRIPT}</script>{after}</body></html>"
+        f'{themes.picker(theme)}{themes.size_picker(size)}{languages.picker(language)}'
+        "</div></details></header>"
+        f'<main>{languages.offer() if offer_languages else ""}{body}</main>'
+        f"<script>{_SCRIPT}</script>{after}</body></html>"
     )
 
 
@@ -1281,7 +1301,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001 -- the bar then says Sites
             face.note(f"the site's name could not be read: {type(exc).__name__}")
             name = ""
-        self._send(status, _page(body, face._theme, name, face._size, "".join(after)),
+        self._send(status, _page(body, face._theme, name, face._size, "".join(after),
+                                 language=face._language,
+                                 offer_languages=face._offer_languages),
                    "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int,
@@ -1465,6 +1487,17 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
         self._choose(face, themes.known, keep, "theme")
 
+    def _choose_language(self, face: Face) -> None:
+        """PRESS-0241 § 4.3: keep the language chosen; the page then reloads
+        in it. The tray menu takes it at the next start (§ 6)."""
+        def keep(code: str) -> None:
+            languages.write_choice(face._folder, code)
+            face._language = code
+            face._offer_languages = False
+            words.choose(languages.for_screens(face._folder)[0])
+
+        self._choose(face, languages.known, keep, "language")
+
     def _choose_size(self, face: Face) -> None:
         """PRESS-0338: remember the text size the picker has already applied."""
         def keep(text: str) -> None:
@@ -1516,6 +1549,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         ("POST", "/folder/open"): _open_the_folder,
         ("POST", "/theme"): _choose_theme,
         ("POST", "/text-size"): _choose_size,
+        ("POST", languages.ADDRESS): _choose_language,
         ("POST", "/true-colours"): _choose_true_colours,
     }
 
@@ -1717,6 +1751,12 @@ class Face:
         self._log = log.open_log(self._folder)
         self._theme = themes.read_choice(self._folder)
         self._size = themes.read_size(self._folder)
+        # PRESS-0241 § 4.3: the screens' language was chosen at startup;
+        # this is what the picker shows, and whether the list is offered.
+        self._language = languages.read_choice(self._folder)
+        self._offer_languages = languages.for_screens(self._folder)[1]
+        for code in words.unreadable():
+            self._log.note(f"the language file {code}.json could not be read")
         self._secret = secrets.token_urlsafe(32)
         self._session = secrets.token_urlsafe(32)
         # The link carrying the secret travels on a command line, where other

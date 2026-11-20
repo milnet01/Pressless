@@ -1470,7 +1470,7 @@ _MANUAL = """\
 def _manual_folder(tmp: Path) -> Path:
     folder = tmp / "manual"
     (folder / "media").mkdir(parents=True)
-    (folder / f"{manual.LANGUAGE}.txt").write_text(_MANUAL, encoding="utf-8")
+    (folder / f"{manual.ENGLISH}.txt").write_text(_MANUAL, encoding="utf-8")
     return folder
 
 

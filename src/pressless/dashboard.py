@@ -22,13 +22,13 @@ import dataclasses
 import functools
 import html
 import json
-import time
 import zlib
+from datetime import date, datetime
 from pathlib import Path
 
 from pressless import _flag_data, credentials, google_setup, insights, settings
 from pressless.face import Face, Request, loaded_settings
-from pressless.words import say, say_count
+from pressless.words import medium_date, mon_year, number, say, say_count, weekday
 
 PAGE = "/visitors"
 
@@ -224,7 +224,7 @@ def _report(report: insights.Report, address: str = "") -> str:
         count = say("dashboard.count.none", window=window)
     else:
         count = say_count(report.people, "dashboard.count.one", "dashboard.count.many",
-                          count=f"{report.people:,}", window=window)
+                          window=window)
     page = f'<p class="visitors-count">{count}</p>' + _strip(report.daily) + updated
     cards = [_countries(report.countries), _regions(report.regions), _sources(report.sources),
              _pages(report.pages, address)]
@@ -252,11 +252,12 @@ def _strip(days: tuple[insights.Day, ...]) -> str:
 
 
 def _day_name(label: str) -> str:
+    """A strip's end, `Thu 5 Mar` for a day or `Mar 2026` for a month."""
     try:
         if len(label) == 7:
-            return time.strftime("%b %Y", time.strptime(label, "%Y-%m"))
-        moment = time.strptime(label, "%Y-%m-%d")
-        return f"{time.strftime('%a', moment)} {moment.tm_mday} {time.strftime('%b', moment)}"
+            year, month = label.split("-")
+            return mon_year(date(int(year), int(month), 1))
+        return weekday(date.fromisoformat(label))
     except ValueError:
         return label
 
@@ -282,7 +283,7 @@ def _countries(countries: tuple[insights.Country, ...]) -> str:
     top = max(country.people for country in countries)
     rows = "".join(
         f"<tr><td>{_flag(country.code)}{html.escape(_name(country.code))}"
-        f"{_meter(country.people, top)}</td><td class=\"num\">{country.people:,}</td></tr>"
+        f"{_meter(country.people, top)}</td><td class=\"num\">{number(country.people)}</td></tr>"
         for country in countries)
     return panel(say("dashboard.where"),
                  f'<th scope="col">{say("dashboard.country")}</th>'
@@ -295,7 +296,7 @@ def _regions(regions: tuple[insights.Region, ...]) -> str:
     top = max(region.people for region in regions)
     rows = "".join(
         f"<tr><td>{_flag(region.country)}{html.escape(region.name)}"
-        f"{_meter(region.people, top)}</td><td class=\"num\">{region.people:,}</td></tr>"
+        f"{_meter(region.people, top)}</td><td class=\"num\">{number(region.people)}</td></tr>"
         for region in regions)
     return panel(say("dashboard.where_within"),
                   f'<th scope="col">{say("dashboard.region")}</th>'
@@ -330,8 +331,8 @@ def _sources(sources: tuple[insights.Source, ...]) -> str:
             where = where.title()   # "google" is an engine's name, so "Google"
         detail = f"<small>{html.escape(where)}</small>" if where else ""
         rows.append(f"<tr><td>{how}{detail}{_meter(source.visits, top)}</td>"
-                    f'<td class="num">{source.visits:,}</td>'
-                    f'<td class="num">{source.people:,}</td></tr>')
+                    f'<td class="num">{number(source.visits)}</td>'
+                    f'<td class="num">{number(source.people)}</td></tr>')
     return panel(say("dashboard.how"),
                  f'<th scope="col">{say("dashboard.came_from")}</th>'
                  f'<th scope="col" class="num">{say("dashboard.visits")}</th>'
@@ -352,8 +353,8 @@ def _pages(pages: tuple[insights.Page, ...], address: str) -> str:
         link = (f'<a href="{html.escape(base + page.path, quote=True)}" target="_blank" '
                 f'rel="noopener">{shown}</a>' if base and page.path.startswith("/") else shown)
         rows.append(f"<tr><td>{link}{_meter(page.views, top)}</td>"
-                    f'<td class="num" data-label="{views}">{page.views:,}</td>'
-                    f'<td class="num" data-label="{readers}">{page.people:,}</td>'
+                    f'<td class="num" data-label="{views}">{number(page.views)}</td>'
+                    f'<td class="num" data-label="{readers}">{number(page.people)}</td>'
                     f'<td class="num" data-label="{spent}">'
                     f"{_duration(page.seconds)}</td></tr>")
     return panel(say("dashboard.what"),
@@ -375,13 +376,12 @@ def _duration(seconds: float) -> str:
 
 
 def people(count: int) -> str:
-    return say_count(count, "dashboard.people.one", "dashboard.people.many", count=f"{count:,}")
+    return say_count(count, "dashboard.people.one", "dashboard.people.many")
 
 
 def when(moment: float) -> str:
-    local = time.localtime(moment)
-    return say("dashboard.when", date=time.strftime("%d %b %Y", local),
-               clock=time.strftime("%H:%M", local))
+    local = datetime.fromtimestamp(moment)
+    return say("dashboard.when", date=medium_date(local), clock=f"{local:%H:%M}")
 
 
 def _name(code: str) -> str:

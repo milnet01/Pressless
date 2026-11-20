@@ -11,6 +11,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
+import _marked_language
 import pytest
 from _face_session import Browser
 from test_setup import _saved
@@ -178,6 +179,8 @@ def _asked() -> dict[str, str]:
     for path in sorted((*SOURCE.glob("*.py"), *SOURCE.parent.glob("pressless_import/*.py"))):
         if path.name == "words.py":     # the table names every key itself
             continue
+        if path.name == "_public_suffixes.py":     # domain names, such as date.hokkaido.jp
+            continue
         tree = _parsed(path)
         for node in _strings(tree, _docstrings(tree)):
             found = [node.value] if KEY.fullmatch(node.value) else QUOTED_KEY.findall(node.value)
@@ -207,8 +210,9 @@ def test_every_entry_is_used() -> None:
     """INV-4. Breaks when a moved string leaves its old entry behind. The two
     families are asked for by prefix (country., mark.), so they count whole."""
     asked = _asked()
+    # date. is asked for by words' own date functions (PRESS-0241 § 4.2).
     unused = [key for key in words.ENGLISH
-              if key not in asked and not key.startswith(("country.", "mark."))]
+              if key not in asked and not key.startswith(("country.", "mark.", "date."))]
     assert not unused, unused
 
 
@@ -336,8 +340,8 @@ _SELECTOR = re.compile(r"[#.]?[\w-]+(?:\[[^\]]*\])?(?: [#.]?[\w-]+(?:\[[^\]]*\])
 
 
 def _screen_modules() -> list[Path]:
-    """Every module importing face or words, plus starter.py, templates.py and
-    sites.py, whose failure __main__ prints (PRESS-0223 § 4.3)."""
+    """Every module importing face or words but builder.py, plus starter.py,
+    templates.py and sites.py, whose failure __main__ prints (PRESS-0223 § 4.3)."""
     chosen = []
     for path in sorted(SOURCE.glob("*.py")):
         names = set()
@@ -347,6 +351,10 @@ def _screen_modules() -> list[Path]:
             elif isinstance(node, ast.ImportFrom) and node.module in ("pressless.face",
                                                                        "pressless.words"):
                 names.add(node.module.rsplit(".", 1)[1])
+        # builder.py writes the site's words, not a screen's: PRESS-0241's
+        # test_published_words_follow_the_site checks those.
+        if path.name == "builder.py":
+            continue
         if names & {"face", "words"} or path.name in ("starter.py", "templates.py",
                                                          "sites.py"):
             chosen.append(path)
@@ -397,7 +405,13 @@ def _english(text: str) -> list[str]:
 
 def test_no_screen_writes_english() -> None:
     """INV-3. Breaks when someone adds "Saved" to a script or
-    f"<p>Nothing here</p>" to a page builder."""
+    f"<p>Nothing here</p>" to a page builder. PRESS-0241 INV-7 widens it to
+    every module: no month or day named through strftime("%b") or
+    f"{when:%d %b}"; a name built another way passes it."""
+    named = [hit for path in sorted(SOURCE.glob("*.py"))
+             for hit in _date_names_from_the_system(path)]
+    assert not named, named
+    assert not hasattr(builder, "_MONTHS")
     written = []
     for path in _screen_modules():
         tree = _parsed(path)
@@ -415,10 +429,16 @@ def test_no_screen_writes_english() -> None:
 
 OPEN, CLOSE = "⟦", "⟧"
 MARKED = {key: OPEN + text + CLOSE for key, text in words.ENGLISH.items()}
-# Outside a marker a page may show the app's name, and the short month and
-# day names strftime writes, which PRESS-0241 translates with the language.
-_NAMES = re.compile(r"\bPress\W*less\b|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr"
-                    r"|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b")
+# Outside a marker a page may show the app's name, and nothing else: its
+# months and days are entries too (PRESS-0241 § 4.2).
+_NAMES = re.compile(r"\bPress\W*less\b")
+
+def _without_language_names(text: str) -> str:
+    """`text` without the names the language pickers show, each in its own
+    words, which no translation changes (PRESS-0241 § 4.3)."""
+    names = "|".join(rf"\b{re.escape(words.name(code))}\b" for code in words.LANGUAGES)
+    return re.sub(names, " ", text)
+
 # The writer's own content: lowercase single words, which are not English
 # by ENGLISH_RUN, so anything left over is the app's.
 OWN = "zz"
@@ -442,7 +462,7 @@ def _unmarked(page: str, *, comments: bool = False) -> list[str]:
         if inner == text:
             break
         text = inner
-    return ENGLISH_RUN.findall(_NAMES.sub(" ", text))
+    return ENGLISH_RUN.findall(_NAMES.sub(" ", _without_language_names(text)))
 
 
 def _served(folder: Path) -> face.Face:
@@ -500,7 +520,7 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
     folder = tmp_path / "data"
     folder.mkdir()
     _saved(folder, site_folder=folder / OWN)
-    starter.fill(folder, OWN)
+    starter.fill(folder, OWN, code=words.in_use())   # as the wizard records it
     store.write(folder, store.Entry(slug=OWN, title=OWN, date=datetime(2020, 1, 2),
                                     categories=(), tags=(), body=OWN, extra=()), draft=True)
     (folder / store.FILES_FOLDER).mkdir()
@@ -543,7 +563,9 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
 def test_pages_take_their_words_from_the_table(tmp_path, monkeypatch) -> None:
     """INV-2. Breaks when a module fixes its words at import, or a page
     builder writes English itself."""
-    with words.use(MARKED):
+    # PRESS-0241: in a language, as a new site is made in one, so the
+    # starter's pages speak it too.
+    with _marked_language.speaking(tmp_path / "languages", monkeypatch):
         shown = _pages(tmp_path, monkeypatch)
         site = tmp_path / "data"
         for path in sorted(site.rglob("*.html")):
@@ -562,3 +584,74 @@ def test_pages_take_their_words_from_the_table(tmp_path, monkeypatch) -> None:
             if (found := _unmarked(page, comments=name.startswith("the starter's")))}
     assert not left, left
     assert len(shown) > 20, sorted(shown)
+
+
+# ------------------------------------------------------- PRESS-0241 INV-7 ---
+
+_NAMED_DATE = re.compile(r"%[aAbB]")
+
+
+def _date_names_from_the_system(path: Path) -> list[str]:
+    """Each place `path` asks strftime, or a date's format in an f-string,
+    for a month's or a day's name. A comment is not a format."""
+    found = []
+    for node in ast.walk(_parsed(path)):
+        if (isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "strftime"
+                and node.args and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+                and _NAMED_DATE.search(node.args[0].value)):
+            found.append(f"{path.name}:{node.lineno}")
+        elif isinstance(node, ast.FormattedValue) and node.format_spec is not None:
+            spec = "".join(part.value for part in ast.walk(node.format_spec)
+                           if isinstance(part, ast.Constant) and isinstance(part.value, str))
+            if _NAMED_DATE.search(spec):
+                found.append(f"{path.name}:{node.lineno}")
+    return found
+
+
+def test_the_date_check_sees_both_shapes(tmp_path) -> None:
+    """test_no_screen_writes_english's date check can fail: each shape it
+    refuses, planted, is found, and %APPDATA% in a comment is not."""
+    planted = tmp_path / "planted.py"
+    planted.write_text('# %APPDATA%\nimport time\ntime.strftime("%d %b")\n'
+                       'when = None\nshown = f"{when:%A}"\nkept = f"{when:%Y-%m-%d}"\n',
+                       encoding="utf-8")
+    assert _date_names_from_the_system(planted) == ["planted.py:3", "planted.py:5"]
+
+
+# ------------------------------------------------------- PRESS-0241 INV-8 ---
+
+def test_say_count_follows_the_language(entry, tmp_path, monkeypatch) -> None:
+    """PRESS-0241 INV-8. Breaks when say_count keeps `number == 1`, or a
+    count's thousands ignore the language."""
+    entry("test.one", "{count} thing")
+    entry("test.many", "{count} things")
+    monkeypatch.setattr(words, "FOLDER", tmp_path)
+    (tmp_path / "fr.json").write_text(json.dumps({"name": "Français", "one": [0, 1],
+                                                  "thousands": " ", "words": {}}),
+                                      encoding="utf-8")
+    (tmp_path / "de.json").write_text(json.dumps({"name": "Deutsch", "one": [1],
+                                                  "thousands": ".", "words": {}}),
+                                      encoding="utf-8")
+    assert [words.say_count(n, "test.one", "test.many", code="fr") for n in (0, 1, 2)] == [
+        "0 thing", "1 thing", "2 things"]
+    assert [words.say_count(n, "test.one", "test.many") for n in (0, 1, 2)] == [
+        "0 things", "1 thing", "2 things"]
+    assert words.number(1234, "de") == "1.234"
+    assert words.number(1234) == "1,234"
+    assert words.say_count(1234, "test.one", "test.many", code="fr") == "1 234 things"
+    assert words.say_count(1234, "test.one", "test.many", code="de",
+                           count="1234") == "1234 things"     # the Builder's own digits
+
+
+def test_dates_are_written_from_the_table(entry) -> None:
+    """PRESS-0241 § 4.2: each date function fills its format from entries."""
+    when = datetime(2026, 3, 5)
+    assert words.long_date(when) == "5 March 2026"
+    assert words.medium_date(when) == "05 Mar 2026"
+    assert words.short_date(when) == "5 Mar"
+    assert words.month_year(when) == "March 2026"
+    assert words.mon_year(when) == "Mar 2026"
+    assert words.weekday(when) == "Thu 5 Mar"
+    with words.use({"date.month.3": "maart", "date.long": "{day} {month} {year}"}):
+        assert words.long_date(when) == "5 maart 2026"

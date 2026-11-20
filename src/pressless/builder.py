@@ -32,7 +32,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageOps, ImageSequence
 
-from pressless import blocks, jpegxl, marks, os_reason, store, votes
+from pressless import blocks, jpegxl, marks, os_reason, store, votes, words
 from pressless.safe_write import patiently
 from pressless.settings import Settings
 
@@ -80,11 +80,6 @@ class SiteFolderUnusable(Exception):
     """`into` could not be replaced; it is as it was."""
 
 
-# §4.3: a date reads the same on every system. Never a platform strftime flag
-# for the day, and never the locale's month names (INV-12).
-_MONTHS = ("January", "February", "March", "April", "May", "June", "July",
-           "August", "September", "October", "November", "December")
-
 # §4.4, matched as Import matches them.
 _START = re.compile(r"<!--\s*(HEADER|FOOTER):START(?P<attrs>[^>]*?)-->")
 _ANY_END = re.compile(r"<!--\s*(?:HEADER|FOOTER):END\s*-->")
@@ -108,9 +103,11 @@ PUBLISHED_FORMATS = frozenset({*_REENCODED, "GIF"})
 _PICTURE_ERRORS = (OSError, SyntaxError, ValueError, Image.DecompressionBombError)
 _JXL_SUFFIX = ".jxl"
 
-def _entries_text(count: int) -> str:
-    """§4.3's count: `1 entry`, `2 entries`."""
-    return f"{count} {'entry' if count == 1 else 'entries'}"
+def _entries_text(count: int, code: str) -> str:
+    """§4.3's count, `1 entry` or `2 entries`, in the site's language. Its
+    digits stay unmarked in every language (PRESS-0241 § 4.2)."""
+    return words.say_count(count, "site.entries.one", "site.entries.many", code=code,
+                           count=str(count))
 
 
 # PRESS-0199 § 4.2: where Google's tag goes in a page, and how a page that
@@ -470,12 +467,17 @@ def _address_forwards(folder: Path) -> dict[str, str]:
             and old.split("/")[0].casefold() not in _STORE_COPIES}
 
 
-def _forward_page(what: str, title: str, canonical: str, link: str) -> str:
-    """A page sending readers on to `link`, saying the `what` (an entry or a
-    page) has moved (PRESS-0182 § 4.3, PRESS-0195 § 4.5, PRESS-0210 § 4.10)."""
+_MOVED = {"entry": "site.moved.entry", "page": "site.moved.page"}
+
+
+def _forward_page(what: str, title: str, canonical: str, link: str, code: str) -> str:
+    """A page sending readers on to `link`, saying the `what` ("entry" or
+    "page") has moved (PRESS-0182 § 4.3, PRESS-0195 § 4.5, PRESS-0210 § 4.10),
+    in the site's language `code`."""
     title = html.escape(title)
+    moved = words.say_in(code, _MOVED[what], link=link, title=title)
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{code}">
 <head>
 <meta charset="utf-8">
 <title>{title}</title>
@@ -483,7 +485,7 @@ def _forward_page(what: str, title: str, canonical: str, link: str) -> str:
 <meta http-equiv="refresh" content="0; url={link}">
 </head>
 <body>
-<p>This {what} has moved to <a href="{link}">{title}</a>.</p>
+<p>{moved}</p>
 </body>
 </html>
 """
@@ -565,18 +567,8 @@ def _refuse_a_folder_it_did_not_make(into: Path, shown: str, produced: tuple[str
 
 
 # ------------------------------------------------------------ dates (§4.3) --
-
-
-def _long_date(when: datetime) -> str:
-    return f"{when.day} {_MONTHS[when.month - 1]} {when.year}"
-
-
-def _short_date(when: datetime) -> str:
-    return f"{when.day} {_MONTHS[when.month - 1][:3]}"
-
-
-def _month_year(when: datetime) -> str:
-    return f"{_MONTHS[when.month - 1]} {when.year}"
+# A date reads the same on every system: its names come from the site's
+# language (words' date functions), never the platform's (INV-12).
 
 
 def _iso_day(when: datetime) -> str:
@@ -1074,6 +1066,16 @@ class _Build:
         name = self.furniture.identity.name
         return f"{title} — {name}" if name else title
 
+    @property
+    def language(self) -> str:
+        """The site's language for what the Builder writes; "en" where the
+        identity records none (PRESS-0241 decision 7)."""
+        return self.furniture.identity.language or "en"
+
+    def say(self, key: str, **slots: str) -> str:
+        """`key`'s words in the site's language, never the screens'."""
+        return words.say_in(self.language, key, **slots)
+
     def page(self, relative: str, depth: int, title: str, description: str,
              body: str, *, code: str = "") -> None:
         """`code` is what only an entry page may carry (PRESS-0211 § 4.3)."""
@@ -1082,7 +1084,7 @@ class _Build:
                           for sheet in stylesheets(self.folder))
         shell = self.enhanced(
             f"""<!doctype html>
-<html lang="en">
+<html lang="{self.language}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1151,7 +1153,8 @@ class _Build:
             f"{html.escape(label(category))}</a>"
             for category in entry.categories)
         when = entry.date
-        return f'<time datetime="{_iso_day(when)}">{_long_date(when)}</time> {chips}'
+        return (f'<time datetime="{_iso_day(when)}">{words.long_date(when, self.language)}'
+                f"</time> {chips}")
 
     # -- an entry --
 
@@ -1170,7 +1173,7 @@ class _Build:
         else:
             src = self.photo_src
 
-        heading = entry.title or _long_date(entry.date)
+        heading = entry.title or words.long_date(entry.date, self.language)
         tags = " ".join(
             f'<a class="chip chip--tag" href="{up}blog/tag/{tag}/index.html">'
             f"#{html.escape(tag)}</a>"
@@ -1192,7 +1195,7 @@ class _Build:
       <p class="post-tags">{tags}</p>{buttons}
     </article>
 {comments}
-    <p class="back"><a href="{up}blog/index.html">← All journal entries</a></p>"""
+    <p class="back"><a href="{up}blog/index.html">{self.say("site.all_entries")}</a></p>"""
         description = _excerpt(_entry_text(doc, self.today), 150) or heading
         self.page(relative, depth, heading, description, body, code=code)
 
@@ -1202,13 +1205,16 @@ class _Build:
         found = store.read_comments(store.comments_path_for(self.folder, entry.slug))
         if not found:
             return ""
-        items = "\n".join(_comment_item(comment) for comment in found)
+        anonymous = self.say("site.anonymous")
+        items = "\n".join(_comment_item(comment, anonymous) for comment in found)
         count = len(found)
+        counted = words.say_count(count, "site.comments.one", "site.comments.many",
+                                  code=self.language, count=str(count))
         return f"""
-    <section class="comments" aria-label="Comments">
-      <h2>{count} comment{"s" if count != 1 else ""}</h2>
-      <p class="comments-note">Comments from the original journal, kept as they were written.
-        New comments are not open at the moment.</p>
+    <section class="comments" aria-label="{self.say("site.comments")}">
+      <h2>{counted}</h2>
+      <p class="comments-note">{self.say("site.comments.kept")}
+        {self.say("site.comments.closed")}</p>
       <ul class="comment-list">
 {items}
       </ul>
@@ -1327,7 +1333,7 @@ class _Build:
             untitled = ""
         else:
             teaser = _excerpt(_entry_text(marks.parse(entry.body), self.today), 48) \
-                or _long_date(entry.date)
+                or words.long_date(entry.date, self.language)
             heading, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">
         <p class="post-meta">{self.meta(entry, up)}</p>
@@ -1348,17 +1354,20 @@ class _Build:
                          else f"{up}{relative}/page/{number - 1}/index.html")
                 links = []
                 if number > 1:
-                    links.append(f'<a class="pg" href="{newer}">← Newer</a>')
-                links.append(f'<span class="pg-count">Page {number} of {len(chunks)}</span>')
+                    links.append(f'<a class="pg" href="{newer}">{self.say("site.newer")}</a>')
+                counted = self.say("site.page_of", number=str(number), pages=str(len(chunks)))
+                links.append(f'<span class="pg-count">{counted}</span>')
                 if number < len(chunks):
                     links.append(
                         f'<a class="pg" href="{up}{relative}/page/{number + 1}/index.html">'
-                        f"Older →</a>")
-                pager = f'\n    <nav class="pager" aria-label="Pagination">{" ".join(links)}</nav>'
+                        f'{self.say("site.older")}</a>')
+                pager = (f'\n    <nav class="pager" aria-label="{self.say("site.pagination")}">'
+                         f'{" ".join(links)}</nav>')
             # Where the heading already says "journal", the eyebrow would say it
             # a third time on one screen.
-            eyebrow = ("" if "journal" in heading.lower()
-                       else '\n      <p class="eyebrow">Journal</p>')
+            journal = self.say("site.eyebrow")
+            eyebrow = ("" if journal.lower() in heading.lower()
+                       else f'\n      <p class="eyebrow">{journal}</p>')
             body = f"""
     <div class="page-intro">{eyebrow}
       <h1>{html.escape(heading)}</h1>
@@ -1371,9 +1380,13 @@ class _Build:
             self.page(here, here_depth, heading, intro, body)
 
     def listings(self, shown: list[store.Entry]) -> None:
-        span = (f", from {_month_year(shown[-1].date)} to {_month_year(shown[0].date)}"
-                if shown else "")
-        self.listing("blog", 1, "The journal", f"{_entries_text(len(shown))}{span}.", shown)
+        code = self.language
+        counted = _entries_text(len(shown), code)
+        intro = (self.say("site.journal.span", entries=counted,
+                          first=words.month_year(shown[-1].date, code),
+                          last=words.month_year(shown[0].date, code))
+                 if shown else self.say("site.journal.none", entries=counted))
+        self.listing("blog", 1, self.say("site.journal"), intro, shown)
         by_category: dict[str, list[store.Entry]] = {}
         by_tag: dict[str, list[store.Entry]] = {}
         for entry in shown:
@@ -1384,10 +1397,12 @@ class _Build:
         for category, entries in sorted(by_category.items()):
             heading = label(category)
             self.listing(f"blog/category/{category}", 3, heading,
-                         f"{_entries_text(len(entries))} in {heading.lower()}.", entries)
+                         self.say("site.category", entries=_entries_text(len(entries), code),
+                                  category=heading.lower()), entries)
         for tag, entries in sorted(by_tag.items()):
             self.listing(f"blog/tag/{tag}", 3, f"#{tag}",
-                         f"{_entries_text(len(entries))} tagged “{tag}”.", entries)
+                         self.say("site.tag", entries=_entries_text(len(entries), code),
+                                  tag=tag), entries)
 
     def archive(self, shown: list[store.Entry]) -> None:
         years: dict[int, list[store.Entry]] = {}
@@ -1396,21 +1411,24 @@ class _Build:
         sections = []
         for year in sorted(years, reverse=True):
             rows = "\n".join(
-                f"          <li><time>{_short_date(entry.date)}</time> "
+                f"          <li><time>{words.short_date(entry.date, self.language)}</time> "
                 f'<a href="../../{entry_path(entry)}/index.html">'
-                f"{html.escape(entry.title or _long_date(entry.date))}</a></li>"
+                f"{html.escape(entry.title or words.long_date(entry.date, self.language))}"
+                "</a></li>"
                 for entry in years[year])
             sections.append(
                 f'      <section class="arch-year">\n        <h2>{year} '
                 f'<span class="arch-count">{len(years[year])}</span></h2>\n'
                 f'        <ul class="arch-index">\n{rows}\n        </ul>\n      </section>')
-        count = _entries_text(len(shown))
+        count = _entries_text(len(shown), self.language)
         joined = "\n".join(sections)
-        self.page("blog/archive", 2, "Archive", f"All {count} by year.", f"""
+        archive = self.say("site.archive")
+        self.page("blog/archive", 2, archive, self.say("site.archive.description", entries=count),
+                  f"""
     <div class="page-intro">
-      <p class="eyebrow">Journal</p>
-      <h1>Archive</h1>
-      <p class="lead">All {count}, newest first.</p>
+      <p class="eyebrow">{self.say("site.eyebrow")}</p>
+      <h1>{archive}</h1>
+      <p class="lead">{self.say("site.archive.lead", entries=count)}</p>
     </div>
 
     <div class="archive">
@@ -1430,8 +1448,8 @@ class _Build:
             target = entries[new]
             relative = entry_path(target)
             self.write_text(f"{relative.rsplit('/', 1)[0]}/{old}/index.html", _forward_page(
-                "entry", target.title or _long_date(target.date),
-                f"{address}/{relative}/index.html", f"../{new}/index.html"))
+                "entry", target.title or words.long_date(target.date, self.language),
+                f"{address}/{relative}/index.html", f"../{new}/index.html", self.language))
 
     def page_forwards(self, pages: dict[str, str]) -> None:
         """PRESS-0195 § 4.5: a page at each renamed page's old address,
@@ -1442,7 +1460,8 @@ class _Build:
             if new not in pages or old in pages:
                 continue
             self.write_text(f"pages/{old}{store.HTML_SUFFIX}", _forward_page(
-                "page", label(new), f"{address}/pages/{new}.html", f"{new}.html"))
+                "page", label(new), f"{address}/pages/{new}.html", f"{new}.html",
+                self.language))
 
     def address_forwards(self, pages: dict[str, str]) -> None:
         """PRESS-0210 § 4.10: a page at each brought-in page's old path, sending
@@ -1458,7 +1477,7 @@ class _Build:
                 continue
             place = page_file(target)
             self.write_text(old, _forward_page("page", label(target), f"{address}/{place}",
-                                               "../" * old.count("/") + place))
+                                               "../" * old.count("/") + place, self.language))
 
     # -- content/ (§4.7) --
 
@@ -1554,8 +1573,8 @@ def label(category: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def _comment_item(comment: store.Comment) -> str:
-    author = html.escape(comment.author or "Anonymous")
+def _comment_item(comment: store.Comment, anonymous: str) -> str:
+    author = html.escape(comment.author) if comment.author else anonymous
     return f"""        <li class="comment">
           <p class="comment-meta"><strong>{author}</strong> · {_iso_day(comment.date)}</p>
           {_comment_html(comment.body)}

@@ -736,7 +736,7 @@ def test_a_failed_fill_saves_nothing(tmp_path, monkeypatch):
     """INV-7. Breaks when the fill runs after the save."""
     _Store(monkeypatch)
 
-    def refuse(folder, site_name, look=""):
+    def refuse(folder, site_name, look="", *, code="en"):
         raise store.StoreError("the disk is full")
 
     monkeypatch.setattr(starter, "fill", refuse)
@@ -893,7 +893,8 @@ def test_every_settings_box_has_help_beside_it(tmp_path, monkeypatch):
     with _setup_page(tmp_path, _GitHub()) as browser:
         for section in ("site", "address", "connection", "visitors", "journal"):
             _, page = browser.get(f"/setup/{section}")
-            boxes = re.findall(r'<input type="(?:text|password|hidden)" name="([^"]+)"', page)
+            boxes = re.findall(
+                r'<(?:input type="(?:text|password|hidden)"|select) name="([^"]+)"', page)
             assert boxes, f"{section} has no boxes"
             for name in boxes:
                 assert re.search(

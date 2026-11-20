@@ -65,7 +65,7 @@ Pressless-data/
     site-1/           one site: every name in SITE_NAMES
     site-2/
   pressless.log  pressless.log.1  updates.json  update.log
-  pressless.lock  theme.json  usage.json  usage-sent.json
+  pressless.lock  theme.json  language.json  usage.json  usage-sent.json
 ```
 
 A new module, `src/pressless/sites.py`, owns the layout. It imports no
@@ -102,7 +102,7 @@ file can reach outside `sites/`.
 | Side | Names |
 |---|---|
 | Site (`SITE_NAMES`) | the Store's folders (`store.PUBLISHED_FOLDER`, `DRAFTS_FOLDER`, `BIN_FOLDER`, `PAGES_FOLDER`, `FURNITURE_FOLDER`, each value of `WAITING_FOLDERS`, `TEMPLATES_FOLDER`, `COMMENTS_FOLDER`, `PHOTOGRAPHS_FOLDER`, `FILES_FOLDER`, `FORWARDS_FOLDER`, `OPTIONS_FOLDER`, `IDENTITY_FOLDER`, `LOOK_FOLDER`), `settings.FILE_NAME`, `credentials.FILE_NAME`, `setup.SITE_FOLDER`, `editor.PREVIEW_FOLDER`, `paths.PREVIEW_ASSETS`, `starter.MARKER`, `starter.FILLED` (PRESS-0383), `insights.CACHE_NAME`, `youtube.CACHE_NAME` (PRESS-0081), `undo.FETCH_FOLDER`, `wizard.FOLDER`, `choices.FILE_NAME`, `editor.VIEWS_FOLDER` (PRESS-0275) |
-| Machine (`MACHINE_NAMES`) | `log.FILE_NAME`, `log.OLD_NAME`, `updater.FILE_NAME`, `installer.LOG_NAME`, `__main__._LOCK_NAME`, `themes.FILE_NAME`, `usage.FILE_NAME`, `usage.SENT_NAME`, `backups.FILE_NAME` (PRESS-0225), `sites.OPEN_FILE`, `sites.SITES_FOLDER`, `jpegxl.FOLDER_NAME` (PRESS-0275) |
+| Machine (`MACHINE_NAMES`) | `log.FILE_NAME`, `log.OLD_NAME`, `updater.FILE_NAME`, `installer.LOG_NAME`, `__main__._LOCK_NAME`, `themes.FILE_NAME`, `languages.FILE_NAME` (PRESS-0241), `usage.FILE_NAME`, `usage.SENT_NAME`, `backups.FILE_NAME` (PRESS-0225), `sites.OPEN_FILE`, `sites.SITES_FOLDER`, `jpegxl.FOLDER_NAME` (PRESS-0275) |
 
 `sites.py` spells the names as strings, since it may not import those
 parts; a test compares each with the constant it copies (INV-2).

@@ -159,6 +159,10 @@ without it (PRESS-0122 § 4.7).
 (`tests/test_sign_release.py`), so a tag nobody could sign is caught
 before it exists.
 
+**Before tagging, run `python scripts/translations.py --report`** and
+bring each language up to date (PRESS-0241 § 4.5). The gate does not fail
+on an out-of-date translation, which shows English until it is redone.
+
 ## Registering the Google client
 
 Sign in with Google (PRESS-0122) needs one OAuth client, registered once

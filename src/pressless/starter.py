@@ -19,6 +19,7 @@ from pressless import (
     blocks,
     builder,
     json_record,
+    languages,
     look,
     menu,
     os_reason,
@@ -27,7 +28,7 @@ from pressless import (
     templates,
 )
 from pressless.safe_write import write_whole
-from pressless.words import say
+from pressless.words import say_in
 
 MARKER = "starter-unpublished"   # in the site's folder; empty file
 # What the marker holds once the user has agreed to replace the site already
@@ -50,8 +51,8 @@ PRIVACY = "privacy"
 # navigation shape (PRESS-0125 § 4.6, § 4.7).
 
 
-def header() -> str:
-    return (f"<!-- {say('starter.header_note')} -->\n"
+def header(code: str = "en") -> str:
+    return (f"<!-- {say_in(code, 'starter.header_note')} -->\n"
             + '<header class="site">\n'
             + '  <a class="site-name" href="{{UP}}index.html">{{SITE_NAME}}</a>\n'
             + '  <p class="site-description">{{SITE_DESCRIPTION}}</p>\n'
@@ -59,19 +60,19 @@ def header() -> str:
             + "</header>\n")
 
 
-def navigation() -> str:
-    primary = html.escape(say("starter.menu"), quote=True)
+def navigation(code: str = "en") -> str:
+    primary = html.escape(say_in(code, "starter.menu"), quote=True)
     return (f'  <nav class="primary" aria-label="{primary}">\n'
             + f'    <a href="{{{{UP}}}}index.html" data-nav="{builder.HOME_NAV}">'
-            + say("starter.home") + "</a>\n"
-            + '    <a href="{{UP}}pages/about.html" data-nav="about">' + say("starter.about")
-            + "</a>\n  </nav>")
+            + say_in(code, "starter.home") + "</a>\n"
+            + '    <a href="{{UP}}pages/about.html" data-nav="about">'
+            + say_in(code, "starter.about") + "</a>\n  </nav>")
 
 
-def menu_linking(pages: list[tuple[str, str]]) -> str:
+def menu_linking(pages: list[tuple[str, str]], code: str = "en") -> str:
     """PRESS-0423: a menu in navigation's shape, linking each (page, words)
     in order, for a site that holds none."""
-    primary = html.escape(say("starter.menu"), quote=True)
+    primary = html.escape(say_in(code, "starter.menu"), quote=True)
     links = "".join(
         f'    <a href="{menu.address(page)}" data-nav="'
         f'{html.escape(builder.HOME_NAV if page == "index" else page, quote=True)}">'
@@ -79,16 +80,17 @@ def menu_linking(pages: list[tuple[str, str]]) -> str:
     return f'  <nav class="primary" aria-label="{primary}">\n{links}  </nav>'
 
 
-def footer() -> str:
-    return (f"<!-- {say('starter.footer_note')} -->\n"
+def footer(code: str = "en") -> str:
+    return (f"<!-- {say_in(code, 'starter.footer_note')} -->\n"
             + '<footer class="site">\n'
             + "  <p>&copy; {{YEAR}} {{SITE_NAME}}</p>\n"
             + "</footer>\n")
 
 # Every page the starter or the editor writes, in one shape. `links` is the
-# page's stylesheet links; `page` names it to the header pair.
+# page's stylesheet links; `page` names it to the header pair; `lang` is the
+# site's language (PRESS-0241 § 4.4).
 _PAGE = """<!doctype html>
-<html lang="en">
+<html lang="{lang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -131,8 +133,8 @@ def _area(heading: str, *paragraphs: str) -> str:
                                                   "<!-- /pressless:page -->"))
 
 
-def _words(key: str) -> str:
-    return html.escape(say(key), quote=False)
+def _words(key: str, code: str) -> str:
+    return html.escape(say_in(code, key), quote=False)
 
 # PRESS-0196: the looks' colours, layouts and rules live in look.py, which
 # makes the style code from a site's choices. The looks are its layouts.
@@ -145,41 +147,42 @@ _AREA_END = "<!-- /pressless:page -->"
 
 
 def new_page(name: str, title: str, sheets: tuple[str, ...], *,
-             main: str | None = None, root: bool = False) -> str:
+             main: str | None = None, root: bool = False, code: str = "en") -> str:
     """PRESS-0195 § 4.3: a page he adds, in the Privacy page's shape -- the
     site's stylesheets from depth 1, a header pair naming the page, his title
     as the title and heading, and one paragraph to replace. Import passes a
     page's own body as `main`, in place of the heading and paragraph, and
     `root` for the page that sits at the root (PRESS-0125 § 4.6)."""
     return _PAGE.format(title=html.escape(title), links=_links(sheets, "" if root else "../"),
-                            page=html.escape(name, quote=True),
-                            area=_area(title, _words("starter.new_page.words"))
-                            if main is None else main)
+                        page=html.escape(name, quote=True), lang=code,
+                        area=_area(title, _words("starter.new_page.words", code))
+                        if main is None else main)
 
 
-def home_page(site_name: str, sheets: tuple[str, ...] = _OWN_SHEET) -> str:
+def home_page(site_name: str, sheets: tuple[str, ...] = _OWN_SHEET, *,
+              code: str = "en") -> str:
     """The starter's Home page, which sits at the root. A site filled before
     FILLED existed is compared with this by checklist, as worded today. The
     Pages screen's Add a Home page passes the site's own `sheets` (PRESS-0423)."""
     name = html.escape(site_name, quote=True)
-    return _PAGE.format(title=name, links=_links(sheets, ""), page=builder.HOME_NAV,
-                        area=_area(say("starter.welcome", name=site_name),
-                                   _words("starter.home.words")))
+    return _PAGE.format(title=name, links=_links(sheets, ""), page=builder.HOME_NAV, lang=code,
+                        area=_area(say_in(code, "starter.welcome", name=site_name),
+                                   _words("starter.home.words", code)))
 
 
-def _counting_words() -> tuple[str, ...]:
+def _counting_words(code: str) -> tuple[str, ...]:
     """PRESS-0199 § 4.5. The policy's words hold links, so they go in as HTML."""
-    return (_words("starter.privacy.counting"), _words("starter.privacy.counted"),
-            say("starter.privacy.policy"))
+    return (_words("starter.privacy.counting", code), _words("starter.privacy.counted", code),
+            say_in(code, "starter.privacy.policy"))
 
 
-def _votes_words() -> tuple[str, ...]:
+def _votes_words(code: str) -> tuple[str, ...]:
     """PRESS-0211 § 4.5. The second holds a link, so it goes in as HTML."""
-    return _words("starter.privacy.votes"), say("starter.privacy.votes.who")
+    return _words("starter.privacy.votes", code), say_in(code, "starter.privacy.votes.who")
 
 
-def _recaptcha_words() -> tuple[str, ...]:
-    return (_words("starter.privacy.recaptcha"),)
+def _recaptcha_words(code: str) -> tuple[str, ...]:
+    return (_words("starter.privacy.recaptcha", code),)
 
 
 def disclosures(saved: settings.Settings) -> dict[str, bool]:
@@ -189,31 +192,35 @@ def disclosures(saved: settings.Settings) -> dict[str, bool]:
 
 
 def privacy_page(site_name: str, sheets: tuple[str, ...], *, counting: bool, votes: bool,
-                 recaptcha: bool) -> str:
+                 recaptcha: bool, code: str = "en") -> str:
     """The Privacy page, linking each stylesheet from depth 1, saying only what
     is on (PRESS-0199 § 4.5, PRESS-0211 § 4.5). `fill` does not write it;
     `add_privacy` does, while something it discloses is on."""
-    words = ((_counting_words() if counting else ()) + (_votes_words() if votes else ())
-             + (_recaptcha_words() if recaptcha else ()))
+    words = ((_counting_words(code) if counting else ())
+             + (_votes_words(code) if votes else ())
+             + (_recaptcha_words(code) if recaptcha else ()))
     return _PAGE.format(
-        title=say("starter.privacy.title", name=html.escape(site_name, quote=True)),
-        links=_links(sheets, "../"), page=PRIVACY,
-        area=_area(say("starter.privacy"), *words, _words("starter.privacy.questions")))
+        title=say_in(code, "starter.privacy.title", name=html.escape(site_name, quote=True)),
+        links=_links(sheets, "../"), page=PRIVACY, lang=code,
+        area=_area(say_in(code, "starter.privacy"), *words,
+                   _words("starter.privacy.questions", code)))
 
 
-def privacy_link() -> str:
+def privacy_link(code: str = "en") -> str:
     """The footer's link to the Privacy page."""
-    return '<a href="{{UP}}pages/privacy.html">' + say("starter.privacy") + "</a>"
+    return '<a href="{{UP}}pages/privacy.html">' + say_in(code, "starter.privacy") + "</a>"
 
 
 def privacy_name(folder: Path) -> str:
     """The name the Privacy page carries: the Store's, else "this site"
     (PRESS-0213 § 4.6). A malformed identity file raises StoreError."""
     identity = store.read_identity(folder)
-    return identity.name if identity is not None else say("starter.this_site")
+    return (identity.name if identity is not None
+            else say_in(languages.of_site(folder), "starter.this_site"))
 
 
-def _with_missing_words(text: str, *, counting: bool, votes: bool, recaptcha: bool) -> str:
+def _with_missing_words(text: str, *, counting: bool, votes: bool, recaptcha: bool,
+                        code: str) -> str:
     """PRESS-0211 § 4.5: `text` with each disclosure that is on and that it does
     not mention, so each is added once and a writer's own wording stands. A page
     with no sections area gets plain paragraphs: section marks outside one are
@@ -222,9 +229,9 @@ def _with_missing_words(text: str, *, counting: bool, votes: bool, recaptcha: bo
     # and starter.privacy.recaptcha in words.py spell it: a rewording that
     # drops the name adds the paragraph again at every run.
     lower = text.lower()
-    words = ((_counting_words() if counting and "google analytics" not in lower else ())
-             + (_votes_words() if votes and "firebase" not in lower else ())
-             + (_recaptcha_words() if recaptcha and "recaptcha" not in lower else ()))
+    words = ((_counting_words(code) if counting and "google analytics" not in lower else ())
+             + (_votes_words(code) if votes and "firebase" not in lower else ())
+             + (_recaptcha_words(code) if recaptcha and "recaptcha" not in lower else ()))
     if not words:
         return text
     if _AREA_END in text:
@@ -248,18 +255,20 @@ def add_privacy(folder: Path, site_name: str, *, counting: bool, votes: bool,
     folder = Path(folder)
     if not store.holds_a_site(folder):
         return False, False
+    code = languages.of_site(folder)
     page = store.html_path_for(folder, store.PAGES_FOLDER, PRIVACY)
     added_page = not page.exists()
     if added_page:
         store.write_html(folder, store.PAGES_FOLDER, PRIVACY,
                          privacy_page(site_name, builder.stylesheets(folder), counting=counting,
-                                      votes=votes, recaptcha=recaptcha))
+                                      votes=votes, recaptcha=recaptcha, code=code))
     for waiting in (False, True):
         held = store.html_path_for(folder, store.PAGES_FOLDER, PRIVACY, waiting=waiting)
         if not held.exists():
             continue
         text = store.read_html(held)
-        changed = _with_missing_words(text, counting=counting, votes=votes, recaptcha=recaptcha)
+        changed = _with_missing_words(text, counting=counting, votes=votes, recaptcha=recaptcha,
+                                      code=code)
         if changed != text:
             store.write_html(folder, store.PAGES_FOLDER, PRIVACY, changed, waiting=waiting)
     footer_path = store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
@@ -270,7 +279,7 @@ def add_privacy(folder: Path, site_name: str, *, counting: bool, votes: bool,
             end = _FOOTER_END.search(text)
             at = end.start() if end else len(text)
             store.write_html(folder, store.FURNITURE_FOLDER, "footer",
-                             text[:at] + privacy_link() + "\n" + text[at:])
+                             text[:at] + privacy_link(code) + "\n" + text[at:])
             added_link = True
     return added_page, added_link
 
@@ -327,9 +336,11 @@ def replace_agreed(folder: Path) -> bool:
         return False
 
 
-def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
+def fill(folder: Path, site_name: str, layout: str = LOOKS[0], *,
+         code: str = "en") -> None:
     """§ 4.3, in order: the marker, each starter file only where it is absent,
-    the templates, and the journal off. `layout` is one of LOOKS; any other,
+    the templates, and the journal off, every word in the language `code`
+    (PRESS-0241 § 4.4). `layout` is one of LOOKS; any other,
     a forged post's, is the first (PRESS-0239). The look is that layout's
     defaults, saved as the Look screen saves them (PRESS-0196 § 4.6). A
     StoreError propagates, and what was written stays, so setup can offer the
@@ -345,14 +356,14 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
 
     name = html.escape(site_name, quote=True)
     files = (
-        (store.FURNITURE_FOLDER, "header", header()),
-        (store.FURNITURE_FOLDER, "navigation", navigation()),
-        (store.FURNITURE_FOLDER, "footer", footer()),
-        (store.PAGES_FOLDER, "index", home_page(site_name)),
+        (store.FURNITURE_FOLDER, "header", header(code)),
+        (store.FURNITURE_FOLDER, "navigation", navigation(code)),
+        (store.FURNITURE_FOLDER, "footer", footer(code)),
+        (store.PAGES_FOLDER, "index", home_page(site_name, code=code)),
         (store.PAGES_FOLDER, "about", _PAGE.format(
-            title=say("starter.about.title", name=name), links=_links(_OWN_SHEET, "../"),
-            page="about",
-            area=_area(say("starter.about"), _words("starter.about.words")))),
+            title=say_in(code, "starter.about.title", name=name),
+            links=_links(_OWN_SHEET, "../"), page="about", lang=code,
+            area=_area(say_in(code, "starter.about"), _words("starter.about.words", code)))),
     )
     wrote = {}
     for kind, file_name, text in files:
@@ -364,5 +375,5 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
                           if name in wrote})
     if not store.style_code_path(folder).exists():
         look.save(folder, look.defaults(layout), "")
-    templates.seed(folder)
+    templates.seed(folder, code)
     store.write_journal(folder, False)

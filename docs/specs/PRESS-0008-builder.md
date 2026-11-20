@@ -552,12 +552,14 @@ Sitemap: <the address>/sitemap.xml
   as PRESS-0007 INV-10's test does: `pressless.store`, `pressless.marks`,
   `pressless.blocks` (PRESS-0215), `pressless.votes` (PRESS-0211),
   `pressless.jpegxl` (PRESS-0275), `pressless.safe_write` (PRESS-0365),
-  `pressless.os_reason` (PRESS-0401), `pressless.settings`, `PIL` and named
+  `pressless.os_reason` (PRESS-0401), `pressless.words` (PRESS-0241),
+  `pressless.settings`, `PIL` and named
   standard-library modules.
   *Breaks when:* a missing photograph is fetched from the old site, or the
   Builder calls the Publisher.
 
-- **INV-12** — A date reads the same on every system: an entry dated
+- **INV-12** — A date reads the same on every system, in the site's
+  language (PRESS-0241 § 4.4): on an English site an entry dated
   2024-03-05 shows `5 March 2024`.
   *Test:* `tests/test_builder.py::test_dates_do_not_depend_on_the_system` —
   asserts that text under the C locale, and that `builder.py`'s source holds

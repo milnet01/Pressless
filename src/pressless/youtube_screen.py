@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pressless import credentials, dashboard, editor, insights, settings, sites, youtube
 from pressless.face import SENTENCES, Face, Request, Sentence, Site, loaded_settings, render_notices
-from pressless.words import say
+from pressless.words import number, say
 
 PAGE = settings.YOUTUBE_ADDRESS
 SETUP = PAGE + "/setup"
@@ -70,7 +70,7 @@ def _card(face: Face, folder: Path) -> str:
     if held is None:
         line = say("youtube.card.ask", page=PAGE)
     else:
-        line = say("youtube.card.read", title=html.escape(held.title), views=f"{held.views:,}",
+        line = say("youtube.card.read", title=html.escape(held.title), views=number(held.views),
                    when=dashboard.when(held.fetched_at), page=PAGE)
     return f'<section class="card"><h2>{say("youtube.title")}</h2><p>{line}</p></section>'
 
@@ -100,17 +100,18 @@ def _report(report: youtube.Report) -> str:
     when = dashboard.when(report.fetched_at)
     fresh = say("youtube.stale" if report.stale else "youtube.updated", when=when)
     subscribers = (say("youtube.hidden") if report.subscribers is None
-                   else say("youtube.about", count=f"{report.subscribers:,}"))
+                   else say("youtube.about", count=number(report.subscribers)))
     figures = (f"<tr><th scope='row'>{say('youtube.subscribers')}</th>"
                f'<td class="num">{subscribers}</td></tr>'
                f"<tr><th scope='row'>{say('youtube.views')}</th>"
-               f'<td class="num">{report.views:,}</td></tr>'
+               f'<td class="num">{number(report.views)}</td></tr>'
                f"<tr><th scope='row'>{say('youtube.videos')}</th>"
-               f'<td class="num">{report.video_count:,}</td></tr>')
+               f'<td class="num">{number(report.video_count)}</td></tr>')
     more = ""
     if len(report.videos) > SHOWN or len(report.videos) < report.video_count:
-        more = "<p>" + say("youtube.some", shown=f"{min(SHOWN, len(report.videos)):,}",
-                           read=f"{len(report.videos):,}", total=f"{report.video_count:,}") + "</p>"
+        more = "<p>" + say("youtube.some", shown=number(min(SHOWN, len(report.videos))),
+                           read=number(len(report.videos)),
+                           total=number(report.video_count)) + "</p>"
     return (f"<h2>{e(report.title)}</h2><p>{say('youtube.source')}</p><p>{fresh}</p>"
             f'<table class="ranked"><tbody>{figures}</tbody></table>'
             + _videos(report.videos[:SHOWN]) + more
@@ -155,7 +156,7 @@ def _published_day(published: str) -> str:
 
 
 def _number(value: int | None) -> str:
-    return say("youtube.hidden") if value is None else f"{value:,}"
+    return say("youtube.hidden") if value is None else number(value)
 
 
 def _setup(face: Face, folder: Path, *, hint: str = "", typed: str | None = None) -> str:

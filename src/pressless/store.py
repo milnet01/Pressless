@@ -1170,11 +1170,13 @@ def write_journal(folder: Path, on: bool) -> Path:
 @dataclass(frozen=True)
 class Identity:
     """The site's name and short description (PRESS-0213 § 4.1), and the
-    photographs chosen as its icon and sharing picture (PRESS-0227 § 4.1)."""
+    photographs chosen as its icon and sharing picture (PRESS-0227 § 4.1),
+    and the language its published words are in (PRESS-0241 § 4.4)."""
     name: str
     description: str = ""
     icon: str = ""       # a photograph's name, or ""
     picture: str = ""    # a photograph's name, or ""
+    language: str = ""   # a language's code; "" builds in English
 
 
 def identity_path_for(folder: Path) -> Path:
@@ -1183,11 +1185,16 @@ def identity_path_for(folder: Path) -> Path:
     return Path(folder) / IDENTITY_FOLDER / IDENTITY_FILE
 
 
+_LANGUAGE_CODE = re.compile(r"[a-z]{2,3}")   # PRESS-0241 § 4.4
+
+
 def identity_problem(identity: Identity) -> str | None:
-    """Which answer is refused -- "name", "description", "icon" or "picture"
-    -- or None. A name is one non-blank line; a description is one line and
-    may be empty. A picture is "" or a photograph's name not beginning with a
-    dot, which a publish refuses (PRESS-0227 § 4.1)."""
+    """Which answer is refused -- "name", "description", "icon", "picture"
+    or "language" -- or None. A name is one non-blank line; a description is
+    one line and may be empty. A picture is "" or a photograph's name not
+    beginning with a dot, which a publish refuses (PRESS-0227 § 4.1). A
+    language is "" or two or three lowercase letters, a code this Pressless
+    may not know included (PRESS-0241 § 6)."""
     name = identity.name
     if not name.strip() or "\n" in name or "\r" in name:
         return "name"
@@ -1197,6 +1204,8 @@ def identity_problem(identity: Identity) -> str | None:
         chosen = getattr(identity, field)
         if chosen and (chosen.startswith(".") or not _photograph_name(chosen)):
             return field
+    if identity.language and not _LANGUAGE_CODE.fullmatch(identity.language):
+        return "language"
     return None
 
 
@@ -1209,6 +1218,8 @@ def _photograph_name(name: str) -> bool:
 
 
 def _refuse_identity(target: Path, problem: str) -> NoReturn:
+    if problem == "language":
+        raise StoreError(f"{target.name}: the language is not a language's code")
     raise StoreError(f"{target.name}: the {problem} is not a photograph's name"
                      if problem in ("icon", "picture") else
                      f"{target.name}: the {problem} is empty or holds a line break")
@@ -1223,9 +1234,10 @@ def read_identity(folder: Path) -> Identity | None:
     if not isinstance(carried, dict):
         raise StoreError(f"{target.name} is not an object")
     name = carried.get("name")
-    rest = [carried.get(key, "") for key in ("description", "icon", "picture")]
+    rest = [carried.get(key, "") for key in ("description", "icon", "picture", "language")]
     if not all(isinstance(value, str) for value in (name, *rest)):
-        raise StoreError(f"{target.name}: the name, description and pictures must be text")
+        raise StoreError(
+            f"{target.name}: the name, description, pictures and language must be text")
     identity = Identity(name, *rest)
     problem = identity_problem(identity)
     if problem is not None:
@@ -1240,10 +1252,12 @@ def write_identity(folder: Path, identity: Identity) -> Path:
     if problem is not None:
         _refuse_identity(target, problem)
     # PRESS-0227 § 4.1: a picture not chosen is left out, so an identity
-    # without one is written as an older Pressless wrote it.
+    # without one is written as an older Pressless wrote it; so is a language
+    # (PRESS-0241 § 4.4).
     held = {"description": identity.description, "name": identity.name,
             **{key: value for key, value in (("icon", identity.icon),
-                                             ("picture", identity.picture)) if value}}
+                                             ("picture", identity.picture),
+                                             ("language", identity.language)) if value}}
     text = json.dumps(held, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     _write_atomically(folder, target, text, prefix=".identity-", newline="\n")
     return target

@@ -71,7 +71,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 ### 4.1 The Store
 
-*PRESS-0227 § 4.1 adds `icon` and `picture` to the identity file.*
+*PRESS-0227 § 4.1 adds `icon` and `picture` to the identity file, and
+PRESS-0241 § 4.4 adds `language`, left out of the file where it is empty.*
 
 ```python
 # src/pressless/store.py — added
@@ -185,7 +186,7 @@ the options file.
 
 ### 4.6 The wizard's *site* step and the Settings page
 
-*PRESS-0227 § 4.2 adds the Settings page's *Site icon* and *Sharing picture* rows, and the wizard keeps the pictures the Store names.*
+*PRESS-0227 § 4.2 adds the Settings page's *Site icon* and *Sharing picture* rows, and the wizard keeps the pictures the Store names. PRESS-0241 § 4.4 adds the *Site language* row, and the wizard records the screens' language for a new site.*
 
 Both forms gain a field `site_description`, labelled "A short description
 of your site (optional)", beside `site_name`.
