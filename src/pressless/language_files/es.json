@@ -6475,11 +6475,11 @@
   ],
   "undo.demoted_many": [
    "a23760ac",
-   "{count} vueltos a borrador"
+   "{count} devueltas a borrador"
   ],
   "undo.demoted_one": [
    "6eef5137",
-   "{count} vuelto a borrador"
+   "{count} devuelta a borrador"
   ],
   "undo.entries": [
    "d06542eb",
@@ -6507,7 +6507,7 @@
   ],
   "undo.restored": [
    "e4cb041d",
-   "{count} recuperado(s)"
+   "{count} recuperada(s)"
   ],
   "undo.summary": [
    "4d7a1137",
