@@ -1,0 +1,507 @@
+Dieses Handbuch zeigt, wie du alles machst, was Pressless kann. Tippe ins
+Suchfeld, um nur die Aufgaben zu zeigen, die diese Wörter enthalten.
+
+== finding-help | Hilfe finden
+Die Hilfe ist in der Leiste oben auf jedem Pressless-Bildschirm.
+
+1. Klicke in der Leiste oben auf dem Bildschirm auf Hilfe.
+picture help-link.png | Die Leiste oben auf einem Pressless-Bildschirm, mit Hilfe nach Dateien.
+2. Tippe ins Suchfeld, was du machen möchtest.
+3. Lies die Schritte unter der passenden Aufgabe.
+video searching.webm | Ein Wort ins Suchfeld tippen, und die Aufgaben, die es nicht enthalten, verschwinden.
+
+== setting-up | Pressless zum ersten Mal einrichten
+Beim ersten Start führt Pressless dich Bildschirm für Bildschirm durch
+die Einrichtung. Du brauchst eine E-Mail-Adresse. Deine Website wohnt
+auf GitHub, das sie kostenlos hostet.
+
+1. Lies jeden Bildschirm und tu, was dort steht. Einige Schritte finden auf den eigenen Seiten von GitHub statt, und der Bildschirm sagt, worauf du dort klicken sollst.
+picture setup-welcome.png | Der erste Einrichtungsbildschirm mit der Überschrift Pressless einrichten und einer Schaltfläche Weiter.
+2. Klicke auf Weiter, um fortzufahren, oder auf Zurück, um zum Bildschirm davor zu gehen.
+3. Klicke auf einem Bildschirm auf Was gerade passiert, um zu lesen, was dieser Schritt macht.
+4. Klicke auf dem letzten Bildschirm auf Zu deiner Website.
+
+Wenn du Pressless mittendrin schließt, beginnt es wieder dort, wo du
+aufgehört hast.
+
+== your-writing | Dich zurechtfinden
+Deine Website ist der erste Bildschirm. Er hat eine Kachel für jeden Teil
+deiner Website, und die Leiste oben nennt jeden Teil ebenfalls.
+
+1. Klicke in der Leiste auf Deine Website.
+picture your-writing.png | Der Bildschirm Deine Website, mit einer Kachel für jeden Teil der Website.
+2. Klicke auf den Link einer Kachel, etwa Deine Seiten öffnen, um diesen Teil zu öffnen.
+3. Oder klicke in der Leiste auf einen Teil: Seiten, Journal, Aussehen, Dateien oder Besucher.
+
+Seiten sind Seiten wie Startseite und Über mich. Das Journal enthält deine
+Einträge: Entwürfe sind nur auf diesem Computer, und Auf deiner Website
+listet die Einträge auf, die du veröffentlicht hast. Das Menü, die
+Kopfzeile und die Fußzeile sind Teile jeder Seite.
+
+== finishing-setup | Die Einrichtung abschließen
+Nach der Einrichtung zeigt der Bildschirm Deine Website unter seinen
+Kacheln eine Liste mit der Überschrift Einrichtung abschließen. Ein
+Häkchen markiert alles, was schon erledigt ist.
+
+1. Klicke auf eine Zeile ohne Häkchen. Pressless öffnet den Bildschirm, in dem man es erledigt.
+picture finish-setting-up.png | Die Liste Einrichtung abschließen, mit zwei Zeilen mit Häkchen und drei, die noch zu tun sind.
+2. Erledige es dort und klicke dann auf Deine Website, um die Liste noch einmal zu sehen.
+
+== writing-an-entry | Einen neuen Eintrag schreiben
+Ein Eintrag ist ein datierter Text, wie ein Blogbeitrag. Dein Journal
+listet deine Einträge auf, die neuesten zuerst.
+
+1. Klicke in der Leiste auf Journal.
+2. Tippe den Namen des Eintrags ins Feld Titel.
+3. Klicke auf Neuer Eintrag.
+picture new-entry.png | Das Feld Titel mit den Worten Ebbe, daneben die Liste Beginnen mit und die Schaltfläche Neuer Eintrag.
+4. Klicke unter dem Titel auf die Seite und tippe deine Worte. Die Seite zeigt den Eintrag so, wie deine Website ihn zeigen wird.
+video writing-an-entry.webm | Einen neuen Eintrag benennen, auf Neuer Eintrag klicken und dann Worte auf die Seite tippen.
+
+Pressless speichert, während du tippst, und sagt oben Gespeichert. Der
+Eintrag ist ein Entwurf, nur auf diesem Computer, bis du ihn
+veröffentlichst.
+
+== styling-words | Wörter fett, kursiv oder farbig machen und einen Link hinzufügen
+1. Öffne den Eintrag und klicke auf den Absatz.
+2. Markiere die Wörter, die du ändern willst.
+3. Klicke auf Fett oder Kursiv.
+picture style-buttons.png | Die Schaltflächen Fett, Kursiv und Link, mit den Farbschaltflächen darunter.
+4. Für einen Link klicke auf Link und tippe die Adresse, die die Wörter öffnen sollen.
+5. Für eine Farbe klicke auf Die Hervorhebung deiner Website oder Die zurückhaltendere Schriftfarbe deiner Website. Für jede andere Farbe wähle sie neben Beliebige Farbe aus und klicke dann auf Diese Farbe verwenden.
+
+== adding-a-paragraph | Einem Eintrag einen Absatz oder ein Zitat hinzufügen
+1. Öffne den Eintrag.
+2. Klicke auf den Teil, auf den der neue folgen soll. Wenn nichts angeklickt ist, kommt er ans Ende.
+3. Wähle neben Hinzufügen Absatz oder Zitat.
+4. Klicke auf Hinzufügen und tippe dann seine Worte auf die Seite.
+
+== adding-a-photograph | Einem Eintrag ein Foto oder Bild hinzufügen
+1. Öffne den Eintrag.
+2. Klicke auf den Teil, auf den das Foto folgen soll.
+3. Wähle neben Hinzufügen Foto und klicke dann auf Hinzufügen.
+4. Klicke auf Foto hinzufügen und wähle die Bilddatei auf deinem Computer.
+picture photograph-part.png | Ein Eintrag mit einem Foto von einem Hafen, daneben die Liste Foto und das Feld Bildunterschrift.
+5. Tippe eine Bildunterschrift ins Feld Bildunterschrift, wenn du eine willst.
+
+Ein Foto, das du früher hinzugefügt hast, steht in der Liste Foto, so
+kannst du es noch einmal verwenden, ohne die Datei zu wählen.
+
+== moving-parts | Einen Teil eines Eintrags verschieben oder entfernen
+1. Öffne den Eintrag und klicke auf den Absatz, das Foto oder das Zitat.
+2. Klicke auf Nach oben oder Nach unten, um es zu verschieben.
+3. Klicke auf Entfernen, um es herauszunehmen.
+
+== writing-in-marks | Mit Markierungen statt mit Schaltflächen schreiben
+Markierungen sind ein paar Zeichen, die du zwischen deine Worte tippst.
+Zwei Sternchen auf jeder Seite eines Wortes machen es fett.
+
+1. Öffne den Eintrag und klicke auf Markierungen zeigen.
+picture marks.png | Das Feld mit den Worten eines Eintrags, darunter der geöffnete Spickzettel.
+2. Tippe deine Worte ins Feld, mit Markierungen dort, wo du sie willst.
+3. Klicke unter dem Feld auf Spickzettel: So formatierst du deine Worte, um jede Markierung zu sehen.
+4. Klicke auf Editor ansehen, um wieder auf der Seite zu schreiben.
+
+Der Link Eine Seite zum Drucken am Spickzettel öffnet ihn als eigene Seite.
+
+== categories-and-tags | Einem Eintrag Kategorien und Schlagwörter geben
+1. Öffne den Eintrag.
+2. Tippe die Kategorien ins Feld Kategorien oder die Schlagwörter ins Feld Schlagwörter.
+
+== entry-address | Die Adresse eines Eintrags ändern
+Die Adresse ist der letzte Teil der Webadresse des Eintrags. Pressless
+macht sie aus dem Titel.
+
+1. Öffne den Eintrag.
+2. Tippe die neue Adresse ins Feld Adresse.
+3. Klicke auf Adresse ändern.
+
+== publishing | Veröffentlichen: deine Texte auf deine Website bringen
+Nichts erreicht deine Website, bis du es veröffentlichst. Jeder Eintrag
+und jede Seite wird aus ihrem eigenen Editor veröffentlicht. Deine
+Website sagt, wie viele Änderungen noch nicht auf deiner Website sind,
+und verlinkt dorthin, wo sie sind. Veröffentlichen auf Deine Website
+veröffentlicht die Website so, wie sie schon ist, etwa nach einer
+Änderung des Aussehens.
+
+1. Öffne den Eintrag oder die Seite.
+2. Klicke auf Auf die Website stellen.
+3. Pressless zeigt ein Feld mit der Überschrift Bevor sich deine Website ändert und listet die Seiten auf, die sich ändern.
+picture publish-plan.png | Das Feld mit der Überschrift Bevor sich deine Website ändert, mit den Schaltflächen Jetzt veröffentlichen und Noch nicht.
+4. Klicke auf Jetzt veröffentlichen. Klicke auf Noch nicht, um deine Website zu lassen, wie sie ist.
+video publishing.webm | Auf Auf die Website stellen klicken, dann auf Jetzt veröffentlichen, und die Zeile Veröffentlicht erscheint.
+
+Pressless sagt Veröffentlicht, wenn es fertig ist. Deine Website zeigt
+die Änderung innerhalb weniger Minuten. Deine Website ansehen öffnet
+deine Website in einem neuen Tab.
+
+== changing-published | Einen Eintrag ändern, der schon auf deiner Website ist
+1. Klicke in der Leiste auf Journal und dann unter Auf deiner Website auf den Eintrag.
+2. Ändere ihn. Deine Änderungen bleiben auf diesem Computer, und deine Website zeigt den Eintrag weiter so, wie er war.
+3. Klicke auf Auf die Website stellen, um die Änderungen zu veröffentlichen.
+4. Um die Änderungen stattdessen aufzugeben, klicke auf Diesen Probeabzug in den Papierkorb.
+
+== undoing | Die letzte Veröffentlichung rückgängig machen
+Rückgängig setzt deine Website so zurück, wie sie vor deiner letzten
+Veröffentlichung war. Was du geschrieben hast, bleibt als Entwurf auf
+diesem Computer.
+
+1. Klicke in der Leiste auf Deine Website.
+2. Klicke auf Das letzte Hochladen rückgängig machen.
+
+Pressless kann deine allererste Veröffentlichung nicht rückgängig machen.
+
+== throwing-away | Einen Eintrag wegwerfen
+1. Öffne den Eintrag.
+2. Klicke unter dem Eintrag auf Diesen Entwurf wegwerfen. Bei einem Eintrag auf deiner Website heißt die Schaltfläche Diesen Eintrag wegwerfen.
+3. Klicke auf OK, wenn Pressless fragt.
+
+Der Eintrag wandert in den Papierkorb in deinem Ordner Pressless-data.
+
+== using-a-template | Einen Eintrag aus einer Vorlage beginnen
+Eine Vorlage ist ein fertiger Anfang: ein Gedicht, ein Liedtext mit
+Strophen, ein Eintrag rund um ein Foto oder ein schlichter
+Journaleintrag.
+
+1. Klicke in der Leiste auf Journal.
+2. Tippe den Namen des Eintrags ins Feld Titel.
+3. Wähle in der Liste Beginnen mit eine Vorlage.
+4. Klicke auf Neuer Eintrag.
+
+== making-a-template | Eine eigene Vorlage anlegen oder ändern
+1. Klicke in der Leiste auf Journal.
+2. Tippe unter Deine Vorlagen einen Namen ins Feld Name und klicke auf Neue Vorlage. Um eine zu ändern, klicke auf ihren Namen.
+3. Tippe den Titel und die Worte, mit denen jeder Eintrag beginnen soll, der aus ihr entsteht.
+4. Klicke auf Speichern.
+
+Diese Vorlage in den Papierkorb entfernt sie. Eine Vorlage wird nie auf
+deine Website gestellt.
+
+== journal | Das Journal ein- oder ausschalten
+Das Journal ist der datierte Teil einer Website, wie ein Blog. Wenn es
+aus ist, besteht deine Website nur aus Seiten.
+
+1. Klicke in der Leiste auf Journal.
+2. Klicke auf Journal ausschalten oder Journal einschalten.
+
+Wenn du es ausschaltest, verschwinden deine veröffentlichten Einträge
+bei deiner nächsten Veröffentlichung von deiner Website. Wenn du es
+wieder einschaltest, kommen sie zurück.
+
+== changing-a-page | Eine Seite ändern, etwa Startseite oder Über mich
+1. Klicke in der Leiste auf Seiten und dann auf die Seite.
+2. Klicke auf eine Überschrift, einen Absatz oder einen beliebigen Abschnitt auf der Seite.
+picture page-editor.png | Die Startseite, geöffnet zum Ändern, mit der Seite auf der einen Seite und der Liste Hinzufügen auf der anderen.
+3. Tippe auf der Seite, um Worte zu ändern. Die Felder neben der Seite ändern alles andere an diesem Abschnitt.
+4. Klicke auf Auf die Website stellen, um die Seite zu veröffentlichen.
+
+== adding-a-page | Eine neue Seite hinzufügen
+1. Klicke in der Leiste auf Seiten.
+2. Tippe den Namen der Seite ins Feld Seitenname.
+3. Klicke auf Neue Seite.
+picture new-page.png | Die Karte Deine Seiten im Bildschirm Seiten, mit dem Feld Seitenname und der Schaltfläche Neue Seite.
+
+Pressless öffnet die neue Seite und fügt in deinem Menü einen Link
+dorthin hinzu.
+
+Eine Website ohne Startseite hat über dem Feld Seitenname eine
+Schaltfläche Startseite hinzufügen. Klicke darauf, ändere die Worte und
+klicke auf Auf die Website stellen.
+
+== renaming-a-page | Eine Seite umbenennen oder entfernen
+1. Öffne die Seite.
+2. Klicke auf Diese Seite umbenennen und tippe ihren neuen Namen. Die alte Adresse führt weiterhin zur Seite.
+3. Oder klicke auf Diese Seite entfernen. Sie wandert in den Papierkorb in deinem Ordner Pressless-data und verschwindet von deiner Website und aus deinem Menü.
+
+Die Startseite lässt sich weder umbenennen noch entfernen.
+
+== adding-a-section | Einer Seite einen Abschnitt hinzufügen: eine Überschrift, ein Bild, eine Schaltfläche, ein Video, Musik oder einen Download
+1. Öffne die Seite.
+2. Klicke auf den Abschnitt, auf den der neue folgen soll. Wenn nichts angeklickt ist, kommt er ans Ende der Seite.
+3. Wähle in der Liste Hinzufügen, was du hinzufügen willst.
+picture add-section.png | Die Liste Hinzufügen mit jeder Art von Abschnitt, von Absatz und Überschrift bis hinunter zu Dein eigenes CSS.
+4. Klicke auf Hinzufügen.
+5. Fülle die Felder aus, die dafür erscheinen, etwa Wörter, die es beschreiben bei einem Bild.
+
+Ein Video-, Musik- oder Download-Abschnitt hat eine Schaltfläche Datei
+hochladen für eine Datei auf deinem Computer. Die Liste enthält auch
+Spalten, eine Bilderreihe, eine Bilder-Diashow, Fragen, die sich
+aufklappen, ein Bild, das sich vergrößert, einen Link Zurück nach oben
+und einen Countdown.
+
+== moving-a-section | Einen Abschnitt einer Seite verschieben oder entfernen
+1. Öffne die Seite und klicke auf den Abschnitt.
+2. Klicke auf Nach oben oder Nach unten.
+3. Um ihn in eine Spalte zu setzen, wähle die Spalte in der Liste Verschieben nach und klicke auf Verschieben.
+4. Klicke auf Entfernen, um ihn herauszunehmen.
+
+== changing-the-menu | Das Menü ändern
+Das Menü ist die Reihe von Links auf jeder Seite deiner Website.
+Pressless nennt es Navigation.
+
+1. Klicke in der Leiste auf Seiten und dann unter Teile jeder Seite auf Navigation.
+picture menu.png | Die Links des Menüs, jeder mit einem Feld Wörter, einem Feld Führt zu und den Schaltflächen Nach oben, Nach unten und Entfernen.
+2. Ändere die Worte eines Links in seinem Feld Wörter.
+3. Klicke auf Nach oben oder Nach unten, um die Reihenfolge zu ändern, oder auf Entfernen, um einen Link herauszunehmen.
+4. Klicke auf Link hinzufügen für einen neuen.
+5. Klicke auf Auf die Website stellen, um das Menü zu veröffentlichen.
+
+Keine Navigation unter Teile jeder Seite? Klicke dort auf Menü
+hinzufügen. Es verlinkt die Seiten, die schon auf deiner Website sind.
+
+== header-and-footer | Die Kopfzeile oder Fußzeile ändern
+Die Kopfzeile ist der obere Teil jeder Seite deiner Website, und die
+Fußzeile ist der untere.
+
+1. Klicke in der Leiste auf Seiten und dann unter Teile jeder Seite auf Kopfzeile oder Fußzeile.
+2. Ändere sie, wie du eine Seite ändern würdest.
+3. Klicke neben Zeigen auf auf den Namen einer Seite, um die Änderung auf dieser Seite zu sehen.
+4. Klicke auf Auf die Website stellen, um sie zu veröffentlichen.
+
+== page-code | Den Code einer Seite ansehen oder ändern
+Für alle, die HTML kennen.
+
+1. Öffne die Seite, die Kopfzeile, die Fußzeile oder die Navigation.
+2. Klicke auf Code zeigen.
+3. Klicke auf Editor ansehen, um zurückzugehen.
+
+== site-look | Das Aussehen deiner Website ändern: Layout, Farben und Schriften
+1. Klicke in der Leiste auf Aussehen.
+2. Wähle ein Layout, einen Farbstil, Farben, Schriften, die Textgröße, die Seitenbreite oder Effekte. Die Vorschau neben jeder Auswahl zeigt sie sofort.
+picture look.png | Der Bildschirm Aussehen, mit den Layouts und Farbstilen zur Auswahl und einer Vorschau der Website daneben.
+3. Klicke auf Speichern.
+video changing-the-look.webm | Auf dem Bildschirm Aussehen eine andere Überschriftenschrift wählen, die Vorschau ändert sich passend, und auf Speichern klicken.
+
+Deine Website zeigt das neue Aussehen, nachdem du das nächste Mal
+veröffentlicht hast. Jede Farbe hat eine helle und eine dunkle Wahl: Ein
+Besucher, dessen Computer auf dunkel eingestellt ist, sieht die dunkle.
+
+Jedes Layout und jeder Farbstil sagt, zu welcher Art von Website er
+passt. Jedes Layout kann jeden Farbstil tragen. Wenn du einen Farbstil
+wählst, füllt er die Farbfelder, und du kannst danach jede Farbe noch
+ändern.
+
+Wenn du ein anderes Layout wählst, bleiben deine Farben. Klicke auf Die
+eigenen Farben dieses Layouts verwenden, um sie auf die dieses Layouts zu
+ändern, und dann auf Speichern, um sie zu behalten.
+
+== files | Die Dateien ansehen oder entfernen, die du hochgeladen hast
+Dateien sind die Lieder, Videos, PDFs, ZIP-Dateien und Textdateien, die
+du für deine Seiten hochgeladen hast.
+
+1. Klicke in der Leiste auf Dateien.
+2. Die Liste zeigt jede Datei, ihre Größe und die Seiten, die sie verwenden.
+3. Klicke neben einer Datei auf Entfernen, um sie in den Papierkorb zu legen.
+
+Du lädst eine Datei über einen Video-, Musik- oder Download-Abschnitt auf
+einer Seite hoch.
+
+== site-name | Den Namen, die Beschreibung, das Symbol oder das Teilen-Bild deiner Website ändern
+1. Klicke in der Leiste auf Einstellungen und dann auf Name und Bilder deiner Website.
+picture settings.png | Der Bereich der Einstellungen für Name und Bilder deiner Website, mit Feldern für den Namen und die Beschreibung.
+2. Tippe in das Feld für den Namen deiner Website oder ihre kurze Beschreibung.
+3. Für das Symbol oder das Teilen-Bild klicke auf Ein Bild wählen.
+4. Klicke auf das ? neben einem Feld, um zu lesen, wofür es da ist.
+5. Klicke auf Das Repository noch einmal prüfen und speichern.
+
+== own-domain | Deinen eigenen Domainnamen verwenden
+Wenn du eine Webadresse gekauft hast, etwa example.com, kann deine
+Website darunter erscheinen. Veröffentliche deine Website zuerst einmal.
+
+1. Klicke auf Einstellungen, dann auf Die Adresse deiner Website und dann auf Deinen eigenen Domainnamen verwenden.
+2. Tippe den Namen, den du gekauft hast, und klicke auf Weiter.
+picture own-domain.png | Der erste Schritt von Dein eigener Domainname, mit einem Feld für den Namen und einer Schaltfläche Weiter.
+3. Folge jedem Bildschirm. Pressless zeigt, was du dort eintragen musst, wo du den Namen gekauft hast.
+
+Du kannst Pressless zwischen den Schritten schließen. Deinen eigenen
+Domainnamen verwenden öffnet den Schritt, bei dem du warst.
+
+== visitor-numbers | Besucherzahlen einschalten
+Pressless kann zeigen, wie viele Menschen deine Website lesen, indem es
+die Zahlen aus Google Analytics liest. Das ist freiwillig.
+
+1. Klicke auf Einstellungen, dann auf Besucher und Google und dann auf die Zeile darüber, wie viele Menschen deine Website lesen.
+2. Klicke auf Mit Google anmelden und melde dich auf der Seite von Google an.
+3. Wähle die Website, für die Pressless Zahlen zeigen soll, und klicke auf Diese Website verwenden.
+
+Besucherzahlen ausschalten, auf demselben Bildschirm, hört damit auf.
+
+== who-is-reading | Sehen, wer deine Website liest
+1. Klicke in der Leiste auf Besucher.
+picture who-is-reading.png | Der Bildschirm Wer liest, mit einer Zahl der Menschen, einem Diagramm der Menschen pro Tag und einer Tabelle der Länder.
+2. Klicke auf Letzte 7 Tage, Letzte 4 Wochen oder Letzte 12 Monate.
+
+Der Bildschirm zeigt, wie viele Menschen deine Website lesen, wo sie
+sind, wie sie dich gefunden haben und was sie gelesen haben.
+
+== like-buttons | Schaltflächen Gefällt mir und Gefällt mir nicht unter deinen Einträgen hinzufügen
+Die Zähler liegen in deiner eigenen kostenlosen Firebase-Datenbank von
+Google.
+
+1. Klicke auf Einstellungen, dann auf Journal und dann auf Schaltflächen Gefällt mir und Gefällt mir nicht unter deinen Einträgen, falls du sie willst.
+2. Folge den Schritten auf dem Bildschirm, um die Datenbank anzulegen.
+3. Füge den Text firebaseConfig ins Feld ein und klicke auf Speichern und prüfen.
+
+== youtube | Die Zahlen deines YouTube-Kanals zeigen
+1. Klicke auf Einstellungen, dann auf Besucher und Google und dann auf Die öffentlichen Zahlen deines YouTube-Kanals, falls du sie willst.
+2. Folge den Schritten auf dem Bildschirm, um einen Schlüssel anzulegen.
+3. Tippe die Adresse deines Kanals, füge den Schlüssel ein und klicke auf Speichern und prüfen.
+
+== publishing-key | Dich noch einmal bei GitHub anmelden oder deinen Veröffentlichungsschlüssel ändern
+1. Klicke in der Leiste auf Einstellungen und dann auf GitHub.
+2. Klicke auf Noch einmal bei GitHub anmelden und folge dem Bildschirm. Oder füge einen neuen Schlüssel ins Feld Dein Veröffentlichungsschlüssel ein.
+3. Klicke auf Das Repository noch einmal prüfen und speichern.
+
+Lass das Schlüsselfeld leer, um den Schlüssel zu behalten, den Pressless
+schon hat.
+
+== more-sites | Dich um mehr als eine Website kümmern
+1. Klicke in der Leiste auf Websites.
+picture sites.png | Der Bildschirm Websites, mit einer Website, die als jetzt geöffnet markiert ist, und der Schaltfläche Eine neue Website beginnen.
+2. Klicke auf Eine neue Website beginnen, um eine weitere anzulegen. Pressless öffnet sich noch einmal und führt dich dafür durch die Einrichtung.
+3. Klicke neben einer Website auf Öffnen, um an dieser zu arbeiten.
+4. Klicke neben einer Website auf Entfernen, um sie von diesem Computer zu nehmen. Pressless speichert sie zuerst als eine Datei, und ihre Website bleibt im Netz.
+
+Wenn du eine andere Website öffnest, startet Pressless in einem neuen Tab
+neu. Beende also zuerst, was du gerade schreibst.
+
+== saving-a-site | Eine ganze Website in einer Datei speichern und wieder öffnen
+Die Datei enthält die Texte, Fotos und Einstellungen der Website. Den
+Veröffentlichungsschlüssel enthält sie nie.
+
+1. Klicke in der Leiste auf Websites.
+2. Klicke auf Diese Website in eine Datei speichern. Dein Browser speichert die Datei.
+3. Um eine Website zurückzuholen, klicke auf Eine Website-Datei öffnen und wähle die Datei.
+4. Öffne für diese Website Einstellungen, dann GitHub, und gib den Veröffentlichungsschlüssel einmal ein.
+
+== moving-computer | Pressless auf einen neuen Computer umziehen
+1. Klicke in der Leiste auf Websites.
+2. Klicke auf Pressless auf einen neuen Computer umziehen.
+picture move-computer.png | Das Feld mit der Überschrift Pressless auf einen neuen Computer umziehen, bei seinem ersten Schritt, Jede Website in eine Datei speichern.
+3. Folge seinen Schritten mit Weiter: jede Website in eine Datei speichern, die Dateien auf den neuen Computer bringen und dort jede Datei öffnen.
+
+== backups | Sicherungen, und wählen, wo sie liegen
+Jeden Tag speichert Pressless jede Website von selbst in eine Datei und
+behält die neuesten. Sie kommen in den Ordner Pressless-backups neben
+dem Programm.
+
+1. Klicke in der Leiste auf Websites.
+2. Füge unter Tägliche Sicherungen die ganze Adresse eines anderen Ordners ein, etwa eines auf einem USB-Stick oder in einem Cloud-Ordner.
+3. Klicke auf Diesen Ordner verwenden.
+
+Eine Sicherung öffnest du mit Eine Website-Datei öffnen, wie jede
+gespeicherte Website.
+
+== bringing-in-wordpress | Eine WordPress-Website übernehmen
+Eine Website, die noch nichts enthält, bietet das am Ende der Einrichtung
+an.
+
+1. Klicke auf Übernimm sie in Pressless.
+2. Wähle in WordPress Werkzeuge, dann Daten exportieren, dann Alle Inhalte, und klicke auf Exportdatei herunterladen.
+3. Klicke in Pressless auf Die Exportdatei wählen und wähle diese Datei.
+4. Folge jedem Bildschirm mit Weiter. Pressless kopiert deine Fotos und Dateien von deiner alten Website und listet auf, was es nicht kopieren konnte.
+5. Wähle ein Aussehen, denn ein WordPress-Theme kommt nicht mit.
+
+Beiträge, Seiten, das Menü, Kommentare, Fotos und Dateien kommen mit.
+Nichts ist im Netz, bis du veröffentlichst.
+
+== bringing-in-a-folder | Eine Website übernehmen, die ein Ordner mit Webseiten ist
+Eine Website, die noch nichts enthält, bietet das am Ende der Einrichtung
+an.
+
+1. Klicke auf Übernimm diesen Ordner stattdessen.
+2. Klicke auf Den Ordner wählen und wähle den Ordner deiner Website. Wenn er in einer ZIP-Datei ist, klicke auf Eine ZIP-Datei wählen.
+3. Klicke auf Weiter. Pressless zeigt, was mitkommt und was nicht.
+
+Die Website behält ihr Aussehen und ihre Adressen.
+
+== theme | Ändern, wie Pressless selbst aussieht: hell, dunkel oder hoher Kontrast
+1. Klicke in der Leiste auf Mehr.
+picture more.png | Mehr geöffnet, mit Etwas vorschlagen oder ein Problem melden, Nutzungsberichte, Info und den Listen Design und Textgröße.
+2. Wähle in der Liste Design ein Design. Meinem Computer folgen nimmt hell oder dunkel, je nachdem, wie dein Computer eingestellt ist.
+
+Das ändert Pressless nur auf deinem Bildschirm, nie deine Website.
+
+== text-size | Den Text von Pressless größer machen
+1. Klicke in der Leiste auf Mehr.
+2. Wähle in der Liste Textgröße Groß, Größer oder Am größten.
+
+== updating | Pressless aktualisieren
+Wenn eine neue Version da ist, sagt das der Bildschirm Deine Website.
+Klicke unter den Schaltflächen auf Was seit Version neu ist, um zu lesen,
+was sich geändert hat.
+
+1. Klicke auf Jetzt aktualisieren. Pressless installiert sie und öffnet sich von selbst wieder.
+2. Oder klicke auf Später oder auf Diese Version überspringen.
+
+Deine Websites bleiben, wo sie sind. Damit Pressless nicht mehr nach
+neuen Versionen sucht, klicke auf Einstellungen, dann auf Dieser Computer
+und dann auf Nicht mehr suchen.
+
+== jpeg-xl | JPEG-XL-Fotos verwenden
+JPEG XL ist eine Art von Fotodatei. Pressless braucht einen Download,
+bevor es sie verwenden kann.
+
+1. Klicke in der Leiste auf Einstellungen und dann auf Dieser Computer.
+2. Klicke auf Unterstützung für JPEG XL hinzufügen.
+
+== shortcuts | Pressless ins Menü oder auf den Desktop legen
+1. Klicke in der Leiste auf Einstellungen und dann auf Dieser Computer.
+2. Setze das Häkchen für das Menü, den Desktop oder beides. Entferne eines, um es wieder wegzunehmen.
+3. Klicke auf Diese speichern.
+
+Das funktioniert, wenn Pressless aus der Datei läuft, die du
+heruntergeladen hast.
+
+== ai-helper | Eine KI-App helfen lassen
+Eine KI-App auf deinem Computer, etwa Claude, kann deine Website über
+Pressless schreiben und bearbeiten. Sie ist aus, bis du sie einschaltest.
+
+1. Klicke in der Leiste auf Deine Website und dann oben auf KI-Helfer.
+2. Klicke auf Einschalten.
+picture ai-helper.png | Der obere Teil des Bildschirms KI-Helfer, mit dem Satz Aus: Keine KI-App kann sich verbinden und der Schaltfläche Einschalten.
+3. Klicke für Claude Desktop auf Claude Desktop verbinden, beende dann Claude Desktop vollständig und starte es noch einmal. Folge für eine andere App den Schritten auf dem Bildschirm.
+
+Nichts wird veröffentlicht, rückgängig gemacht oder in den Papierkorb
+gelegt, bis du in Pressless auf Ja, mach das klickst. Die App kann weder
+deine Schlüssel noch deine Einstellungen noch den Code einer Seite
+erreichen. Pressless muss geöffnet sein, während die App arbeitet.
+
+== usage-reports | Nutzungsberichte ein- oder ausschalten
+Nutzungsberichte sind anonym: welche Bildschirme benutzt werden, wo die
+Einrichtung stehen bleibt und was schiefgeht. Sie enthalten nie deine
+Texte oder die Adresse deiner Website.
+
+1. Klicke in der Leiste auf Mehr und dann auf Nutzungsberichte.
+2. Klicke auf Nutzungsberichte einschalten oder schalte sie dort aus.
+
+Derselbe Bildschirm listet jeden gesendeten Bericht auf.
+
+== reporting-a-problem | Etwas vorschlagen oder ein Problem melden
+1. Klicke in der Leiste auf Mehr und dann auf Etwas vorschlagen oder ein Problem melden.
+2. Klicke auf Die Meldung auf GitHub öffnen.
+3. Beantworte die Fragen auf der Seite von GitHub und schick sie ab.
+
+Eine Meldung ist öffentlich. Lass die Adresse deiner Website, deine Texte
+und deinen Veröffentlichungsschlüssel weg.
+
+== restarting | Pressless neu starten
+1. Klicke in der Leiste auf Einstellungen und dann auf Dieser Computer.
+2. Klicke auf Pressless neu starten und dann auf Neu starten.
+
+Jeder jetzt geöffnete Pressless-Tab funktioniert dann nicht mehr, und ein
+neuer öffnet sich.
+
+== tray-icon | Das Pressless-Symbol neben der Uhr benutzen
+Solange Pressless läuft, sitzt sein Symbol neben der Uhr: im
+Infobereich unter Windows und in der Systemleiste unter Linux. Es
+funktioniert auch, nachdem du jeden Pressless-Tab geschlossen hast.
+
+1. Klicke auf das Pressless-Symbol, um Pressless in deinem Browser zu öffnen.
+2. Klicke mit der rechten Maustaste darauf für Pressless öffnen, Neu starten und Pressless beenden.
+
+Pressless beenden stoppt es, so wie das Schließen seines Fensters. Einige
+Linux-Desktops zeigen keine Symbole neben der Uhr.
+
+== version | Herausfinden, welche Version du hast
+1. Klicke in der Leiste auf Mehr und dann auf Info.
