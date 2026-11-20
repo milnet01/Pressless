@@ -7,11 +7,11 @@
  "words": {
   "about.independent": [
    "db462f93",
-   "Pressless ist ein unabhängiges Projekt. Es wird nicht von GitHub, Google oder WordPress hergestellt und steht in keiner Verbindung zu ihnen oder wird von ihnen unterstützt. Du bist für das verantwortlich, was du veröffentlichst, und dafür, die Nutzungsbedingungen von GitHub Pages einzuhalten, das deine Website hostet."
+   "Pressless ist ein unabhängiges Projekt. Es stammt nicht von GitHub, Google oder WordPress, steht in keiner Verbindung zu ihnen und wird von ihnen nicht unterstützt. Du bist für das verantwortlich, was du veröffentlichst, und dafür, die Nutzungsbedingungen von GitHub Pages einzuhalten, das deine Website hostet."
   ],
   "about.licence": [
    "1a5d3feb",
-   "Es ist frei nutzbar, veränderbar und weitergebbar, unter der MIT-Lizenz. Sein Quellcode liegt auf <a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">der Seite von Pressless auf GitHub</a>."
+   "Du darfst es unter der MIT-Lizenz frei nutzen, ändern und weitergeben. Sein Quellcode liegt auf <a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">der Seite von Pressless auf GitHub</a>."
   ],
   "about.version": [
    "1505db47",
@@ -123,7 +123,7 @@
   ],
   "assistant.next.credential": [
    "f4d3d78f",
-   "Wenn der Schlüsselbund der schreibenden Person gesperrt ist, entsperrt sie ihn und fragt dann noch einmal. Sonst gibt sie es in den Einstellungen von Pressless noch einmal ein. Wenn es weiter passiert, kann sie {log} an die Person schicken, die ihr hilft."
+   "Wenn der Schlüsselbund der schreibenden Person gesperrt ist, entsperrt sie ihn und fragt dann noch einmal. Sonst gibt sie den Schlüssel in den Einstellungen von Pressless noch einmal ein. Wenn es weiter passiert, kann sie {log} an die Person schicken, die ihr hilft."
   ],
   "assistant.next.nothing_to_publish": [
    "69522758",
@@ -207,7 +207,7 @@
   ],
   "assistant.status.failed": [
    "e478d55d",
-   "Es wurde nicht fertig."
+   "Es ist nicht fertig geworden."
   ],
   "assistant.status.refused": [
    "b6688763",
@@ -263,7 +263,7 @@
   ],
   "cheatsheet.panel": [
    "92850bf5",
-   "Spickzettel: So formatierst du deine Worte"
+   "Spickzettel: So gestaltest du deinen Text"
   ],
   "cheatsheet.print": [
    "8d32967d",
@@ -3611,7 +3611,7 @@
   ],
   "jpegxl.disk_full": [
    "fcb76801",
-   "Auf diesem Computer ist nicht genug Platz für die Unterstützung von JPEG XL. Schaffe Platz und versuche es dann noch einmal."
+   "Auf diesem Computer ist nicht genug Platz für die JPEG-XL-Unterstützung. Schaffe Platz und versuche es dann noch einmal."
   ],
   "jpegxl.line": [
    "334e81e8",
@@ -4631,7 +4631,7 @@
   ],
   "restarting.back": [
    "be7700e4",
-   "Zurück zu Einstellungen"
+   "Zurück zu den Einstellungen"
   ],
   "restarting.going": [
    "5ce91cbb",
@@ -5987,7 +5987,7 @@
   ],
   "sites_screen.backups.about": [
    "9eb6bbe3",
-   "Jeden Tag speichert Pressless jede Website von selbst in eine Datei und behält die letzten sieben von jeder. Eine Sicherung auf einem anderen Laufwerk, einem USB-Stick oder in einem Cloud-Ordner ist auch dann sicher, wenn dieser Computer verloren geht."
+   "Jeden Tag speichert Pressless jede Website von selbst in eine Datei und behält von jeder die letzten sieben. Eine Sicherung auf einem anderen Laufwerk, einem USB-Stick oder in einem Cloud-Ordner ist auch dann sicher, wenn dieser Computer verloren geht."
   ],
   "sites_screen.backups.chosen": [
    "299e603d",
@@ -6043,15 +6043,15 @@
   ],
   "sites_screen.move.carry": [
    "77c69ecd",
-   "Kopiere die Dateien auf einen USB-Stick oder in einen Cloud-Ordner, den beide Computer erreichen. Lade dann Pressless auf dem neuen Computer herunter und starte es."
+   "Kopiere die Dateien auf einen USB-Stick oder in einen Cloud-Ordner, den beide Computer erreichen. Lade Pressless dann auf dem neuen Computer herunter und starte es."
   ],
   "sites_screen.move.open": [
    "aa1034d0",
-   "Gehe auf dem neuen Computer zum Bildschirm Websites und nimm für jede Datei Eine Website-Datei öffnen. Der Veröffentlichungsschlüssel ist nie in einer Datei, gib ihn also in den Einstellungen ein, sobald jede Website geöffnet ist."
+   "Gehe auf dem neuen Computer zum Bildschirm Websites und nutze für jede Datei Eine Website-Datei öffnen. Der Veröffentlichungsschlüssel ist nie in einer Datei, gib ihn also in den Einstellungen ein, sobald jede Website geöffnet ist."
   ],
   "sites_screen.move.save": [
    "ceb734ba",
-   "Speichere jede Website, die du mitnehmen willst. Jede wird als Datei heruntergeladen, meist in deinen Ordner Downloads."
+   "Speichere jede Website, die du mitnehmen willst. Jede wird als Datei heruntergeladen, meist in deinen Downloads-Ordner."
   ],
   "sites_screen.move.save_one": [
    "45983840",
@@ -6111,7 +6111,7 @@
   ],
   "sites_screen.removed": [
    "83cb53fb",
-   "Entfernt. Sie ist als {file} im Ordner {folder} gespeichert, die du hier öffnen kannst, um sie zurückzuholen."
+   "Entfernt. Sie ist als {file} im Ordner {folder} gespeichert, den du hier öffnen kannst, um sie zurückzuholen."
   ],
   "sites_screen.save": [
    "73b9c22a",
@@ -6415,7 +6415,7 @@
   ],
   "themes.size.largest": [
    "5511a4b7",
-   "Am größten"
+   "Sehr groß"
   ],
   "themes.size.normal": [
    "a7248eeb",
@@ -6555,7 +6555,7 @@
   ],
   "updating.not_reopened": [
    "180977cd",
-   "Pressless ist auf Version {version} aktualisiert, konnte sich aber nicht von selbst wieder öffnen. Schließe sein Fenster und starte es noch einmal."
+   "Pressless ist auf Version {version} aktualisiert, konnte sich aber nicht von selbst wieder öffnen. Schließe sein Fenster und starte es neu."
   ],
   "updating.offer": [
    "4fd99886",
@@ -6647,7 +6647,7 @@
   ],
   "votes_setup.app_check.title": [
    "070c78d8",
-   "Freiwillig und am besten aus: App Check"
+   "Optional und am besten aus: App Check"
   ],
   "votes_setup.back": [
    "3f8e94e3",
@@ -6675,7 +6675,7 @@
   ],
   "votes_setup.check.ready": [
    "71067583",
-   "Bereit: Google hat jede Prüfung so beantwortet, wie es soll."
+   "Bereit: Google hat jede Prüfung so beantwortet, wie es sein soll."
   ],
   "votes_setup.check.recaptcha": [
    "c2f7daa2",
@@ -6719,7 +6719,7 @@
   ],
   "votes_setup.off.done": [
    "fccb1f9e",
-   "Die Schaltflächen verschwinden bei deinem nächsten Auf die Website stellen. Die Stimmen bleiben in deiner Datenbank, und deine Seite Datenschutz behält ihre Worte."
+   "Die Schaltflächen verschwinden bei deinem nächsten Hochladen. Die Stimmen bleiben in deiner Datenbank, und deine Seite Datenschutz behält ihre Worte."
   ],
   "votes_setup.on": [
    "2e2d4600",
@@ -6731,7 +6731,7 @@
   ],
   "votes_setup.saved": [
    "814d3cca",
-   "Die Schaltflächen erscheinen bei deinem nächsten Auf die Website stellen, und deine Seite Datenschutz sagt, was sie aufzeichnen."
+   "Die Schaltflächen erscheinen bei deinem nächsten Hochladen, und deine Seite Datenschutz sagt, was sie aufzeichnen."
   ],
   "votes_setup.saved.title": [
    "fca046cc",
