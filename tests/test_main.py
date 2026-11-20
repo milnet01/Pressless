@@ -637,7 +637,15 @@ def test_a_closed_windows_console_waits_for_the_stop(monkeypatch, tmp_path, caps
     _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
     _store(monkeypatch, Choice("keyring", "SecretService"))
     _Opened(monkeypatch)
-    monkeypatch.setattr(main_module, "_wait", _REAL_WAIT)   # the real wait, interrupted
+    waiting = threading.Event()
+
+    def wait(restart):
+        """The real wait, interrupted; the window is closed only once it is
+        reached, as a person closes it after the Face is up."""
+        waiting.set()
+        return _REAL_WAIT(restart)
+
+    monkeypatch.setattr(main_module, "_wait", wait)
     own = artefact.parent / _FOLDER_NAME
     own.mkdir(parents=True, exist_ok=True)
     (own / "assistant.json").write_text('{"on": true}', encoding="utf-8")
@@ -653,8 +661,8 @@ def test_a_closed_windows_console_waits_for_the_stop(monkeypatch, tmp_path, caps
     def windows():
         """What Windows does when the window is closed: call the handler on a
         thread of its own, then end the process once it returns."""
-        while not door.exists():
-            threading.Event().wait(0.01)
+        waiting.wait(10)
+        seen["door_before"] = door.exists()
         seen["ctrl_c"] = handlers[0](0)        # CTRL_C_EVENT: Python's own
         seen["close"] = handlers[0](2)         # CTRL_CLOSE_EVENT
         seen["door"] = door.exists()
@@ -663,7 +671,7 @@ def test_a_closed_windows_console_waits_for_the_stop(monkeypatch, tmp_path, caps
     closer.start()
     assert main_module.main([]) == 0
     closer.join(timeout=10)
-    assert seen == {"ctrl_c": False, "close": True, "door": False}
+    assert seen == {"door_before": True, "ctrl_c": False, "close": True, "door": False}
     assert removed == handlers
 
 
