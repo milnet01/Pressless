@@ -5682,21 +5682,6 @@ it can then be changed.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Import, Face.
 
-- 💭 [PRESS-0175] **A blog whose slugs are in Cyrillic, Greek or CJK gets every published address changed on import.**
-  pressless_import.resolve_slug folds a slug to ASCII and falls back to
-  the post id where nothing survives, as PRESS-0005 3 decision 4 and
-  PRESS-0007 4.4 require. For a non-Latin blog every address therefore
-  changes, which breaks every inbound link. It matches the spec and the
-  first writer's archive is Latin, so this matters only for general users
-  (PRESS-0125's importer). A fix is a spec decision: transliterate, or keep
-  percent-encoded addresses. Filed as considered, for PRESS-0125.
-  Placed in 0.11.0 on 2026-10-02: a decision PRESS-0125's spec makes
-  for general users.
-  **Layman:** For a blog written in a non-Latin alphabet, importing would change every post's web address.
-  Kind: enhancement.
-  Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
-  Lanes: import.
-
 - ✅ [PRESS-0222] **A wizard puts the site on his own domain name.**
   Chosen under PRESS-0220. GitHub Pages serves a site at its own address
   until a domain is set up, which takes a CNAME file in the repository,
@@ -6503,7 +6488,7 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: editor.
 
-- 💭 [PRESS-0247] **A changed look can show the old one for ten minutes.**
+- 🚫 [PRESS-0247] **A changed look can show the old one for ten minutes.**
   The stylesheet is always published as look/style.css, and GitHub
   Pages serves it with max-age=600, as it does the pages. Seen on the
   0.8.0 run: after replacing a Harbour site with Sunrise, a browser
@@ -6516,6 +6501,8 @@ user's question of 2026-11-03 and a study of leading site editors.
   ("A fixed page is unchanged ... byte for byte"), so it costs that
   spec an amendment and a gate. A link tag on built pages alone would
   leave the homepage stale, where it was seen.
+  Dropped (user, 2026-11-20): it clears itself in ten minutes, and a
+  whole fix costs PRESS-0126 § 4.6 an amendment.
   **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
@@ -8896,6 +8883,13 @@ does not wait on them.
   opinion on all four (FreeLLMAPI's Gemini routes were out of credits;
   brief in the session scratchpad, translate/BRIEF.md), and a by-hand
   look in the browser that each fits its screens.
+  2026-11-20: fit check, scripted in the session scratchpad
+  (translate/fit-check.py): every screen a link reaches (34), in all
+  five languages, at 1280x800 and 760x900, in Chrome. No sideways
+  scroll, no text cut off by its box, no control wrapping where the
+  English one does not. The probe was proven on a planted case of
+  each. Not covered: boxes a button opens. Gemini still out of
+  credits (about 15 hours to reset).
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
@@ -8914,6 +8908,21 @@ A site can be published to a free host other than GitHub Pages.
   **Layman:** You could put your site on a free host other than GitHub, such as Netlify.
   Kind: feature.
   Source: user-request-2026-11-13.
+
+- 💭 [PRESS-0175] **A blog whose slugs are in Cyrillic, Greek or CJK gets every published address changed on import.**
+  pressless_import.resolve_slug folds a slug to ASCII and falls back to
+  the post id where nothing survives, as PRESS-0005 3 decision 4 and
+  PRESS-0007 4.4 require. For a non-Latin blog every address therefore
+  changes, which breaks every inbound link. It matches the spec and the
+  first writer's archive is Latin, so this matters only for general users
+  (PRESS-0125's importer). A fix is a spec decision: transliterate, or keep
+  percent-encoded addresses. Filed as considered, for PRESS-0125.
+  Placed in 0.11.0 on 2026-10-02: a decision PRESS-0125's spec makes
+  for general users.
+  **Layman:** For a blog written in a non-Latin alphabet, importing would change every post's web address.
+  Kind: enhancement.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
+  Lanes: import.
 
 ## Done outside a version
 
