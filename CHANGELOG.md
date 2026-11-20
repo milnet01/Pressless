@@ -14,7 +14,7 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
-- **Pressless in Spanish and Afrikaans** (PRESS-0241)
+- **Pressless in Spanish, Afrikaans and French** (PRESS-0241)
   Pressless shows its screens, its manual and its video captions in your
   computer's language when it has that language, and in English otherwise.
   Choose another under More, Language. Each site has a Site language in

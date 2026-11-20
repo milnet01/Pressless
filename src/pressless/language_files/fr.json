@@ -1,0 +1,6962 @@
+{
+ "name": "Français",
+ "one": [
+  0,
+  1
+ ],
+ "thousands": " ",
+ "words": {
+  "about.independent": [
+   "db462f93",
+   "Pressless est un projet indépendant. Il n'est ni créé par GitHub, Google ou WordPress, ni affilié à eux, ni approuvé par eux. Vous êtes responsable de ce que vous publiez, et du respect des conditions d'utilisation de GitHub Pages, qui héberge votre site."
+  ],
+  "about.licence": [
+   "1a5d3feb",
+   "Il est libre d'utilisation, de modification et de partage, sous la licence MIT. Son code source se trouve sur <a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">la page de Pressless sur GitHub</a>."
+  ],
+  "about.version": [
+   "1505db47",
+   "Ceci est Pressless {version}."
+  ],
+  "assistant.about": [
+   "832ce931",
+   "Une application d'IA sur cet ordinateur, comme Claude, peut écrire et modifier votre site par l'intermédiaire de Pressless. Rien n'est publié, annulé ou mis à la corbeille tant que vous ne cliquez pas sur Oui dans Pressless. Elle ne peut accéder ni à vos clés, ni à vos réglages, ni au code d'aucune page."
+  ],
+  "assistant.app.claude_code": [
+   "246ef8c1",
+   "Claude Code"
+  ],
+  "assistant.app.claude_desktop": [
+   "6a7fb117",
+   "Claude Desktop"
+  ],
+  "assistant.app.other": [
+   "3ff585c5",
+   "Une autre application d'IA"
+  ],
+  "assistant.bad_call": [
+   "12d8e751",
+   "Cet appel ne peut pas s'exécuter : {why}."
+  ],
+  "assistant.bad_data": [
+   "e221e284",
+   "Les données du fichier ne sont pas en base64."
+  ],
+  "assistant.block": [
+   "773d603f",
+   "Ou, quand l'application demande ses réglages sous forme de texte :"
+  ],
+  "assistant.box.bin": [
+   "8cfa54ae",
+   "Mettre {name} à la corbeille."
+  ],
+  "assistant.box.discard": [
+   "5d4ac414",
+   "Abandonner les modifications en attente sur {name}."
+  ],
+  "assistant.box.remove": [
+   "01ca3786",
+   "Retirer maintenant la page {name} de votre site."
+  ],
+  "assistant.box.rename": [
+   "8a3f497e",
+   "Renommer maintenant la page {name} en {to}."
+  ],
+  "assistant.box.undo": [
+   "7d062601",
+   "Remettre votre site comme il était avant la dernière publication."
+  ],
+  "assistant.connect": [
+   "87973d1d",
+   "Connecter une application d'IA"
+  ],
+  "assistant.connect.about": [
+   "e6023283",
+   "Pressless peut connecter Claude Desktop pour vous. Le bouton ajoute Pressless au fichier de réglages de Claude Desktop et garde tout le reste. Une copie du fichier tel qu'il était est conservée à côté."
+  ],
+  "assistant.connect.button": [
+   "e91e2794",
+   "Connecter Claude Desktop"
+  ],
+  "assistant.connect.done": [
+   "f6e3aaf4",
+   "Claude Desktop est connecté. Quittez complètement Claude Desktop et relancez-le. Fermer sa fenêtre peut le laisser en marche."
+  ],
+  "assistant.connect.not_found": [
+   "76f5992b",
+   "Pressless n'a pas trouvé Claude Desktop sur cet ordinateur, donc il n'a rien modifié. Installez Claude Desktop et ouvrez-le une fois, puis cliquez de nouveau sur le bouton."
+  ],
+  "assistant.connect.unreadable": [
+   "5b0e5bde",
+   "Pressless n'a pas pu lire ni modifier le fichier de réglages de Claude Desktop, donc il est tel qu'il était. Suivez plutôt les étapes ci-dessous."
+  ],
+  "assistant.copy": [
+   "e21f935f",
+   "Copier"
+  ],
+  "assistant.entry_or_page": [
+   "5c0632b3",
+   "Nommez une entrée ou une page, pas les deux."
+  ],
+  "assistant.links_owed": [
+   "6d59398a",
+   "La navigation prend des liens, pas des sections."
+  ],
+  "assistant.locked_section": [
+   "38507359",
+   "Ce changement ajoute, modifie, déplace ou supprime une section de script, de style ou de code, ce que l'assistant IA n'a pas le droit de faire. Gardez chaque section verrouillée telle quelle, à sa place."
+  ],
+  "assistant.log": [
+   "b0fae8b7",
+   "Le journal d'événements de Pressless ({file}, dans le dossier Pressless-data à côté du programme)"
+  ],
+  "assistant.next.again": [
+   "e8a50681",
+   "Réessayez. Si cela continue, la personne qui écrit peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.again_later": [
+   "ee3f6ee1",
+   "Réessayez plus tard. Si cela continue, la personne qui écrit peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.build_stopped": [
+   "ec717dc2",
+   "{log} nomme le fichier. La personne qui écrit peut le vérifier, puis redemander. Si cela continue, elle peut envoyer le journal à celui ou celle qui l'aide."
+  ],
+  "assistant.next.credential": [
+   "f4d3d78f",
+   "Si le trousseau de clés de la personne qui écrit est verrouillé, elle le déverrouille, puis redemande ; sinon elle le saisit de nouveau dans les Réglages de Pressless. Si cela continue, elle peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.nothing_to_publish": [
+   "69522758",
+   "Publiez d'abord une entrée, ou la personne qui écrit désactive le journal sur l'écran Journal de Pressless. Si des entrées ont disparu, elle peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.send_log": [
+   "cd499ccb",
+   "La personne qui écrit peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.settings": [
+   "f5f673f5",
+   "Pressless n'y a rien modifié. La personne qui écrit peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.takeover": [
+   "46936a2b",
+   "La personne qui écrit clique sur Publier dans Pressless et suit Passer votre site à Pressless, qui indique d'abord ce qui change ; puis demandez de publier de nouveau."
+  ],
+  "assistant.next.too_large": [
+   "c4293322",
+   "Si un gros fichier a été ajouté, supprimez-le ou réduisez-le, puis réessayez. Si cela continue, la personne qui écrit peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.unfetchable": [
+   "befb1dc5",
+   "{log} nomme le fichier. La personne qui écrit le renomme sur le site et publie ; puis demandez de nouveau."
+  ],
+  "assistant.next.unforeseen": [
+   "09842849",
+   "Réessayez, et la personne qui écrit peut envoyer {log} à celui ou celle qui l'aide."
+  ],
+  "assistant.next.would_replace": [
+   "992dcafe",
+   "Si la personne qui écrit veut le remplacer, elle clique sur Publier dans Pressless et choisit Remplacer le site sur GitHub ; puis demandez de publier de nouveau."
+  ],
+  "assistant.no_program": [
+   "663b312e",
+   "Pressless ne peut pas dire où se trouve son programme, donc il n'y a rien qu'une application d'IA puisse lancer. Si Pressless a été déplacé ou supprimé pendant qu'il était ouvert, relancez-le depuis son emplacement actuel."
+  ],
+  "assistant.not_json": [
+   "46e57d27",
+   "Cet appel ne peut pas s'exécuter : ce n'est pas un objet JSON."
+  ],
+  "assistant.off": [
+   "0d2ca6ca",
+   "Désactivé : aucune application d'IA ne peut se connecter."
+  ],
+  "assistant.on": [
+   "f6d08087",
+   "Activé : une application d'IA peut se connecter tant que Pressless est ouvert."
+  ],
+  "assistant.one_waiting": [
+   "3feee57b",
+   "Une demande attend déjà la réponse de la personne qui écrit. Interrogez request_status jusqu'à ce qu'elle ait répondu."
+  ],
+  "assistant.open_pressless": [
+   "997d09a2",
+   "Pressless n'est pas ouvert, ou son assistant IA est désactivé. Demandez à la personne qui écrit d'ouvrir Pressless et d'activer l'Assistant IA, puis réessayez."
+  ],
+  "assistant.own_stylesheets": [
+   "65e7dc90",
+   "Ce site utilise ses propres feuilles de style, donc son apparence se change sur l'écran Apparence de Pressless, pas par l'assistant IA."
+  ],
+  "assistant.program": [
+   "586765bd",
+   "L'application d'IA lance ce programme, avec cet argument :"
+  ],
+  "assistant.restart_app": [
+   "e39dbe99",
+   "Pressless a été mis à jour après que cette application d'IA a lancé son assistant. Redémarrez l'application d'IA."
+  ],
+  "assistant.sections_owed": [
+   "33c841df",
+   "Donnez les sections de la page."
+  ],
+  "assistant.status.done": [
+   "ed251864",
+   "Terminé."
+  ],
+  "assistant.status.expired": [
+   "078ba92d",
+   "Personne n'a répondu en 30 minutes. Rien n'a changé."
+  ],
+  "assistant.status.failed": [
+   "e478d55d",
+   "Cela ne s'est pas terminé."
+  ],
+  "assistant.status.refused": [
+   "b6688763",
+   "La personne qui écrit a dit pas encore. Rien n'a changé."
+  ],
+  "assistant.status.running": [
+   "a6f05661",
+   "En cours."
+  ],
+  "assistant.status.unknown": [
+   "4d86c1cb",
+   "Pressless ne connaît pas cette demande. Il a peut-être redémarré depuis."
+  ],
+  "assistant.status.waiting": [
+   "c3801da7",
+   "En attente de la réponse de la personne qui écrit dans la fenêtre de Pressless. Prévenez-la, et redemandez quand elle dit avoir répondu. L'attente dure jusqu'à 30 minutes."
+  ],
+  "assistant.steps.claude_code": [
+   "30ef7965",
+   "Copiez cette ligne, collez-la dans un terminal, et appuyez sur Entrée. Claude Code trouve alors Pressless quel que soit le dossier où il démarre."
+  ],
+  "assistant.steps.claude_desktop": [
+   "162c7571",
+   "Pour le faire à la main : ouvrez Settings, puis Desktop app. Au bas de cette page, cliquez sur Manage à côté de Extensions, puis sur Edit config. Un dossier s'ouvre avec un fichier sélectionné : ouvrez ce fichier dans un éditeur de texte. Collez-y le texte ci-dessus, en gardant ce qui s'y trouve déjà, enregistrez, et relancez Claude Desktop."
+  ],
+  "assistant.steps.other": [
+   "91903512",
+   "Une application qui peut lancer un serveur MCP local peut aussi fonctionner : donnez-lui le programme et l'argument ci-dessus. Pressless n'est testé qu'avec les deux applications nommées ici."
+  ],
+  "assistant.still_working": [
+   "38bd395c",
+   "Pressless a mis trop de temps à répondre, et est peut-être encore en train de le faire. Vérifiez avec site_overview, ou request_status pour une demande, avant de réessayer."
+  ],
+  "assistant.switch_off": [
+   "73b18d52",
+   "Désactiver"
+  ],
+  "assistant.switch_on": [
+   "6d30f572",
+   "Activer"
+  ],
+  "assistant.title": [
+   "c22bf759",
+   "Assistant IA"
+  ],
+  "backups.trouble": [
+   "0bf0fd99",
+   "La dernière sauvegarde n'a pas pu être faite dans le dossier {folder} : {reason}."
+  ],
+  "cheatsheet.does": [
+   "c74ea9dc",
+   "Ce que cela fait"
+  ],
+  "cheatsheet.panel": [
+   "92850bf5",
+   "Aide-mémoire : comment mettre en forme vos mots"
+  ],
+  "cheatsheet.print": [
+   "8d32967d",
+   "Une page à imprimer"
+  ],
+  "cheatsheet.title": [
+   "0a5c8a6c",
+   "Aide-mémoire Pressless"
+  ],
+  "cheatsheet.where": [
+   "ee932aa4",
+   "Tapez ceci dans la zone où vous écrivez une entrée."
+  ],
+  "cheatsheet.you_type": [
+   "327280db",
+   "Vous tapez"
+  ],
+  "checklist.count": [
+   "79e658a3",
+   "{done} sur {total} faits."
+  ],
+  "checklist.describe": [
+   "7413d26e",
+   "Décrire votre site en une ligne"
+  ],
+  "checklist.done": [
+   "11a6767d",
+   "Fait"
+  ],
+  "checklist.home": [
+   "b437ac50",
+   "Personnaliser la page d'accueil"
+  ],
+  "checklist.icon": [
+   "b70602ac",
+   "Choisir l'icône de votre site"
+  ],
+  "checklist.menu": [
+   "ffa34423",
+   "Configurer le menu"
+  ],
+  "checklist.publish": [
+   "72c582e7",
+   "Mettre votre site sur le web"
+  ],
+  "checklist.title": [
+   "51eb40d7",
+   "Terminer la configuration"
+  ],
+  "checklist.to_do": [
+   "be2d4e04",
+   "Reste à faire"
+  ],
+  "country.AD": [
+   "3e340be4",
+   "Andorre"
+  ],
+  "country.AE": [
+   "dd64913c",
+   "Émirats arabes unis"
+  ],
+  "country.AF": [
+   "5dbddf91",
+   "Afghanistan"
+  ],
+  "country.AG": [
+   "100c4768",
+   "Antigua-et-Barbuda"
+  ],
+  "country.AI": [
+   "a4a0c7e7",
+   "Anguilla"
+  ],
+  "country.AL": [
+   "1af00b87",
+   "Albanie"
+  ],
+  "country.AM": [
+   "2ddc5634",
+   "Arménie"
+  ],
+  "country.AO": [
+   "22b96532",
+   "Angola"
+  ],
+  "country.AQ": [
+   "c43f33f0",
+   "Antarctique"
+  ],
+  "country.AR": [
+   "ea0b937e",
+   "Argentine"
+  ],
+  "country.AS": [
+   "1eb48c03",
+   "Samoa américaines"
+  ],
+  "country.AT": [
+   "c9cab023",
+   "Autriche"
+  ],
+  "country.AU": [
+   "c1ef40ce",
+   "Australie"
+  ],
+  "country.AW": [
+   "b566255e",
+   "Aruba"
+  ],
+  "country.AX": [
+   "6fc656b1",
+   "Îles Åland"
+  ],
+  "country.AZ": [
+   "efa9150a",
+   "Azerbaïdjan"
+  ],
+  "country.BA": [
+   "b0772b9c",
+   "Bosnie-Herzégovine"
+  ],
+  "country.BB": [
+   "8e8dfae9",
+   "Barbade"
+  ],
+  "country.BD": [
+   "2f1d47eb",
+   "Bangladesh"
+  ],
+  "country.BE": [
+   "348841ef",
+   "Belgique"
+  ],
+  "country.BF": [
+   "a564371a",
+   "Burkina Faso"
+  ],
+  "country.BG": [
+   "66b86bf0",
+   "Bulgarie"
+  ],
+  "country.BH": [
+   "94b2859b",
+   "Bahreïn"
+  ],
+  "country.BI": [
+   "c835bd1c",
+   "Burundi"
+  ],
+  "country.BJ": [
+   "69d0a7b8",
+   "Bénin"
+  ],
+  "country.BL": [
+   "d47eb13f",
+   "Saint-Barthélemy"
+  ],
+  "country.BM": [
+   "79c89fd4",
+   "Bermudes"
+  ],
+  "country.BN": [
+   "f196e55e",
+   "Brunei"
+  ],
+  "country.BO": [
+   "9621c073",
+   "Bolivie"
+  ],
+  "country.BQ": [
+   "c90faa11",
+   "Pays-Bas caribéens"
+  ],
+  "country.BR": [
+   "07f62b02",
+   "Brésil"
+  ],
+  "country.BS": [
+   "58f91a2a",
+   "Bahamas"
+  ],
+  "country.BT": [
+   "d889e217",
+   "Bhoutan"
+  ],
+  "country.BV": [
+   "f6b5c9fb",
+   "Île Bouvet"
+  ],
+  "country.BW": [
+   "1672f60c",
+   "Botswana"
+  ],
+  "country.BY": [
+   "4bef16df",
+   "Biélorussie"
+  ],
+  "country.BZ": [
+   "71dc81f1",
+   "Belize"
+  ],
+  "country.CA": [
+   "be55ef3f",
+   "Canada"
+  ],
+  "country.CC": [
+   "b8e56e41",
+   "Îles Cocos"
+  ],
+  "country.CD": [
+   "098c6424",
+   "République démocratique du Congo"
+  ],
+  "country.CF": [
+   "e509cda4",
+   "République centrafricaine"
+  ],
+  "country.CG": [
+   "7491ff18",
+   "République du Congo"
+  ],
+  "country.CH": [
+   "22755831",
+   "Suisse"
+  ],
+  "country.CI": [
+   "95ffc51d",
+   "Côte d'Ivoire"
+  ],
+  "country.CK": [
+   "56850f3e",
+   "Îles Cook"
+  ],
+  "country.CL": [
+   "f5273e23",
+   "Chili"
+  ],
+  "country.CM": [
+   "085807f2",
+   "Cameroun"
+  ],
+  "country.CN": [
+   "10436829",
+   "Chine"
+  ],
+  "country.CO": [
+   "6b615adb",
+   "Colombie"
+  ],
+  "country.CP": [
+   "51814bd9",
+   "Île de Clipperton"
+  ],
+  "country.CR": [
+   "e26742d7",
+   "Costa Rica"
+  ],
+  "country.CU": [
+   "0d0b4e41",
+   "Cuba"
+  ],
+  "country.CV": [
+   "881f7fcc",
+   "Cap-Vert"
+  ],
+  "country.CW": [
+   "9b1d93b3",
+   "Curaçao"
+  ],
+  "country.CX": [
+   "10d025c2",
+   "Île Christmas"
+  ],
+  "country.CY": [
+   "5f1162c5",
+   "Chypre"
+  ],
+  "country.CZ": [
+   "1c769ecb",
+   "Tchéquie"
+  ],
+  "country.DE": [
+   "80db4ccd",
+   "Allemagne"
+  ],
+  "country.DG": [
+   "409d610c",
+   "Diego Garcia"
+  ],
+  "country.DJ": [
+   "4678a57b",
+   "Djibouti"
+  ],
+  "country.DK": [
+   "c5270975",
+   "Danemark"
+  ],
+  "country.DM": [
+   "be2a7f56",
+   "Dominique"
+  ],
+  "country.DO": [
+   "81e884cb",
+   "République dominicaine"
+  ],
+  "country.DZ": [
+   "30e23022",
+   "Algérie"
+  ],
+  "country.EC": [
+   "2ca26c60",
+   "Équateur"
+  ],
+  "country.EE": [
+   "10aeba69",
+   "Estonie"
+  ],
+  "country.EG": [
+   "557c1599",
+   "Égypte"
+  ],
+  "country.EH": [
+   "89b94e52",
+   "Sahara occidental"
+  ],
+  "country.ER": [
+   "01bc4009",
+   "Érythrée"
+  ],
+  "country.ES": [
+   "8ef41e6f",
+   "Espagne"
+  ],
+  "country.ET": [
+   "7d94977e",
+   "Éthiopie"
+  ],
+  "country.EU": [
+   "e595f45d",
+   "Europe"
+  ],
+  "country.FI": [
+   "aed8f531",
+   "Finlande"
+  ],
+  "country.FJ": [
+   "679c02dc",
+   "Fidji"
+  ],
+  "country.FK": [
+   "c387e2d5",
+   "Îles Malouines"
+  ],
+  "country.FM": [
+   "14d55e84",
+   "États fédérés de Micronésie"
+  ],
+  "country.FO": [
+   "773ca4d6",
+   "Îles Féroé"
+  ],
+  "country.FR": [
+   "7a1ca4ef",
+   "France"
+  ],
+  "country.GA": [
+   "7e222a78",
+   "Gabon"
+  ],
+  "country.GB": [
+   "8d23a6e3",
+   "Royaume-Uni"
+  ],
+  "country.GD": [
+   "0593aa0c",
+   "Grenade"
+  ],
+  "country.GE": [
+   "46914921",
+   "Géorgie"
+  ],
+  "country.GF": [
+   "2b457cd8",
+   "Guyane française"
+  ],
+  "country.GG": [
+   "b9c48cb1",
+   "Guernesey"
+  ],
+  "country.GH": [
+   "583201c1",
+   "Ghana"
+  ],
+  "country.GI": [
+   "097ced58",
+   "Gibraltar"
+  ],
+  "country.GL": [
+   "48e10296",
+   "Groenland"
+  ],
+  "country.GM": [
+   "c6e681b1",
+   "Gambie"
+  ],
+  "country.GN": [
+   "dd591d77",
+   "Guinée"
+  ],
+  "country.GP": [
+   "35c9de3c",
+   "Guadeloupe"
+  ],
+  "country.GQ": [
+   "89946878",
+   "Guinée équatoriale"
+  ],
+  "country.GR": [
+   "9c93ad43",
+   "Grèce"
+  ],
+  "country.GS": [
+   "baf802b2",
+   "Géorgie du Sud et îles Sandwich du Sud"
+  ],
+  "country.GT": [
+   "45a15a24",
+   "Guatemala"
+  ],
+  "country.GU": [
+   "5c4b321e",
+   "Guam"
+  ],
+  "country.GW": [
+   "75e8f462",
+   "Guinée-Bissau"
+  ],
+  "country.GY": [
+   "ea3bfc26",
+   "Guyana"
+  ],
+  "country.HK": [
+   "1ed8c7e5",
+   "Hong Kong"
+  ],
+  "country.HM": [
+   "e3a00ae6",
+   "Îles Heard et McDonald"
+  ],
+  "country.HN": [
+   "b79b5f97",
+   "Honduras"
+  ],
+  "country.HR": [
+   "7328d3f8",
+   "Croatie"
+  ],
+  "country.HT": [
+   "d090b87e",
+   "Haïti"
+  ],
+  "country.HU": [
+   "504be308",
+   "Hongrie"
+  ],
+  "country.IC": [
+   "a03ef3b6",
+   "Îles Canaries"
+  ],
+  "country.ID": [
+   "dbc74a36",
+   "Indonésie"
+  ],
+  "country.IE": [
+   "02bf1dfa",
+   "Irlande"
+  ],
+  "country.IL": [
+   "3552ac0c",
+   "Israël"
+  ],
+  "country.IM": [
+   "34096f96",
+   "Île de Man"
+  ],
+  "country.IN": [
+   "abd14921",
+   "Inde"
+  ],
+  "country.IO": [
+   "397d494b",
+   "Territoire britannique de l'océan Indien"
+  ],
+  "country.IQ": [
+   "de5008d1",
+   "Irak"
+  ],
+  "country.IR": [
+   "18d4e170",
+   "Iran"
+  ],
+  "country.IS": [
+   "595d6d91",
+   "Islande"
+  ],
+  "country.IT": [
+   "5a9cf672",
+   "Italie"
+  ],
+  "country.JE": [
+   "764a8c04",
+   "Jersey"
+  ],
+  "country.JM": [
+   "42c298ba",
+   "Jamaïque"
+  ],
+  "country.JO": [
+   "e8bfe1ed",
+   "Jordanie"
+  ],
+  "country.JP": [
+   "64729438",
+   "Japon"
+  ],
+  "country.KE": [
+   "74e1891d",
+   "Kenya"
+  ],
+  "country.KG": [
+   "6f189bf0",
+   "Kirghizistan"
+  ],
+  "country.KH": [
+   "0c2cb01a",
+   "Cambodge"
+  ],
+  "country.KI": [
+   "81912314",
+   "Kiribati"
+  ],
+  "country.KM": [
+   "e814fdb4",
+   "Comores"
+  ],
+  "country.KN": [
+   "0e89123f",
+   "Saint-Christophe-et-Niévès"
+  ],
+  "country.KP": [
+   "ae6175f1",
+   "Corée du Nord"
+  ],
+  "country.KR": [
+   "c85329e3",
+   "Corée du Sud"
+  ],
+  "country.KW": [
+   "10c3c2e2",
+   "Koweït"
+  ],
+  "country.KY": [
+   "83f2b333",
+   "Îles Caïmans"
+  ],
+  "country.KZ": [
+   "75c02b8d",
+   "Kazakhstan"
+  ],
+  "country.LA": [
+   "98e18f46",
+   "Laos"
+  ],
+  "country.LB": [
+   "e34dd616",
+   "Liban"
+  ],
+  "country.LC": [
+   "abe06aae",
+   "Sainte-Lucie"
+  ],
+  "country.LI": [
+   "6ff080c0",
+   "Liechtenstein"
+  ],
+  "country.LK": [
+   "07f8d114",
+   "Sri Lanka"
+  ],
+  "country.LR": [
+   "c9d2604d",
+   "Liberia"
+  ],
+  "country.LS": [
+   "5c2e4745",
+   "Lesotho"
+  ],
+  "country.LT": [
+   "5c83a631",
+   "Lituanie"
+  ],
+  "country.LU": [
+   "ed76f191",
+   "Luxembourg"
+  ],
+  "country.LV": [
+   "988c8160",
+   "Lettonie"
+  ],
+  "country.LY": [
+   "2aa2fcef",
+   "Libye"
+  ],
+  "country.MA": [
+   "b675f5df",
+   "Maroc"
+  ],
+  "country.MC": [
+   "935018cc",
+   "Monaco"
+  ],
+  "country.MD": [
+   "14ad63a1",
+   "Moldavie"
+  ],
+  "country.ME": [
+   "7ab597e1",
+   "Monténégro"
+  ],
+  "country.MF": [
+   "00d7cbfb",
+   "Saint-Martin"
+  ],
+  "country.MG": [
+   "d6804464",
+   "Madagascar"
+  ],
+  "country.MH": [
+   "fe33c925",
+   "Îles Marshall"
+  ],
+  "country.MK": [
+   "cd847226",
+   "Macédoine du Nord"
+  ],
+  "country.ML": [
+   "ee5721a5",
+   "Mali"
+  ],
+  "country.MM": [
+   "ba2039a4",
+   "Myanmar"
+  ],
+  "country.MN": [
+   "99a7c065",
+   "Mongolie"
+  ],
+  "country.MO": [
+   "a5e28dc5",
+   "Macao"
+  ],
+  "country.MP": [
+   "66545d35",
+   "Îles Mariannes du Nord"
+  ],
+  "country.MQ": [
+   "c65906dc",
+   "Martinique"
+  ],
+  "country.MR": [
+   "bfb0c8d3",
+   "Mauritanie"
+  ],
+  "country.MS": [
+   "127bcfe9",
+   "Montserrat"
+  ],
+  "country.MT": [
+   "71e9eb10",
+   "Malte"
+  ],
+  "country.MU": [
+   "aa8057ec",
+   "Maurice"
+  ],
+  "country.MV": [
+   "8fb54471",
+   "Maldives"
+  ],
+  "country.MW": [
+   "611025cd",
+   "Malawi"
+  ],
+  "country.MX": [
+   "a7d355b2",
+   "Mexique"
+  ],
+  "country.MY": [
+   "08450416",
+   "Malaisie"
+  ],
+  "country.MZ": [
+   "c9054826",
+   "Mozambique"
+  ],
+  "country.NA": [
+   "ea5bd398",
+   "Namibie"
+  ],
+  "country.NC": [
+   "be60011f",
+   "Nouvelle-Calédonie"
+  ],
+  "country.NE": [
+   "2cbebc54",
+   "Niger"
+  ],
+  "country.NF": [
+   "4d0dfb87",
+   "Île Norfolk"
+  ],
+  "country.NG": [
+   "04952a0f",
+   "Nigeria"
+  ],
+  "country.NI": [
+   "94e6bd57",
+   "Nicaragua"
+  ],
+  "country.NL": [
+   "3a386c13",
+   "Pays-Bas"
+  ],
+  "country.NO": [
+   "bea54a34",
+   "Norvège"
+  ],
+  "country.NP": [
+   "e15a18aa",
+   "Népal"
+  ],
+  "country.NR": [
+   "57e90088",
+   "Nauru"
+  ],
+  "country.NU": [
+   "4956c209",
+   "Niue"
+  ],
+  "country.NZ": [
+   "2898e16d",
+   "Nouvelle-Zélande"
+  ],
+  "country.OM": [
+   "c3ce4bf8",
+   "Oman"
+  ],
+  "country.PA": [
+   "c3668f58",
+   "Panama"
+  ],
+  "country.PC": [
+   "27b6b867",
+   "Communauté du Pacifique"
+  ],
+  "country.PE": [
+   "508731a3",
+   "Pérou"
+  ],
+  "country.PF": [
+   "0b6e276f",
+   "Polynésie française"
+  ],
+  "country.PG": [
+   "c65742ce",
+   "Papouasie-Nouvelle-Guinée"
+  ],
+  "country.PH": [
+   "c3782c86",
+   "Philippines"
+  ],
+  "country.PK": [
+   "e2567312",
+   "Pakistan"
+  ],
+  "country.PL": [
+   "7f69649a",
+   "Pologne"
+  ],
+  "country.PM": [
+   "0d7ea61e",
+   "Saint-Pierre-et-Miquelon"
+  ],
+  "country.PN": [
+   "0f8a1e6a",
+   "Pitcairn"
+  ],
+  "country.PR": [
+   "d9aa43ea",
+   "Porto Rico"
+  ],
+  "country.PS": [
+   "1d13389b",
+   "État de Palestine"
+  ],
+  "country.PT": [
+   "4c7de2c3",
+   "Portugal"
+  ],
+  "country.PW": [
+   "7fa64773",
+   "Palaos"
+  ],
+  "country.PY": [
+   "7fb4d179",
+   "Paraguay"
+  ],
+  "country.QA": [
+   "55ccc501",
+   "Qatar"
+  ],
+  "country.RE": [
+   "7cdf573b",
+   "La Réunion"
+  ],
+  "country.RO": [
+   "ea23726d",
+   "Roumanie"
+  ],
+  "country.RS": [
+   "e8739c83",
+   "Serbie"
+  ],
+  "country.RU": [
+   "33a3d8ed",
+   "Russie"
+  ],
+  "country.RW": [
+   "12c8f8f4",
+   "Rwanda"
+  ],
+  "country.SA": [
+   "ed9ad136",
+   "Arabie saoudite"
+  ],
+  "country.SB": [
+   "cff4c58d",
+   "Îles Salomon"
+  ],
+  "country.SC": [
+   "d1d63320",
+   "Seychelles"
+  ],
+  "country.SD": [
+   "ed68d4de",
+   "Soudan"
+  ],
+  "country.SE": [
+   "85363713",
+   "Suède"
+  ],
+  "country.SG": [
+   "c96dd81d",
+   "Singapour"
+  ],
+  "country.SH": [
+   "7a80d902",
+   "Sainte-Hélène, Ascension et Tristan da Cunha"
+  ],
+  "country.SI": [
+   "56059e7f",
+   "Slovénie"
+  ],
+  "country.SJ": [
+   "4bfb49f1",
+   "Svalbard et Jan Mayen"
+  ],
+  "country.SK": [
+   "a2ea3384",
+   "Slovaquie"
+  ],
+  "country.SL": [
+   "f405b98d",
+   "Sierra Leone"
+  ],
+  "country.SM": [
+   "230450a2",
+   "Saint-Marin"
+  ],
+  "country.SN": [
+   "364e5f65",
+   "Sénégal"
+  ],
+  "country.SO": [
+   "bd05d324",
+   "Somalie"
+  ],
+  "country.SR": [
+   "b1cb8eac",
+   "Suriname"
+  ],
+  "country.SS": [
+   "8fe5a931",
+   "Soudan du Sud"
+  ],
+  "country.ST": [
+   "82204175",
+   "Sao Tomé-et-Principe"
+  ],
+  "country.SV": [
+   "c408d26c",
+   "Salvador"
+  ],
+  "country.SX": [
+   "bba28b08",
+   "Saint-Martin (partie néerlandaise)"
+  ],
+  "country.SY": [
+   "cf6ac29b",
+   "Syrie"
+  ],
+  "country.SZ": [
+   "e0568e4c",
+   "Eswatini"
+  ],
+  "country.TC": [
+   "8cef06ec",
+   "Îles Turques-et-Caïques"
+  ],
+  "country.TD": [
+   "4256e512",
+   "Tchad"
+  ],
+  "country.TF": [
+   "e0591152",
+   "Terres australes françaises"
+  ],
+  "country.TG": [
+   "4080343e",
+   "Togo"
+  ],
+  "country.TH": [
+   "6e49e650",
+   "Thaïlande"
+  ],
+  "country.TJ": [
+   "066b0213",
+   "Tadjikistan"
+  ],
+  "country.TK": [
+   "39fc1503",
+   "Tokelau"
+  ],
+  "country.TL": [
+   "6303e847",
+   "Timor oriental"
+  ],
+  "country.TM": [
+   "b3dfc850",
+   "Turkménistan"
+  ],
+  "country.TN": [
+   "4609682a",
+   "Tunisie"
+  ],
+  "country.TO": [
+   "310bc325",
+   "Tonga"
+  ],
+  "country.TR": [
+   "d15b2145",
+   "Turquie"
+  ],
+  "country.TT": [
+   "0c0177b5",
+   "Trinité-et-Tobago"
+  ],
+  "country.TV": [
+   "30b1ff9a",
+   "Tuvalu"
+  ],
+  "country.TW": [
+   "dd76af19",
+   "Taïwan"
+  ],
+  "country.TZ": [
+   "9555664f",
+   "Tanzanie"
+  ],
+  "country.UA": [
+   "580eedc6",
+   "Ukraine"
+  ],
+  "country.UG": [
+   "893d5385",
+   "Ouganda"
+  ],
+  "country.UM": [
+   "6691c798",
+   "Îles mineures éloignées des États-Unis"
+  ],
+  "country.UN": [
+   "c3c27cfe",
+   "Nations unies"
+  ],
+  "country.US": [
+   "dbab4112",
+   "États-Unis"
+  ],
+  "country.UY": [
+   "fe2403f2",
+   "Uruguay"
+  ],
+  "country.UZ": [
+   "4bc2f1c2",
+   "Ouzbékistan"
+  ],
+  "country.VA": [
+   "5683fdbf",
+   "Saint-Siège"
+  ],
+  "country.VC": [
+   "b225fd33",
+   "Saint-Vincent-et-les-Grenadines"
+  ],
+  "country.VE": [
+   "020e438b",
+   "Venezuela"
+  ],
+  "country.VG": [
+   "9695b367",
+   "Îles Vierges britanniques"
+  ],
+  "country.VI": [
+   "d407b5fa",
+   "Îles Vierges des États-Unis"
+  ],
+  "country.VN": [
+   "2e5e8106",
+   "Viêt Nam"
+  ],
+  "country.VU": [
+   "c5b2a6de",
+   "Vanuatu"
+  ],
+  "country.WF": [
+   "a9f21d07",
+   "Wallis-et-Futuna"
+  ],
+  "country.WS": [
+   "0ea781cd",
+   "Samoa"
+  ],
+  "country.XK": [
+   "4a867424",
+   "Kosovo"
+  ],
+  "country.XX": [
+   "b764cdc0",
+   "Inconnu"
+  ],
+  "country.YE": [
+   "21c1903a",
+   "Yémen"
+  ],
+  "country.YT": [
+   "d08b4a0f",
+   "Mayotte"
+  ],
+  "country.ZA": [
+   "3e049d78",
+   "Afrique du Sud"
+  ],
+  "country.ZM": [
+   "b5f9221a",
+   "Zambie"
+  ],
+  "country.ZW": [
+   "c72199a8",
+   "Zimbabwe"
+  ],
+  "dashboard.came_from": [
+   "9cf1e825",
+   "Venues de"
+  ],
+  "dashboard.channel.direct": [
+   "55728b07",
+   "Adresse saisie ou favori utilisé"
+  ],
+  "dashboard.channel.email": [
+   "427a953c",
+   "Un e-mail"
+  ],
+  "dashboard.channel.organic_search": [
+   "fbc631bc",
+   "Un moteur de recherche"
+  ],
+  "dashboard.channel.organic_social": [
+   "b904a771",
+   "Les réseaux sociaux"
+  ],
+  "dashboard.channel.organic_video": [
+   "4d718f6a",
+   "Un site de vidéos"
+  ],
+  "dashboard.channel.paid_search": [
+   "32af1487",
+   "Une publicité de recherche"
+  ],
+  "dashboard.channel.paid_social": [
+   "24dc027d",
+   "Une publicité sur les réseaux sociaux"
+  ],
+  "dashboard.channel.referral": [
+   "a49859b9",
+   "Un lien sur un autre site"
+  ],
+  "dashboard.channel.unassigned": [
+   "bb76b66a",
+   "Google n'a pas pu le déterminer"
+  ],
+  "dashboard.count.many": [
+   "b7692abe",
+   "<b>{count}</b> <span>personnes ont lu votre site pendant {window}.</span>"
+  ],
+  "dashboard.count.none": [
+   "4bfdbbf9",
+   "Personne n'a lu votre site pendant {window}, pour autant que Google puisse le dire."
+  ],
+  "dashboard.count.one": [
+   "473234ed",
+   "<b>{count}</b> <span>personne a lu votre site pendant {window}.</span>"
+  ],
+  "dashboard.country": [
+   "701d021d",
+   "Pays"
+  ],
+  "dashboard.day": [
+   "89d27939",
+   "{day} : {people}"
+  ],
+  "dashboard.each_day": [
+   "3ec85e36",
+   "Personnes par jour"
+  ],
+  "dashboard.each_month": [
+   "4db23579",
+   "Personnes par mois"
+  ],
+  "dashboard.how": [
+   "e7e003e8",
+   "Comment elles vous ont trouvé"
+  ],
+  "dashboard.minutes": [
+   "c4521614",
+   "{minutes} min {seconds} s"
+  ],
+  "dashboard.nobody": [
+   "6382b3cc",
+   "personne"
+  ],
+  "dashboard.off": [
+   "49409ef6",
+   "Les chiffres de visite sont désactivés. Pressless peut les lire dans Google Analytics si vous vous connectez avec Google : <a href=\"{page}\">activer les chiffres de visite</a>."
+  ],
+  "dashboard.page": [
+   "0a30a815",
+   "Page"
+  ],
+  "dashboard.people": [
+   "7db20897",
+   "Personnes"
+  ],
+  "dashboard.people.many": [
+   "7dbd74fb",
+   "{count} personnes"
+  ],
+  "dashboard.people.one": [
+   "de545d07",
+   "1 personne"
+  ],
+  "dashboard.region": [
+   "7db4aedb",
+   "Région ou département"
+  ],
+  "dashboard.seconds": [
+   "5307d20d",
+   "{seconds} s"
+  ],
+  "dashboard.sign_in_again": [
+   "621c7620",
+   "Si Google n'accepte plus la connexion, <a href=\"{page}\">reconnectez-vous</a>."
+  ],
+  "dashboard.stale": [
+   "79bc2748",
+   "Pressless n'a pas pu joindre Google à l'instant, donc ce sont les chiffres du {when}."
+  ],
+  "dashboard.time_on_page": [
+   "b0a87c6b",
+   "Temps sur la page"
+  ],
+  "dashboard.title": [
+   "ea6d49cb",
+   "Qui vous lit"
+  ],
+  "dashboard.unknown_country": [
+   "6460bed6",
+   "Quelque part que Google n'a pas pu déterminer"
+  ],
+  "dashboard.updated": [
+   "ac49c7bf",
+   "Dernière mise à jour : {when}."
+  ],
+  "dashboard.views": [
+   "69c40459",
+   "Vues"
+  ],
+  "dashboard.visits": [
+   "f514c310",
+   "Visites"
+  ],
+  "dashboard.what": [
+   "9eec6ba2",
+   "Ce qu'elles ont lu"
+  ],
+  "dashboard.when": [
+   "71b4bbae",
+   "{date} à {clock}"
+  ],
+  "dashboard.where": [
+   "a8609d48",
+   "Où elles se trouvent"
+  ],
+  "dashboard.where_within": [
+   "83dcd42c",
+   "Quelle région ou quel département"
+  ],
+  "dashboard.window.28": [
+   "91914158",
+   "4 dernières semaines"
+  ],
+  "dashboard.window.28.phrase": [
+   "ae673a5d",
+   "les 4 dernières semaines"
+  ],
+  "dashboard.window.365": [
+   "b77eef69",
+   "12 derniers mois"
+  ],
+  "dashboard.window.365.phrase": [
+   "2ac8091b",
+   "les 12 derniers mois"
+  ],
+  "dashboard.window.7": [
+   "0603deca",
+   "7 derniers jours"
+  ],
+  "dashboard.window.7.phrase": [
+   "0485c747",
+   "les 7 derniers jours"
+  ],
+  "date.day.0": [
+   "f40d7f51",
+   "lun."
+  ],
+  "date.day.1": [
+   "d1eb39b0",
+   "mar."
+  ],
+  "date.day.2": [
+   "58339f45",
+   "mer."
+  ],
+  "date.day.3": [
+   "7da11212",
+   "jeu."
+  ],
+  "date.day.4": [
+   "66dab40c",
+   "ven."
+  ],
+  "date.day.5": [
+   "fdeb71b5",
+   "sam."
+  ],
+  "date.day.6": [
+   "db18f17f",
+   "dim."
+  ],
+  "date.long": [
+   "ade39ee8",
+   "{day} {month} {year}"
+  ],
+  "date.medium": [
+   "70fba1e6",
+   "{day} {mon} {year}"
+  ],
+  "date.mon.1": [
+   "5c5db120",
+   "janv."
+  ],
+  "date.mon.10": [
+   "6877e849",
+   "oct."
+  ],
+  "date.mon.11": [
+   "3e630d29",
+   "nov."
+  ],
+  "date.mon.12": [
+   "f2a0cfbc",
+   "déc."
+  ],
+  "date.mon.2": [
+   "caf71b3f",
+   "févr."
+  ],
+  "date.mon.3": [
+   "b4b7d381",
+   "mars"
+  ],
+  "date.mon.4": [
+   "617531b4",
+   "avr."
+  ],
+  "date.mon.5": [
+   "8c78fe5b",
+   "mai"
+  ],
+  "date.mon.6": [
+   "b27fd46e",
+   "juin"
+  ],
+  "date.mon.7": [
+   "c43f56b9",
+   "juil."
+  ],
+  "date.mon.8": [
+   "41e1d82a",
+   "août"
+  ],
+  "date.mon.9": [
+   "451e2b71",
+   "sept."
+  ],
+  "date.mon_year": [
+   "d5ea3a95",
+   "{mon} {year}"
+  ],
+  "date.month.1": [
+   "37082e68",
+   "janvier"
+  ],
+  "date.month.10": [
+   "fdd79178",
+   "octobre"
+  ],
+  "date.month.11": [
+   "9de6fe1d",
+   "novembre"
+  ],
+  "date.month.12": [
+   "8fb204ca",
+   "décembre"
+  ],
+  "date.month.2": [
+   "c877c6ff",
+   "février"
+  ],
+  "date.month.3": [
+   "9d95a2cf",
+   "mars"
+  ],
+  "date.month.4": [
+   "4afe6ea1",
+   "avril"
+  ],
+  "date.month.5": [
+   "8c78fe5b",
+   "mai"
+  ],
+  "date.month.6": [
+   "d5808c0e",
+   "juin"
+  ],
+  "date.month.7": [
+   "e9cf7a1c",
+   "juillet"
+  ],
+  "date.month.8": [
+   "a66d8970",
+   "août"
+  ],
+  "date.month.9": [
+   "cd559ea0",
+   "septembre"
+  ],
+  "date.month_year": [
+   "d2d73eec",
+   "{month} {year}"
+  ],
+  "date.short": [
+   "13346039",
+   "{day} {mon}"
+  ],
+  "date.weekday": [
+   "4cb90d35",
+   "{weekday} {day} {mon}"
+  ],
+  "domain.change": [
+   "38804fcf",
+   "Cliquer sur Suivant change ceci sur GitHub :"
+  ],
+  "domain.change.address": [
+   "c3689a57",
+   "L'adresse de votre site devient {domain}."
+  ],
+  "domain.change.file": [
+   "3b037137",
+   "Pressless ajoute un fichier, CNAME, contenant {domain}. Il reste dans l'historique du dépôt."
+  ],
+  "domain.change.gap": [
+   "4ff78d25",
+   "Votre ancienne adresse redirigera vers {domain}. Tant que votre vendeur de domaine n'a pas les enregistrements ci-dessous, votre site est inaccessible, alors tenez-les prêts à saisir tout de suite."
+  ],
+  "domain.change.next": [
+   "9cedfcec",
+   "Cliquez sur Suivant quand vous êtes prêt."
+  ],
+  "domain.change.ready": [
+   "7c32b914",
+   "Voici ce que vous saisirez chez votre vendeur de domaine :"
+  ],
+  "domain.change.verify": [
+   "5cbbe037",
+   "GitHub conseille de vérifier d'abord le nom auprès de GitHub, pour qu'aucun autre compte ne puisse le revendiquer. C'est facultatif, et cela se fait dans les réglages Pages de votre compte GitHub."
+  ],
+  "domain.done": [
+   "f788fa26",
+   "L'adresse de votre site est maintenant {link}, et elle s'ouvre de façon sécurisée."
+  ],
+  "domain.done.heading": [
+   "e849d39d",
+   "Votre site a son propre nom de domaine"
+  ],
+  "domain.done.publish": [
+   "5228064b",
+   "Publiez encore une fois, pour que le plan de votre site destiné aux moteurs de recherche et ses redirections portent la nouvelle adresse."
+  ],
+  "domain.done.remove": [
+   "feae9791",
+   "Pour ne plus utiliser ce nom, supprimez-le dans les réglages Pages de votre dépôt sur GitHub, puis changez l'adresse de votre site dans les Réglages."
+  ],
+  "domain.field": [
+   "4cbcc019",
+   "Votre nom de domaine"
+  ],
+  "domain.hint.certificate_failed": [
+   "bcb86cb8",
+   "GitHub n'a pas pu créer le certificat. Vérifiez que votre vendeur de domaine n'a que les enregistrements montrés à l'étape précédente, puis patientez et cliquez de nouveau sur Suivant."
+  ],
+  "domain.hint.certificate_wait": [
+   "10f9fd83",
+   "Le certificat n'est pas encore prêt. Il n'y a pas de problème, et vous pouvez partir et revenir. GitHub indique que cela peut prendre jusqu'à 24 heures."
+  ],
+  "domain.hint.name": [
+   "6689b686",
+   "Saisissez le nom que vous avez acheté, comme example.com."
+  ],
+  "domain.hint.not_serving": [
+   "8bdd65e1",
+   "GitHub Pages ne sert pas le dossier principal de ce dépôt, donc un nom de domaine n'atteindrait pas votre site. Publiez d'abord votre site, puis revenez."
+  ],
+  "domain.hint.takeover": [
+   "b4dce39b",
+   "Votre site est encore construit par GitHub Actions. Passez-le d'abord à Pressless, en publiant, puis revenez."
+  ],
+  "domain.intro": [
+   "6b2d1229",
+   "Si vous avez acheté une adresse web, comme example.com, votre site peut y apparaître. Saisissez-la ci-dessous. Rien ne change encore."
+  ],
+  "domain.leave": [
+   "b1c80427",
+   "Vous pouvez fermer ceci et revenir. Réglages, puis Utiliser votre propre nom de domaine, rouvre cette étape. Cliquez sur Suivant quand le nom mène à GitHub."
+  ],
+  "domain.records.name": [
+   "c7e114e7",
+   "Nom ou hôte"
+  ],
+  "domain.records.part": [
+   "bdabd056",
+   "{domain} fait partie de {bought}. Connectez-vous là où vous avez acheté {bought}, ouvrez ses réglages DNS, et ajoutez celui-ci. Supprimez tout autre enregistrement portant le nom {part}, car il peut empêcher l'adresse sécurisée de fonctionner :"
+  ],
+  "domain.records.type": [
+   "baaddf70",
+   "Type"
+  ],
+  "domain.records.value": [
+   "99fad8cf",
+   "Valeur ou pointe vers"
+  ],
+  "domain.records.whole": [
+   "a0fcce1a",
+   "Connectez-vous là où vous avez acheté {domain}, ouvrez ses réglages DNS, et ajoutez chacun de ceux-ci. Supprimez tout autre enregistrement A ou AAAA portant le nom @, car il peut empêcher l'adresse sécurisée de fonctionner :"
+  ],
+  "domain.records.www": [
+   "4ecab56c",
+   "Vous avez acheté {bought}, et vous voulez {domain}. Connectez-vous là où vous l'avez acheté, ouvrez ses réglages DNS, et ajoutez chacun de ceux-ci. Supprimez tout autre enregistrement portant le même nom, car il peut empêcher l'adresse sécurisée de fonctionner :"
+  ],
+  "domain.secure": [
+   "d79b33df",
+   "GitHub crée maintenant un certificat de sécurité pour {domain}, qui lui permet de s'ouvrir en https. Cela peut prendre un moment après que le nom mène à GitHub. Cliquez sur Suivant pour vérifier. S'il est prêt, Pressless active l'adresse sécurisée."
+  ],
+  "domain.set": [
+   "a2ed1d0a",
+   "GitHub sait maintenant que votre site se trouve à {domain}. Saisissez ceci chez votre vendeur de domaine maintenant :"
+  ],
+  "domain.settings_link": [
+   "9d3805b8",
+   "Utiliser votre propre nom de domaine"
+  ],
+  "domain.state.elsewhere": [
+   "229832ad",
+   "Le nom mène ailleurs qu'à GitHub. Cherchez un autre enregistrement, sauf si vous utilisez un service comme Cloudflare devant votre site."
+  ],
+  "domain.state.not_yet": [
+   "ca5b2e5d",
+   "Cet ordinateur ne trouve pas encore le nom. Après la saisie des enregistrements, cela peut prendre jusqu'à 24 heures pour se propager partout."
+  ],
+  "domain.state.ready": [
+   "ecd13fe9",
+   "Le nom mène maintenant à GitHub, pour autant que cet ordinateur puisse le voir."
+  ],
+  "domain.step.change": [
+   "6eb4bc42",
+   "Ce qui va changer"
+  ],
+  "domain.step.name": [
+   "ce3be6a7",
+   "Votre propre nom de domaine"
+  ],
+  "domain.step.records": [
+   "2dc2a535",
+   "Prévenir votre vendeur de domaine"
+  ],
+  "domain.step.secure": [
+   "5ad14205",
+   "L'adresse sécurisée"
+  ],
+  "editor.add_photograph": [
+   "c1bab482",
+   "Ajouter une photo"
+  ],
+  "editor.address": [
+   "56ef8f20",
+   "Adresse"
+  ],
+  "editor.bin_proof": [
+   "21858b04",
+   "Jeter cette épreuve"
+  ],
+  "editor.categories": [
+   "b8b1d894",
+   "Catégories"
+  ],
+  "editor.change_address": [
+   "924eb001",
+   "Changer l'adresse"
+  ],
+  "editor.hint.bad_address": [
+   "f5d480f3",
+   "Une adresse n'utilise que les lettres a à z, les chiffres 0 à 9 et -."
+  ],
+  "editor.hint.forwarded": [
+   "5d0c22a4",
+   "L'ancienne adresse d'une autre entrée renvoie vers celle-ci."
+  ],
+  "editor.hint.gone": [
+   "879ba4ad",
+   "Cette entrée n'existe plus."
+  ],
+  "editor.hint.proof": [
+   "d3e0e4ad",
+   "L'adresse d'une épreuve ne peut pas être changée."
+  ],
+  "editor.hint.proof_waiting": [
+   "afef866f",
+   "Envoyez vos modifications sur votre site, ou jetez cette épreuve, puis changez l'adresse."
+  ],
+  "editor.hint.taken": [
+   "17e5d79d",
+   "Une autre entrée utilise déjà cette adresse."
+  ],
+  "editor.journal.kept_off": [
+   "8afafd72",
+   "Ces entrées sont conservées ici, et ne sont pas sur votre site tant que le journal est désactivé."
+  ],
+  "editor.journal.off": [
+   "8b8f6a27",
+   "Votre journal est désactivé. Un journal est la partie datée d'un site, comme un blog : chaque entrée a sa propre page, et le journal les liste, de la plus récente à la plus ancienne. Tant qu'il est désactivé, vos entrées restent ici et ne sont pas sur votre site. Si votre menu renvoie vers le journal, ce lien reste jusqu'à ce que vous le retiriez de l'en-tête ou de la navigation sur l'écran Pages."
+  ],
+  "editor.journal.on": [
+   "d5265f93",
+   "Votre journal est activé : chaque entrée publiée a sa propre page sur votre site, et votre journal les liste, de la plus récente à la plus ancienne."
+  ],
+  "editor.journal.on_published": [
+   "7c42bf2e",
+   "Le désactiver retire vos entrées publiées de votre site à votre prochaine publication ; le réactiver les remet en ligne."
+  ],
+  "editor.journal.turn_off": [
+   "96578d8e",
+   "Désactiver le journal"
+  ],
+  "editor.journal.turn_on": [
+   "a0e2064c",
+   "Activer le journal"
+  ],
+  "editor.list.add_home": [
+   "5deea97c",
+   "Ajouter une page d'accueil"
+  ],
+  "editor.list.add_menu": [
+   "e949e9be",
+   "Ajouter un menu"
+  ],
+  "editor.list.blank": [
+   "ccb49471",
+   "Une entrée vierge"
+  ],
+  "editor.list.carry_on": [
+   "134be546",
+   "Continuer avec :"
+  ],
+  "editor.list.changed": [
+   "766017a2",
+   "modifications pas encore sur votre site"
+  ],
+  "editor.list.drafts": [
+   "f592e6a4",
+   "Brouillons"
+  ],
+  "editor.list.later_changes": [
+   "dc04a91e",
+   "vos modifications plus récentes"
+  ],
+  "editor.list.new": [
+   "a62a7c03",
+   "Nouvelle entrée"
+  ],
+  "editor.list.new_page": [
+   "40126b0e",
+   "Nouvelle page"
+  ],
+  "editor.list.none": [
+   "bd3ce633",
+   "Aucun pour l'instant."
+  ],
+  "editor.list.on_site": [
+   "c9050e71",
+   "Sur votre site"
+  ],
+  "editor.list.page_name": [
+   "25f322d1",
+   "Nom de la page"
+  ],
+  "editor.list.pages": [
+   "a14fbf2a",
+   "Vos pages"
+  ],
+  "editor.list.pages_unreadable": [
+   "f4cecabb",
+   "Pressless ne peut pas ouvrir votre dossier de pages."
+  ],
+  "editor.list.parts": [
+   "fd83f20a",
+   "Éléments de chaque page"
+  ],
+  "editor.list.parts_note": [
+   "dc883e5f",
+   "Une modification de l'un d'eux apparaît sur chaque page de votre site."
+  ],
+  "editor.list.start_from": [
+   "eb3f51dc",
+   "Partir de"
+  ],
+  "editor.list.undone": [
+   "b15b95cc",
+   "retiré de votre site par Annuler"
+  ],
+  "editor.list.unreadable": [
+   "bdfcabe9",
+   "Pressless ne peut pas ouvrir ce fichier"
+  ],
+  "editor.list.untitled": [
+   "630c74b2",
+   "sans titre"
+  ],
+  "editor.pages.footer": [
+   "26c87bb5",
+   "Pied de page"
+  ],
+  "editor.pages.header": [
+   "ba5caa42",
+   "En-tête"
+  ],
+  "editor.pages.home": [
+   "3a786953",
+   "Accueil"
+  ],
+  "editor.pages.navigation": [
+   "3db65f8c",
+   "Navigation"
+  ],
+  "editor.panel.add": [
+   "f552a1e7",
+   "Ajouter :"
+  ],
+  "editor.panel.add_button": [
+   "9fd728c6",
+   "Ajouter"
+  ],
+  "editor.panel.bold": [
+   "94fee62e",
+   "Gras"
+  ],
+  "editor.panel.caption": [
+   "7e6568d1",
+   "Légende, le cas échéant"
+  ],
+  "editor.panel.choose": [
+   "29afaa1f",
+   "Choisir une photo"
+  ],
+  "editor.panel.colour.accent": [
+   "4caf506b",
+   "La couleur d'accent de votre site"
+  ],
+  "editor.panel.colour.muted": [
+   "00bc622b",
+   "L'encre plus discrète de votre site"
+  ],
+  "editor.panel.colour.picked": [
+   "b0043728",
+   "N'importe quelle couleur :"
+  ],
+  "editor.panel.colour.use": [
+   "a2b26ff7",
+   "Utiliser cette couleur"
+  ],
+  "editor.panel.italic": [
+   "9bf37cb5",
+   "Italique"
+  ],
+  "editor.panel.link": [
+   "a6a32dbc",
+   "Lien"
+  ],
+  "editor.panel.marks": [
+   "f9b91c22",
+   "Ses marques"
+  ],
+  "editor.panel.marks_note": [
+   "098cc6aa",
+   "Cette partie utilise des marques que la page ne peut pas afficher pendant que vous tapez, comme des lettres arc-en-ciel ou un nombre d'années calculé pour vous. Modifiez ses marques ici."
+  ],
+  "editor.panel.move_down": [
+   "40bb50da",
+   "Descendre"
+  ],
+  "editor.panel.move_up": [
+   "c66feb5e",
+   "Monter"
+  ],
+  "editor.panel.photograph": [
+   "bb1de972",
+   "Photo"
+  ],
+  "editor.panel.remove": [
+   "c3812fc4",
+   "Supprimer"
+  ],
+  "editor.panel.title": [
+   "b03b2a01",
+   "Cette section"
+  ],
+  "editor.press": [
+   "b277e095",
+   "Envoyer sur le site"
+  ],
+  "editor.proof_title": [
+   "70b2a0d1",
+   "Épreuve (aperçu)"
+  ],
+  "editor.show_marks": [
+   "7371b65a",
+   "Montrez-moi les marques"
+  ],
+  "editor.show_visual": [
+   "a49757bd",
+   "Afficher l'éditeur"
+  ],
+  "editor.site_line": [
+   "36c6c8e2",
+   "Modification de <b>{name}</b> à l'adresse {address}"
+  ],
+  "editor.site_line.unnamed": [
+   "5af93124",
+   "Votre site"
+  ],
+  "editor.standing.draft": [
+   "47021a76",
+   "Un brouillon. Il n'est pas sur votre site."
+  ],
+  "editor.standing.published": [
+   "b0a3405c",
+   "Cette entrée est sur votre site. Vos modifications restent sur cet ordinateur tant que vous ne la publiez pas."
+  ],
+  "editor.standing.waiting": [
+   "05e9b3fa",
+   "Ces modifications ne sont pas encore sur votre site."
+  ],
+  "editor.tags": [
+   "1331275b",
+   "Étiquettes"
+  ],
+  "editor.throw_draft": [
+   "02c6fc6a",
+   "Jeter ce brouillon"
+  ],
+  "editor.title": [
+   "7e8cd205",
+   "Titre"
+  ],
+  "editor.undo": [
+   "99607c29",
+   "Annuler le dernier envoi"
+  ],
+  "face.about": [
+   "4efca0d1",
+   "À propos"
+  ],
+  "face.files": [
+   "abc7e989",
+   "Fichiers"
+  ],
+  "face.forbidden": [
+   "78342a09",
+   "Interdit"
+  ],
+  "face.help": [
+   "b79cac92",
+   "Aide"
+  ],
+  "face.journal": [
+   "43b7c75d",
+   "Journal"
+  ],
+  "face.link_spent": [
+   "ea6f3577",
+   "Ce lien a déjà été utilisé. Fermez cet onglet et relancez Pressless."
+  ],
+  "face.look": [
+   "a0de5719",
+   "Apparence"
+  ],
+  "face.message.ok": [
+   "565339bc",
+   "OK"
+  ],
+  "face.more": [
+   "d47d7cb0",
+   "Plus"
+  ],
+  "face.not_found": [
+   "e3ebaa16",
+   "Introuvable"
+  ],
+  "face.pages": [
+   "9046da16",
+   "Pages"
+  ],
+  "face.report": [
+   "f9154cd7",
+   "Suggérer une idée ou signaler un problème"
+  ],
+  "face.running": [
+   "3011c9a3",
+   "Pressless est en cours d'exécution."
+  ],
+  "face.settings": [
+   "74a883a0",
+   "Réglages"
+  ],
+  "face.sites": [
+   "9d769093",
+   "Sites"
+  ],
+  "face.true_colours": [
+   "971d676a",
+   "Afficher l'aperçu dans ses vraies couleurs"
+  ],
+  "face.usage": [
+   "accbe5ad",
+   "Rapports d'utilisation"
+  ],
+  "face.view_site": [
+   "155a64f0",
+   "Voir votre site"
+  ],
+  "face.visitors": [
+   "68f7d7fb",
+   "Visiteurs"
+  ],
+  "face.your_site": [
+   "5af93124",
+   "Votre site"
+  ],
+  "failure.again": [
+   "aa3090fa",
+   "Réessayez. Si cela continue, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.assistant.Refused.next": [
+   "874ab5c8",
+   "Rien n'a changé."
+  ],
+  "failure.assistant.Refused.what": [
+   "98146f33",
+   "{said}"
+  ],
+  "failure.blocks.SectionRefused.what": [
+   "8f76a556",
+   "Pressless n'a pas pu écrire cette partie de votre page."
+  ],
+  "failure.builder.BuildStopped.next": [
+   "24708dc0",
+   "Vérifiez le fichier nommé dans les détails ci-dessous, puis réessayez. Si cela continue, envoyez les détails à la personne qui vous aide."
+  ],
+  "failure.builder.BuildStopped.what": [
+   "8b31515d",
+   "Pressless n'a pas pu construire votre site à partir de l'un de vos fichiers."
+  ],
+  "failure.builder.SiteFolderUnusable.what": [
+   "950cabe7",
+   "Pressless n'a pas pu écrire dans le dossier où votre site est construit."
+  ],
+  "failure.copy_location": [
+   "83bb108f",
+   "Copier l'emplacement"
+  ],
+  "failure.credentials.CredentialError.next": [
+   "b9d9e5ef",
+   "Si votre trousseau de clés est verrouillé, déverrouillez-le et réessayez ; sinon, saisissez-le de nouveau dans les Réglages. Si cela continue, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.credentials.CredentialError.what": [
+   "60275a96",
+   "Pressless n'a pas pu accéder en toute sécurité à {secret} dans le trousseau de clés de cet ordinateur."
+  ],
+  "failure.credentials.NoStore.next": [
+   "12d27946",
+   "Envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.credentials.NoStore.what": [
+   "83315ee8",
+   "Pressless n'a trouvé aucun endroit sûr sur cet ordinateur pour conserver {secret}."
+  ],
+  "failure.credentials.NotStored.next": [
+   "8dcf995c",
+   "Saisissez-le de nouveau dans les Réglages."
+  ],
+  "failure.credentials.NotStored.what": [
+   "c16ff192",
+   "Pressless n'a pas encore {secret}."
+  ],
+  "failure.editor.AddressRefused.next": [
+   "c47a6c9f",
+   "Choisissez une autre adresse, ou gardez celle qu'elle a."
+  ],
+  "failure.editor.AddressRefused.what": [
+   "e8231168",
+   "{hint}"
+  ],
+  "failure.editor.BlocksUnreadable.next": [
+   "17fb3548",
+   "Rouvrez cette entrée pour continuer, ou utilisez Montrez-moi les marques."
+  ],
+  "failure.editor.BlocksUnreadable.what": [
+   "8761ef49",
+   "Non enregistré : Pressless n'a pas pu conserver les paragraphes de votre entrée tels que vous les avez laissés."
+  ],
+  "failure.editor.ChangedElsewhere.next": [
+   "0fc7bebf",
+   "Copiez ce que vous avez tapé depuis, puis rouvrez l'entrée depuis le Journal."
+  ],
+  "failure.editor.ChangedElsewhere.what": [
+   "c16d3e94",
+   "Cette entrée a été modifiée dans une autre fenêtre ou en dehors de Pressless, alors Pressless ne l'a pas écrasée."
+  ],
+  "failure.editor.TooManyCopies.next": [
+   "67292a1b",
+   "Ouvrez votre dossier Pressless-data, gardez l'un de ces brouillons et sortez les autres du dossier des brouillons."
+  ],
+  "failure.editor.TooManyCopies.what": [
+   "624d68b1",
+   "Plus d'un brouillon contient des modifications non publiées de cette entrée, alors Pressless ne l'a pas ouverte."
+  ],
+  "failure.face.FolderNotOpened.next": [
+   "984dbe3d",
+   "Utilisez plutôt Copier l'emplacement, et collez-le dans votre gestionnaire de fichiers."
+  ],
+  "failure.face.FolderNotOpened.what": [
+   "ac17c864",
+   "Pressless n'a pas pu ouvrir le dossier."
+  ],
+  "failure.face.NoRoom.next": [
+   "09cd5804",
+   "Libérez de l'espace sur le disque de cet ordinateur, puis envoyez de nouveau le fichier."
+  ],
+  "failure.face.NoRoom.what": [
+   "b7bce042",
+   "Le disque de cet ordinateur n'a pas assez d'espace libre pour accueillir ce fichier."
+  ],
+  "failure.files.NotAllowed.next": [
+   "b8c81905",
+   "Choisissez un fichier MP3, Ogg, WAV, M4A, MP4, WebM, PDF, ZIP ou texte brut, dont le nom se termine par l'extension de son type."
+  ],
+  "failure.files.NotAllowed.what": [
+   "8bb26fa2",
+   "Ce fichier n'est pas d'un type que Pressless peut mettre sur votre site, ou son nom ne correspond pas à son contenu, donc il n'a pas été ajouté."
+  ],
+  "failure.files.TooLarge.next": [
+   "549bb90a",
+   "Réduisez la taille du fichier, ou mettez-le ailleurs et saisissez plutôt son adresse."
+  ],
+  "failure.files.TooLarge.what": [
+   "e1d6166f",
+   "Ce fichier fait plus de {mib} Mio (environ {mb} Mo), donc il n'a pas été ajouté."
+  ],
+  "failure.files_screen.FileInUse.next": [
+   "328ea32a",
+   "Retirez-le d'abord de ces pages, en publiant ou en abandonnant toute page encore en cours de modification, puis supprimez-le."
+  ],
+  "failure.files_screen.FileInUse.what": [
+   "3b0a0c8f",
+   "Ce fichier est utilisé sur {pages}, donc il n'a pas été supprimé."
+  ],
+  "failure.github_signin.Declined.next": [
+   "21bc03fd",
+   "Reconnectez-vous à GitHub depuis les Réglages quand vous voulez."
+  ],
+  "failure.github_signin.Declined.what": [
+   "27af435a",
+   "La connexion a été annulée sur GitHub."
+  ],
+  "failure.github_signin.Expired.next": [
+   "8ef472f6",
+   "Reconnectez-vous à GitHub depuis les Réglages."
+  ],
+  "failure.github_signin.Expired.what": [
+   "e815cc08",
+   "Le code de connexion à GitHub a expiré."
+  ],
+  "failure.github_signin.Pending.next": [
+   "9e9fd091",
+   "Saisissez le code sur la page de GitHub, cliquez sur Authorize, puis réessayez."
+  ],
+  "failure.github_signin.Pending.what": [
+   "56f5cf02",
+   "GitHub n'a pas encore reçu de réponse de votre part."
+  ],
+  "failure.github_signin.SignedOut.link": [
+   "2e5f7935",
+   "Se reconnecter à GitHub"
+  ],
+  "failure.github_signin.SignedOut.next": [
+   "af9a7566",
+   "Reconnectez-vous à GitHub dans les Réglages, puis réessayez."
+  ],
+  "failure.github_signin.SignedOut.what": [
+   "5d4e3573",
+   "GitHub a déconnecté Pressless."
+  ],
+  "failure.google_signin.Declined.next": [
+   "4eda45a3",
+   "Connectez-vous avec Google depuis les Réglages quand vous voulez."
+  ],
+  "failure.google_signin.Declined.what": [
+   "4bdf3691",
+   "Vous avez choisi de ne pas laisser Pressless lire vos chiffres de visite."
+  ],
+  "failure.google_signin.Expired.next": [
+   "3a295ead",
+   "Connectez-vous de nouveau avec Google depuis les Réglages."
+  ],
+  "failure.google_signin.Expired.what": [
+   "0330fd79",
+   "La connexion avec Google a pris trop de temps."
+  ],
+  "failure.insights.InsightsError.next": [
+   "43f14899",
+   "Réessayez plus tard. Si cela continue, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.insights.InsightsError.what": [
+   "6cd49fb1",
+   "Google a renvoyé une réponse que Pressless n'a pas pu utiliser."
+  ],
+  "failure.insights.NotConfigured.next": [
+   "bf1da4d7",
+   "Configurez le tableau de bord dans les Réglages si vous voulez les voir."
+  ],
+  "failure.insights.NotConfigured.what": [
+   "78e4e2f2",
+   "Les chiffres de visite ne sont pas configurés."
+  ],
+  "failure.insights.RateLimited.next": [
+   "ef7fbdb0",
+   "Réessayez plus tard."
+  ],
+  "failure.insights.RateLimited.what": [
+   "b511ced8",
+   "Google a demandé à Pressless d'attendre avant de redemander."
+  ],
+  "failure.insights.Refused.next": [
+   "1d81187f",
+   "Reconnectez-vous à Google depuis les Réglages."
+  ],
+  "failure.insights.Refused.what": [
+   "7b8142da",
+   "Google n'a pas autorisé Pressless à lire vos chiffres de visite."
+  ],
+  "failure.insights.Unreachable.next": [
+   "176afd02",
+   "Vérifiez votre connexion internet et réessayez."
+  ],
+  "failure.insights.Unreachable.what": [
+   "c9bce398",
+   "Pressless n'a pas pu joindre Google."
+  ],
+  "failure.installer.InstallFailed.next": [
+   "43f14899",
+   "Réessayez plus tard. Si cela continue, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.installer.InstallFailed.what": [
+   "53de59ca",
+   "Pressless n'a pas pu mettre la nouvelle version en place. Cette version reste installée."
+  ],
+  "failure.installer.UpdateError.next": [
+   "0081b8ae",
+   "Continuez avec cette version, et réessayez plus tard."
+  ],
+  "failure.installer.UpdateError.what": [
+   "6ddd6d70",
+   "Pressless n'a pas pu se mettre à jour."
+  ],
+  "failure.jpegxl.NotInstalled.next": [
+   "10d8e131",
+   "Ajoutez d'abord la prise en charge de JPEG XL depuis les Réglages."
+  ],
+  "failure.jpegxl.NotInstalled.what": [
+   "a88c9a6e",
+   "C'est une photo JPEG XL."
+  ],
+  "failure.log": [
+   "f9dbf2f5",
+   "Le journal d'événements est {log}, et sa partie plus ancienne {old}, dans le dossier Pressless-data, à côté du programme."
+  ],
+  "failure.look.LookUnreadable.next": [
+   "3cebd3fa",
+   "Votre site garde son apparence actuelle. Si look/choices.json, dans le dossier propre à Pressless, a été modifié à la main, remettez l'ancienne copie depuis la corbeille."
+  ],
+  "failure.look.LookUnreadable.what": [
+   "dfdee5ac",
+   "Pressless n'a pas pu lire les réglages dont l'apparence de votre site est faite, donc il n'a rien modifié."
+  ],
+  "failure.look_screen.LookRefused.next": [
+   "61ccabad",
+   "Rouvrez l'écran Apparence et choisissez de nouveau."
+  ],
+  "failure.look_screen.LookRefused.what": [
+   "17d11667",
+   "L'un des choix d'apparence n'est pas proposé par Pressless, donc rien n'a été enregistré."
+  ],
+  "failure.manual.ManualMissing.next": [
+   "7757150f",
+   "Tout le reste fonctionne encore. Téléchargez de nouveau Pressless pour récupérer le manuel."
+  ],
+  "failure.manual.ManualMissing.what": [
+   "7cd26e5c",
+   "Pressless n'a pas trouvé son manuel, donc cette copie de Pressless est peut-être endommagée."
+  ],
+  "failure.marks.Unwritable.next": [
+   "952eae21",
+   "Retirez la mise en forme de ces mots, ou utilisez Montrez-moi les marques pour les voir."
+  ],
+  "failure.marks.Unwritable.what": [
+   "4261755a",
+   "Non enregistré : Pressless ne peut pas conserver cette mise en forme dans les marques de votre entrée."
+  ],
+  "failure.menu.Refused.next": [
+   "af80b8df",
+   "Rouvrez le menu pour continuer, ou utilisez Montrez-moi le code."
+  ],
+  "failure.menu.Refused.what": [
+   "138dff01",
+   "Non enregistré : Pressless n'a pas pu conserver les liens de votre menu tels que vous les avez laissés."
+  ],
+  "failure.menu.Unusual.next": [
+   "31818ced",
+   "Changez le lien dans le code de la Navigation."
+  ],
+  "failure.menu.Unusual.what": [
+   "af84b27c",
+   "Pressless ne modifie pas un menu organisé comme le vôtre."
+  ],
+  "failure.open_folder": [
+   "6a908402",
+   "Ouvrir le dossier"
+  ],
+  "failure.page_editor.NameRefused.next": [
+   "9e1a5957",
+   "Choisissez un autre nom, ou laissez la page telle quelle."
+  ],
+  "failure.page_editor.NameRefused.what": [
+   "e8231168",
+   "{hint}"
+  ],
+  "failure.page_editor.SectionsUnreadable.next": [
+   "73a1edd3",
+   "Rouvrez cette page pour continuer, ou utilisez Montrez-moi le code."
+  ],
+  "failure.page_editor.SectionsUnreadable.what": [
+   "1793b273",
+   "Non enregistré : Pressless n'a pas pu conserver les sections de votre page telles que vous les avez laissées."
+  ],
+  "failure.paths.FolderUnusable.next": [
+   "5953cce2",
+   "Déplacez Pressless dans un dossier où vous pouvez enregistrer des fichiers, puis relancez-le."
+  ],
+  "failure.paths.FolderUnusable.what": [
+   "315082f2",
+   "Pressless n'a pas pu créer ou écrire dans son dossier Pressless-data."
+  ],
+  "failure.paths.NotPackaged.next": [
+   "7ce1618e",
+   "Lancez Pressless en double-cliquant sur le fichier que vous avez téléchargé."
+  ],
+  "failure.paths.NotPackaged.what": [
+   "c9e38700",
+   "Pressless n'a pas pu savoir d'où il est lancé."
+  ],
+  "failure.photographs.NotAPhotograph.next": [
+   "8f81cdce",
+   "Choisissez une photo JPEG, PNG, WebP, GIF, AVIF ou JPEG XL."
+  ],
+  "failure.photographs.NotAPhotograph.what": [
+   "51719a92",
+   "Ce fichier n'est pas une image que Pressless peut mettre sur votre site, donc il n'a pas été ajouté."
+  ],
+  "failure.pressless_import.ImportStopped.next": [
+   "ff3c92cb",
+   "Les détails ci-dessous en donnent la raison. Si cela continue, envoyez-les à la personne qui vous aide."
+  ],
+  "failure.pressless_import.ImportStopped.what": [
+   "2a198a6a",
+   "Pressless n'a pas pu importer votre site."
+  ],
+  "failure.publisher.Conflict.next": [
+   "a0c2cc13",
+   "Réessayez."
+  ],
+  "failure.publisher.Conflict.what": [
+   "4c8f2731",
+   "Votre site sur GitHub a changé pendant que Pressless publiait."
+  ],
+  "failure.publisher.FetchNotWritten.next": [
+   "1cb6acfa",
+   "Libérez de l'espace sur le disque de cet ordinateur, puis réessayez."
+  ],
+  "failure.publisher.FetchNotWritten.what": [
+   "85fde611",
+   "Pressless n'a pas pu enregistrer sur cet ordinateur la version antérieure de votre site."
+  ],
+  "failure.publisher.NoPreviousState.next": [
+   "6755356e",
+   "Il n'y a rien à annuler."
+  ],
+  "failure.publisher.NoPreviousState.what": [
+   "3c441739",
+   "Il n'y a pas de version antérieure de votre site à laquelle revenir."
+  ],
+  "failure.publisher.OutcomeUnknown.next": [
+   "c2711176",
+   "Vérifiez votre connexion internet et cliquez de nouveau sur Envoyer sur le site. Publier de nouveau est sans risque et règle la question."
+  ],
+  "failure.publisher.OutcomeUnknown.what": [
+   "68259b15",
+   "La réponse de GitHub ne disait pas si votre site a été mis à jour."
+  ],
+  "failure.publisher.PublishError.what": [
+   "20bf4b5a",
+   "GitHub a répondu d'une façon que Pressless n'attendait pas."
+  ],
+  "failure.publisher.RateLimited.next": [
+   "2c75cedd",
+   "Attendez un moment, puis réessayez."
+  ],
+  "failure.publisher.RateLimited.what": [
+   "0b19c178",
+   "GitHub a demandé à Pressless de ralentir."
+  ],
+  "failure.publisher.Refused.next": [
+   "f0962cd9",
+   "Saisissez de nouveau votre clé de publication dans les Réglages, puis réessayez."
+  ],
+  "failure.publisher.Refused.what": [
+   "4783f1a5",
+   "GitHub n'a pas accepté votre clé de publication."
+  ],
+  "failure.publisher.RemoteStateMissing.next": [
+   "a0c2cc13",
+   "Réessayez."
+  ],
+  "failure.publisher.RemoteStateMissing.what": [
+   "a49acd0b",
+   "Un élément dont Pressless avait besoin sur GitHub était absent."
+  ],
+  "failure.publisher.RepositoryMissing.next": [
+   "fd060be7",
+   "Vérifiez le nom du dépôt dans les Réglages, puis cliquez de nouveau sur Envoyer sur le site."
+  ],
+  "failure.publisher.RepositoryMissing.what": [
+   "6fcb0f62",
+   "GitHub n'a pas trouvé le dépôt de votre site."
+  ],
+  "failure.publisher.RepositoryMoved.next": [
+   "dc4e8915",
+   "Saisissez son nouveau nom dans les Réglages, puis cliquez de nouveau sur Envoyer sur le site."
+  ],
+  "failure.publisher.RepositoryMoved.what": [
+   "10c7bf8a",
+   "GitHub indique que le dépôt de votre site a été renommé ou déplacé."
+  ],
+  "failure.publisher.SignInRefused.link": [
+   "2e5f7935",
+   "Se reconnecter à GitHub"
+  ],
+  "failure.publisher.SignInRefused.next": [
+   "af9a7566",
+   "Reconnectez-vous à GitHub dans les Réglages, puis réessayez."
+  ],
+  "failure.publisher.SignInRefused.what": [
+   "ceb97be0",
+   "GitHub n'a pas accepté la connexion de Pressless."
+  ],
+  "failure.publisher.SiteFolderMissing.next": [
+   "167dbc4d",
+   "Reconstruisez votre site, puis cliquez de nouveau sur Envoyer sur le site. Si cela continue, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.publisher.SiteFolderMissing.what": [
+   "67f565b5",
+   "Pressless n'a pas trouvé le dossier où votre site est construit."
+  ],
+  "failure.publisher.SiteWouldBeEmptied.next": [
+   "026bd2f4",
+   "Reconstruisez votre site, puis cliquez de nouveau sur Envoyer sur le site."
+  ],
+  "failure.publisher.SiteWouldBeEmptied.what": [
+   "6eb52f00",
+   "Publier maintenant viderait votre site, alors Pressless s'est arrêté."
+  ],
+  "failure.publisher.StrayFile.next": [
+   "927f5f8e",
+   "Retirez ce fichier du dossier de votre site, puis cliquez de nouveau sur Envoyer sur le site."
+  ],
+  "failure.publisher.StrayFile.what": [
+   "75614c06",
+   "Le dossier de votre site contient un fichier que Pressless n'a pas créé."
+  ],
+  "failure.publisher.TooLarge.next": [
+   "6cbc925f",
+   "Si vous avez ajouté un gros fichier, supprimez-le ou réduisez-le. Puis réessayez, et si cela continue, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.publisher.TooLarge.what": [
+   "bcfe21c5",
+   "Un élément que vous publiez est plus gros que ce que GitHub accepte."
+  ],
+  "failure.publisher.UnfetchablePath.next": [
+   "fab9c9ab",
+   "Renommez sur votre site le fichier nommé ci-dessous, publiez, puis réessayez."
+  ],
+  "failure.publisher.UnfetchablePath.what": [
+   "bd4cd389",
+   "La version antérieure de votre site nomme un fichier que cet ordinateur ne peut pas contenir."
+  ],
+  "failure.publisher.Unreachable.next": [
+   "176afd02",
+   "Vérifiez votre connexion internet et réessayez."
+  ],
+  "failure.publisher.Unreachable.what": [
+   "611332c7",
+   "Pressless n'a pas pu joindre GitHub."
+  ],
+  "failure.publishing.JournalOff.next": [
+   "29c2c049",
+   "Activez le journal depuis l'écran Journal, puis publiez de nouveau cette entrée."
+  ],
+  "failure.publishing.JournalOff.what": [
+   "378794e6",
+   "Votre journal est désactivé, donc les entrées ne sont pas sur votre site. Cette entrée reste enregistrée comme brouillon."
+  ],
+  "failure.publishing.KeptFolderBuilt.next": [
+   "8aefb81c",
+   "Renommez ou déplacez {folder} dans votre dépôt sur GitHub, puis enregistrez de nouveau la page des Réglages et publiez."
+  ],
+  "failure.publishing.KeptFolderBuilt.what": [
+   "306da5a1",
+   "Votre site produit maintenant {folder}, et les Réglages conservent {folder} tel quel sur GitHub, donc la publication laisserait de côté vos nouveaux fichiers."
+  ],
+  "failure.publishing.NothingToPublish.next": [
+   "7e324b55",
+   "Publiez d'abord une entrée, ou cliquez sur Désactiver le journal sur l'écran Journal. Si des entrées vous ont disparu, envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.publishing.NothingToPublish.what": [
+   "6dd87fa3",
+   "Publier maintenant laisserait votre site sans aucune entrée, alors Pressless s'est arrêté."
+  ],
+  "failure.publishing.TakeoverOwed.next": [
+   "b1442736",
+   "Suivez le lien ci-dessous pour passer à Pressless. On vous dit d'abord ce qui change."
+  ],
+  "failure.publishing.TakeoverOwed.what": [
+   "bb3a951a",
+   "Votre site est encore construit par GitHub Actions, donc rien n'a été publié."
+  ],
+  "failure.publishing.WouldReplaceASite.next": [
+   "2c432687",
+   "Si vous voulez le remplacer, choisissez Remplacer le site sur GitHub ci-dessous, puis publiez de nouveau."
+  ],
+  "failure.publishing.WouldReplaceASite.what": [
+   "66b01a4b",
+   "Votre dépôt GitHub contient déjà un site web, et publier votre site de départ le remplacerait, alors Pressless s'est arrêté."
+  ],
+  "failure.secret.github_sign_in": [
+   "8feb3d43",
+   "votre connexion à GitHub"
+  ],
+  "failure.secret.google_sign_in": [
+   "31e7ed82",
+   "votre connexion à Google"
+  ],
+  "failure.secret.publishing_key": [
+   "fb417fb1",
+   "votre clé de publication"
+  ],
+  "failure.secret.youtube_key": [
+   "b91874e7",
+   "votre clé YouTube"
+  ],
+  "failure.settings.NotSetUp.next": [
+   "e625bb8c",
+   "Passez d'abord par la configuration."
+  ],
+  "failure.settings.NotSetUp.what": [
+   "c9bc0ce4",
+   "Pressless n'est pas encore configuré."
+  ],
+  "failure.settings.SettingsError.next": [
+   "e48c19c8",
+   "Pressless n'y a rien modifié. Envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.settings.SettingsError.what": [
+   "4b0de841",
+   "Pressless n'a pas pu lire ses réglages."
+  ],
+  "failure.shortcuts.ShortcutError.what": [
+   "a0f1bcf8",
+   "Pressless n'a pas pu modifier son raccourci dans le menu ou sur le bureau."
+  ],
+  "failure.show_details": [
+   "1af77ee2",
+   "Afficher les détails"
+  ],
+  "failure.sitefile.Refused.next": [
+   "ce1f0a68",
+   "Choisissez un fichier enregistré par Pressless, et ouvrez-le de nouveau."
+  ],
+  "failure.sitefile.Refused.what": [
+   "376d86f5",
+   "Pressless n'a pas pu ouvrir ce fichier comme un site."
+  ],
+  "failure.store.DanglingReply.next": [
+   "12d27946",
+   "Envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.store.DanglingReply.what": [
+   "37fd8092",
+   "Une réponse renvoie à un commentaire qui n'existe pas, donc rien n'a été enregistré."
+  ],
+  "failure.store.EntryNotFound.next": [
+   "ee32bee4",
+   "Revenez au Journal et choisissez de nouveau l'entrée."
+  ],
+  "failure.store.EntryNotFound.what": [
+   "439a6745",
+   "Pressless n'a pas trouvé cette entrée."
+  ],
+  "failure.store.SlugInUse.next": [
+   "75d7eb6e",
+   "Choisissez une autre adresse et enregistrez de nouveau."
+  ],
+  "failure.store.SlugInUse.what": [
+   "7bb388ea",
+   "Une autre entrée utilise déjà cette adresse, donc rien n'a été déplacé."
+  ],
+  "failure.store.StoreError.what": [
+   "8715fc6e",
+   "Pressless n'a pas pu utiliser l'un de vos fichiers."
+  ],
+  "failure.takein.TakeInStopped.next": [
+   "bd568bcf",
+   "Rien n'a été modifié. Ouvrez ce site depuis Sites, ou configurez celui-ci dans un nouveau dossier."
+  ],
+  "failure.takein.TakeInStopped.what": [
+   "0cd23c6d",
+   "Pressless contient déjà un site sur cet ordinateur, donc il n'a pas copié celui-ci."
+  ],
+  "failure.undo.FetchAreaInUse.next": [
+   "dd117890",
+   "Un autre programme a peut-être un fichier ouvert dans le dossier propre à Pressless. Fermez-le, puis réessayez."
+  ],
+  "failure.undo.FetchAreaInUse.what": [
+   "04add40c",
+   "Pressless n'a pas pu vider son propre dossier de travail, donc il n'a rien modifié."
+  ],
+  "failure.undo.NothingToUndo.next": [
+   "3c441739",
+   "Il n'y a pas de version antérieure de votre site à laquelle revenir."
+  ],
+  "failure.undo.NothingToUndo.what": [
+   "d42ccd28",
+   "Pressless ne peut pas annuler votre toute première publication."
+  ],
+  "failure.unforeseen.next": [
+   "1cfd21ff",
+   "Réessayez, et envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.unforeseen.what": [
+   "3a35733a",
+   "Quelque chose s'est mal passé que Pressless n'attendait pas."
+  ],
+  "failure.unnamed_secret": [
+   "dca0d328",
+   "ce secret"
+  ],
+  "failure.updater.DiskFull.next": [
+   "fef6cb29",
+   "Libérez de l'espace sur cet ordinateur, puis cliquez de nouveau sur Mettre à jour maintenant."
+  ],
+  "failure.updater.DiskFull.what": [
+   "66e6055a",
+   "Il n'y a pas assez de place sur cet ordinateur pour télécharger la nouvelle version."
+  ],
+  "failure.updater.DownloadEndedEarly.next": [
+   "00746f37",
+   "Cliquez de nouveau sur Mettre à jour maintenant."
+  ],
+  "failure.updater.DownloadEndedEarly.what": [
+   "56b98f51",
+   "Le téléchargement s'est arrêté avant la fin."
+  ],
+  "failure.updater.DownloadFailed.next": [
+   "8704c9b4",
+   "Vérifiez votre connexion internet et cliquez de nouveau sur Mettre à jour maintenant."
+  ],
+  "failure.updater.DownloadFailed.what": [
+   "e0e68c42",
+   "Pressless n'a pas pu télécharger la nouvelle version."
+  ],
+  "failure.updater.UpdateRejected.next": [
+   "4c1823b8",
+   "Continuez avec cette version, et envoyez les détails ci-dessous à la personne qui vous aide."
+  ],
+  "failure.updater.UpdateRejected.what": [
+   "785916d9",
+   "Le téléchargement n'a pas prouvé qu'il venait de Pressless, donc rien n'a été installé."
+  ],
+  "failure.youtube.ChannelNotFound.next": [
+   "0e55d9a8",
+   "Vérifiez l'adresse de la chaîne dans la configuration de YouTube."
+  ],
+  "failure.youtube.ChannelNotFound.what": [
+   "553c3a2f",
+   "YouTube ne connaît aucune chaîne de ce nom."
+  ],
+  "failure.youtube.RateLimited.next": [
+   "46b96bda",
+   "Réessayez demain."
+  ],
+  "failure.youtube.RateLimited.what": [
+   "94be8ad5",
+   "Votre clé a épuisé son quota pour aujourd'hui."
+  ],
+  "failure.youtube.Refused.next": [
+   "bb0a0036",
+   "Vérifiez la clé dans la configuration de YouTube. Afficher les détails donne les mots de YouTube."
+  ],
+  "failure.youtube.Refused.what": [
+   "848dc37c",
+   "YouTube n'a pas accepté votre clé."
+  ],
+  "failure.youtube.Unreachable.next": [
+   "176afd02",
+   "Vérifiez votre connexion internet et réessayez."
+  ],
+  "failure.youtube.Unreachable.what": [
+   "08536e4d",
+   "Pressless n'a pas pu joindre YouTube."
+  ],
+  "failure.youtube.YouTubeError.next": [
+   "4e983278",
+   "Réessayez plus tard. Afficher les détails donne les mots de YouTube."
+  ],
+  "failure.youtube.YouTubeError.what": [
+   "af01c083",
+   "YouTube a répondu d'une façon que Pressless n'attendait pas."
+  ],
+  "files_screen.about": [
+   "c7dc8fdd",
+   "Les chansons, vidéos, PDF, fichiers ZIP et fichiers texte que vous avez téléversés. Un fichier va sur votre site web quand une page l'utilise."
+  ],
+  "files_screen.bytes": [
+   "0d2a0d3c",
+   "{n} octets"
+  ],
+  "files_screen.footer": [
+   "5bd1ea30",
+   "le pied de page"
+  ],
+  "files_screen.header": [
+   "ea0d8b25",
+   "l'en-tête"
+  ],
+  "files_screen.kb": [
+   "eb236725",
+   "{n} Ko"
+  ],
+  "files_screen.look": [
+   "5e5076e7",
+   "l'apparence"
+  ],
+  "files_screen.mb": [
+   "47bee220",
+   "{n} Mo"
+  ],
+  "files_screen.name": [
+   "50009ce1",
+   "Fichier"
+  ],
+  "files_screen.navigation": [
+   "b24ccab7",
+   "le menu"
+  ],
+  "files_screen.none": [
+   "9998d7de",
+   "Vous n'avez encore téléversé aucun fichier. Téléversez-en un depuis une section vidéo, musique ou téléchargement d'une page."
+  ],
+  "files_screen.remove": [
+   "c3812fc4",
+   "Supprimer"
+  ],
+  "files_screen.removed": [
+   "6771fb4c",
+   "Le fichier a été déplacé dans la corbeille."
+  ],
+  "files_screen.size": [
+   "1af85190",
+   "Taille"
+  ],
+  "files_screen.title": [
+   "a2b8baaa",
+   "Vos fichiers"
+  ],
+  "files_screen.unused": [
+   "bd1ead47",
+   "Aucune page"
+  ],
+  "files_screen.used_by": [
+   "d5b46b2b",
+   "Utilisé sur"
+  ],
+  "github_setup.cancelled": [
+   "69deb0d4",
+   "La connexion a été annulée sur GitHub. Cliquez sur Suivant pour recommencer."
+  ],
+  "github_setup.cannot_write": [
+   "cc7b5b24",
+   "Vous vous êtes connecté à GitHub en tant que {signed_in}, et ce compte ne peut pas modifier {repository}. Rien n'a été enregistré, donc votre connexion précédente fonctionne toujours. Pour utiliser un autre compte, passez-y sur github.com, puis cliquez sur Suivant pour vous reconnecter."
+  ],
+  "github_setup.code": [
+   "eeba8207",
+   "Votre code : <strong>{code}</strong>"
+  ],
+  "github_setup.how": [
+   "7e8447e8",
+   "Pressless se connecte à GitHub avec un court code plutôt qu'avec votre mot de passe."
+  ],
+  "github_setup.how.1": [
+   "d25e27d7",
+   "Cliquez sur <b>Suivant</b>. Pressless affiche un code et un lien vers GitHub."
+  ],
+  "github_setup.how.2": [
+   "0510dd85",
+   "Ouvrez le lien, connectez-vous à GitHub s'il le demande, et saisissez le code."
+  ],
+  "github_setup.how.3": [
+   "53fb70b5",
+   "Cliquez sur <b>Authorize</b> sur la page de GitHub."
+  ],
+  "github_setup.how.4": [
+   "ab21827c",
+   "Revenez ici et cliquez de nouveau sur <b>Suivant</b>."
+  ],
+  "github_setup.not_heard": [
+   "4348ebc1",
+   "GitHub n'a pas encore reçu de réponse de votre part. Saisissez le code sur la page de GitHub, cliquez sur Authorize, puis cliquez sur Suivant ici."
+  ],
+  "github_setup.title": [
+   "47e9895d",
+   "Se connecter à GitHub"
+  ],
+  "github_setup.type_at": [
+   "85e49155",
+   "Saisissez-le sur {link}"
+  ],
+  "github_setup.type_it": [
+   "832b672d",
+   "Saisissez ce code sur la page de GitHub, cliquez sur Authorize, puis cliquez sur Suivant ici."
+  ],
+  "github_setup.unavailable": [
+   "f1e70b95",
+   "Cette copie de Pressless ne peut pas se connecter à GitHub. Collez plutôt une clé de publication dans les Réglages."
+  ],
+  "google_setup.choose_hint": [
+   "0aa2b0d0",
+   "Choisissez l'un des sites de la liste."
+  ],
+  "google_setup.choose_other": [
+   "73a89b89",
+   "Choisir un autre site"
+  ],
+  "google_setup.continue": [
+   "31fbef16",
+   "Continuer"
+  ],
+  "google_setup.counting.also": [
+   "c0b6e864",
+   "Google liste aussi {ids} pour ce site."
+  ],
+  "google_setup.counting.failed": [
+   "95f74f14",
+   "Pressless n'a pas pu lire le code de comptage de ce site depuis Google, donc le comptage est toujours désactivé. Vous pouvez saisir son identifiant de mesure sur la page des Réglages."
+  ],
+  "google_setup.counting.failed_kept": [
+   "9ccadac8",
+   "Pressless n'a pas pu lire le code de comptage de ce site depuis Google, donc le comptage reste activé avec {id}. Vous pouvez le changer sur la page des Réglages."
+  ],
+  "google_setup.counting.found": [
+   "21e98d91",
+   "Pressless a trouvé le code de comptage de ce site ({id}) et le mettra sur chaque page que vous publiez."
+  ],
+  "google_setup.counting.kept": [
+   "88d1f426",
+   "Le comptage reste activé avec {id}."
+  ],
+  "google_setup.counting.none": [
+   "536bd3ba",
+   "Ce site n'a pas encore de flux web dans Google Analytics, donc le comptage est désactivé. Dans Google Analytics, ouvrez Admin, puis Data streams, puis Add stream, choisissez Web et saisissez l'adresse de votre site. Saisissez ensuite l'identifiant de mesure affiché sur la page des Réglages."
+  ],
+  "google_setup.counting.removed": [
+   "da6716e9",
+   "Pressless a supprimé {id}, le code de comptage du site précédent."
+  ],
+  "google_setup.counting.several": [
+   "348268f3",
+   "Google liste plusieurs flux web pour ce site : {ids}. Saisissez le bon identifiant de mesure sur la page des Réglages pour commencer à compter."
+  ],
+  "google_setup.list_expired": [
+   "a205914c",
+   "Cette liste de sites a expiré, donc rien n'a été modifié. Demandez une nouvelle liste ci-dessous."
+  ],
+  "google_setup.none_found": [
+   "8ec6329f",
+   "Ce compte Google ne voit aucune propriété Google Analytics. Connectez-vous avec le compte qui en voit."
+  ],
+  "google_setup.none_found.title": [
+   "58ad4b86",
+   "Aucun site Analytics trouvé"
+  ],
+  "google_setup.not_forgotten": [
+   "bdf3c5b3",
+   "Pressless n'a pas pu effacer de cet ordinateur les chiffres de visite de la dernière propriété, donc le tableau de bord peut les afficher comme ceux de celle-ci jusqu'à sa prochaine demande à Google."
+  ],
+  "google_setup.not_removed": [
+   "e86972b4",
+   "Pressless n'a pas pu supprimer la clé Google ni les chiffres de visite, donc ils sont peut-être encore sur cet ordinateur."
+  ],
+  "google_setup.not_told": [
+   "92e357ae",
+   "Pressless n'a pas pu dire à Google d'oublier son autorisation. Vous pouvez la retirer vous-même sur {link}."
+  ],
+  "google_setup.off": [
+   "401edb07",
+   "Les chiffres de visite sont désactivés."
+  ],
+  "google_setup.offer": [
+   "3e12a457",
+   "Pressless peut afficher combien de personnes lisent votre site, et depuis quels pays, en les lisant dans Google Analytics. C'est facultatif : sans cela, seuls les chiffres de visite manquent."
+  ],
+  "google_setup.privacy": [
+   "b5190c41",
+   "<a href=\"{url}\" target=\"_blank\" rel=\"noopener\">Confidentialité : comment Pressless traite vos données Google</a>"
+  ],
+  "google_setup.privacy_failed": [
+   "92435822",
+   "Le comptage des visiteurs est activé, mais la page Confidentialité ou son lien n'a pas pu être ajouté. Enregistrer les Réglages réessaie une fois."
+  ],
+  "google_setup.reading": [
+   "a6e97bd0",
+   "Pressless lit les chiffres de visite de la propriété Analytics {property}."
+  ],
+  "google_setup.ready": [
+   "f8b7cb95",
+   "Les chiffres de visite sont prêts."
+  ],
+  "google_setup.sign_in": [
+   "1dbcee68",
+   "Se connecter avec Google"
+  ],
+  "google_setup.sign_in_again": [
+   "51fbe1dc",
+   "Se reconnecter"
+  ],
+  "google_setup.signed_in": [
+   "5cc04d1e",
+   "Vous êtes connecté à Google."
+  ],
+  "google_setup.title": [
+   "a2768400",
+   "Chiffres de visite"
+  ],
+  "google_setup.turn_off": [
+   "e7df10ea",
+   "Désactiver les chiffres de visite"
+  ],
+  "google_setup.unavailable": [
+   "8330b6b8",
+   "Cette copie de Pressless ne peut pas se connecter à Google, donc elle ne peut pas afficher vos chiffres de visite."
+  ],
+  "google_setup.unverified": [
+   "64e8c90d",
+   "Google est encore en train de vérifier Pressless, donc il dira qu'il n'a pas vérifié cette application. Pressless ne lit que vos chiffres de visite. Pour continuer, cliquez sur <strong>Advanced</strong>, puis sur <strong>Go to Pressless</strong>."
+  ],
+  "google_setup.use": [
+   "f86b5282",
+   "Utiliser ce site"
+  ],
+  "google_setup.which": [
+   "9e6e2b7f",
+   "Pour quel site Pressless doit-il afficher les chiffres ?"
+  ],
+  "import.bring": [
+   "8f23e6f7",
+   "Cliquez sur Suivant pour importer votre site. Il est écrit d'un seul coup, et rien n'est sur le web tant que vous ne l'avez pas publié."
+  ],
+  "import.count.comments.many": [
+   "3af8a7b7",
+   "{count} commentaires"
+  ],
+  "import.count.comments.one": [
+   "3fd2c20e",
+   "1 commentaire"
+  ],
+  "import.count.drafts.many": [
+   "edbc8a6d",
+   "{count} brouillons"
+  ],
+  "import.count.drafts.one": [
+   "19cc4a50",
+   "1 brouillon"
+  ],
+  "import.count.files.many": [
+   "63352fdc",
+   "{count} fichiers"
+  ],
+  "import.count.files.one": [
+   "41d899a9",
+   "1 fichier"
+  ],
+  "import.count.held.many": [
+   "085f5ad3",
+   "{count} photos et fichiers"
+  ],
+  "import.count.held.one": [
+   "a01507e6",
+   "1 photo ou fichier"
+  ],
+  "import.count.pages.many": [
+   "d46e57d6",
+   "{count} pages"
+  ],
+  "import.count.pages.one": [
+   "0d8a4426",
+   "1 page"
+  ],
+  "import.count.photographs.many": [
+   "f2b1e954",
+   "{count} photos"
+  ],
+  "import.count.photographs.one": [
+   "e78e4450",
+   "1 photo"
+  ],
+  "import.count.posts.many": [
+   "c778d9da",
+   "{count} articles"
+  ],
+  "import.count.posts.one": [
+   "709f0967",
+   "1 article"
+  ],
+  "import.count.published.many": [
+   "9afb20e3",
+   "{count} entrées publiées"
+  ],
+  "import.count.published.one": [
+   "f6a9d019",
+   "1 entrée publiée"
+  ],
+  "import.export.1": [
+   "90374d51",
+   "Choisissez <b>Tools</b>, puis <b>Export</b>."
+  ],
+  "import.export.2": [
+   "1ebc2690",
+   "Choisissez <b>All content</b>."
+  ],
+  "import.export.3": [
+   "59d8bd83",
+   "Cliquez sur <b>Download Export File</b>. Votre navigateur enregistre un fichier se terminant par .xml."
+  ],
+  "import.export.choose": [
+   "1e8f4771",
+   "Choisir le fichier d'export"
+  ],
+  "import.export.held": [
+   "56822729",
+   "Pressless a votre export. Cliquez sur Suivant."
+  ],
+  "import.export.how": [
+   "cfda5952",
+   "Pressless lit le fichier que WordPress fait de tout votre site. Pour le créer, connectez-vous à votre site WordPress et :"
+  ],
+  "import.export.none": [
+   "3ca6e74c",
+   "Choisissez d'abord votre fichier d'export WordPress."
+  ],
+  "import.export.refused": [
+   "d9b0aec7",
+   "Ce fichier n'est pas un export WordPress que Pressless peut lire, donc il n'a pas été conservé. Choisissez le fichier .xml créé par WordPress."
+  ],
+  "import.export.too_large": [
+   "da5e2ab9",
+   "Ce fichier est plus gros que tout export WordPress que Pressless lit, donc il n'a pas été conservé."
+  ],
+  "import.folder.base": [
+   "6cd52d56",
+   "il a un élément base, qui change le sens de ses liens, donc ils ont été laissés tels qu'écrits"
+  ],
+  "import.folder.built": [
+   "dd3eb83b",
+   "Ce dossier contient ce qu'un outil utilise pour construire un site, pas les pages web du site. Construisez le site avec cet outil, puis choisissez le dossier de pages qu'il produit."
+  ],
+  "import.folder.carried_link": [
+   "4be8d77e",
+   "un lien vers {path}, qui n'a été repris qu'à l'intérieur des pages qui l'utilisent, pas comme un fichier qu'un lien peut atteindre"
+  ],
+  "import.folder.choose": [
+   "3edeb529",
+   "Choisir un fichier ZIP"
+  ],
+  "import.folder.choose_folder": [
+   "10471dd3",
+   "Choisir le dossier"
+  ],
+  "import.folder.counts": [
+   "3d4857a9",
+   "Pressless a trouvé {pages}, {photographs} et {files}."
+  ],
+  "import.folder.current_marks": [
+   "573c5d29",
+   "Pressless marque maintenant le lien courant avec aria-current, donc la règle propre au site pour sa classe active, current ou selected ne s'applique plus"
+  ],
+  "import.folder.front": [
+   "ae6d9a46",
+   "sans page d'index, {path} est devenu la page d'accueil"
+  ],
+  "import.folder.held": [
+   "930feb46",
+   "Pressless a votre dossier. Cliquez sur Suivant."
+  ],
+  "import.folder.how": [
+   "3785612a",
+   "Choisissez le dossier de votre site. S'il est déjà dans un fichier ZIP, choisissez plutôt celui-ci."
+  ],
+  "import.folder.left": [
+   "d6714dd9",
+   "Ceci ne sera pas repris :"
+  ],
+  "import.folder.linux": [
+   "33108959",
+   "Sous Linux, faites un clic droit sur le dossier dans votre gestionnaire de fichiers et choisissez <b>Compresser</b>, avec <b>.zip</b> comme type."
+  ],
+  "import.folder.look": [
+   "feb5fef5",
+   "Votre site garde sa propre apparence. Ses feuilles de style deviennent le code de style du site, que vous pourrez modifier plus tard."
+  ],
+  "import.folder.make_zip": [
+   "4337c9ec",
+   "Comment créer un fichier ZIP"
+  ],
+  "import.folder.marks": [
+   "b7d46752",
+   "il contenait des marques que Pressless utilise lui-même, qui ont été retirées"
+  ],
+  "import.folder.menu_stays": [
+   "5eec02f2",
+   "le menu reste dans chaque page, donc l'écran Menu ne change rien de ce que le site affiche"
+  ],
+  "import.folder.menu_unusual": [
+   "5d4d5d6c",
+   "ce menu est conservé tel qu'écrit, donc une nouvelle page ne le rejoindra pas d'elle-même"
+  ],
+  "import.folder.no_footer": [
+   "40f1fa1a",
+   "les pages ne partagent aucun pied de page, donc aucun n'a été séparé"
+  ],
+  "import.folder.no_header": [
+   "cd9b8841",
+   "les pages ne partagent aucun en-tête, donc aucun n'a été séparé"
+  ],
+  "import.folder.no_main": [
+   "8fe5dc2a",
+   "son contenu principal n'a pas pu être délimité, donc l'éditeur visuel ne peut pas l'atteindre"
+  ],
+  "import.folder.no_menu": [
+   "91dd0aec",
+   "les pages ne partagent aucun menu, donc l'écran Menu ne change rien de ce qui est affiché"
+  ],
+  "import.folder.no_page": [
+   "914dc77d",
+   "Ce fichier ZIP ou ce dossier ne contient aucune page web, donc rien n'a été conservé."
+  ],
+  "import.folder.none": [
+   "fe39b0e2",
+   "Choisissez d'abord le dossier de votre site."
+  ],
+  "import.folder.not_carried": [
+   "cac9e024",
+   "un lien vers {path}, qui n'a pas été repris"
+  ],
+  "import.folder.older": [
+   "34901c38",
+   "il était dans un ancien encodage, et est maintenant en UTF-8"
+  ],
+  "import.folder.own_footer": [
+   "38f5be2c",
+   "il garde son propre pied de page"
+  ],
+  "import.folder.own_header": [
+   "e1f065e3",
+   "il garde son propre en-tête"
+  ],
+  "import.folder.own_menu": [
+   "90670c30",
+   "il garde son propre menu, que l'écran Menu ne modifie pas"
+  ],
+  "import.folder.refused": [
+   "7fa4d4aa",
+   "Pressless n'a pas pu lire ce fichier ZIP ou ce dossier, ou n'a pas pu le faire tenir sur ce disque, ou il nomme un fichier hors de son dossier. Rien n'a été conservé."
+  ],
+  "import.folder.unnamed": [
+   "b0c4c598",
+   "rien ne nomme ce fichier, donc il est conservé mais pas publié"
+  ],
+  "import.folder.up": [
+   "5db71ae7",
+   "il contient les mots {{{{UP}}}}, que Pressless remplit par le chemin vers la racine du site"
+  ],
+  "import.folder.why.cname": [
+   "01f497cc",
+   "il indique quelle adresse web GitHub sert, et reste sur GitHub"
+  ],
+  "import.folder.why.deep": [
+   "71bd5cbb",
+   "il n'est atteint qu'à travers plus de {most} feuilles de style, chacune important la suivante"
+  ],
+  "import.folder.why.dot": [
+   "90b99ce2",
+   "son nom commence par un point, ce qui marque un fichier qui n'est pas destiné au site"
+  ],
+  "import.folder.why.kind": [
+   "b07ad1ff",
+   "ce n'est pas un type de fichier que Pressless conserve"
+  ],
+  "import.folder.why.large": [
+   "3187c5a1",
+   "il dépasse les {mib} Mio que Pressless conserve"
+  ],
+  "import.folder.why.long": [
+   "6155c9d9",
+   "un nom de son chemin est plus long que ce que Linux peut contenir"
+  ],
+  "import.folder.why.lost": [
+   "49f54f84",
+   "GitHub le servirait à chaque adresse manquante, alors que la redirection d'une ancienne adresse se rechargerait à l'infini"
+  ],
+  "import.folder.why.script": [
+   "3f26aa83",
+   "aucune page n'utilise ce script d'une façon que Pressless peut porter dans la page"
+  ],
+  "import.folder.why.segment": [
+   "403b1edc",
+   "Windows ne peut pas contenir un nom de son chemin"
+  ],
+  "import.folder.why.sheet": [
+   "39b94d10",
+   "aucune page ne renvoie à cette feuille de style"
+  ],
+  "import.folder.why.svg": [
+   "25d2e9f8",
+   "Pressless ne conserve un SVG que comme petite image qu'une page affiche, et celui-ci n'en est pas une"
+  ],
+  "import.folder.why.too_long": [
+   "b3faceea",
+   "son chemin entier est plus long que ce que cet ordinateur peut contenir"
+  ],
+  "import.folder.why.twin": [
+   "2414e117",
+   "un autre fichier a le même nom, aux majuscules près"
+  ],
+  "import.folder.why.twin_folder": [
+   "475aeb5d",
+   "un dossier de son chemin a le même nom qu'un autre, aux majuscules près"
+  ],
+  "import.folder.why.undecodable": [
+   "ab8b29c9",
+   "Pressless n'a pas pu lire son texte"
+  ],
+  "import.folder.why.unwritable": [
+   "174f1c23",
+   "cet ordinateur n'a pas pu l'écrire à cet endroit ({why})"
+  ],
+  "import.folder.why.verification": [
+   "fa79a2f4",
+   "il prouve à un moteur de recherche que le site est le vôtre"
+  ],
+  "import.folder.windows": [
+   "542703ba",
+   "Sous Windows, faites un clic droit sur le dossier dans l'Explorateur de fichiers, choisissez <b>Envoyer vers</b>, puis <b>Dossier compressé</b>. Sous Windows 11, choisissez d'abord <b>Afficher plus d'options</b>."
+  ],
+  "import.gaps.choose": [
+   "d4d9d3c5",
+   "Choisir le fichier ZIP"
+  ],
+  "import.gaps.filled.many": [
+   "4ca9a647",
+   "{count} ont été pris dans le fichier ZIP."
+  ],
+  "import.gaps.filled.one": [
+   "36a5608f",
+   "1 a été pris dans le fichier ZIP."
+  ],
+  "import.gaps.how": [
+   "dc8a1199",
+   "Si vous le pouvez, téléchargez le dossier <b>wp-content/uploads</b> depuis votre hébergeur sous la forme d'un seul fichier ZIP : le gestionnaire de fichiers de la plupart des hébergeurs peut compresser un dossier et le télécharger. Choisissez ensuite ce ZIP ici, et Pressless y prend ce qui manque. Ou cliquez sur Suivant pour continuer sans eux ; chacun est listé à la fin."
+  ],
+  "import.gaps.list.many": [
+   "a43304cc",
+   "Ces {count} n'ont pas pu être copiés depuis votre ancien site :"
+  ],
+  "import.gaps.list.one": [
+   "e3589494",
+   "Celui-ci n'a pas pu être copié depuis votre ancien site :"
+  ],
+  "import.gaps.none": [
+   "c0d48da8",
+   "Il ne manque rien. Cliquez sur Suivant."
+  ],
+  "import.gaps.refused": [
+   "319be7f2",
+   "Ce fichier n'a pas pu être utilisé. Choisissez un fichier ZIP du dossier uploads."
+  ],
+  "import.look": [
+   "67434d3f",
+   "Votre thème WordPress n'est pas repris, donc choisissez l'apparence de votre site. Vous pourrez la changer plus tard sur l'écran Apparence."
+  ],
+  "import.look.choose": [
+   "7411e643",
+   "Choisissez l'une des apparences."
+  ],
+  "import.media.counts": [
+   "0b20c718",
+   "Votre export contient {posts}, {pages} et {files}."
+  ],
+  "import.media.done": [
+   "5f99519b",
+   "Toutes les photos et tous les fichiers ont été repris. Cliquez sur Suivant."
+  ],
+  "import.media.fetching": [
+   "d06e32f7",
+   "Pressless les copie depuis votre ancien site : {done} sur {total} pour l'instant. Gardez cette page ouverte ; si Pressless se ferme, il reprendra d'ici la prochaine fois."
+  ],
+  "import.media.missing": [
+   "5aef11ef",
+   "{count} n'ont pas pu être copiés depuis votre ancien site. Cliquez sur Suivant pour voir lesquels."
+  ],
+  "import.media.retry": [
+   "fb63b71f",
+   "Cliquez sur Suivant pour réessayer de les copier."
+  ],
+  "import.media.wait": [
+   "dde03850",
+   "Pressless est encore en train de copier. Attendez qu'il indique avoir terminé."
+  ],
+  "import.offer": [
+   "94356e3e",
+   "Vous avez un site WordPress ? <a href=\"{link}\">Importez-le dans Pressless</a> : ses articles, ses pages, son menu, ses commentaires, ses photos et ses fichiers."
+  ],
+  "import.offer.folder": [
+   "77aa4a88",
+   "Votre site est-il un dossier de pages web ? <a href=\"{link}\">Importez-le plutôt</a> : il garde son apparence et ses adresses."
+  ],
+  "import.report.about": [
+   "7edf5467",
+   "Voici ce qui a été repris, et tout ce qui n'a pas été repris tel quel. Cela est aussi conservé dans le dossier d'import, sous le nom report.txt."
+  ],
+  "import.report.counts": [
+   "d60f6022",
+   "{published}, {drafts}, {comments}, {photographs} et {files}."
+  ],
+  "import.report.counts.folder": [
+   "885f596d",
+   "{photographs} et {files}."
+  ],
+  "import.report.dropped": [
+   "7b407092",
+   "{where} : {what}."
+  ],
+  "import.report.inside": [
+   "a2d5be15",
+   "{path} fait maintenant partie de chaque page qui l'utilisait. Vérifiez que chaque script fonctionne encore : un script qui nomme un fichier par son ancienne adresse ne le trouvera pas."
+  ],
+  "import.report.menu": [
+   "2686a43e",
+   "Le menu vient de {menu}."
+  ],
+  "import.report.moved": [
+   "da71dcaf",
+   "{path} est maintenant la page {name}. Son ancienne adresse redirige vers elle."
+  ],
+  "import.report.other_menus": [
+   "92a1b068",
+   "Autres menus, non importés : {menus}."
+  ],
+  "import.report.other_type.many": [
+   "3c06ea61",
+   "{count} éléments de type {kind} n'ont pas été importés."
+  ],
+  "import.report.other_type.one": [
+   "2ca18199",
+   "1 élément de type {kind} n'a pas été importé."
+  ],
+  "import.report.pages": [
+   "d36f7d8d",
+   "Pages : {pages}."
+  ],
+  "import.report.renamed": [
+   "812d7e68",
+   "{wanted} était déjà pris, donc il s'appelle maintenant {given}."
+  ],
+  "import.report.renamed_file": [
+   "b964c619",
+   "{place} partageait son nom, donc il s'appelle maintenant {name}."
+  ],
+  "import.report.review": [
+   "e83e7e06",
+   "{slug} est arrivé comme brouillon : il attendait une relecture."
+  ],
+  "import.report.scheduled": [
+   "e81370f7",
+   "{slug} est arrivé comme brouillon : il était programmé pour le {date}."
+  ],
+  "import.report.sheet_for_some": [
+   "49622ea1",
+   "{path} n'était utilisé que par certaines pages. Ses règles s'appliquent maintenant à toutes les pages."
+  ],
+  "import.report.title": [
+   "1776f776",
+   "Votre site est dans Pressless"
+  ],
+  "import.report.unfetched": [
+   "e35892ce",
+   "{place} n'a pas été repris : {why}."
+  ],
+  "import.step.bring": [
+   "321f12cb",
+   "Importer"
+  ],
+  "import.step.export": [
+   "6f0ef038",
+   "Votre export WordPress"
+  ],
+  "import.step.folder": [
+   "ecf42c87",
+   "Votre dossier de pages web"
+  ],
+  "import.step.found": [
+   "89853bc6",
+   "Ce qui sera repris"
+  ],
+  "import.step.gaps": [
+   "a8b1908a",
+   "Ce qui manque"
+  ],
+  "import.step.look": [
+   "d130118b",
+   "Une apparence"
+  ],
+  "import.step.media": [
+   "09a4ac0b",
+   "Vos photos et fichiers"
+  ],
+  "jpegxl.add": [
+   "dd145d3e",
+   "Ajouter la prise en charge de JPEG XL ({size} Mo)"
+  ],
+  "jpegxl.disk_full": [
+   "fcb76801",
+   "Il n'y a pas assez de place sur cet ordinateur pour la prise en charge de JPEG XL. Libérez de l'espace, puis réessayez."
+  ],
+  "jpegxl.line": [
+   "334e81e8",
+   "Photos JPEG XL : pas encore ajouté."
+  ],
+  "jpegxl.no_connection": [
+   "ad13ac93",
+   "La prise en charge de JPEG XL n'a pas pu être téléchargée. Vérifiez votre connexion internet et réessayez."
+  ],
+  "jpegxl.no_decoder": [
+   "5d310a82",
+   "Les photos JPEG XL ne peuvent pas être lues sur cet ordinateur. Le décodeur de Pressless fonctionne sous Windows, et sous Linux sur Intel ou AMD 64 bits."
+  ],
+  "jpegxl.ready": [
+   "15422327",
+   "Photos JPEG XL : prêt."
+  ],
+  "jpegxl.rejected": [
+   "1481ac92",
+   "Le téléchargement n'était pas le fichier attendu, donc il a été jeté."
+  ],
+  "languages.follow": [
+   "e2332d2a",
+   "Suivre l'ordinateur"
+  ],
+  "languages.label": [
+   "a4fe6526",
+   "Langue"
+  ],
+  "languages.offer": [
+   "dd7d8951",
+   "Pressless n'a pas pu déterminer la langue de votre ordinateur. Choisissez-en une :"
+  ],
+  "look.extra_note": [
+   "c283ab80",
+   "Votre propre CSS, depuis la zone en bas de l'écran Apparence."
+  ],
+  "look.journal_note": [
+   "9d714014",
+   "Les pages du journal, si vous l'activez."
+  ],
+  "look.style_note": [
+   "c9e85910",
+   "L'apparence de votre site, créée par l'écran Apparence de Pressless. Changez-la là : une modification faite ici à la main est remplacée à la prochaine sauvegarde, avec une copie conservée dans la corbeille."
+  ],
+  "look_screen.about": [
+   "139563aa",
+   "Changez un choix et l'aperçu à côté l'affiche tout de suite. Enregistrer le conserve, et votre site web l'affiche après votre prochaine publication."
+  ],
+  "look_screen.back": [
+   "5e49efc3",
+   "Enregistrer remet les propres feuilles de style de votre site. Pressless garde dans la corbeille une copie du code de style actuel."
+  ],
+  "look_screen.body_font": [
+   "b39fa052",
+   "Police du texte"
+  ],
+  "look_screen.colour.accent": [
+   "7c97e7df",
+   "Repère du menu"
+  ],
+  "look_screen.colour.band": [
+   "488d5d16",
+   "Fond de l'en-tête"
+  ],
+  "look_screen.colour.band-soft": [
+   "3bb2865a",
+   "Description de l'en-tête"
+  ],
+  "look_screen.colour.foot": [
+   "a750600f",
+   "Fond du pied de page"
+  ],
+  "look_screen.colour.foot-link": [
+   "b8e78ad4",
+   "Liens du pied de page"
+  ],
+  "look_screen.colour.heading": [
+   "a3e7821c",
+   "Titres"
+  ],
+  "look_screen.colour.ink": [
+   "71988c4d",
+   "Texte"
+  ],
+  "look_screen.colour.line": [
+   "3b26a542",
+   "Lignes"
+  ],
+  "look_screen.colour.link": [
+   "9024c197",
+   "Liens"
+  ],
+  "look_screen.colour.on-band": [
+   "a16987ba",
+   "Texte de l'en-tête"
+  ],
+  "look_screen.colour.on-foot": [
+   "0b02725a",
+   "Texte du pied de page"
+  ],
+  "look_screen.colour.paper": [
+   "54962022",
+   "Fond de la page"
+  ],
+  "look_screen.colour.soft": [
+   "4ef09d1d",
+   "Texte plus discret"
+  ],
+  "look_screen.colours": [
+   "88f20221",
+   "Couleurs"
+  ],
+  "look_screen.colours.about": [
+   "b314f30c",
+   "Le clair est utilisé quand l'ordinateur d'un visiteur est réglé sur clair, et le sombre quand il est réglé sur sombre."
+  ],
+  "look_screen.colours_kept": [
+   "15250786",
+   "Choisir une autre mise en page garde vos couleurs."
+  ],
+  "look_screen.effect.lift": [
+   "197eaec4",
+   "Les images se soulèvent légèrement sous le pointeur"
+  ],
+  "look_screen.effect.reveal": [
+   "540695d2",
+   "Chaque partie d'une page apparaît en fondu quand elle entre dans la vue"
+  ],
+  "look_screen.effect.smooth": [
+   "3a0ef598",
+   "Les liens dans une page glissent au lieu de sauter"
+  ],
+  "look_screen.effects": [
+   "358511c8",
+   "Effets"
+  ],
+  "look_screen.effects.about": [
+   "84859946",
+   "Un visiteur qui a demandé moins de mouvement à son ordinateur n'en voit aucun."
+  ],
+  "look_screen.extra": [
+   "7551db76",
+   "Votre propre CSS"
+  ],
+  "look_screen.extra.about": [
+   "7b9a3fe8",
+   "Pour qui connaît le CSS : il est ajouté en dernier, après tout ce qui précède."
+  ],
+  "look_screen.extra.own_about": [
+   "4755b1e0",
+   "Pour qui connaît le CSS : il est ajouté après les propres feuilles de style de votre site."
+  ],
+  "look_screen.font.humanist": [
+   "679370d4",
+   "Arrondie et conviviale"
+  ],
+  "look_screen.font.mono": [
+   "b15b792b",
+   "Machine à écrire"
+  ],
+  "look_screen.font.serif": [
+   "0aac3dba",
+   "Classique, avec empattements"
+  ],
+  "look_screen.font.system": [
+   "1bd1b9ff",
+   "Celle de l'ordinateur du visiteur"
+  ],
+  "look_screen.heading_font": [
+   "070d746c",
+   "Police des titres"
+  ],
+  "look_screen.layout": [
+   "a5119091",
+   "Mise en page"
+  ],
+  "look_screen.own_colours": [
+   "eac98611",
+   "Utiliser les couleurs propres à cette mise en page"
+  ],
+  "look_screen.preview_title": [
+   "d00c21c9",
+   "Votre page d'accueil avec cette apparence"
+  ],
+  "look_screen.replaces": [
+   "ccce5e62",
+   "Enregistrer remplace le code de style actuel de votre site par un code créé à partir de ces choix. Pressless garde dans la corbeille une copie de l'actuel."
+  ],
+  "look_screen.restart": [
+   "b1cbeef3",
+   "Choisir une mise en page ici repart de ses propres couleurs et polices."
+  ],
+  "look_screen.route": [
+   "df81de8b",
+   "Comment votre site est mis en forme"
+  ],
+  "look_screen.route.own": [
+   "813b0220",
+   "Garder ses propres feuilles de style, et ajouter du CSS par-dessus"
+  ],
+  "look_screen.route.pressless": [
+   "b0545604",
+   "Utiliser un design Pressless"
+  ],
+  "look_screen.save": [
+   "1509f561",
+   "Enregistrer"
+  ],
+  "look_screen.saved": [
+   "b66205b8",
+   "Enregistré. Votre site web affichera cette apparence après votre prochaine publication."
+  ],
+  "look_screen.size.large": [
+   "ab80540d",
+   "Grande"
+  ],
+  "look_screen.size.larger": [
+   "b05e2520",
+   "Plus grande"
+  ],
+  "look_screen.size.normal": [
+   "a7248eeb",
+   "Normale"
+  ],
+  "look_screen.style.coral": [
+   "56ac628a",
+   "Corail"
+  ],
+  "look_screen.style.coral.about": [
+   "ab93e345",
+   "une famille ou un groupe d'enfants"
+  ],
+  "look_screen.style.harbour": [
+   "d712d28b",
+   "Port"
+  ],
+  "look_screen.style.harbour.about": [
+   "b89a4307",
+   "des nouvelles ou une lettre d'information"
+  ],
+  "look_screen.style.ink": [
+   "f089d622",
+   "Encre"
+  ],
+  "look_screen.style.ink.about": [
+   "94b4e64f",
+   "n'importe quel site, le plus facile à lire"
+  ],
+  "look_screen.style.meadow": [
+   "02957438",
+   "Prairie"
+  ],
+  "look_screen.style.meadow.about": [
+   "baaed471",
+   "l'écriture, comme des poèmes ou des histoires"
+  ],
+  "look_screen.style.night": [
+   "4e9f8db8",
+   "Nuit"
+  ],
+  "look_screen.style.night.about": [
+   "f477b3c2",
+   "un groupe de musique ou un événement du soir"
+  ],
+  "look_screen.style.plum": [
+   "c8b2fae9",
+   "Prune"
+  ],
+  "look_screen.style.plum.about": [
+   "8ddf1b92",
+   "un artiste ou un créateur"
+  ],
+  "look_screen.style.sand": [
+   "82855c11",
+   "Sable"
+  ],
+  "look_screen.style.sand.about": [
+   "dacc7088",
+   "un café, une boutique ou un artisanat"
+  ],
+  "look_screen.style.sky": [
+   "b72804af",
+   "Ciel"
+  ],
+  "look_screen.style.sky.about": [
+   "a600c739",
+   "une école ou un groupe communautaire"
+  ],
+  "look_screen.style.slate": [
+   "10ad4c38",
+   "Ardoise"
+  ],
+  "look_screen.style.slate.about": [
+   "96339945",
+   "une entreprise ou un service"
+  ],
+  "look_screen.style.sunrise": [
+   "9c7c53e8",
+   "Aube"
+  ],
+  "look_screen.style.sunrise.about": [
+   "6829eb08",
+   "un site personnel ou un journal"
+  ],
+  "look_screen.style.teal": [
+   "fa15a5c1",
+   "Sarcelle"
+  ],
+  "look_screen.style.teal.about": [
+   "f0b585ef",
+   "la santé ou le bien-être"
+  ],
+  "look_screen.styles": [
+   "296ebb48",
+   "Styles de couleurs"
+  ],
+  "look_screen.styles.about": [
+   "7263bc04",
+   "En choisir un remplit les cases de couleurs ci-dessous. Vous pouvez changer n'importe quelle couleur ensuite."
+  ],
+  "look_screen.text_size": [
+   "d68761cc",
+   "Taille du texte"
+  ],
+  "look_screen.title": [
+   "517f6627",
+   "L'apparence de votre site"
+  ],
+  "look_screen.type": [
+   "38ecfc9a",
+   "Texte et largeur"
+  ],
+  "look_screen.width": [
+   "217fbef1",
+   "Largeur de la page"
+  ],
+  "look_screen.width.medium": [
+   "07b6af29",
+   "Celle de la mise en page"
+  ],
+  "look_screen.width.narrow": [
+   "ba227109",
+   "Étroite"
+  ],
+  "look_screen.width.wide": [
+   "147170e7",
+   "Large"
+  ],
+  "main.already": [
+   "b4dff8ff",
+   "Pressless fonctionne déjà. Utilisez l'onglet du navigateur qu'il a ouvert, ou fermez sa fenêtre et relancez-le."
+  ],
+  "main.could_not_start": [
+   "f2983d0b",
+   "Pressless n'a pas pu démarrer ({kind}). Fermez cette fenêtre et relancez Pressless. Si cela continue, envoyez ce nom à la personne qui vous aide."
+  ],
+  "main.moving_in": [
+   "75b96938",
+   "Pressless n'a pas pu déplacer votre site dans le dossier des sites de son dossier {folder} : {reason}. Rien n'a été perdu. Fermez tout ce qui utilise ce dossier et relancez Pressless."
+  ],
+  "main.open_link": [
+   "b07fafb2",
+   "Ouvrez ce lien dans votre navigateur : {link}"
+  ],
+  "main.running": [
+   "c37fe663",
+   "Pressless est en cours d'exécution. Gardez cette fenêtre ouverte pendant que vous l'utilisez, et fermez-la pour arrêter Pressless."
+  ],
+  "manual.captions": [
+   "ba118bf7",
+   "Français"
+  ],
+  "manual.search": [
+   "34259ab4",
+   "Rechercher dans le manuel"
+  ],
+  "manual.title": [
+   "754d8e78",
+   "Manuel de Pressless"
+  ],
+  "mark.accent": [
+   "65483a56",
+   "La couleur d'accent propre au site."
+  ],
+  "mark.accent.example": [
+   "b529bbbe",
+   "{{accent}}his own name{{/}}"
+  ],
+  "mark.bold": [
+   "6141b6af",
+   "Gras, pour un mot que vous voulez plus fort."
+  ],
+  "mark.bold.example": [
+   "19877635",
+   "**said out loud**"
+  ],
+  "mark.colour": [
+   "19ccb079",
+   "Une couleur de votre choix, écrite avec un dièse et son code hexadécimal."
+  ],
+  "mark.colour.example": [
+   "8e1e21d0",
+   "{{#c0453a}}the red line{{/}}"
+  ],
+  "mark.italic": [
+   "f27a25b6",
+   "Italique, pour un mot qui se penche à l'écart des autres."
+  ],
+  "mark.italic.example": [
+   "2007e7f6",
+   "*whispered*"
+  ],
+  "mark.link": [
+   "9bfb74bd",
+   "Un lien : l'adresse, puis les mots sur lesquels un lecteur clique."
+  ],
+  "mark.link.example": [
+   "7a42826e",
+   "{{link: https://example.org}}the words{{/}}"
+  ],
+  "mark.muted": [
+   "0f5519f8",
+   "L'encre plus discrète propre au site, pour une ligne qui reste en retrait."
+  ],
+  "mark.muted.example": [
+   "0fbc2df8",
+   "{{muted}}a quieter aside{{/}}"
+  ],
+  "mark.photo": [
+   "5023f781",
+   "Une photo sur une ligne à elle, avec une légende si vous en voulez une."
+  ],
+  "mark.photo.example": [
+   "7e40d8ea",
+   "{{photo: seaside.jpg | Late light}}"
+  ],
+  "mark.quote": [
+   "3e49953a",
+   "Une citation : commencez chacune de ses lignes par >. Une ligne vide la termine."
+  ],
+  "mark.quote.example": [
+   "04352220",
+   "> a line someone else wrote"
+  ],
+  "mark.rainbow": [
+   "087840aa",
+   "Chaque lettre d'une couleur différente. Les marques à l'intérieur restent comme tapées."
+  ],
+  "mark.rainbow.example": [
+   "c02e1315",
+   "{{rainbow}}every colour at once{{/}}"
+  ],
+  "mark.years_since": [
+   "c8c6cebe",
+   "Combien d'années entières depuis une date, calculé à chaque publication."
+  ],
+  "mark.years_since.example": [
+   "0388bfb8",
+   "{{years_since: 2010-01-01}}"
+  ],
+  "notice.editor.left_out.categories": [
+   "316ba6c1",
+   "« {name} » a été laissé de côté dans les catégories : Pressless ne peut pas en faire une partie d'une adresse web. Donnez-lui un autre nom."
+  ],
+  "notice.editor.left_out.tags": [
+   "ba2839a2",
+   "« {name} » a été laissé de côté dans les étiquettes : Pressless ne peut pas en faire une partie d'une adresse web. Donnez-lui un autre nom."
+  ],
+  "notice.next": [
+   "913ee744",
+   "Rien n'a été perdu. Envoyez ceci à la personne qui vous aide si vous ne vous y attendiez pas."
+  ],
+  "notice.page_editor.code_only": [
+   "883f03e3",
+   "Pressless ne trouve pas la partie principale de cette page à modifier sur la page, alors elle s'ouvre en code."
+  ],
+  "notice.page_editor.furniture_code_only": [
+   "f8d01dc5",
+   "Pressless ne trouve pas où commence et où finit cette partie de votre site, alors elle s'ouvre en code."
+  ],
+  "notice.page_editor.kept_copy": [
+   "11f4425e",
+   "Vos modifications ont été publiées, mais leur copie en attente est restée en place. Vous pouvez la jeter."
+  ],
+  "notice.page_editor.kept_copy_unknown": [
+   "33d1142b",
+   "Pressless ne peut pas dire si vos modifications ont été publiées, et leur copie en attente est restée en place. Vous pouvez la jeter."
+  ],
+  "notice.page_editor.menu_code_only": [
+   "b52a0c7c",
+   "Pressless modifie un menu qui est une seule liste de liens. Le vôtre est organisé autrement, alors il s'ouvre en code."
+  ],
+  "notice.page_editor.stray": [
+   "59086b9c",
+   "Le texte que vous avez mis entre les repères de l'en-tête ou du pied de page sera remplacé par celui de l'En-tête ou du Pied de page lors de la construction de votre site. Modifiez plutôt l'En-tête ou le Pied de page."
+  ],
+  "notice.pages.menu_unusual": [
+   "6303364a",
+   "Votre menu est organisé d'une façon que Pressless ne modifie pas, alors il a été laissé tel quel. Changez le lien vers cette page dans le code de la Navigation."
+  ],
+  "notice.pages.no_link": [
+   "6afda825",
+   "Pressless n'a trouvé aucun lien vers cette page dans votre menu. Vérifiez le code de la Navigation."
+  ],
+  "notice.pages.other_links": [
+   "65333654",
+   "Votre en-tête ou votre pied de page renvoie encore à cette page. Retirez ce lien dans son code."
+  ],
+  "notice.publishing.import_kept": [
+   "c7aba2f0",
+   "Pressless n'a pas pu noter que votre site est maintenant publié, donc Terminer la configuration listera encore la mise en ligne jusqu'à votre prochaine publication."
+  ],
+  "notice.publishing.kept_copy": [
+   "5b858eb6",
+   "Un brouillon en attente de cette publication est resté en place après la publication. Vous pouvez le jeter."
+  ],
+  "notice.publishing.kept_copy_unknown": [
+   "8b5b0692",
+   "Pressless ne peut pas dire si vos modifications ont été publiées, et un brouillon en attente de cette publication est resté en place. Vous pouvez le jeter."
+  ],
+  "notice.publishing.starter_kept": [
+   "448962aa",
+   "Pressless n'a pas pu noter que votre site de départ est maintenant publié, donc votre prochaine publication vous demandera encore une fois avant de remplacer un site."
+  ],
+  "notice.settings.not_private": [
+   "9827a6cb",
+   "le fichier des réglages n'a pas pu être rendu privé : ce système de fichiers a accordé le mode {mode} au lieu du mode réservé au propriétaire, donc les autres comptes de cet ordinateur peuvent le lire"
+  ],
+  "notice.store.not_private": [
+   "da4be8e5",
+   "{file} n'a pas pu être rendu privé : ce système de fichiers a accordé le mode {mode} au lieu du mode réservé au propriétaire, donc les autres comptes de cet ordinateur peuvent le lire"
+  ],
+  "notice.store.passed_over": [
+   "7ba27a7c",
+   "{file} a été ignoré : {reason}"
+  ],
+  "notice.store.twin": [
+   "d1a4edf9",
+   "{twin} nomme la même entrée que {target} et n'est pas le fichier que Pressless lit ; après ce déplacement, le dossier contient les deux, et {twin} n'est accessible qu'en le renommant"
+  ],
+  "notice.undo.look_kept": [
+   "9440d3d3",
+   "L'apparence dans l'état auquel vous êtes revenu n'a pas pu être lue, donc votre site garde son apparence actuelle ; tout le reste a été restauré"
+  ],
+  "overview.drafts.many": [
+   "edbc8a6d",
+   "{count} brouillons"
+  ],
+  "overview.drafts.one": [
+   "19cc4a50",
+   "1 brouillon"
+  ],
+  "overview.files.many": [
+   "3a8e322e",
+   "{count} fichiers."
+  ],
+  "overview.files.one": [
+   "a16fdca5",
+   "1 fichier."
+  ],
+  "overview.journal.figures": [
+   "231f47fc",
+   "{published} sur votre site, {drafts}."
+  ],
+  "overview.journal.off": [
+   "c1fc792d",
+   "Désactivé."
+  ],
+  "overview.open_files": [
+   "433fa20d",
+   "Ouvrir vos fichiers"
+  ],
+  "overview.open_journal": [
+   "d2fb3b68",
+   "Ouvrir votre journal"
+  ],
+  "overview.open_look": [
+   "5b28e28a",
+   "Changer l'apparence"
+  ],
+  "overview.open_pages": [
+   "7320e4c5",
+   "Ouvrir vos pages"
+  ],
+  "overview.open_visitors": [
+   "37a424fe",
+   "Voir qui vous lit"
+  ],
+  "overview.parts": [
+   "b5c74681",
+   "Menu, en-tête et pied de page"
+  ],
+  "overview.parts.none": [
+   "a833973d",
+   "Pas encore configuré."
+  ],
+  "overview.publish": [
+   "859390eb",
+   "Publier"
+  ],
+  "overview.publish.nothing.many": [
+   "ba49d50e",
+   "Rien ne changerait sur votre site. Pas encore sur votre site : {kinds}. Chacun part depuis son propre Envoyer sur le site, pas depuis Publier."
+  ],
+  "overview.publish.nothing.one": [
+   "cfa12edb",
+   "Rien ne changerait sur votre site. Pas encore sur votre site : {kinds}. Cela part depuis son propre Envoyer sur le site, pas depuis Publier."
+  ],
+  "overview.visitors.none_yet": [
+   "8f22773e",
+   "Pas encore de chiffres."
+  ],
+  "overview.visitors.not_set_up": [
+   "a833973d",
+   "Pas encore configuré."
+  ],
+  "overview.visitors.read": [
+   "05085723",
+   "{people} ont lu votre site en {window}."
+  ],
+  "overview.waiting.entries.many": [
+   "e5e8e1c7",
+   "{count} entrées du journal"
+  ],
+  "overview.waiting.entries.one": [
+   "0d3f726c",
+   "1 entrée du journal"
+  ],
+  "overview.waiting.many": [
+   "20f7e292",
+   "{count} modifications ne sont pas encore sur votre site : {kinds}. Chacune part depuis son propre Envoyer sur le site."
+  ],
+  "overview.waiting.one": [
+   "29b2a9df",
+   "1 modification n'est pas encore sur votre site : {kinds}. Elle part depuis son propre Envoyer sur le site."
+  ],
+  "overview.waiting.pages.many": [
+   "d46e57d6",
+   "{count} pages"
+  ],
+  "overview.waiting.pages.one": [
+   "0d8a4426",
+   "1 page"
+  ],
+  "overview.waiting.parts.many": [
+   "1e920871",
+   "{count} éléments de chaque page"
+  ],
+  "overview.waiting.parts.one": [
+   "71efbc01",
+   "1 élément de chaque page"
+  ],
+  "page_editor.drag": [
+   "442e96ec",
+   "Glisser"
+  ],
+  "page_editor.menu.add": [
+   "b1109578",
+   "Ajouter un lien"
+  ],
+  "page_editor.menu.address": [
+   "c485e60e",
+   "Mène à"
+  ],
+  "page_editor.menu.title": [
+   "5dcb3d37",
+   "Les liens du menu"
+  ],
+  "page_editor.menu.words": [
+   "0a8be89a",
+   "Mots"
+  ],
+  "page_editor.newest": [
+   "7de8a7df",
+   "Votre entrée la plus récente"
+  ],
+  "page_editor.panel.add": [
+   "f552a1e7",
+   "Ajouter :"
+  ],
+  "page_editor.panel.add_button": [
+   "9fd728c6",
+   "Ajouter"
+  ],
+  "page_editor.panel.add_file": [
+   "e44f3a85",
+   "Téléverser un fichier"
+  ],
+  "page_editor.panel.add_picture": [
+   "4058365d",
+   "Ajouter une image"
+  ],
+  "page_editor.panel.add_question": [
+   "8d62c67a",
+   "Ajouter une question"
+  ],
+  "page_editor.panel.add_to_column": [
+   "f6aec72a",
+   "Ajouter à la colonne {number}"
+  ],
+  "page_editor.panel.address": [
+   "56ef8f20",
+   "Adresse"
+  ],
+  "page_editor.panel.alt": [
+   "2a65964d",
+   "Mots qui la décrivent"
+  ],
+  "page_editor.panel.bold": [
+   "94fee62e",
+   "Gras"
+  ],
+  "page_editor.panel.caption": [
+   "7e6568d1",
+   "Légende, le cas échéant"
+  ],
+  "page_editor.panel.code": [
+   "4395a602",
+   "Son code"
+  ],
+  "page_editor.panel.columns": [
+   "7cf5c34b",
+   "Combien de colonnes"
+  ],
+  "page_editor.panel.ends": [
+   "866e3f08",
+   "Quand cela se termine"
+  ],
+  "page_editor.panel.italic": [
+   "9bf37cb5",
+   "Italique"
+  ],
+  "page_editor.panel.label": [
+   "bf27dd42",
+   "Mots dessus"
+  ],
+  "page_editor.panel.level": [
+   "18720478",
+   "Taille du titre, 1 la plus grande"
+  ],
+  "page_editor.panel.link": [
+   "a6a32dbc",
+   "Lien"
+  ],
+  "page_editor.panel.move": [
+   "6ecc3df6",
+   "Déplacer"
+  ],
+  "page_editor.panel.move_down": [
+   "40bb50da",
+   "Descendre"
+  ],
+  "page_editor.panel.move_to": [
+   "beb8194b",
+   "Déplacer vers"
+  ],
+  "page_editor.panel.move_up": [
+   "c66feb5e",
+   "Monter"
+  ],
+  "page_editor.panel.photograph": [
+   "d377becb",
+   "Une photo que vous avez, ou une adresse"
+  ],
+  "page_editor.panel.remove": [
+   "c3812fc4",
+   "Supprimer"
+  ],
+  "page_editor.panel.style_note": [
+   "f80c0b0f",
+   "Il met en forme toute la page où il se trouve, ou chaque page depuis l'en-tête ou le pied de page. Les images et les polices venant d'autres sites web s'affichent sur votre site publié, pas ici."
+  ],
+  "page_editor.panel.title": [
+   "b03b2a01",
+   "Cette section"
+  ],
+  "page_editor.remove": [
+   "1ec1e329",
+   "Supprimer cette page"
+  ],
+  "page_editor.rename": [
+   "1d8a5510",
+   "Renommer cette page"
+  ],
+  "page_editor.show_code": [
+   "76a1de59",
+   "Montrez-moi le code"
+  ],
+  "page_editor.show_on": [
+   "eae20d52",
+   "L'afficher sur :"
+  ],
+  "page_editor.show_visual": [
+   "a49757bd",
+   "Afficher l'éditeur"
+  ],
+  "page_editor.standing": [
+   "541b7167",
+   "Vos modifications restent sur cet ordinateur tant que vous ne publiez pas cette page."
+  ],
+  "page_hint.changes": [
+   "0ee20088",
+   "Envoyez vos modifications sur votre site, ou abandonnez-les, puis renommez cette page."
+  ],
+  "page_hint.empty": [
+   "5a0e0f80",
+   "Donnez à la page un nom contenant au moins une lettre ou un chiffre."
+  ],
+  "page_hint.forwarded": [
+   "f24e9067",
+   "L'ancienne adresse d'une page renommée renvoie vers celle-ci. Choisissez un autre nom."
+  ],
+  "page_hint.home": [
+   "e4233998",
+   "La page d'accueil ne peut être ni supprimée ni renommée."
+  ],
+  "page_hint.menu_empty": [
+   "2a98e168",
+   "Le menu relie les pages de votre site. Créez une page et envoyez-la sur votre site, puis ajoutez le menu."
+  ],
+  "page_hint.not_on_site": [
+   "0b77c7e9",
+   "Cette page n'est pas encore sur votre site. Abandonnez ses modifications pour la supprimer."
+  ],
+  "page_hint.privacy_remove": [
+   "03b0bd55",
+   "La page Confidentialité reste tant que votre site compte les visiteurs ou a des boutons J'aime et Je n'aime pas."
+  ],
+  "page_hint.privacy_rename": [
+   "7b088b06",
+   "La page Confidentialité garde son nom : Pressless la cherche sous ce nom."
+  ],
+  "page_hint.taken": [
+   "0b818bf4",
+   "Vous avez déjà une page portant ce nom."
+  ],
+  "page_hint.unusable": [
+   "7be6636a",
+   "Ce nom ne peut pas être l'adresse d'une page. Choisissez un autre nom."
+  ],
+  "publishing.hint": [
+   "9567d670",
+   "Saisissez le nom du dépôt exactement comme il est affiché ci-dessus."
+  ],
+  "publishing.keep": [
+   "3efb0275",
+   "Pressless n'y touche pas. Décochez tout élément de l'ancien site qui doit disparaître :"
+  ],
+  "publishing.keep_none": [
+   "5c37018b",
+   "Rien dessus n'est marqué pour être laissé intact."
+  ],
+  "publishing.nothing": [
+   "f7494b96",
+   "Votre site a déjà été publié."
+  ],
+  "publishing.nothing.heading": [
+   "c7a8ce9a",
+   "Rien à remplacer"
+  ],
+  "publishing.ready": [
+   "a134c216",
+   "Publiez maintenant de nouveau depuis là où vous étiez. Votre site de départ remplacera le site dans {repository}."
+  ],
+  "publishing.ready.heading": [
+   "5e14676a",
+   "Prêt à remplacer votre site"
+  ],
+  "publishing.replace": [
+   "e1fbba80",
+   "Remplacer le site sur GitHub"
+  ],
+  "publishing.replace.button": [
+   "7485abff",
+   "Le remplacer"
+  ],
+  "publishing.replace.confirm": [
+   "3bdb95cf",
+   "Saisissez <strong>{repository}</strong> pour confirmer"
+  ],
+  "publishing.replace.intro": [
+   "baaf948a",
+   "Votre dépôt, {repository}, contient déjà un site web. Publier votre site de départ remplace ses pages par les vôtres."
+  ],
+  "publishing.takeover": [
+   "3471ff25",
+   "Passer votre site à Pressless"
+  ],
+  "publishing.takeover.already.elsewhere": [
+   "5c77340c",
+   "GitHub Pages a déjà été modifié, et sert maintenant un autre dossier ou une autre branche, donc ce que Pressless publie n'arrivera pas sur le web tant que vous ne l'aurez pas remis comme avant."
+  ],
+  "publishing.takeover.already.off": [
+   "df092691",
+   "GitHub Pages a déjà été modifié, et est maintenant désactivé, donc ce que Pressless publie n'arrivera pas sur le web tant que vous ne l'aurez pas activé."
+  ],
+  "publishing.takeover.already.root": [
+   "adb40c6f",
+   "GitHub Pages a déjà été modifié, et sert maintenant le dossier principal de ce dépôt. Pressless y publiera désormais."
+  ],
+  "publishing.takeover.button": [
+   "c771c27e",
+   "Publier et passer à Pressless"
+  ],
+  "publishing.takeover.delete": [
+   "ea357dfe",
+   "Supprimer {file} sur GitHub"
+  ],
+  "publishing.takeover.done.added": [
+   "79ded52e",
+   "Pressless a ajouté un fichier vide, .nojekyll."
+  ],
+  "publishing.takeover.done.added_domain": [
+   "702f68e4",
+   "Pressless s'est assuré qu'un fichier, CNAME, contient ce domaine."
+  ],
+  "publishing.takeover.done.address": [
+   "0f9f32ba",
+   "Votre site a gardé son adresse, {address}."
+  ],
+  "publishing.takeover.done.branch": [
+   "bd1298dc",
+   "La branche {branch} est toujours dans le dépôt, et GitHub Pages ne la sert plus."
+  ],
+  "publishing.takeover.done.counts": [
+   "4dd3d07c",
+   "{uploaded}, et {removed}. Tout reste dans l'historique du dépôt."
+  ],
+  "publishing.takeover.done.domain": [
+   "6d5f2f68",
+   "Votre site a gardé son propre domaine, {domain}."
+  ],
+  "publishing.takeover.done.earlier": [
+   "bbf100ac",
+   "Un envoi précédent a déjà publié le site."
+  ],
+  "publishing.takeover.done.file": [
+   "a0b4d87f",
+   "{file} a disparu, mais reste dans l'historique du dépôt."
+  ],
+  "publishing.takeover.done.heading": [
+   "ecce9eac",
+   "Votre site est maintenant publié par Pressless"
+  ],
+  "publishing.takeover.done.pages": [
+   "d2781d2d",
+   "GitHub Pages sert maintenant ce que Pressless publie."
+  ],
+  "publishing.takeover.done.removed.many": [
+   "7b37e3b6",
+   "{count} ont été supprimés"
+  ],
+  "publishing.takeover.done.removed.one": [
+   "98fb4de8",
+   "1 a été supprimé"
+  ],
+  "publishing.takeover.done.stale": [
+   "610ee8cf",
+   "Pressless a supprimé un fichier, CNAME, qui nommait un domaine que ce site n'utilise pas."
+  ],
+  "publishing.takeover.done.uploaded.many": [
+   "4912dda6",
+   "{count} fichiers ont été envoyés ou modifiés"
+  ],
+  "publishing.takeover.done.uploaded.one": [
+   "7703628b",
+   "1 fichier a été envoyé ou modifié"
+  ],
+  "publishing.takeover.done.wait": [
+   "d27310c9",
+   "GitHub met quelques minutes à construire le site la première fois, donc l'ancien site peut s'afficher d'ici là."
+  ],
+  "publishing.takeover.intro": [
+   "6c1f862c",
+   "Votre site sur le web provient encore de ce que GitHub Actions construit dans {repository}. Le passer à Pressless change ceci :"
+  ],
+  "publishing.takeover.not_switched": [
+   "6a9a7a18",
+   "Votre nouveau site est sur GitHub, mais pas encore sur le web, car GitHub Pages n'a pas changé. Votre ancien site est toujours en ligne. Cliquez de nouveau sur le bouton."
+  ],
+  "publishing.takeover.removed": [
+   "a5b82e3f",
+   "Le fichier de construction a disparu du dépôt, donc tout est prêt."
+  ],
+  "publishing.takeover.steps": [
+   "022b8a72",
+   "D'abord, supprimez vous-même le fichier de construction, car Pressless n'a pas le droit de le modifier. Cliquez sur chaque lien ci-dessous. Il ouvre GitHub dans un nouvel onglet. Cliquez sur Commit changes là-bas, puis revenez ici."
+  ],
+  "publishing.takeover.still_there": [
+   "385d298e",
+   "Le fichier de construction est toujours dans le dépôt. Supprimez-le d'abord sur GitHub. Rien n'a été modifié."
+  ],
+  "report.open": [
+   "cdf87d16",
+   "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Ouvrir le signalement sur GitHub</a>"
+  ],
+  "report.public": [
+   "cb233f0a",
+   "<strong>Un ticket est public</strong> : n'importe qui peut le lire. N'y mettez ni l'adresse de votre site, ni vos textes, ni votre clé de publication."
+  ],
+  "report.security": [
+   "6e122766",
+   "Vous avez trouvé un problème de sécurité ? Ne le signalez pas ici, s'il vous plaît. Utilisez plutôt le <a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">signalement privé</a> de GitHub."
+  ],
+  "report.what": [
+   "b5ef92b1",
+   "Ceci ouvre un nouveau ticket sur la page de Pressless sur GitHub, avec un court formulaire déjà rempli : quel Pressless vous avez, le système sur lequel il fonctionne, et trois questions auxquelles vous répondez. Rien d'autre n'est envoyé, et vous pouvez tout lire et tout modifier avant de l'envoyer."
+  ],
+  "restarting.ask": [
+   "d82393ed",
+   "Pressless va se fermer et se rouvrir dans un nouvel onglet. Tous les onglets Pressless ouverts maintenant cesseront de fonctionner, alors enregistrez d'abord ce que vous écrivez dans un autre onglet."
+  ],
+  "restarting.ask.title": [
+   "bcdf11e1",
+   "Redémarrer Pressless ?"
+  ],
+  "restarting.back": [
+   "be7700e4",
+   "Retourner aux Réglages"
+  ],
+  "restarting.going": [
+   "5ce91cbb",
+   "Il se rouvre dans un nouvel onglet dans un instant. Vous pouvez fermer celui-ci."
+  ],
+  "restarting.going.title": [
+   "56281953",
+   "Pressless redémarre."
+  ],
+  "restarting.link": [
+   "510b6dc6",
+   "Redémarrer Pressless"
+  ],
+  "restarting.restart": [
+   "6b983a81",
+   "Redémarrer"
+  ],
+  "script.assistant.go": [
+   "8d7dd5ec",
+   "Oui, le faire"
+  ],
+  "script.assistant.title": [
+   "76730b3b",
+   "Votre assistant IA demande à modifier votre site"
+  ],
+  "script.assistant.wait": [
+   "a9549d7d",
+   "Pas encore"
+  ],
+  "script.editor.adding_photograph": [
+   "5788f365",
+   "Ajout de la photo…"
+  ],
+  "script.editor.confirm_address": [
+   "4f36dc2c",
+   "Changer l'adresse de cette entrée ? Elle change maintenant dans votre dossier Pressless-data, et sur votre site la prochaine fois que vous utiliserez Envoyer sur le site. Les liens vers l'ancienne adresse y mèneront toujours."
+  ],
+  "script.editor.confirm_throw_draft": [
+   "e8e53920",
+   "Jeter ce brouillon ? Il va dans la corbeille de votre dossier Pressless-data."
+  ],
+  "script.editor.confirm_throw_entry": [
+   "ad76485e",
+   "Jeter cette entrée ? Elle va maintenant dans la corbeille de votre dossier Pressless-data, et quitte votre site la prochaine fois que vous utiliserez Envoyer sur le site. Annuler le dernier envoi peut la ramener ensuite."
+  ],
+  "script.editor.missing_many": [
+   "fc2de995",
+   "Photos manquantes : {names}. Ajoutez chacune avec Ajouter une photo, ou corrigez les noms, avant d'envoyer."
+  ],
+  "script.editor.missing_one": [
+   "c81fdd69",
+   "Photo manquante : {names}. Ajoutez-la avec Ajouter une photo, ou corrigez son nom, avant d'envoyer."
+  ],
+  "script.editor.not_saved": [
+   "22b3467c",
+   "Non enregistré"
+  ],
+  "script.editor.photograph_added": [
+   "a73d8b5a",
+   "{name} ajouté."
+  ],
+  "script.editor.saved": [
+   "b5c120b3",
+   "Enregistré"
+  ],
+  "script.editor.saving": [
+   "096b7362",
+   "Enregistrement"
+  ],
+  "script.editor.throw_entry": [
+   "9ef7fd7e",
+   "Jeter cette entrée"
+  ],
+  "script.entry.below": [
+   "5ca94fe2",
+   "Elle se place sous la partie que vous avez choisie."
+  ],
+  "script.entry.end": [
+   "97ee0fe2",
+   "Elle se place à la fin de votre entrée."
+  ],
+  "script.entry.kind.paragraph": [
+   "c3b03dd2",
+   "Paragraphe"
+  ],
+  "script.entry.kind.photo": [
+   "bb1de972",
+   "Photo"
+  ],
+  "script.entry.kind.quote": [
+   "0d0c6df9",
+   "Citation"
+  ],
+  "script.entry.link_refused": [
+   "233e03c6",
+   "Un lien dans une entrée a besoin d'une adresse qui commence par https:// ou http://."
+  ],
+  "script.entry.nothing": [
+   "162851ff",
+   "Cliquez sur un paragraphe, une photo ou une citation pour la modifier."
+  ],
+  "script.entry.unpaired": [
+   "7936f3df",
+   "Pressless n'a pas trouvé les paragraphes de votre entrée sur la page, alors il montre les marques à la place."
+  ],
+  "script.file_box.sending_folder": [
+   "e1c27aa7",
+   "Envoi du dossier…"
+  ],
+  "script.file_box.too_large": [
+   "db7ad1af",
+   "Ce dossier est trop gros pour être envoyé d'un coup, donc rien n'a été envoyé. Mettez-le dans un fichier ZIP, puis choisissez celui-ci."
+  ],
+  "script.file_box.unreachable": [
+   "ca9944b0",
+   "Pressless n'a pas pu se joindre lui-même, donc le fichier n'a pas été envoyé. Rien n'a changé. Vérifiez que Pressless fonctionne toujours, puis réessayez."
+  ],
+  "script.file_box.unreadable": [
+   "e72cc64e",
+   "Pressless n'a pas pu lire un fichier de ce dossier, donc rien n'a été envoyé. Vérifiez que le dossier est toujours là, puis réessayez."
+  ],
+  "script.look.dark": [
+   "60acc53f",
+   "Sombre"
+  ],
+  "script.look.light": [
+   "dbcd5e7b",
+   "Clair"
+  ],
+  "script.look.no_preview": [
+   "d2f46949",
+   "L'aperçu n'a pas pu montrer votre dernière modification. Vos choix sont toujours là ; Enregistrer les conserve."
+  ],
+  "script.look.warning": [
+   "4d9e62a6",
+   "Difficile à lire en {scheme} : {text} sur {background} donne {ratio}:1, moins de 4,5:1."
+  ],
+  "script.manual.found": [
+   "0f76bd3e",
+   "{count} tâches correspondent."
+  ],
+  "script.manual.found_one": [
+   "09664552",
+   "1 tâche correspond."
+  ],
+  "script.manual.none": [
+   "1cbdd43e",
+   "Aucune tâche ne correspond. Essayez avec moins de mots."
+  ],
+  "script.message.ok": [
+   "565339bc",
+   "OK"
+  ],
+  "script.pages.ask_rename": [
+   "a36a0f29",
+   "Comment cette page doit-elle s'appeler ? Votre site change maintenant, et l'ancienne adresse mènera toujours à la page."
+  ],
+  "script.pages.confirm_remove": [
+   "a9f578f4",
+   "Supprimer cette page ? Elle va dans la corbeille de votre dossier Pressless-data, avec les modifications que vous n'avez pas publiées. Elle quitte votre site et votre menu maintenant."
+  ],
+  "script.plan.added": [
+   "8fe2f752",
+   "{count} autres fichiers seront ajoutés ou modifiés."
+  ],
+  "script.plan.added_one": [
+   "2aa74735",
+   "1 autre fichier sera ajouté ou modifié."
+  ],
+  "script.plan.go": [
+   "bf74ddc5",
+   "Publier maintenant"
+  ],
+  "script.plan.nothing": [
+   "ea6ac433",
+   "Rien ne changerait sur votre site."
+  ],
+  "script.plan.pages": [
+   "89ec71ff",
+   "Ces pages vont changer :"
+  ],
+  "script.plan.removed": [
+   "0a1e9a88",
+   "{count} fichiers seront supprimés."
+  ],
+  "script.plan.removed_one": [
+   "da09c390",
+   "1 fichier sera supprimé."
+  ],
+  "script.plan.title": [
+   "8c9c9b01",
+   "Avant que votre site change"
+  ],
+  "script.plan.wait": [
+   "a9549d7d",
+   "Pas encore"
+  ],
+  "script.press.checking": [
+   "d5331b91",
+   "Vérification de ce qui va changer sur votre site…"
+  ],
+  "script.press.not_published": [
+   "a2223bc0",
+   "Non publié. La raison est ci-dessous."
+  ],
+  "script.press.not_undone": [
+   "e4fedb6b",
+   "Votre site n'a pas été remis en place. La raison est ci-dessous."
+  ],
+  "script.press.published": [
+   "3b1e53b9",
+   "Publié. Votre site l'affichera d'ici quelques minutes."
+  ],
+  "script.press.publishing": [
+   "8689979a",
+   "Publication en cours… cela peut prendre quelques minutes la première fois."
+  ],
+  "script.press.undoing": [
+   "7c922372",
+   "Remise en place de votre site… cela peut prendre quelques minutes."
+  ],
+  "script.press.undone": [
+   "99bc4b8f",
+   "Votre site a été remis en place."
+  ],
+  "script.press.unreachable": [
+   "79b80f2b",
+   "Pressless n'a pas pu se joindre lui-même, donc cette page ne peut pas dire comment l'envoi s'est terminé. Vérifiez que Pressless fonctionne toujours."
+  ],
+  "script.sites.opening": [
+   "c926c2c5",
+   "Ouverture…"
+  ],
+  "script.standing.changes": [
+   "007d0282",
+   "Modifications pas encore publiées"
+  ],
+  "script.standing.off_site": [
+   "57163c8f",
+   "Pas encore sur votre site"
+  ],
+  "script.standing.on_site": [
+   "c9050e71",
+   "Sur votre site"
+  ],
+  "script.undo.back": [
+   "78cc4f9e",
+   "Retour à Votre site"
+  ],
+  "script.undo.unreachable": [
+   "478fff3b",
+   "Pressless n'a pas pu se joindre lui-même. Votre site n'a pas été modifié."
+  ],
+  "script.visual.ask_link": [
+   "4127c879",
+   "L'adresse vers laquelle faire le lien :"
+  ],
+  "script.visual.below": [
+   "fb30d1a5",
+   "Elle se place sous la section que vous avez choisie."
+  ],
+  "script.visual.caption_linked": [
+   "d44678b2",
+   "Cette légende contient un lien. Modifiez-la dans la vue code, pour que le lien soit conservé."
+  ],
+  "script.visual.end": [
+   "941ec19a",
+   "Elle se place à la fin de la page."
+  ],
+  "script.visual.fewer_columns": [
+   "733b3608",
+   "Déplacez ou supprimez d'abord ce qui se trouve dans la dernière colonne."
+  ],
+  "script.visual.file_too_large": [
+   "9094961b",
+   "Ce fichier fait plus de {mib} Mio (environ {mb} Mo), donc il n'a pas été envoyé."
+  ],
+  "script.visual.kind.button": [
+   "707eab0c",
+   "Bouton"
+  ],
+  "script.visual.kind.code": [
+   "340f4630",
+   "Code"
+  ],
+  "script.visual.kind.columns": [
+   "53aade77",
+   "Colonnes"
+  ],
+  "script.visual.kind.countdown": [
+   "a9b7f3f1",
+   "Compte à rebours"
+  ],
+  "script.visual.kind.download": [
+   "d6eafe82",
+   "Téléchargement"
+  ],
+  "script.visual.kind.enlarge": [
+   "236ca859",
+   "Image qui s'agrandit"
+  ],
+  "script.visual.kind.heading": [
+   "b34f17f0",
+   "Titre"
+  ],
+  "script.visual.kind.music": [
+   "6eb00b4b",
+   "Musique"
+  ],
+  "script.visual.kind.picture": [
+   "9a1c54f5",
+   "Image"
+  ],
+  "script.visual.kind.pictures": [
+   "385434f2",
+   "Rangée d'images"
+  ],
+  "script.visual.kind.questions": [
+   "402ad619",
+   "Questions qui se déplient"
+  ],
+  "script.visual.kind.script": [
+   "382b5dc6",
+   "Votre propre script"
+  ],
+  "script.visual.kind.slideshow": [
+   "dee52690",
+   "Diaporama d'images"
+  ],
+  "script.visual.kind.style": [
+   "7551db76",
+   "Votre propre CSS"
+  ],
+  "script.visual.kind.text": [
+   "c3b03dd2",
+   "Paragraphe"
+  ],
+  "script.visual.kind.top": [
+   "b05d95c6",
+   "Retour en haut"
+  ],
+  "script.visual.kind.video": [
+   "d534be82",
+   "Vidéo"
+  ],
+  "script.visual.link_refused": [
+   "9a39afe8",
+   "Un lien ne peut pas mener à cette adresse. Utilisez-en une qui commence par https://, http:// ou mailto:."
+  ],
+  "script.visual.move.below": [
+   "ad9341ca",
+   "Sous les colonnes"
+  ],
+  "script.visual.move.column": [
+   "e9a03bca",
+   "Colonne {number}"
+  ],
+  "script.visual.move.nowhere": [
+   "67d34be5",
+   "Aucun autre endroit"
+  ],
+  "script.visual.needs_address": [
+   "243ea7f3",
+   "Saisissez d'abord son adresse."
+  ],
+  "script.visual.nothing": [
+   "7ef07750",
+   "Cliquez sur un titre, un paragraphe ou n'importe quelle section de la page pour la modifier."
+  ],
+  "script.visual.picked": [
+   "fcb745d7",
+   "Modification : {kind}"
+  ],
+  "script.visual.top_label": [
+   "b05d95c6",
+   "Retour en haut"
+  ],
+  "setup.account.have": [
+   "535869e2",
+   "Si vous avez déjà un compte GitHub, saisissez son nom ci-dessous."
+  ],
+  "setup.account.make": [
+   "16ab0ad1",
+   "Sinon, créez-en un :"
+  ],
+  "setup.account.need": [
+   "047d4fd4",
+   "Il vous faut un compte GitHub. Si vous n'en avez pas encore, créez-en un maintenant :"
+  ],
+  "setup.back": [
+   "ea37ec29",
+   "Retour aux Réglages"
+  ],
+  "setup.bringin": [
+   "917d90cb",
+   "Ce dépôt contient un site fait de pages web, que Pressless n'a pas créé. Pressless peut l'importer, avec son apparence et ses adresses. Il a trouvé :"
+  ],
+  "setup.bringin.gone": [
+   "4e4715ac",
+   "Parmi eux, ceux-ci ne seront pas repris, donc cette publication les remplace ou les supprime :"
+  ],
+  "setup.bringin.kept": [
+   "813a6bbb",
+   "Parmi eux, ceux-ci ne seront pas repris dans Pressless :"
+  ],
+  "setup.bringin.link": [
+   "dd55503b",
+   "{page} renvoie vers {path}, donc ce lien cessera alors de fonctionner."
+  ],
+  "setup.bringin.not_kept": [
+   "7b69093f",
+   "Ceux-ci ne seront pas repris dans Pressless :"
+  ],
+  "setup.bringin.publish": [
+   "46f25722",
+   "Votre prochaine publication changera alors ceci sur GitHub. Les anciennes pages deviennent des redirections vers leurs nouvelles adresses, et tout le reste ici est remplacé ou supprimé. Tout cela reste dans l'historique du dépôt :"
+  ],
+  "setup.bringin.stays": [
+   "ad43d80d",
+   "Ceux-ci restent sur GitHub, et Pressless n'y touchera pas :"
+  ],
+  "setup.cannot_finish": [
+   "52812e2c",
+   "La configuration ne peut pas se terminer sur cet ordinateur."
+  ],
+  "setup.done": [
+   "d5a378c4",
+   "La configuration est terminée."
+  ],
+  "setup.done.address": [
+   "c90b949f",
+   "L'adresse de votre site est {link}."
+  ],
+  "setup.done.brought": [
+   "a514cc23",
+   "Votre site a été importé. Voici ce qui a été repris :"
+  ],
+  "setup.done.in_a_file": [
+   "fce09c97",
+   "Aucun trousseau de clés n'a été trouvé sur cet ordinateur, donc elle est conservée dans un fichier que seul votre compte peut lire, dans le dossier Pressless-data."
+  ],
+  "setup.done.kept_key": [
+   "291dca5b",
+   "Votre clé de publication est conservée dans {store}."
+  ],
+  "setup.done.kept_sign_in": [
+   "657cea78",
+   "Votre connexion à GitHub est conservée dans {store}."
+  ],
+  "setup.done.left_alone": [
+   "e1932b2a",
+   "Pressless laissera ceci intact sur votre site :"
+  ],
+  "setup.done.nothing_left_alone": [
+   "6368d046",
+   "Pressless n'a rien trouvé sur votre site qu'il doive laisser intact."
+  ],
+  "setup.done.starter": [
+   "ec2b499e",
+   "Votre site de départ est en place. Il n'est pas sur le web tant que vous ne l'avez pas publié."
+  ],
+  "setup.done.take_over": [
+   "7115c440",
+   "Votre site sur le web n'a pas changé. Parcourez d'abord vos pages ici. Votre première publication vous demandera de supprimer le fichier de construction, puis passera le site à Pressless."
+  ],
+  "setup.done.taken_in": [
+   "c638685b",
+   "Votre site a été importé depuis GitHub. Pressless contient maintenant :"
+  ],
+  "setup.field.account": [
+   "2f6afca6",
+   "Le nom de votre compte GitHub"
+  ],
+  "setup.field.daily_prompt_filter": [
+   "f0faec9c",
+   "Exclure les entrées dont une étiquette correspond à (facultatif, par exemple dailyprompt-*)"
+  ],
+  "setup.field.home_name": [
+   "80be9928",
+   "Son nom"
+  ],
+  "setup.field.key": [
+   "5eea8cc6",
+   "Votre clé de publication"
+  ],
+  "setup.field.measurement_id": [
+   "33131be3",
+   "L'identifiant de mesure de Google, pour compter vos visiteurs (facultatif, commence par G-)"
+  ],
+  "setup.field.paste_key": [
+   "e2ef3c9c",
+   "Collez la clé ici"
+  ],
+  "setup.field.repository": [
+   "197019fd",
+   "Le dépôt de votre site sur GitHub (propriétaire/nom)"
+  ],
+  "setup.field.repository_name": [
+   "c201b15b",
+   "Le nom du dépôt"
+  ],
+  "setup.field.site_address": [
+   "a1143188",
+   "L'adresse de votre site"
+  ],
+  "setup.field.site_description": [
+   "704e2ae9",
+   "Une courte description de votre site (facultatif)"
+  ],
+  "setup.field.site_icon": [
+   "0f8bf84f",
+   "L'icône de votre site (facultatif)"
+  ],
+  "setup.field.site_language": [
+   "e35b28cd",
+   "Langue du site"
+  ],
+  "setup.field.site_name": [
+   "9f3726d0",
+   "Le nom de votre site"
+  ],
+  "setup.field.site_picture": [
+   "b8efe721",
+   "L'image de partage de votre site (facultatif)"
+  ],
+  "setup.first": [
+   "3c5ad849",
+   "Configurez d'abord Pressless, <a href=\"/setup\">sur la page de configuration</a>."
+  ],
+  "setup.google.offer": [
+   "229c3d44",
+   "Facultatif : <a href=\"/setup/google\">voir combien de personnes lisent votre site</a>, grâce à Google Analytics."
+  ],
+  "setup.google.on": [
+   "07b16a0e",
+   "Les chiffres de visite sont activés : <a href=\"/setup/google\">changer de site ou les désactiver</a>."
+  ],
+  "setup.help.daily_prompt_filter": [
+   "6c89385c",
+   "Pressless laisse hors de votre site chaque entrée ayant une étiquette qui correspond à ceci. Un <b>*</b> remplace n'importe quelles lettres, donc <b>dailyprompt-*</b> correspond à dailyprompt-1 et dailyprompt-2024. Les majuscules doivent aussi correspondre."
+  ],
+  "setup.help.daily_prompt_filter.empty": [
+   "cbecb753",
+   "Laissez vide pour garder toutes les entrées."
+  ],
+  "setup.help.key": [
+   "ae329dc4",
+   "La clé permet à Pressless de modifier le dépôt de votre site et ses réglages, et aucun autre dépôt. Laissez la case vide pour garder la clé que Pressless a déjà. Pour en créer une nouvelle :"
+  ],
+  "setup.help.measurement_id": [
+   "b5787eb4",
+   "Il indique à Google Analytics sur quel compteur vos visiteurs sont comptés. Laissez-le vide et Pressless n'ajoute aucun code de comptage à votre site. Pour le trouver :"
+  ],
+  "setup.help.measurement_id.1": [
+   "1b5db3bc",
+   "Ouvrez <a href=\"https://analytics.google.com\" target=\"_blank\" rel=\"noopener\">analytics.google.com</a> et connectez-vous."
+  ],
+  "setup.help.measurement_id.2": [
+   "79104a28",
+   "Cliquez sur <b>Admin</b>, la roue dentée en bas à gauche."
+  ],
+  "setup.help.measurement_id.3": [
+   "34eb63d7",
+   "Sous <b>Data collection and modification</b>, cliquez sur <b>Data streams</b>, puis sur le flux de votre site. S'il n'y en a pas, cliquez sur <b>Add stream</b>, puis sur <b>Web</b>, et saisissez l'adresse de votre site."
+  ],
+  "setup.help.measurement_id.4": [
+   "e70ce3b9",
+   "Copiez le <b>Measurement ID</b>. Il commence par G-."
+  ],
+  "setup.help.repository": [
+   "79cec522",
+   "Saisissez le propriétaire et le nom du dépôt avec une barre oblique entre les deux, comme GitHub les affiche en haut de la page du dépôt : <b>propriétaire/nom</b>. Ils forment aussi la fin de l'adresse de cette page, après github.com/."
+  ],
+  "setup.help.repository.new": [
+   "0806c9e0",
+   "Pour créer un nouveau dépôt :"
+  ],
+  "setup.help.site_address": [
+   "1a26d74f",
+   "L'adresse que les gens saisissent pour atteindre votre site, en commençant par https://. Sur GitHub, ouvrez le dépôt de votre site et cliquez sur <b>Settings</b>, puis sur <b>Pages</b> : une fois le site en ligne, son adresse s'y affiche."
+  ],
+  "setup.help.site_address.named": [
+   "0ff3494b",
+   "Un dépôt nommé <b>votre-nom.github.io</b> se trouve à https://votre-nom.github.io. Tout autre nom se trouve à https://votre-nom.github.io/<i>le-nom</i>/. Si vous avez donné à votre site un domaine à vous sous <b>Custom domain</b> sur cette page, saisissez-le plutôt."
+  ],
+  "setup.help.site_description": [
+   "50d940f5",
+   "Une ligne sur votre site, avec vos propres mots. Pressless la met partout où l'en-tête et le pied de page de votre site ont une place pour elle. Laissez-la vide si vous n'en voulez pas."
+  ],
+  "setup.help.site_icon": [
+   "e23d01dd",
+   "La petite image dans l'onglet d'un navigateur, à côté du nom de votre site. Pressless découpe le centre de votre image en carré, donc une image dont le sujet est au milieu convient le mieux."
+  ],
+  "setup.help.site_language": [
+   "8be30159",
+   "La langue des mots que Pressless écrit sur votre site, comme ses dates et « Plus anciennes → ». Ces écrans gardent leur propre langue, choisie sous Plus."
+  ],
+  "setup.help.site_name": [
+   "5194ca7e",
+   "À votre choix. Pressless le met partout où l'en-tête et le pied de page de votre site ont une place pour le nom du site."
+  ],
+  "setup.help.site_picture": [
+   "4cddcb86",
+   "L'image que les gens voient à côté d'un lien vers votre site quand il est partagé, par exemple sur Facebook. Une image large convient le mieux. Une page qui nomme déjà sa propre image de partage la garde."
+  ],
+  "setup.hint.add_to_app": [
+   "f73a10d7",
+   "Pressless a créé le dépôt, mais l'application Pressless ne peut pas encore y accéder. Sur GitHub, cliquez sur votre photo, puis sur Settings, puis sur Applications. Cliquez sur Configure à côté de Pressless App, cliquez sur Select repositories, sélectionnez {repository}, et cliquez sur Save. Puis cliquez de nouveau sur Suivant."
+  ],
+  "setup.hint.app_cannot_reach": [
+   "ed150a81",
+   "L'application Pressless ne peut pas accéder à ce dépôt. Sur GitHub, cliquez sur votre photo, puis sur Settings, puis sur Applications, et vérifiez que l'installation de Pressless App l'inclut. Puis cliquez de nouveau sur Suivant."
+  ],
+  "setup.hint.elsewhere": [
+   "6ce5b053",
+   "Ce dépôt met déjà un site sur le web d'une autre façon, donc Pressless ne peut pas y publier. Cliquez sur Retour et choisissez un autre dépôt, neuf. Laissez les réglages GitHub Pages de celui-ci tels quels : les changer mettrait hors ligne le site qui s'y trouve déjà."
+  ],
+  "setup.hint.key_malformed": [
+   "48b5bf5b",
+   "Une clé de publication n'a ni espaces ni sauts de ligne. Collez-la de nouveau."
+  ],
+  "setup.hint.key_missing": [
+   "a6d5102c",
+   "Collez votre clé de publication."
+  ],
+  "setup.hint.key_not_granted": [
+   "9be0608c",
+   "Cette clé ne peut pas accéder à ce dépôt. Sur GitHub, modifiez la clé et choisissez le dépôt de votre site sous Repository access."
+  ],
+  "setup.hint.made_elsewhere": [
+   "1bce5cca",
+   "Ce dépôt contient ce qu'un outil utilise pour construire un site, pas les pages web du site, et Pressless ne peut pas encore l'importer. Cliquez sur Retour et choisissez un autre dépôt."
+  ],
+  "setup.hint.measurement_id": [
+   "800be4bf",
+   "Saisissez l'identifiant de mesure tel que Google l'affiche : G- puis des lettres majuscules et des chiffres, ou laissez-le vide."
+  ],
+  "setup.hint.name_alone": [
+   "dc6f333b",
+   "Saisissez uniquement le nom du dépôt, comme GitHub l'affiche après le nom de votre compte."
+  ],
+  "setup.hint.no_account": [
+   "4d954191",
+   "GitHub n'a aucun compte de ce nom. Vérifiez l'orthographe, ou terminez d'abord sa création."
+  ],
+  "setup.hint.no_pages_read": [
+   "8019e313",
+   "Cette clé ne peut pas voir GitHub Pages. Sur GitHub, modifiez la clé et réglez Pages sur Read and write sous Repository permissions."
+  ],
+  "setup.hint.no_pages_write": [
+   "05f5ce77",
+   "Cette clé ne peut pas activer GitHub Pages. Sur GitHub, modifiez la clé et réglez Pages et Administration sur Read and write sous Repository permissions, puis cliquez de nouveau sur Suivant."
+  ],
+  "setup.hint.no_such_repository": [
+   "8fe6ccf9",
+   "GitHub n'a aucun dépôt de ce nom auquel cette clé puisse accéder."
+  ],
+  "setup.hint.not_installed": [
+   "d861b927",
+   "GitHub n'affiche encore aucune application Pressless installée sur votre compte. Suivez les étapes ci-dessus, puis cliquez de nouveau sur Suivant."
+  ],
+  "setup.hint.not_public": [
+   "18a10e42",
+   "GitHub n'affiche aucun dépôt public de ce nom. Vérifiez l'orthographe, et que vous avez choisi Public en le créant."
+  ],
+  "setup.hint.other_account": [
+   "942815db",
+   "Vous vous êtes connecté à GitHub en tant que {signed_in}, et non {typed}. Pour utiliser {typed}, passez-y sur github.com, ou corrigez le nom ci-dessus. Puis cliquez sur Suivant pour vous reconnecter."
+  ],
+  "setup.hint.repository": [
+   "6b113953",
+   "Saisissez-le sous la forme propriétaire/nom, comme GitHub l'affiche."
+  ],
+  "setup.hint.sign_in_gone": [
+   "16636b4d",
+   "Cette connexion n'est plus sur cet ordinateur. Connectez-vous sous un autre nom, ci-dessous."
+  ],
+  "setup.hint.site_address": [
+   "b257ed1d",
+   "Saisissez l'adresse complète du site, en commençant par https://."
+  ],
+  "setup.hint.site_description": [
+   "aee6cfa0",
+   "Écrivez la description sur une seule ligne, ou laissez-la vide."
+  ],
+  "setup.hint.site_icon": [
+   "bfd99683",
+   "Choisissez de nouveau l'image, ou supprimez-la."
+  ],
+  "setup.hint.site_language": [
+   "08376646",
+   "Choisissez l'une des langues proposées."
+  ],
+  "setup.hint.site_name": [
+   "7dd593dd",
+   "Saisissez le nom du site sur une seule ligne."
+  ],
+  "setup.hint.site_picture": [
+   "bfd99683",
+   "Choisissez de nouveau l'image, ou supprimez-la."
+  ],
+  "setup.hint.site_unreadable": [
+   "d1b6e116",
+   "GitHub Actions construit le site de ce dépôt, mais Pressless n'a pas pu lire sa page d'accueil à son adresse. Vérifiez que le site s'ouvre dans votre navigateur, puis cliquez de nouveau sur Suivant. S'il ne s'ouvre pas, cliquez sur Retour et choisissez un autre dépôt. Rien n'a été modifié."
+  ],
+  "setup.hint.taken": [
+   "e0d73217",
+   "Un dépôt de ce nom existe déjà dans votre compte. Choisissez un autre nom."
+  ],
+  "setup.hint.type_account": [
+   "a7a0a5f3",
+   "Saisissez le nom de votre compte GitHub, tel que GitHub l'affiche."
+  ],
+  "setup.install": [
+   "2bccb307",
+   "Votre site vivra sur GitHub, qui l'héberge gratuitement. Donnez à Pressless la permission de l'y mettre :"
+  ],
+  "setup.install.1": [
+   "6057c012",
+   "Ouvrez {link}."
+  ],
+  "setup.install.2": [
+   "83eadfbb",
+   "Si GitHub vous demande de sélectionner un utilisateur, cliquez sur <b>Continue</b> à côté de <b>{account}</b>."
+  ],
+  "setup.install.3": [
+   "ac4ea87e",
+   "Sous <b>for these repositories</b>, laissez <b>All repositories</b> sélectionné. Pressless le restreint à la fin."
+  ],
+  "setup.install.4": [
+   "4d18a292",
+   "Cliquez sur <b>Install</b>, puis revenez ici et cliquez sur <b>Suivant</b>."
+  ],
+  "setup.install.already": [
+   "758303b8",
+   "Si GitHub affiche des réglages à la place, sans bouton <b>Install</b>, Pressless a déjà la permission. Revenez ici et cliquez sur <b>Suivant</b>."
+  ],
+  "setup.install.happening": [
+   "a77c1b3c",
+   "Pressless fonctionne par sa propre application sur GitHub, Pressless App, qui n'accède qu'aux dépôts que vous lui laissez. Un dépôt est le dossier sur GitHub où vit un site. Pressless crée ensuite le dépôt de votre site, et à la fin vous explique comment laisser l'application accéder à celui-là seulement."
+  ],
+  "setup.key": [
+   "5b5a0c9e",
+   "Pressless a besoin d'une clé qui accède au dépôt de votre site et à aucun autre. Créez-en une :"
+  ],
+  "setup.key.kept": [
+   "55a05d66",
+   "Pressless a déjà la clé que vous lui avez donnée. Laissez la case vide pour la garder, ou collez-en une nouvelle."
+  ],
+  "setup.key.safe": [
+   "d1680310",
+   "Pressless garde la clé dans le coffre sécurisé de votre ordinateur, jamais dans un fichier qu'il montre à quelqu'un."
+  ],
+  "setup.key_kept": [
+   "a8bb39cc",
+   "Laissez la case de la clé vide pour garder la clé que Pressless a déjà."
+  ],
+  "setup.look.commons": [
+   "6aa9f1a4",
+   "Agora"
+  ],
+  "setup.look.commons.about": [
+   "eb83496f",
+   "un club ou une communauté"
+  ],
+  "setup.look.harbour": [
+   "d712d28b",
+   "Port"
+  ],
+  "setup.look.harbour.about": [
+   "b89a4307",
+   "des nouvelles ou une lettre d'information"
+  ],
+  "setup.look.letter": [
+   "1bf163f2",
+   "Lettre"
+  ],
+  "setup.look.letter.about": [
+   "d0b465c6",
+   "un document simple"
+  ],
+  "setup.look.market": [
+   "5238d9bd",
+   "Marché"
+  ],
+  "setup.look.market.about": [
+   "4ca6b44b",
+   "une petite entreprise"
+  ],
+  "setup.look.meadow": [
+   "02957438",
+   "Prairie"
+  ],
+  "setup.look.meadow.about": [
+   "baaed471",
+   "l'écriture, comme des poèmes ou des histoires"
+  ],
+  "setup.look.stage": [
+   "de838855",
+   "Scène"
+  ],
+  "setup.look.stage.about": [
+   "d27c3b28",
+   "un musicien ou un groupe"
+  ],
+  "setup.look.studio": [
+   "0aa91af2",
+   "Atelier"
+  ],
+  "setup.look.studio.about": [
+   "a9b0755b",
+   "un portfolio"
+  ],
+  "setup.look.sunrise": [
+   "9c7c53e8",
+   "Aube"
+  ],
+  "setup.look.sunrise.about": [
+   "6829eb08",
+   "un site personnel ou un journal"
+  ],
+  "setup.name_not_moved": [
+   "4c459c5c",
+   "Pressless n'a pas pu déplacer le nom de votre site dans les fichiers propres à votre site, et réessaiera au prochain démarrage : {reason}"
+  ],
+  "setup.narrow": [
+   "22dac239",
+   "L'application Pressless peut accéder à tous les dépôts de votre compte. Pour qu'elle n'accède qu'à celui de votre site : sur GitHub, cliquez sur votre photo, puis sur <b>Settings</b>, puis sur <b>Applications</b>. Cliquez sur <b>Configure</b> à côté de <b>Pressless App</b>, choisissez <b>Only select repositories</b>, sélectionnez <b>{repository}</b>, et cliquez sur <b>Save</b>."
+  ],
+  "setup.new_key.1": [
+   "e7612ac1",
+   "Sur GitHub, cliquez sur votre photo en haut à droite, puis sur <b>Settings</b>."
+  ],
+  "setup.new_key.2": [
+   "1ff5c047",
+   "En bas de la liste de gauche, cliquez sur <b>Developer settings</b>, puis sur <b>Personal access tokens</b>, puis sur <b>Fine-grained tokens</b>."
+  ],
+  "setup.new_key.3": [
+   "0e2c490e",
+   "Cliquez sur <b>Generate new token</b>. Nommez-le <b>Pressless</b>, et choisissez sa durée de validité. Quand il expire, créez-en un nouveau de la même façon et collez-le dans les Réglages."
+  ],
+  "setup.new_key.4": [
+   "0cc91817",
+   "Sous <b>Repository access</b>, choisissez <b>Only select repositories</b>, puis le dépôt de votre site."
+  ],
+  "setup.new_key.5": [
+   "a2b102d9",
+   "Sous <b>Repository permissions</b>, réglez <b>Contents</b>, <b>Pages</b> et <b>Administration</b> chacun sur <b>Read and write</b>. Pressless a besoin d'Administration pour activer votre site."
+  ],
+  "setup.new_key.6": [
+   "a2d8db20",
+   "Cliquez sur <b>Generate token</b>, puis copiez-le. GitHub ne l'affiche qu'une seule fois."
+  ],
+  "setup.new_repository": [
+   "5a37d17f",
+   "Pressless crée maintenant un foyer pour votre site sur GitHub. Son nom détermine l'adresse de votre site."
+  ],
+  "setup.new_repository.1": [
+   "696c612a",
+   "Ouvrez <a href=\"https://github.com/new\" target=\"_blank\" rel=\"noopener\">github.com/new</a>. Ou, sur GitHub, cliquez sur le <b>+</b> en haut à droite, puis sur <b>New repository</b>."
+  ],
+  "setup.new_repository.2": [
+   "9c107e11",
+   "Sous <b>Repository name</b>, saisissez <b>{account}.github.io</b>. L'adresse de votre site est alors https://{account}.github.io. Tout autre nom convient aussi, et donne https://{account}.github.io/<i>le-nom</i>/."
+  ],
+  "setup.new_repository.3": [
+   "fa131e81",
+   "Choisissez <b>Public</b>. GitHub n'héberge gratuitement des sites que depuis des dépôts publics."
+  ],
+  "setup.new_repository.4": [
+   "bad217a0",
+   "Cliquez sur <b>Create repository</b>. Laissez tout le reste tel quel."
+  ],
+  "setup.new_repository.happening": [
+   "cc93ef31",
+   "Le foyer est un dépôt : le dossier sur GitHub où vit votre site. Pressless le rend Public, car GitHub n'héberge gratuitement des sites que depuis des dépôts publics."
+  ],
+  "setup.new_repository.named": [
+   "39156c52",
+   "Avec le nom <b>{account}.github.io</b>, l'adresse de votre site est https://{account}.github.io. Tout autre nom convient aussi, et donne https://{account}.github.io/<i>le-nom</i>/."
+  ],
+  "setup.onward": [
+   "8b7290b0",
+   "Aller à votre site"
+  ],
+  "setup.pages": [
+   "44b7dfe0",
+   "Cliquez sur Suivant et Pressless met votre site sur le web. Tout ce qui se trouve déjà dans le foyer de votre site va aussi sur le web."
+  ],
+  "setup.pages.happening": [
+   "5719890f",
+   "GitHub Pages est ce qui met votre dépôt sur le web. Pressless le vérifie, et l'active s'il est désactivé."
+  ],
+  "setup.pages.nojekyll": [
+   "df70a052",
+   "Il ajoute aussi à votre dépôt un fichier vide nommé .nojekyll, qui dit à GitHub d'afficher les fichiers de votre site exactement comme Pressless les fabrique."
+  ],
+  "setup.pick.new": [
+   "82f142a5",
+   "En créer un nouveau"
+  ],
+  "setup.pick.unlisted": [
+   "fb0e4c75",
+   "Pressless n'a pas pu lister les sites déjà présents dans votre compte GitHub. Pour en utiliser un, saisissez son nom ci-dessous."
+  ],
+  "setup.pick.which": [
+   "a1d08a70",
+   "Votre compte GitHub a déjà ces sites. Choisissez-en un à importer dans Pressless, ou créez-en un nouveau."
+  ],
+  "setup.picture.choose": [
+   "2132f604",
+   "Choisir une image"
+  ],
+  "setup.picture.remove": [
+   "c3812fc4",
+   "Supprimer"
+  ],
+  "setup.privacy.failed": [
+   "04c085ed",
+   "Vos réglages sont enregistrés, mais la page Confidentialité ou son lien n'a pas pu être ajouté. Enregistrer de nouveau réessaie une fois."
+  ],
+  "setup.privacy.link": [
+   "2a059c6a",
+   "Votre pied de page renvoie maintenant à la page Confidentialité."
+  ],
+  "setup.privacy.page": [
+   "bed484e7",
+   "Votre site a maintenant une page Confidentialité qui indique ce qu'il enregistre sur les visiteurs. Ouvrez-la depuis Vos pages et ajoutez comment les gens peuvent vous joindre."
+  ],
+  "setup.repository": [
+   "ac7eb37f",
+   "Un dépôt est le dossier sur GitHub où vit votre site. Créez-en un :"
+  ],
+  "setup.save": [
+   "bd10af12",
+   "Revérifier le dépôt et enregistrer"
+  ],
+  "setup.section.address": [
+   "a1143188",
+   "L'adresse de votre site"
+  ],
+  "setup.section.address.holds": [
+   "ca8aed93",
+   "Où se trouve votre site sur le web, et votre propre nom de domaine."
+  ],
+  "setup.section.assistant": [
+   "c22bf759",
+   "Assistant IA"
+  ],
+  "setup.section.assistant.holds": [
+   "f9d558c0",
+   "Laisser une application d'IA sur cet ordinateur travailler sur votre site."
+  ],
+  "setup.section.computer": [
+   "26f9f95a",
+   "Cet ordinateur"
+  ],
+  "setup.section.computer.holds": [
+   "d63a87a8",
+   "Pressless dans le menu et sur le bureau, le redémarrage, les mises à jour et JPEG XL."
+  ],
+  "setup.section.connection": [
+   "f911e414",
+   "GitHub"
+  ],
+  "setup.section.connection.holds": [
+   "23384fff",
+   "Le dépôt sur lequel votre site est publié, et sa clé."
+  ],
+  "setup.section.elsewhere": [
+   "f9ae5003",
+   "Non enregistré. Changez d'abord ceci dans {section} : {hint}"
+  ],
+  "setup.section.journal": [
+   "43b7c75d",
+   "Journal"
+  ],
+  "setup.section.journal.holds": [
+   "fb93902b",
+   "Les entrées exclues du journal par étiquette, et les mentions J'aime."
+  ],
+  "setup.section.saved": [
+   "fca046cc",
+   "Enregistré."
+  ],
+  "setup.section.site": [
+   "b4aa72b0",
+   "Le nom et les images de votre site"
+  ],
+  "setup.section.site.holds": [
+   "34c5f01c",
+   "Son nom, la ligne qui le décrit, son icône et son image de partage."
+  ],
+  "setup.section.visitors": [
+   "60d3f52a",
+   "Visiteurs et Google"
+  ],
+  "setup.section.visitors.holds": [
+   "57d91151",
+   "Compter vos visiteurs avec Google, et vos vidéos YouTube."
+  ],
+  "setup.shortcuts.app_menu": [
+   "5c8d4186",
+   "votre menu des applications"
+  ],
+  "setup.shortcuts.desktop": [
+   "0b01fa67",
+   "Mettre une icône Pressless sur le bureau"
+  ],
+  "setup.shortcuts.icon_added": [
+   "7a3baf14",
+   "Il y a une icône Pressless sur votre bureau."
+  ],
+  "setup.shortcuts.icon_removed": [
+   "8af7b672",
+   "L'icône Pressless a disparu de votre bureau."
+  ],
+  "setup.shortcuts.menu": [
+   "b6510faf",
+   "Mettre Pressless dans {menu}"
+  ],
+  "setup.shortcuts.pinning": [
+   "760ee349",
+   "Pressless est dans votre menu des applications. Pour l'ajouter à votre tableau de bord, trouvez-le dans le menu, faites un clic droit dessus et choisissez l'option qui l'épingle ou l'ajoute au tableau de bord. Son nom varie selon les bureaux."
+  ],
+  "setup.shortcuts.pinning.windows": [
+   "e06d4168",
+   "Pressless est dans le menu Démarrer. Pour l'épingler à la barre des tâches, trouvez-le dans le menu Démarrer, faites un clic droit dessus et choisissez Épingler à la barre des tâches."
+  ],
+  "setup.shortcuts.removed": [
+   "f98ec97d",
+   "Pressless n'est plus dans {menu}."
+  ],
+  "setup.shortcuts.save": [
+   "f15a6c70",
+   "Enregistrer"
+  ],
+  "setup.shortcuts.start_menu": [
+   "c3e61eb1",
+   "le menu Démarrer"
+  ],
+  "setup.shortcuts.title": [
+   "809c0f8f",
+   "Menu des applications et bureau"
+  ],
+  "setup.shortcuts.title.windows": [
+   "63ae8b15",
+   "Menu Démarrer et bureau"
+  ],
+  "setup.shortcuts.unavailable": [
+   "ee2f6fd2",
+   "Pressless ne peut s'ajouter au menu et au bureau que lorsqu'il est lancé depuis le fichier que vous avez téléchargé."
+  ],
+  "setup.shortcuts.unchanged": [
+   "3d4a49e6",
+   "Il n'y avait rien à changer."
+  ],
+  "setup.shortcuts.untick": [
+   "50cd5e85",
+   "Décochez une case et enregistrez pour retirer celle-ci."
+  ],
+  "setup.sign_up.1": [
+   "8d45e9d1",
+   "Ouvrez <a href=\"https://github.com/signup\" target=\"_blank\" rel=\"noopener\">github.com/signup</a>."
+  ],
+  "setup.sign_up.2": [
+   "d61a6c56",
+   "Saisissez votre adresse e-mail, un mot de passe et un nom d'utilisateur, et suivez les étapes de GitHub. Il envoie un code à votre e-mail pour vérifier qu'elle est bien à vous."
+  ],
+  "setup.sign_up.3": [
+   "d34536d5",
+   "Quand GitHub demande quelle formule, la gratuite est tout ce dont Pressless a besoin."
+  ],
+  "setup.signed_in": [
+   "23eb87a8",
+   "Pressless est connecté à GitHub. Saisir une clé ci-dessous remplace la connexion. <a href=\"/setup/github\">Se reconnecter à GitHub</a>."
+  ],
+  "setup.signin.account": [
+   "104b73d1",
+   "Saisissez le nom du compte GitHub où votre site vivra. Si vous en avez plus d'un, Pressless vérifie que vous vous connectez à celui-ci."
+  ],
+  "setup.signin.continue_as": [
+   "07863def",
+   "Continuer en tant que {account}"
+  ],
+  "setup.signin.someone_else": [
+   "7fdf109b",
+   "Se connecter sous un autre nom"
+  ],
+  "setup.signin.which": [
+   "06488a1f",
+   "Un autre de vos sites est déjà connecté à GitHub."
+  ],
+  "setup.site": [
+   "b82de6bd",
+   "L'adresse de votre site est {link}. Cela peut prendre quelques minutes après votre première publication avant qu'il s'affiche."
+  ],
+  "setup.site.finish": [
+   "6ff88876",
+   "Cliquez sur Suivant pour tout vérifier une dernière fois avec GitHub et terminer."
+  ],
+  "setup.starter.box": [
+   "9c91ac53",
+   "Commencer avec un site de départ : une page d'accueil, une page À propos, un menu, un en-tête et un pied de page, prêts à être modifiés."
+  ],
+  "setup.starter.box.empty": [
+   "f18aea9c",
+   "Laissez-la décochée si vous allez importer un site que vous avez déjà : cela demande une copie vide de Pressless."
+  ],
+  "setup.starter.look": [
+   "5f584679",
+   "Son apparence (vous pourrez tout changer plus tard)"
+  ],
+  "setup.starter.publish": [
+   "758f0e48",
+   "Pour le mettre sur le web, ouvrez <b>Accueil</b> sur l'écran <b>Pages</b>, et cliquez sur <b>Envoyer sur le site</b>."
+  ],
+  "setup.starter.unpublished": [
+   "abd9fb52",
+   "Votre site de départ n'est pas encore sur le web."
+  ],
+  "setup.step.account": [
+   "d9246f26",
+   "Un compte GitHub"
+  ],
+  "setup.step.install": [
+   "5878fcbd",
+   "Laisser Pressless accéder à votre site"
+  ],
+  "setup.step.key": [
+   "ba46cbad",
+   "Une clé pour Pressless"
+  ],
+  "setup.step.pages": [
+   "38162e61",
+   "Activer le site"
+  ],
+  "setup.step.repository": [
+   "e934e6e2",
+   "Un foyer pour votre site"
+  ],
+  "setup.step.site": [
+   "5af93124",
+   "Votre site"
+  ],
+  "setup.step.welcome": [
+   "68058b67",
+   "Configurer Pressless"
+  ],
+  "setup.takein": [
+   "8bd007c8",
+   "Ce dépôt contient déjà un site créé par Pressless. Pressless a trouvé :"
+  ],
+  "setup.takein.comments": [
+   "cdedde3e",
+   "Entrées avec commentaires : {count}"
+  ],
+  "setup.takein.entries": [
+   "6f35b08c",
+   "Entrées publiées : {count}"
+  ],
+  "setup.takein.files": [
+   "6cc1174c",
+   "Autres fichiers : {count}"
+  ],
+  "setup.takein.finish": [
+   "eaed4741",
+   "Cliquez sur Suivant pour copier ce site dans Pressless sur cet ordinateur et terminer. Rien ne change sur GitHub."
+  ],
+  "setup.takein.left": [
+   "d6714dd9",
+   "Ceci ne sera pas repris :"
+  ],
+  "setup.takein.left.path": [
+   "7cf3b401",
+   "{path}, que Pressless n'utilise pas"
+  ],
+  "setup.takein.moved": [
+   "d17040b2",
+   "Votre site sur GitHub a changé après que Pressless l'a montré. Rien n'a été copié. Revenez à l'étape GitHub Pages avec Retour pour le voir tel qu'il est maintenant."
+  ],
+  "setup.takein.name": [
+   "f692ce9a",
+   "Le nom du site : {name}"
+  ],
+  "setup.takein.never.drafts": [
+   "8c4bc8a8",
+   "Vos brouillons. GitHub ne les contient jamais, car ils n'ont jamais été publiés."
+  ],
+  "setup.takein.never.originals": [
+   "638dbdb7",
+   "Les photos en pleine taille. GitHub contient les copies plus petites que votre site affiche, et celles-ci sont reprises."
+  ],
+  "setup.takein.never.settings": [
+   "e392377b",
+   "Les réglages conservés sur votre autre ordinateur : l'identifiant de mesure Google Analytics, la propriété Analytics, les boutons J'aime et Je n'aime pas, la chaîne YouTube et le filtre Daily Prompt. Réglez-les de nouveau dans les Réglages avant d'envoyer quoi que ce soit sur votre site : d'ici là, votre prochaine publication laisse Google Analytics et les boutons J'aime et Je n'aime pas hors de chaque page."
+  ],
+  "setup.takein.pages": [
+   "45aba1a4",
+   "Pages : {count}"
+  ],
+  "setup.takein.photographs": [
+   "6fb564f7",
+   "Photos : {count}"
+  ],
+  "setup.takeover": [
+   "4d5bf7a4",
+   "GitHub Actions construit ce site à partir de ce que contient ce dépôt. Pressless a téléchargé le site depuis son adresse, et peut prendre le relais de cette construction, avec son apparence et ses adresses. Il a trouvé :"
+  ],
+  "setup.takeover.limits": [
+   "5ff4f221",
+   "Pressless ne trouve que ce qu'un lien atteint, donc une page vers laquelle rien ne renvoie n'a pas été téléchargée. Une page construite par un script dans le navigateur est arrivée sous la forme de la coquille vide de ce script. Parcourez vos pages avant votre première publication."
+  ],
+  "setup.takeover.owed": [
+   "ebb02d2c",
+   "Votre site sur le web provient encore de la construction de GitHub."
+  ],
+  "setup.takeover.unread": [
+   "66194fc5",
+   "Ceux-ci n'ont pas pu être lus depuis le site, donc ils ne seront pas repris :"
+  ],
+  "setup.welcome": [
+   "9c5f9b94",
+   "Pressless publie votre site sur GitHub, qui l'héberge gratuitement. Ces étapes vous guident pour le préparer, un écran à la fois. Il vous faut une adresse e-mail et environ quinze minutes."
+  ],
+  "setup.welcome.beside": [
+   "3bc24a27",
+   "Certaines étapes se passent sur les propres pages de GitHub. Gardez cette page ouverte à côté. Si vous fermez Pressless en cours de route, il reprend là où vous vous étiez arrêté."
+  ],
+  "setup.welcome.moving": [
+   "f14a1101",
+   "Vous déplacez Pressless depuis un autre ordinateur ? Utilisez Ouvrir un fichier de site sur l'écran Sites pour chaque site que vous y avez enregistré, au lieu de ces étapes."
+  ],
+  "setup.welcome.sites": [
+   "3c8d2fee",
+   "Aller à l'écran Sites"
+  ],
+  "shortcuts.comment": [
+   "79219e42",
+   "Écrivez et publiez votre propre site"
+  ],
+  "site.all_entries": [
+   "7c4c8197",
+   "← Toutes les entrées du journal"
+  ],
+  "site.anonymous": [
+   "e7a8aa2d",
+   "Anonyme"
+  ],
+  "site.archive": [
+   "66f4804e",
+   "Archives"
+  ],
+  "site.archive.description": [
+   "043c926a",
+   "Toutes les {entries} par année."
+  ],
+  "site.archive.lead": [
+   "0ec795a8",
+   "Toutes les {entries}, de la plus récente à la plus ancienne."
+  ],
+  "site.category": [
+   "58fb160f",
+   "{entries} dans {category}."
+  ],
+  "site.comments": [
+   "355f79f2",
+   "Commentaires"
+  ],
+  "site.comments.closed": [
+   "1972d498",
+   "Les nouveaux commentaires ne sont pas ouverts pour le moment."
+  ],
+  "site.comments.kept": [
+   "b3749dde",
+   "Commentaires du journal d'origine, conservés tels qu'ils ont été écrits."
+  ],
+  "site.comments.many": [
+   "3af8a7b7",
+   "{count} commentaires"
+  ],
+  "site.comments.one": [
+   "e9791dd3",
+   "{count} commentaire"
+  ],
+  "site.entries.many": [
+   "d06542eb",
+   "{count} entrées"
+  ],
+  "site.entries.one": [
+   "c2448afb",
+   "{count} entrée"
+  ],
+  "site.eyebrow": [
+   "43b7c75d",
+   "Journal"
+  ],
+  "site.journal": [
+   "0284923e",
+   "Le journal"
+  ],
+  "site.journal.none": [
+   "43cc5ef0",
+   "{entries}."
+  ],
+  "site.journal.span": [
+   "6c21f3f9",
+   "{entries}, du {first} au {last}."
+  ],
+  "site.moved.entry": [
+   "8694a882",
+   "Cette entrée a été déplacée vers <a href=\"{link}\">{title}</a>."
+  ],
+  "site.moved.page": [
+   "689f7a36",
+   "Cette page a été déplacée vers <a href=\"{link}\">{title}</a>."
+  ],
+  "site.newer": [
+   "71d4194e",
+   "← Plus récentes"
+  ],
+  "site.older": [
+   "ea0de0a0",
+   "Plus anciennes →"
+  ],
+  "site.page_of": [
+   "e212d603",
+   "Page {number} sur {pages}"
+  ],
+  "site.pagination": [
+   "7b3f674b",
+   "Pagination"
+  ],
+  "site.tag": [
+   "fe4eb0ac",
+   "{entries} avec l'étiquette « {tag} »."
+  ],
+  "site.unchanged": [
+   "c5108391",
+   "Votre site n'a pas changé."
+  ],
+  "site.unknown": [
+   "906c50a7",
+   "Pressless ne peut pas dire si votre site a changé."
+  ],
+  "site.updated": [
+   "2a43a476",
+   "Votre site a été mis à jour."
+  ],
+  "sites_screen.about": [
+   "0ac06d57",
+   "Pressless peut s'occuper de plus d'un site web. Ouvrir un autre site redémarre Pressless dans un nouvel onglet, alors enregistrez d'abord ce que vous écrivez."
+  ],
+  "sites_screen.backups.about": [
+   "9eb6bbe3",
+   "Chaque jour, Pressless enregistre tout seul chaque site dans un fichier, et garde les sept derniers de chacun. Une sauvegarde sur un autre disque, une clé USB ou un dossier cloud est en sécurité même si cet ordinateur est perdu."
+  ],
+  "sites_screen.backups.chosen": [
+   "299e603d",
+   "Les sauvegardes vont maintenant dans le dossier que vous avez choisi."
+  ],
+  "sites_screen.backups.chosen_folder": [
+   "90b0e09d",
+   "Les sauvegardes vont dans le dossier que vous avez choisi."
+  ],
+  "sites_screen.backups.default_folder": [
+   "d4c31027",
+   "Les sauvegardes vont dans le dossier Pressless-backups à côté du programme."
+  ],
+  "sites_screen.backups.folder": [
+   "60049b2d",
+   "Un autre dossier : collez son adresse complète"
+  ],
+  "sites_screen.backups.not_a_folder": [
+   "e3b298bf",
+   "Ce n'est pas l'adresse d'un dossier. Ouvrez le dossier, copiez son adresse complète, et collez-la ici."
+  ],
+  "sites_screen.backups.title": [
+   "63289f00",
+   "Sauvegardes quotidiennes"
+  ],
+  "sites_screen.backups.use": [
+   "30cbaeca",
+   "Utiliser ce dossier"
+  ],
+  "sites_screen.file_about": [
+   "f937fbbd",
+   "Un site entier, ses textes, ses photos et ses réglages, s'enregistre dans un seul fichier. Ouvrez ce fichier ici, ou dans Pressless sur un autre ordinateur, et il redevient un site. La clé de publication n'est pas dans le fichier, donc les Réglages la demandent une fois le site ouvert."
+  ],
+  "sites_screen.file_newer": [
+   "ad569715",
+   "Une version plus récente de Pressless a enregistré ce fichier. Aucun site n'a changé. Mettez Pressless à jour, puis rouvrez le fichier."
+  ],
+  "sites_screen.file_refused": [
+   "d11408a7",
+   "Ce fichier n'a pas pu être ouvert comme un site. Aucun site n'a changé. Choisissez un fichier enregistré par Pressless."
+  ],
+  "sites_screen.file_title": [
+   "6b5eaf0e",
+   "Enregistrer ou ouvrir un site entier"
+  ],
+  "sites_screen.file_unnamed": [
+   "cc183fe4",
+   "Site Pressless"
+  ],
+  "sites_screen.move.button": [
+   "8fb33101",
+   "Déplacer Pressless vers un nouvel ordinateur"
+  ],
+  "sites_screen.move.carry": [
+   "77c69ecd",
+   "Copiez les fichiers sur une clé USB, ou dans un dossier cloud accessible aux deux ordinateurs. Puis téléchargez Pressless sur le nouvel ordinateur et lancez-le."
+  ],
+  "sites_screen.move.open": [
+   "aa1034d0",
+   "Sur le nouvel ordinateur, allez à l'écran Sites et utilisez Ouvrir un fichier de site pour chaque fichier. La clé de publication n'est jamais dans un fichier, alors saisissez-la dans les Réglages une fois chaque site ouvert."
+  ],
+  "sites_screen.move.save": [
+   "ceb734ba",
+   "Enregistrez chaque site que vous voulez emporter. Chacun se télécharge comme un fichier, en général dans votre dossier Téléchargements."
+  ],
+  "sites_screen.move.save_one": [
+   "45983840",
+   "Enregistrer {site}"
+  ],
+  "sites_screen.move.step_carry": [
+   "8922df10",
+   "2. Emporter les fichiers sur le nouvel ordinateur"
+  ],
+  "sites_screen.move.step_open": [
+   "a837d971",
+   "3. Ouvrir chaque fichier là-bas"
+  ],
+  "sites_screen.move.step_save": [
+   "95d1e75f",
+   "1. Enregistrer chaque site dans un fichier"
+  ],
+  "sites_screen.move.title": [
+   "8fb33101",
+   "Déplacer Pressless vers un nouvel ordinateur"
+  ],
+  "sites_screen.new": [
+   "f9269a4c",
+   "Commencer un nouveau site"
+  ],
+  "sites_screen.not_a_site": [
+   "d75ef7e8",
+   "Ce site n'est plus là. Choisissez-en un dans la liste."
+  ],
+  "sites_screen.open": [
+   "ed077f3d",
+   "Ouvrir"
+  ],
+  "sites_screen.open_file": [
+   "e946f62d",
+   "Ouvrir un fichier de site"
+  ],
+  "sites_screen.open_now": [
+   "7ffdd653",
+   "(ouvert maintenant)"
+  ],
+  "sites_screen.remove": [
+   "c3812fc4",
+   "Retirer"
+  ],
+  "sites_screen.remove.keep": [
+   "fdce5da2",
+   "Le garder"
+  ],
+  "sites_screen.remove.title": [
+   "ac34126b",
+   "Retirer {site} de cette liste ?"
+  ],
+  "sites_screen.remove.what": [
+   "4f9e84b3",
+   "Pressless l'enregistre d'abord dans un seul fichier du dossier {folder}, où vont vos sauvegardes, puis le supprime de cet ordinateur. Son site sur GitHub reste sur le web. Pour le récupérer, ouvrez ce fichier ici."
+  ],
+  "sites_screen.removed": [
+   "83cb53fb",
+   "Retiré. Il est enregistré sous le nom {file} dans le dossier {folder}, que vous pouvez ouvrir ici pour le récupérer."
+  ],
+  "sites_screen.save": [
+   "73b9c22a",
+   "Enregistrer ce site dans un fichier"
+  ],
+  "sites_screen.title": [
+   "775fb009",
+   "Vos sites"
+  ],
+  "sites_screen.unnamed": [
+   "a379f8be",
+   "Nouveau site"
+  ],
+  "starter.about": [
+   "4efca0d1",
+   "À propos"
+  ],
+  "starter.about.title": [
+   "ad153adc",
+   "À propos — {name}"
+  ],
+  "starter.about.words": [
+   "d057efb3",
+   "Dites qui vous êtes et à quoi sert ce site."
+  ],
+  "starter.footer_note": [
+   "b1cf29f0",
+   "Le pied de page du site : chaque page est construite avec lui."
+  ],
+  "starter.header_note": [
+   "77817bca",
+   "L'en-tête du site : chaque page est construite avec lui."
+  ],
+  "starter.home": [
+   "3a786953",
+   "Accueil"
+  ],
+  "starter.home.words": [
+   "b8f9a62c",
+   "Ceci est votre page d'accueil. Changez ces mots pour dire de quoi parle votre site."
+  ],
+  "starter.menu": [
+   "efe10c80",
+   "Principal"
+  ],
+  "starter.new_page.words": [
+   "3f4f4266",
+   "Écrivez ici le texte de cette page."
+  ],
+  "starter.privacy": [
+   "54a57c31",
+   "Confidentialité"
+  ],
+  "starter.privacy.counted": [
+   "a9e8897a",
+   "Ce qui est compté : les pages lues, le pays et la région d'où vient une visite, et le type d'appareil et de navigateur utilisés. Les comptes ne servent qu'à voir comment le site est lu."
+  ],
+  "starter.privacy.counting": [
+   "79964aa6",
+   "Ce site compte ses visites avec Google Analytics, un service géré par Google. Google Analytics utilise des cookies, de petits fichiers que votre navigateur conserve, pour distinguer une visite d'une autre."
+  ],
+  "starter.privacy.policy": [
+   "fcdfae96",
+   "La propre politique de confidentialité de Google dit ce que Google fait de ces informations : <a href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>. Pour empêcher Google Analytics de compter vos visites sur n'importe quel site, vous pouvez installer le <a href=\"https://tools.google.com/dlpage/gaoptout\">module de navigateur de désactivation</a> de Google."
+  ],
+  "starter.privacy.questions": [
+   "20d25518",
+   "Questions sur vos informations : remplacez cette phrase par la manière de joindre la personne qui gère ce site."
+  ],
+  "starter.privacy.recaptcha": [
+   "a2a9b27c",
+   "Pour empêcher les votes automatisés, chaque page d'entrée charge reCAPTCHA de Google et App Check de Firebase à chaque visite, avant qu'aucun bouton soit cliqué."
+  ],
+  "starter.privacy.title": [
+   "9cc8e601",
+   "Confidentialité — {name}"
+  ],
+  "starter.privacy.votes": [
+   "d4ef51df",
+   "Les entrées de ce site ont des boutons J'aime et Je n'aime pas. En cliquer un conserve un identifiant aléatoire dans votre navigateur et votre vote dans une base de données Google Firebase. Votre vote et l'identifiant aléatoire peuvent être lus par n'importe qui."
+  ],
+  "starter.privacy.votes.who": [
+   "02450a8d",
+   "Aucun nom, aucune adresse e-mail, aucun compte n'est impliqué. Google voit votre adresse internet quand vous cliquez sur un bouton ou lisez les comptes. La propre politique de confidentialité de Google dit ce que Google fait de ces informations : <a href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>."
+  ],
+  "starter.this_site": [
+   "fb625242",
+   "ce site"
+  ],
+  "starter.welcome": [
+   "bfd3c224",
+   "Bienvenue sur {name}"
+  ],
+  "takeover.added": [
+   "6a015ed7",
+   "Pressless ajoute un fichier vide, .nojekyll, pour que GitHub serve vos pages telles quelles."
+  ],
+  "takeover.added_domain": [
+   "a2b63a32",
+   "Pressless s'assure qu'un fichier, CNAME, contient {domain}, ce qui garde ce domaine sur le site."
+  ],
+  "takeover.address": [
+   "bbd7659d",
+   "Votre site garde son adresse, {address}."
+  ],
+  "takeover.branch": [
+   "6fbe604a",
+   "La branche {branch} reste telle quelle dans le dépôt, mais GitHub Pages cesse de la servir."
+  ],
+  "takeover.changes": [
+   "fbabfeac",
+   "Rien ne change sur GitHub, et l'ancien site reste en ligne, jusqu'à votre première publication. Pressless vous le redemandera alors. Cette publication changera ceci :"
+  ],
+  "takeover.domain": [
+   "88be4932",
+   "Votre site garde son propre domaine, {domain}."
+  ],
+  "takeover.file": [
+   "b53d2a4b",
+   "Vous supprimez le fichier de construction {file} sur GitHub. Il reste dans l'historique du dépôt."
+  ],
+  "takeover.other_files": [
+   "90eec23e",
+   "Tout autre fichier dans .github/workflows reste."
+  ],
+  "takeover.pages": [
+   "62753140",
+   "GitHub Pages passe de la construction à ce que Pressless publie."
+  ],
+  "takeover.stale": [
+   "659f2614",
+   "Pressless supprime un fichier, CNAME, qui nomme un domaine que ce site n'utilise pas."
+  ],
+  "templates.about": [
+   "ea0a0d5b",
+   "Le modèle <strong>{name}</strong>. Il n'est jamais mis sur\nvotre site comme une page ; on peut partir de lui pour commencer quelque chose de nouveau."
+  ],
+  "templates.bin": [
+   "d753b8bf",
+   "Jeter ce modèle"
+  ],
+  "templates.journal": [
+   "b3434c06",
+   "Une simple entrée de journal"
+  ],
+  "templates.journal.body": [
+   "e9d366dc",
+   "Ce qui s'est passé, avec vos propres mots."
+  ],
+  "templates.lyric": [
+   "b405b979",
+   "Des paroles avec couplets"
+  ],
+  "templates.lyric.body": [
+   "47f51aa3",
+   "{{muted}}Couplet 1{{/}}\nLa première ligne du couplet\nLa ligne suivante\n\n{{muted}}Refrain{{/}}\nLe refrain, écrit une seule fois\n\n{{muted}}Couplet 2{{/}}\nLe deuxième couplet"
+  ],
+  "templates.name": [
+   "dcd1d522",
+   "Nom"
+  ],
+  "templates.new": [
+   "30d87ec4",
+   "Nouveau modèle"
+  ],
+  "templates.photograph": [
+   "6a640ac4",
+   "Une entrée autour d'une photo"
+  ],
+  "templates.photograph.body": [
+   "569e395d",
+   "{{photo: your-photograph.jpg | Une légende pour elle}}\n\nQuelques lignes sur la photo."
+  ],
+  "templates.poem": [
+   "3af49622",
+   "Un poème"
+  ],
+  "templates.poem.body": [
+   "66c928ba",
+   "Le premier vers du poème\nLe deuxième vers\n\nUne ligne vide commence la strophe suivante."
+  ],
+  "templates.save": [
+   "1509f561",
+   "Enregistrer"
+  ],
+  "templates.unreadable": [
+   "0a54f0e2",
+   "Pressless ne peut pas ouvrir votre dossier de modèles."
+  ],
+  "templates.yours": [
+   "bc183962",
+   "Vos modèles"
+  ],
+  "themes.blocky_overworld": [
+   "b3b39675",
+   "Monde en blocs"
+  ],
+  "themes.bonfire": [
+   "f5d1dce6",
+   "Feu de camp"
+  ],
+  "themes.bounty_hunter": [
+   "498f1172",
+   "Chasseur de primes"
+  ],
+  "themes.contrast_dark": [
+   "aee3457a",
+   "Contraste élevé, sombre"
+  ],
+  "themes.contrast_light": [
+   "85ca5680",
+   "Contraste élevé, clair"
+  ],
+  "themes.dark": [
+   "60acc53f",
+   "Sombre"
+  ],
+  "themes.desert_lab": [
+   "0b8e6c0e",
+   "Labo du désert"
+  ],
+  "themes.digital_rain": [
+   "d6ccc2e6",
+   "Pluie numérique"
+  ],
+  "themes.dream_house": [
+   "ae1b6a6b",
+   "Maison de rêve"
+  ],
+  "themes.follow": [
+   "bdc54772",
+   "Suivre mon ordinateur"
+  ],
+  "themes.forest_hero": [
+   "60a9e311",
+   "Héros de la forêt"
+  ],
+  "themes.group.basic": [
+   "0e35f6e9",
+   "De base"
+  ],
+  "themes.group.films": [
+   "ffac2ae2",
+   "Inspirés des films"
+  ],
+  "themes.group.games": [
+   "f43590e7",
+   "Inspirés des jeux vidéo"
+  ],
+  "themes.group.tv": [
+   "ca7d7734",
+   "Inspirés de la télé"
+  ],
+  "themes.hyperspace": [
+   "919df005",
+   "Hyperespace"
+  ],
+  "themes.label": [
+   "efb52e71",
+   "Thème"
+  ],
+  "themes.light": [
+   "dbcd5e7b",
+   "Clair"
+  ],
+  "themes.middle_realm": [
+   "cd6ed488",
+   "Royaume du milieu"
+  ],
+  "themes.neon_city": [
+   "c92c1c20",
+   "Ville néon"
+  ],
+  "themes.pipe_land": [
+   "40ee5503",
+   "Pays des tuyaux"
+  ],
+  "themes.replicant_night": [
+   "1912dbeb",
+   "Nuit réplicante"
+  ],
+  "themes.ringworld": [
+   "9eba3257",
+   "Monde-anneau"
+  ],
+  "themes.silver_sword": [
+   "2b22b355",
+   "Épée d'argent"
+  ],
+  "themes.size.label": [
+   "d68761cc",
+   "Taille du texte"
+  ],
+  "themes.size.large": [
+   "ab80540d",
+   "Grande"
+  ],
+  "themes.size.larger": [
+   "b05e2520",
+   "Plus grande"
+  ],
+  "themes.size.largest": [
+   "5511a4b7",
+   "La plus grande"
+  ],
+  "themes.size.normal": [
+   "a7248eeb",
+   "Normale"
+  ],
+  "themes.speed_zone": [
+   "4846b5ee",
+   "Zone de vitesse"
+  ],
+  "themes.spice_desert": [
+   "fd4388f7",
+   "Désert d'épice"
+  ],
+  "themes.test_chamber": [
+   "cbea25ce",
+   "Salle d'essai"
+  ],
+  "themes.time_box": [
+   "933be42a",
+   "Boîte temporelle"
+  ],
+  "themes.upside_down": [
+   "f07f0eef",
+   "À l'envers"
+  ],
+  "themes.valley_farm": [
+   "c0856021",
+   "Ferme de la vallée"
+  ],
+  "themes.wasteland": [
+   "5a2b4539",
+   "Terminal des terres désolées"
+  ],
+  "themes.winter_is_near": [
+   "068894ae",
+   "L'hiver vient"
+  ],
+  "themes.yellow_town": [
+   "3861ac50",
+   "Ville jaune"
+  ],
+  "tray.open": [
+   "07d55f2a",
+   "Ouvrir Pressless"
+  ],
+  "tray.restart": [
+   "6b983a81",
+   "Redémarrer"
+  ],
+  "tray.stop": [
+   "dc86111c",
+   "Arrêter Pressless"
+  ],
+  "tray.tooltip": [
+   "8afecbf2",
+   "Pressless est en cours d'exécution"
+  ],
+  "undo.demoted_many": [
+   "a23760ac",
+   "{count} redevenus brouillons"
+  ],
+  "undo.demoted_one": [
+   "6eef5137",
+   "{count} redevenu brouillon"
+  ],
+  "undo.entries": [
+   "d06542eb",
+   "{count} entrées"
+  ],
+  "undo.kept_many": [
+   "e44c9638",
+   "vos propres versions de {count} conservées comme brouillons"
+  ],
+  "undo.kept_one": [
+   "fa733e32",
+   "votre propre version de {count} conservée comme brouillon"
+  ],
+  "undo.one_entry": [
+   "17a2552e",
+   "1 entrée"
+  ],
+  "undo.one_page": [
+   "0d8a4426",
+   "1 page"
+  ],
+  "undo.pages": [
+   "d46e57d6",
+   "{count} pages"
+  ],
+  "undo.restored": [
+   "e4cb041d",
+   "{count} remis en place"
+  ],
+  "undo.summary": [
+   "4d7a1137",
+   "Votre site est revenu comme il était : {clauses}."
+  ],
+  "undo.unchanged": [
+   "7714ec9e",
+   "Votre site était déjà tel qu'il était avant la dernière publication."
+  ],
+  "undo.waiting": [
+   "ba5b2b2b",
+   "{count} retirées de votre site et gardées en attente"
+  ],
+  "updating.changes": [
+   "9f0f4eb7",
+   "Les nouveautés depuis la version {version}"
+  ],
+  "updating.changes.version": [
+   "a1874512",
+   "Version {version}"
+  ],
+  "updating.checking": [
+   "8ab7260e",
+   "Pressless cherche une nouvelle version à chaque démarrage."
+  ],
+  "updating.console": [
+   "7cfc5018",
+   "Pressless se met à jour. Vous pouvez fermer cette fenêtre."
+  ],
+  "updating.installing": [
+   "3a5a96ad",
+   "Pressless installe la version {version} et se rouvrira tout seul dans un instant. Vous pouvez fermer cet onglet."
+  ],
+  "updating.later": [
+   "73b6e48a",
+   "Plus tard"
+  ],
+  "updating.look": [
+   "8c18e33f",
+   "Chercher au démarrage de Pressless"
+  ],
+  "updating.not_checking": [
+   "79f81c0f",
+   "Pressless ne cherche pas de nouvelles versions."
+  ],
+  "updating.not_reopened": [
+   "180977cd",
+   "Pressless est mis à jour vers la version {version} mais n'a pas pu se rouvrir tout seul. Fermez sa fenêtre et relancez-le."
+  ],
+  "updating.offer": [
+   "4fd99886",
+   "Pressless {version} est prêt à être installé. Vos sites restent là où ils sont."
+  ],
+  "updating.skip": [
+   "6f4676c4",
+   "Ignorer cette version"
+  ],
+  "updating.stop_looking": [
+   "86f92968",
+   "Arrêter de chercher"
+  ],
+  "updating.update_now": [
+   "63bf0452",
+   "Mettre à jour maintenant"
+  ],
+  "usage.agree": [
+   "ec54804e",
+   "Envoyer des rapports d'utilisation anonymes"
+  ],
+  "usage.explain": [
+   "a3875d82",
+   "Pressless peut envoyer des rapports anonymes indiquant quels écrans vous utilisez, où la configuration s'arrête et ce qui tourne mal, avec sa version et votre système. Ils nous aident à corriger ce qui gêne les gens. Ils ne contiennent jamais vos textes, les noms de vos pages, l'adresse de votre site ni vos fichiers. Vous pouvez voir chaque rapport envoyé, et les désactiver à tout moment, sous Rapports d'utilisation."
+  ],
+  "usage.no": [
+   "49780701",
+   "Non merci"
+  ],
+  "usage.none_sent": [
+   "25e7e466",
+   "Aucun rapport n'a été envoyé."
+  ],
+  "usage.off": [
+   "cb89d62a",
+   "Les rapports d'utilisation sont désactivés. Rien n'est envoyé."
+  ],
+  "usage.on": [
+   "a3936d8e",
+   "Les rapports d'utilisation sont activés."
+  ],
+  "usage.sent": [
+   "209449f5",
+   "Rapports envoyés, du plus récent au plus ancien"
+  ],
+  "usage.title": [
+   "accbe5ad",
+   "Rapports d'utilisation"
+  ],
+  "usage.turn_off": [
+   "bc9bff47",
+   "Désactiver les rapports d'utilisation"
+  ],
+  "usage.turn_on": [
+   "cc591c78",
+   "Activer les rapports d'utilisation"
+  ],
+  "usage.unavailable": [
+   "244bbe61",
+   "Les rapports d'utilisation ne sont pas disponibles dans cette copie de Pressless, donc rien n'est envoyé."
+  ],
+  "usage.yes": [
+   "c7f45be5",
+   "Oui, les envoyer"
+  ],
+  "votes.dislike": [
+   "119cec41",
+   "Je n'aime pas"
+  ],
+  "votes.like": [
+   "64f915cb",
+   "J'aime"
+  ],
+  "votes_setup.about": [
+   "618e5f62",
+   "Les comptes vivent dans votre propre base de données Firebase gratuite, de Google. Ces étapes en créent une. Vous n'avez pas besoin d'un compte de facturation, et sans lui rien ne peut vous coûter d'argent."
+  ],
+  "votes_setup.app_check": [
+   "ba5b1b80",
+   "App Check rend plus difficile l'envoi automatisé de votes, mais il met reCAPTCHA de Google sur chaque page d'entrée, et chaque visite consomme son quota gratuit de 10 000 vérifications par mois. Sans compte de facturation, les boutons cessent alors de fonctionner jusqu'au mois suivant."
+  ],
+  "votes_setup.app_check.box": [
+   "64730ad2",
+   "La clé de site reCAPTCHA Enterprise"
+  ],
+  "votes_setup.app_check.steps": [
+   "58f904e7",
+   "Pour l'utiliser malgré tout, enregistrez votre application web dans App Check de Firebase avec reCAPTCHA Enterprise, et collez la clé de site ci-dessous. Pressless ne peut pas le vérifier depuis votre ordinateur."
+  ],
+  "votes_setup.app_check.title": [
+   "070c78d8",
+   "Facultatif, et mieux vaut le laisser désactivé : App Check"
+  ],
+  "votes_setup.back": [
+   "3f8e94e3",
+   "Retour à la page des boutons"
+  ],
+  "votes_setup.box": [
+   "c86d1c3d",
+   "Le texte firebaseConfig"
+  ],
+  "votes_setup.check": [
+   "6ba7dc7c",
+   "Vérifier que c'est prêt"
+  ],
+  "votes_setup.check.anonymous": [
+   "faad4ebd",
+   "Google a refusé une connexion anonyme. Activez la connexion Anonymous (étape 4)."
+  ],
+  "votes_setup.check.database": [
+   "2056fe1c",
+   "Il n'y a pas encore de base de données. Créez-la (étape 2)."
+  ],
+  "votes_setup.check.key": [
+   "0b1873a7",
+   "Google a refusé la clé du projet. Collez de nouveau le texte firebaseConfig (étape 5). Si vous avez restreint la clé dans Google Cloud, cela ne peut pas être vérifié depuis votre ordinateur : essayez les boutons sur votre site publié."
+  ],
+  "votes_setup.check.ready": [
+   "71067583",
+   "Prêt : Google a répondu comme il faut à chaque vérification."
+  ],
+  "votes_setup.check.recaptcha": [
+   "c2f7daa2",
+   "Avec App Check activé, cela ne peut pas être vérifié depuis votre ordinateur. Essayez les boutons sur votre site publié."
+  ],
+  "votes_setup.check.rules": [
+   "b14c18b6",
+   "Google a refusé un vote. Collez les règles et publiez-les (étape 3)."
+  ],
+  "votes_setup.check.rules_wrong": [
+   "c979c388",
+   "Les règles de la base de données ne sont pas celles affichées. Remplacez-les et publiez (étape 3)."
+  ],
+  "votes_setup.check.unreachable": [
+   "0141f235",
+   "Pressless n'a pas pu joindre Google, donc rien n'est encore anormal. Réessayez plus tard."
+  ],
+  "votes_setup.copied": [
+   "d249818e",
+   "Copié."
+  ],
+  "votes_setup.copy": [
+   "07234cc9",
+   "Copier les règles"
+  ],
+  "votes_setup.hint": [
+   "40ac60d2",
+   "Ce n'est pas le texte firebaseConfig complet. Il lui faut apiKey, projectId et appId, tels que Firebase les affiche. Rien n'a été enregistré."
+  ],
+  "votes_setup.hint.recaptcha": [
+   "6bba5fc1",
+   "Ce n'est pas une clé de site reCAPTCHA. Laissez la case vide sauf si vous avez choisi App Check. Rien n'a été enregistré."
+  ],
+  "votes_setup.not_on": [
+   "248d7c45",
+   "Les boutons sont désactivés. Votre site ne publie aucun bouton tant que ceci n'est pas configuré."
+  ],
+  "votes_setup.off": [
+   "404e7c33",
+   "Désactiver les boutons"
+  ],
+  "votes_setup.off.done": [
+   "fccb1f9e",
+   "Les boutons disparaissent à votre prochain Envoyer sur le site. Les votes restent dans votre base de données, et votre page Confidentialité garde son texte."
+  ],
+  "votes_setup.on": [
+   "2e2d4600",
+   "Les boutons sont activés, et comptent dans le projet Firebase {project}."
+  ],
+  "votes_setup.save": [
+   "0a9315c0",
+   "Enregistrer et vérifier"
+  ],
+  "votes_setup.saved": [
+   "814d3cca",
+   "Les boutons apparaissent à votre prochain Envoyer sur le site, et votre page Confidentialité indique ce qu'ils enregistrent."
+  ],
+  "votes_setup.saved.title": [
+   "fca046cc",
+   "Enregistré."
+  ],
+  "votes_setup.settings_link": [
+   "91ccf932",
+   "Boutons J'aime et Je n'aime pas sous vos entrées, si vous les voulez"
+  ],
+  "votes_setup.step.1": [
+   "28088834",
+   "Ouvrez <a href=\"https://console.firebase.google.com\" target=\"_blank\" rel=\"noopener\">console.firebase.google.com</a> et ajoutez un projet. Refusez toute offre de formule payante. Google Analytics n'est pas nécessaire."
+  ],
+  "votes_setup.step.2": [
+   "d2a1cf28",
+   "Créez une base de données <b>Firestore</b> en mode production, à l'emplacement le plus proche de vous."
+  ],
+  "votes_setup.step.3": [
+   "2f4220a7",
+   "Dans <b>Rules</b> de la base de données, remplacez le texte par le texte ci-dessous, et publiez."
+  ],
+  "votes_setup.step.4": [
+   "5bb19f18",
+   "Dans <b>Authentication</b>, cliquez sur <b>Get started</b>, puis activez la méthode de connexion <b>Anonymous</b>."
+  ],
+  "votes_setup.step.5": [
+   "df6ca418",
+   "Ajoutez une application web au projet, copiez le texte <code>firebaseConfig</code> qu'il affiche, et collez-le dans la case ci-dessous."
+  ],
+  "votes_setup.title": [
+   "8fa25537",
+   "Boutons J'aime et Je n'aime pas"
+  ],
+  "votes_setup.warning": [
+   "6ce429dc",
+   "Une fois votre site publié, GitHub peut signaler la clé de ce texte, et Google peut vous envoyer un e-mail à ce sujet. C'est normal : la clé web de Firebase est publique par conception."
+  ],
+  "wizard.back": [
+   "76900f1b",
+   "Retour"
+  ],
+  "wizard.close": [
+   "7d9eb7ac",
+   "Fermer"
+  ],
+  "wizard.happening": [
+   "336d92e9",
+   "Ce qui se passe"
+  ],
+  "wizard.help": [
+   "7a753a07",
+   "Aide : {label}"
+  ],
+  "wizard.next": [
+   "1ff57a29",
+   "Suivant"
+  ],
+  "wizard.step": [
+   "3dd79311",
+   "Étape {number} sur {total}"
+  ],
+  "youtube.about": [
+   "7ec6038b",
+   "environ {count}"
+  ],
+  "youtube.about_key": [
+   "3711154d",
+   "YouTube donne ses chiffres publics à quiconque a une clé. Vous créez la vôtre, depuis votre compte Google, et elle reste sur cet ordinateur. Ces étapes en créent une."
+  ],
+  "youtube.box.channel": [
+   "59277551",
+   "L'adresse de votre chaîne, comme youtube.com/@votrenom"
+  ],
+  "youtube.box.key": [
+   "9d9c9fa2",
+   "La clé d'API"
+  ],
+  "youtube.card.ask": [
+   "91563a0d",
+   "<a href=\"{page}\">Voir les chiffres de votre chaîne</a>."
+  ],
+  "youtube.card.read": [
+   "4bb3fe2c",
+   "{title} : {views} vues, au {when}. <a href=\"{page}\">En voir plus</a>."
+  ],
+  "youtube.comments": [
+   "355f79f2",
+   "Commentaires"
+  ],
+  "youtube.hidden": [
+   "e564b408",
+   "masqué"
+  ],
+  "youtube.hint.channel": [
+   "ea2afa8a",
+   "Ce n'est pas l'adresse d'une chaîne. Utilisez celle qui contient un @, ou celle qui contient /channel/."
+  ],
+  "youtube.hint.key": [
+   "07c97c64",
+   "Collez aussi votre clé d'API. Rien n'a été enregistré."
+  ],
+  "youtube.hint.not_found": [
+   "efa185e1",
+   "YouTube ne connaît aucune chaîne de ce nom. Rien n'a été enregistré."
+  ],
+  "youtube.hint.refused": [
+   "3c2f21e2",
+   "YouTube n'a pas accepté cette clé. Vérifiez les étapes 2 et 3. Rien n'a été enregistré."
+  ],
+  "youtube.hint.unreachable": [
+   "2fbeee57",
+   "Pressless n'a pas pu interroger YouTube, donc rien n'a été enregistré. Réessayez plus tard."
+  ],
+  "youtube.key_kept": [
+   "fe59f988",
+   "Laissez la clé vide pour garder celle que vous avez."
+  ],
+  "youtube.likes": [
+   "cca0662f",
+   "J'aime"
+  ],
+  "youtube.not_on": [
+   "9721be43",
+   "Aucune chaîne n'est configurée."
+  ],
+  "youtube.not_removed": [
+   "490f0982",
+   "Pressless n'a pas pu tout supprimer de ce qu'il conservait. Vous pouvez aussi supprimer la clé dans la console de Google."
+  ],
+  "youtube.off": [
+   "7563080d",
+   "Aucune chaîne n'est configurée. <a href=\"{page}\">Configurez-en une</a> pour voir ses chiffres."
+  ],
+  "youtube.off.done": [
+   "e7e8e820",
+   "C'est désactivé. Pressless a supprimé la clé et les chiffres qu'il conservait."
+  ],
+  "youtube.on": [
+   "6e6accef",
+   "Affichage de la chaîne {channel}."
+  ],
+  "youtube.published": [
+   "2ef42ec2",
+   "Publiée"
+  ],
+  "youtube.save": [
+   "0a9315c0",
+   "Enregistrer et vérifier"
+  ],
+  "youtube.saved": [
+   "b52095e4",
+   "Enregistré. YouTube connaît la chaîne {title}. <a href=\"{page}\">Voir ses chiffres</a>."
+  ],
+  "youtube.settings_link": [
+   "3c7d0b22",
+   "Les chiffres publics de votre chaîne YouTube, si vous les voulez"
+  ],
+  "youtube.some": [
+   "0752ea06",
+   "Affichage de {shown} sur les {read} lues, parmi {total} sur la chaîne."
+  ],
+  "youtube.source": [
+   "eba3bcc2",
+   "Depuis YouTube : ses chiffres publics, non calculés par Pressless."
+  ],
+  "youtube.stale": [
+   "6f57aa9a",
+   "YouTube n'a pas pu être interrogé, donc ces chiffres datent du {when}."
+  ],
+  "youtube.step.1": [
+   "323eb62c",
+   "Allez sur <b>console.cloud.google.com</b> et connectez-vous avec votre compte Google. Cliquez sur le bouton du projet en haut à gauche, à côté de « Google Cloud », puis sur <b>New project</b>. Donnez-lui un nom quelconque et cliquez sur <b>Create</b>. Quand il est prêt, choisissez-le avec le même bouton. Un projet que vous avez déjà convient aussi : choisissez-le à la place."
+  ],
+  "youtube.step.2": [
+   "6186ff5d",
+   "Dans la zone de recherche en haut, tapez <b>YouTube Data API v3</b>, ouvrez-la, et cliquez sur <b>Enable</b>."
+  ],
+  "youtube.step.3": [
+   "ee7bd5a4",
+   "Sur cette page, ouvrez l'onglet <b>Credentials</b> et cliquez sur <b>Create credentials</b>, puis sur <b>API key</b>, une nouvelle même si vous en avez d'autres. Sous « Select API restrictions », cochez uniquement <b>YouTube Data API v3</b>. Laissez « Application restrictions » sur <b>None</b> : Pressless fonctionne sur votre ordinateur, pas sur un site web. Cliquez sur <b>Create</b>, puis copiez la clé."
+  ],
+  "youtube.step.4": [
+   "14df0c94",
+   "Collez la clé ci-dessous, avec l'adresse de votre chaîne, et cliquez sur <b>Enregistrer et vérifier</b>."
+  ],
+  "youtube.subscribers": [
+   "a344c89d",
+   "Abonnés"
+  ],
+  "youtube.table": [
+   "3872f607",
+   "Vos vidéos les plus vues"
+  ],
+  "youtube.terms": [
+   "1901aa79",
+   "Ceci utilise les propres services de YouTube : voir les <a href=\"{terms}\">Conditions d'utilisation de YouTube</a> et la <a href=\"{privacy}\">Politique de confidentialité de Google</a>."
+  ],
+  "youtube.title": [
+   "fb7accff",
+   "YouTube"
+  ],
+  "youtube.to_setup": [
+   "65b266d1",
+   "Changer la chaîne ou la clé"
+  ],
+  "youtube.turn_off": [
+   "1780e028",
+   "Désactiver ceci et supprimer la clé"
+  ],
+  "youtube.updated": [
+   "1563a89d",
+   "Récupéré {when}."
+  ],
+  "youtube.video": [
+   "d534be82",
+   "Vidéo"
+  ],
+  "youtube.videos": [
+   "c9a96394",
+   "Vidéos"
+  ],
+  "youtube.views": [
+   "69c40459",
+   "Vues"
+  ]
+ }
+}

@@ -1,0 +1,507 @@
+Ce manuel montre comment faire chaque chose que Pressless sait faire.
+Tapez dans la zone de recherche pour n'afficher que les tâches qui
+contiennent ces mots.
+
+== finding-help | Trouver de l'aide
+L'aide se trouve dans la barre en haut de chaque écran de Pressless.
+
+1. Cliquez sur Aide dans la barre en haut de l'écran.
+picture help-link.png | La barre en haut d'un écran de Pressless, avec Aide après Fichiers.
+2. Tapez ce que vous voulez faire dans la zone de recherche.
+3. Lisez les étapes sous la tâche qui correspond.
+video searching.webm | Un mot tapé dans la zone de recherche, et les tâches qui ne le contiennent pas qui disparaissent.
+
+== setting-up | Configurer Pressless la première fois
+La première fois que Pressless démarre, il vous guide dans la
+configuration, un écran à la fois. Il vous faut une adresse e-mail.
+Votre site vit sur GitHub, qui l'héberge gratuitement.
+
+1. Lisez chaque écran et faites ce qu'il dit. Certaines étapes se passent sur les propres pages de GitHub, et l'écran dit sur quoi cliquer là-bas.
+picture setup-welcome.png | Le premier écran de configuration, intitulé Configurer Pressless, avec un bouton Suivant.
+2. Cliquez sur Suivant pour continuer, ou sur Retour pour revenir à l'écran précédent.
+3. Cliquez sur Ce qui se passe sur un écran pour lire ce que fait cette étape.
+4. Sur le dernier écran, cliquez sur Aller à votre site.
+
+Si vous fermez Pressless en cours de route, il reprend là où vous vous
+étiez arrêté.
+
+== your-writing | Vous repérer
+Votre site est le premier écran. Il a une tuile pour chaque partie de
+votre site, et la barre en haut nomme aussi chaque partie.
+
+1. Cliquez sur Votre site dans la barre.
+picture your-writing.png | L'écran Votre site, avec une tuile pour chaque partie du site.
+2. Cliquez sur le lien d'une tuile, comme Ouvrir vos pages, pour ouvrir cette partie.
+3. Ou cliquez sur une partie dans la barre : Pages, Journal, Apparence, Fichiers ou Visiteurs.
+
+Les pages sont des pages comme Accueil et À propos. Le journal contient
+vos entrées : les Brouillons sont seulement sur cet ordinateur, et Sur
+votre site liste les entrées que vous avez publiées. Le menu, l'en-tête
+et le pied de page sont des éléments de chaque page.
+
+== finishing-setup | Terminer la configuration
+Après la configuration, l'écran Votre site montre une liste intitulée
+Terminer la configuration, sous ses tuiles. Une coche marque chaque
+chose déjà faite.
+
+1. Cliquez sur une ligne qui n'est pas cochée. Pressless ouvre l'écran où cela se fait.
+picture finish-setting-up.png | La liste Terminer la configuration, avec deux lignes cochées et trois encore à faire.
+2. Faites-le là, puis cliquez sur Votre site pour revoir la liste.
+
+== writing-an-entry | Écrire une nouvelle entrée
+Une entrée est un texte daté, comme un article de blog. Votre journal
+liste vos entrées, de la plus récente à la plus ancienne.
+
+1. Cliquez sur Journal dans la barre.
+2. Tapez le nom de l'entrée dans la zone Titre.
+3. Cliquez sur Nouvelle entrée.
+picture new-entry.png | La zone Titre contenant les mots Marée basse, avec la liste Partir de et le bouton Nouvelle entrée à côté.
+4. Cliquez sous le titre sur la page et tapez vos mots. La page montre l'entrée telle que votre site la montrera.
+video writing-an-entry.webm | Donner un nom à une nouvelle entrée, cliquer sur Nouvelle entrée, puis taper des mots sur la page.
+
+Pressless enregistre pendant que vous tapez, et affiche Enregistré en
+haut. L'entrée est un brouillon, sur cet ordinateur seulement, tant que
+vous ne la publiez pas.
+
+== styling-words | Mettre des mots en gras, en italique ou en couleur, et ajouter un lien
+1. Ouvrez l'entrée et cliquez sur le paragraphe.
+2. Sélectionnez les mots à changer.
+3. Cliquez sur Gras ou Italique.
+picture style-buttons.png | Les boutons Gras, Italique et Lien, avec les boutons de couleur dessous.
+4. Pour un lien, cliquez sur Lien et tapez l'adresse que les mots doivent ouvrir.
+5. Pour une couleur, cliquez sur La couleur d'accent de votre site ou L'encre plus discrète de votre site. Pour toute autre couleur, choisissez-la à côté de N'importe quelle couleur, puis cliquez sur Utiliser cette couleur.
+
+== adding-a-paragraph | Ajouter un paragraphe ou une citation à une entrée
+1. Ouvrez l'entrée.
+2. Cliquez sur la partie que le nouvel élément doit suivre. Si vous ne cliquez sur rien, il va à la fin.
+3. À côté de Ajouter, choisissez Paragraphe ou Citation.
+4. Cliquez sur Ajouter, puis tapez ses mots sur la page.
+
+== adding-a-photograph | Ajouter une photo ou une image à une entrée
+1. Ouvrez l'entrée.
+2. Cliquez sur la partie que la photo doit suivre.
+3. À côté de Ajouter, choisissez Photo, puis cliquez sur Ajouter.
+4. Cliquez sur Ajouter une photo et choisissez le fichier image sur votre ordinateur.
+picture photograph-part.png | Une entrée avec une photo d'un port, et à côté la liste Photo et la zone Légende.
+5. Tapez une légende dans la zone Légende, si vous en voulez une.
+
+Une photo que vous avez ajoutée avant est dans la liste Photo, donc vous
+pouvez la réutiliser sans choisir le fichier.
+
+== moving-parts | Déplacer ou supprimer une partie d'une entrée
+1. Ouvrez l'entrée et cliquez sur le paragraphe, la photo ou la citation.
+2. Cliquez sur Monter ou Descendre pour le déplacer.
+3. Cliquez sur Supprimer pour le retirer.
+
+== writing-in-marks | Écrire avec des marques au lieu de boutons
+Les marques sont quelques signes tapés parmi vos mots. Deux étoiles de
+chaque côté d'un mot le mettent en gras.
+
+1. Ouvrez l'entrée et cliquez sur Montrez-moi les marques.
+picture marks.png | La zone des mots d'une entrée, avec l'aide-mémoire ouvert dessous.
+2. Tapez vos mots dans la zone, avec des marques là où vous les voulez.
+3. Cliquez sur Aide-mémoire : comment mettre en forme vos mots, sous la zone, pour voir toutes les marques.
+4. Cliquez sur Afficher l'éditeur pour revenir à l'écriture sur la page.
+
+Le lien Une page à imprimer de l'aide-mémoire l'ouvre comme une page à
+part.
+
+== categories-and-tags | Donner des catégories et des étiquettes à une entrée
+1. Ouvrez l'entrée.
+2. Tapez les catégories dans la zone Catégories, ou les étiquettes dans la zone Étiquettes.
+
+== entry-address | Changer l'adresse d'une entrée
+L'adresse est la dernière partie de l'adresse web de l'entrée. Pressless
+la crée à partir du titre.
+
+1. Ouvrez l'entrée.
+2. Tapez la nouvelle adresse dans la zone Adresse.
+3. Cliquez sur Changer l'adresse.
+
+== publishing | Publier : mettre vos textes sur votre site
+Rien n'arrive sur votre site tant que vous ne le publiez pas. Chaque
+entrée et chaque page se publie depuis son propre éditeur. Votre site
+dit combien de modifications ne sont pas encore sur votre site, et
+renvoie vers l'endroit où elles sont. Publier sur Votre site publie le
+site tel qu'il est déjà, par exemple après un changement d'apparence.
+
+1. Ouvrez l'entrée ou la page.
+2. Cliquez sur Envoyer sur le site.
+3. Pressless affiche une boîte intitulée Avant que votre site change, qui liste les pages qui vont changer.
+picture publish-plan.png | La boîte intitulée Avant que votre site change, avec les boutons Publier maintenant et Pas encore.
+4. Cliquez sur Publier maintenant. Cliquez sur Pas encore pour laisser votre site tel qu'il est.
+video publishing.webm | Un clic sur Envoyer sur le site, puis sur Publier maintenant, et la ligne Publié qui apparaît.
+
+Pressless affiche Publié quand c'est terminé. Votre site montre la
+modification d'ici quelques minutes. Voir votre site ouvre votre site
+dans un nouvel onglet.
+
+== changing-published | Modifier une entrée qui est déjà sur votre site
+1. Cliquez sur Journal dans la barre, puis sur l'entrée sous Sur votre site.
+2. Modifiez-la. Vos modifications restent sur cet ordinateur, et votre site montre toujours l'entrée comme elle était.
+3. Cliquez sur Envoyer sur le site pour publier les modifications.
+4. Pour abandonner les modifications à la place, cliquez sur Jeter cette épreuve.
+
+== undoing | Annuler la dernière publication
+Annuler remet votre site comme il était avant votre dernière
+publication. Ce que vous avez écrit reste sur cet ordinateur comme
+brouillon.
+
+1. Cliquez sur Votre site dans la barre.
+2. Cliquez sur Annuler le dernier envoi.
+
+Pressless ne peut pas annuler votre toute première publication.
+
+== throwing-away | Jeter une entrée
+1. Ouvrez l'entrée.
+2. Cliquez sur Jeter ce brouillon, sous l'entrée. Pour une entrée qui est sur votre site, le bouton dit Jeter cette entrée.
+3. Cliquez sur OK quand Pressless le demande.
+
+L'entrée va dans la corbeille de votre dossier Pressless-data.
+
+== using-a-template | Commencer une entrée à partir d'un modèle
+Un modèle est un début tout prêt : un poème, des paroles avec couplets,
+une entrée autour d'une photo, ou une simple entrée de journal.
+
+1. Cliquez sur Journal dans la barre.
+2. Tapez le nom de l'entrée dans la zone Titre.
+3. Choisissez un modèle dans la liste Partir de.
+4. Cliquez sur Nouvelle entrée.
+
+== making-a-template | Créer ou modifier votre propre modèle
+1. Cliquez sur Journal dans la barre.
+2. Sous Vos modèles, tapez un nom dans la zone Nom et cliquez sur Nouveau modèle. Pour en modifier un, cliquez sur son nom.
+3. Tapez le titre et les mots par lesquels doit commencer chaque entrée créée à partir de lui.
+4. Cliquez sur Enregistrer.
+
+Jeter ce modèle le supprime. Un modèle n'est jamais mis sur votre site.
+
+== journal | Activer ou désactiver le journal
+Le journal est la partie datée d'un site, comme un blog. Quand il est
+désactivé, votre site n'est fait que de pages.
+
+1. Cliquez sur Journal dans la barre.
+2. Cliquez sur Désactiver le journal, ou sur Activer le journal.
+
+Le désactiver retire vos entrées publiées de votre site à votre
+prochaine publication. Le réactiver les remet en ligne.
+
+== changing-a-page | Modifier une page, comme Accueil ou À propos
+1. Cliquez sur Pages dans la barre, puis sur la page.
+2. Cliquez sur un titre, un paragraphe ou n'importe quelle section de la page.
+picture page-editor.png | La page Accueil ouverte pour modification, avec la page d'un côté et la liste Ajouter de l'autre.
+3. Tapez sur la page pour changer des mots. Les zones à côté de la page changent tout le reste de cette section.
+4. Cliquez sur Envoyer sur le site pour publier la page.
+
+== adding-a-page | Ajouter une nouvelle page
+1. Cliquez sur Pages dans la barre.
+2. Tapez le nom de la page dans la zone Nom de la page.
+3. Cliquez sur Nouvelle page.
+picture new-page.png | La carte Vos pages sur l'écran Pages, avec la zone Nom de la page et le bouton Nouvelle page.
+
+Pressless ouvre la nouvelle page et ajoute un lien vers elle dans votre
+menu.
+
+Un site sans page d'accueil a un bouton Ajouter une page d'accueil
+au-dessus de la zone Nom de la page. Cliquez dessus, changez les mots,
+et cliquez sur Envoyer sur le site.
+
+== renaming-a-page | Renommer ou supprimer une page
+1. Ouvrez la page.
+2. Cliquez sur Renommer cette page et tapez son nouveau nom. L'ancienne adresse mène toujours à la page.
+3. Ou cliquez sur Supprimer cette page. Elle va dans la corbeille de votre dossier Pressless-data, et quitte votre site et votre menu.
+
+La page d'accueil ne peut être ni renommée ni supprimée.
+
+== adding-a-section | Ajouter une section à une page : un titre, une image, un bouton, une vidéo, de la musique ou un téléchargement
+1. Ouvrez la page.
+2. Cliquez sur la section que la nouvelle doit suivre. Si vous ne cliquez sur rien, elle va à la fin de la page.
+3. Choisissez ce qu'il faut ajouter dans la liste Ajouter.
+picture add-section.png | La liste Ajouter avec tous les types de sections affichés, de Paragraphe et Titre jusqu'à Votre propre CSS.
+4. Cliquez sur Ajouter.
+5. Remplissez les zones qui apparaissent pour elle, comme Mots qui la décrivent pour une image.
+
+Une section vidéo, musique ou téléchargement a un bouton Téléverser un
+fichier pour un fichier de votre ordinateur. La liste contient aussi
+des colonnes, une rangée d'images, un diaporama d'images, des questions
+qui se déplient, une image qui s'agrandit, un lien de retour en haut et
+un compte à rebours.
+
+== moving-a-section | Déplacer ou supprimer une section d'une page
+1. Ouvrez la page et cliquez sur la section.
+2. Cliquez sur Monter ou Descendre.
+3. Pour la mettre dans une colonne, choisissez la colonne dans la liste Déplacer vers et cliquez sur Déplacer.
+4. Cliquez sur Supprimer pour la retirer.
+
+== changing-the-menu | Modifier le menu
+Le menu est la rangée de liens sur chaque page de votre site. Pressless
+l'appelle Navigation.
+
+1. Cliquez sur Pages dans la barre, puis sur Navigation sous Éléments de chaque page.
+picture menu.png | Les liens du menu, chacun avec une zone Mots, une zone Mène à, et les boutons Monter, Descendre et Supprimer.
+2. Changez les mots d'un lien dans sa zone Mots.
+3. Cliquez sur Monter ou Descendre pour changer l'ordre, ou sur Supprimer pour retirer un lien.
+4. Cliquez sur Ajouter un lien pour en créer un nouveau.
+5. Cliquez sur Envoyer sur le site pour publier le menu.
+
+Pas de Navigation sous Éléments de chaque page ? Cliquez sur Ajouter un
+menu à cet endroit. Il relie les pages déjà sur votre site.
+
+== header-and-footer | Modifier l'en-tête ou le pied de page
+L'en-tête est le haut de chaque page de votre site, et le pied de page
+en est le bas.
+
+1. Cliquez sur Pages dans la barre, puis sur En-tête ou Pied de page sous Éléments de chaque page.
+2. Modifiez-le comme vous modifieriez une page.
+3. À côté de L'afficher sur, cliquez sur le nom d'une page pour voir la modification sur cette page.
+4. Cliquez sur Envoyer sur le site pour le publier.
+
+== page-code | Voir ou modifier le code d'une page
+Pour qui connaît le HTML.
+
+1. Ouvrez la page, l'en-tête, le pied de page ou la Navigation.
+2. Cliquez sur Montrez-moi le code.
+3. Cliquez sur Afficher l'éditeur pour revenir.
+
+== site-look | Changer l'apparence de votre site : mise en page, couleurs et polices
+1. Cliquez sur Apparence dans la barre.
+2. Choisissez une mise en page, un style de couleurs, des couleurs, des polices, la taille du texte, la largeur de la page ou des effets. L'aperçu à côté de chaque choix le montre tout de suite.
+picture look.png | L'écran Apparence, avec les mises en page et les styles de couleurs à choisir et un aperçu du site à côté.
+3. Cliquez sur Enregistrer.
+video changing-the-look.webm | Le choix d'une autre police des titres sur l'écran Apparence, l'aperçu qui change en conséquence, et un clic sur Enregistrer.
+
+Votre site montre la nouvelle apparence après votre prochaine
+publication. Chaque couleur a un choix clair et un choix sombre : un
+visiteur dont l'ordinateur est réglé sur sombre voit le sombre.
+
+Chaque mise en page et chaque style de couleurs dit à quel genre de site
+il convient. N'importe quelle mise en page peut porter n'importe quel
+style de couleurs. Choisir un style de couleurs remplit les cases de
+couleurs, et vous pouvez encore changer n'importe quelle couleur après.
+
+Choisir une autre mise en page garde vos couleurs. Cliquez sur Utiliser
+les couleurs propres à cette mise en page pour les changer en celles de
+cette mise en page, puis sur Enregistrer pour les garder.
+
+== files | Voir ou supprimer les fichiers que vous avez téléversés
+Les fichiers sont les chansons, vidéos, PDF, fichiers ZIP et fichiers
+texte que vous avez téléversés pour vos pages.
+
+1. Cliquez sur Fichiers dans la barre.
+2. La liste montre chaque fichier, sa taille et les pages qui l'utilisent.
+3. Cliquez sur Supprimer à côté d'un fichier pour le déplacer dans la corbeille.
+
+Vous téléversez un fichier depuis une section vidéo, musique ou
+téléchargement d'une page.
+
+== site-name | Changer le nom, la description, l'icône ou l'image de partage de votre site
+1. Cliquez sur Réglages dans la barre, puis sur Le nom et les images de votre site.
+picture settings.png | La section des Réglages pour le nom et les images de votre site, avec des zones pour le nom et la description.
+2. Tapez dans la zone du nom de votre site ou de sa courte description.
+3. Pour l'icône ou l'image de partage, cliquez sur Choisir une image.
+4. Cliquez sur le ? à côté d'une zone pour lire à quoi elle sert.
+5. Cliquez sur Revérifier le dépôt et enregistrer.
+
+== own-domain | Utiliser votre propre nom de domaine
+Si vous avez acheté une adresse web, comme example.com, votre site peut
+y apparaître. Publiez d'abord votre site une fois.
+
+1. Cliquez sur Réglages, puis sur L'adresse de votre site, puis sur Utiliser votre propre nom de domaine.
+2. Tapez le nom que vous avez acheté et cliquez sur Suivant.
+picture own-domain.png | La première étape de Votre propre nom de domaine, avec une zone pour le nom et un bouton Suivant.
+3. Suivez chaque écran. Pressless montre quoi saisir là où vous avez acheté le nom.
+
+Vous pouvez fermer Pressless entre les étapes. Utiliser votre propre
+nom de domaine ouvre l'étape où vous en étiez.
+
+== visitor-numbers | Activer les chiffres de visite
+Pressless peut afficher combien de personnes lisent votre site, en
+lisant les chiffres dans Google Analytics. C'est facultatif.
+
+1. Cliquez sur Réglages, puis sur Visiteurs et Google, puis sur la ligne qui parle de voir combien de personnes lisent votre site.
+2. Cliquez sur Se connecter avec Google et connectez-vous sur la page de Google.
+3. Choisissez le site pour lequel Pressless doit afficher les chiffres, et cliquez sur Utiliser ce site.
+
+Désactiver les chiffres de visite, sur le même écran, l'arrête.
+
+== who-is-reading | Voir qui lit votre site
+1. Cliquez sur Visiteurs dans la barre.
+picture who-is-reading.png | L'écran Qui vous lit, avec un nombre de personnes, un graphique des personnes par jour et un tableau des pays.
+2. Cliquez sur 7 derniers jours, 4 dernières semaines ou 12 derniers mois.
+
+L'écran montre combien de personnes lisent votre site, où elles sont,
+comment elles vous ont trouvé et ce qu'elles ont lu.
+
+== like-buttons | Ajouter des boutons J'aime et Je n'aime pas sous vos entrées
+Les comptes vivent dans votre propre base de données Firebase gratuite,
+de Google.
+
+1. Cliquez sur Réglages, puis sur Journal, puis sur Boutons J'aime et Je n'aime pas sous vos entrées, si vous les voulez.
+2. Suivez les étapes à l'écran pour créer la base de données.
+3. Collez le texte firebaseConfig dans la zone et cliquez sur Enregistrer et vérifier.
+
+== youtube | Afficher les chiffres de votre chaîne YouTube
+1. Cliquez sur Réglages, puis sur Visiteurs et Google, puis sur Les chiffres publics de votre chaîne YouTube, si vous les voulez.
+2. Suivez les étapes à l'écran pour créer une clé.
+3. Tapez l'adresse de votre chaîne, collez la clé et cliquez sur Enregistrer et vérifier.
+
+== publishing-key | Se reconnecter à GitHub, ou changer votre clé de publication
+1. Cliquez sur Réglages dans la barre, puis sur GitHub.
+2. Cliquez sur Se reconnecter à GitHub, et suivez l'écran. Ou collez une nouvelle clé dans la zone Votre clé de publication.
+3. Cliquez sur Revérifier le dépôt et enregistrer.
+
+Laissez la zone de la clé vide pour garder la clé que Pressless a déjà.
+
+== more-sites | S'occuper de plus d'un site
+1. Cliquez sur Sites dans la barre.
+picture sites.png | L'écran Sites, qui liste un site marqué ouvert maintenant, avec le bouton Commencer un nouveau site.
+2. Cliquez sur Commencer un nouveau site pour en créer un autre. Pressless se rouvre et vous guide dans sa configuration.
+3. Cliquez sur Ouvrir à côté d'un site pour travailler sur celui-là.
+4. Cliquez sur Retirer à côté d'un site pour l'enlever de cet ordinateur. Pressless l'enregistre d'abord dans un seul fichier, et son site reste sur le web.
+
+Ouvrir un autre site redémarre Pressless dans un nouvel onglet, alors
+terminez d'abord ce que vous écrivez.
+
+== saving-a-site | Enregistrer un site entier dans un seul fichier, et le rouvrir
+Le fichier contient les textes, les photos et les réglages du site. Il
+ne contient jamais la clé de publication.
+
+1. Cliquez sur Sites dans la barre.
+2. Cliquez sur Enregistrer ce site dans un fichier. Votre navigateur enregistre le fichier.
+3. Pour récupérer un site, cliquez sur Ouvrir un fichier de site et choisissez le fichier.
+4. Ouvrez Réglages, puis GitHub, pour ce site et saisissez la clé de publication une fois.
+
+== moving-computer | Déplacer Pressless vers un nouvel ordinateur
+1. Cliquez sur Sites dans la barre.
+2. Cliquez sur Déplacer Pressless vers un nouvel ordinateur.
+picture move-computer.png | La boîte intitulée Déplacer Pressless vers un nouvel ordinateur, à sa première étape, Enregistrer chaque site dans un fichier.
+3. Suivez ses étapes avec Suivant : enregistrer chaque site dans un fichier, emporter les fichiers sur le nouvel ordinateur, et ouvrir chaque fichier là-bas.
+
+== backups | Sauvegardes, et choix de l'endroit où elles sont conservées
+Chaque jour, Pressless enregistre tout seul chaque site dans un fichier,
+et garde les plus récents. Ils vont dans le dossier Pressless-backups à
+côté du programme.
+
+1. Cliquez sur Sites dans la barre.
+2. Sous Sauvegardes quotidiennes, collez l'adresse complète d'un autre dossier, comme un dossier sur une clé USB ou dans un dossier cloud.
+3. Cliquez sur Utiliser ce dossier.
+
+Une sauvegarde s'ouvre avec Ouvrir un fichier de site, comme n'importe
+quel site enregistré.
+
+== bringing-in-wordpress | Importer un site WordPress
+Un site qui ne contient encore rien propose ceci, à la fin de la
+configuration.
+
+1. Cliquez sur Importez-le dans Pressless.
+2. Dans WordPress, choisissez Tools, puis Export, puis All content, et cliquez sur Download Export File.
+3. Dans Pressless, cliquez sur Choisir le fichier d'export et choisissez ce fichier.
+4. Suivez chaque écran avec Suivant. Pressless copie vos photos et fichiers depuis votre ancien site, et liste ceux qu'il n'a pas pu copier.
+5. Choisissez une apparence, car un thème WordPress n'est pas repris.
+
+Les articles, les pages, le menu, les commentaires, les photos et les
+fichiers sont repris. Rien n'est sur le web tant que vous ne publiez
+pas.
+
+== bringing-in-a-folder | Importer un site qui est un dossier de pages web
+Un site qui ne contient encore rien propose ceci, à la fin de la
+configuration.
+
+1. Cliquez sur Importez-le plutôt.
+2. Cliquez sur Choisir le dossier et choisissez le dossier de votre site. S'il est dans un fichier ZIP, cliquez sur Choisir un fichier ZIP.
+3. Cliquez sur Suivant. Pressless montre ce qui sera repris et ce qui ne le sera pas.
+
+Le site garde son apparence et ses adresses.
+
+== theme | Changer l'apparence de Pressless lui-même : clair, sombre ou contraste élevé
+1. Cliquez sur Plus dans la barre.
+picture more.png | Plus ouvert, montrant Suggérer une idée ou signaler un problème, Rapports d'utilisation, À propos, et les listes Thème et Taille du texte.
+2. Choisissez un thème dans la liste Thème. Suivre mon ordinateur utilise clair ou sombre selon le réglage de votre ordinateur.
+
+Cela ne change Pressless que sur votre écran, jamais votre site.
+
+== text-size | Agrandir le texte de Pressless
+1. Cliquez sur Plus dans la barre.
+2. Choisissez Grande, Plus grande ou La plus grande dans la liste Taille du texte.
+
+== updating | Mettre Pressless à jour
+Quand une nouvelle version est disponible, l'écran Votre site le dit.
+Cliquez sur Les nouveautés depuis la version, sous les boutons, pour lire
+ce qui a changé.
+
+1. Cliquez sur Mettre à jour maintenant. Pressless l'installe et se rouvre tout seul.
+2. Ou cliquez sur Plus tard, ou sur Ignorer cette version.
+
+Vos sites restent là où ils sont. Pour que Pressless cesse de chercher
+de nouvelles versions, cliquez sur Réglages, puis sur Cet ordinateur,
+puis sur Arrêter de chercher.
+
+== jpeg-xl | Utiliser des photos JPEG XL
+JPEG XL est un type de fichier photo. Pressless a besoin d'un
+téléchargement avant de pouvoir les utiliser.
+
+1. Cliquez sur Réglages dans la barre, puis sur Cet ordinateur.
+2. Cliquez sur Ajouter la prise en charge de JPEG XL.
+
+== shortcuts | Mettre Pressless dans le menu ou sur le bureau
+1. Cliquez sur Réglages dans la barre, puis sur Cet ordinateur.
+2. Cochez la case du menu, du bureau, ou des deux. Décochez-en une pour la retirer.
+3. Cliquez sur Enregistrer.
+
+Cela fonctionne quand Pressless est lancé depuis le fichier que vous
+avez téléchargé.
+
+== ai-helper | Laisser une application d'IA aider
+Une application d'IA sur votre ordinateur, comme Claude, peut écrire et
+modifier votre site par l'intermédiaire de Pressless. Elle est
+désactivée tant que vous ne l'activez pas.
+
+1. Cliquez sur Votre site dans la barre, puis sur Assistant IA, près du haut.
+2. Cliquez sur Activer.
+picture ai-helper.png | Le haut de l'écran Assistant IA, qui dit Désactivé : aucune application d'IA ne peut se connecter, avec le bouton Activer.
+3. Pour Claude Desktop, cliquez sur Connecter Claude Desktop, puis quittez complètement Claude Desktop et relancez-le. Pour une autre application, suivez les étapes à l'écran.
+
+Rien n'est publié, annulé ou mis à la corbeille tant que vous ne cliquez
+pas sur Oui dans Pressless. L'application ne peut accéder ni à vos
+clés, ni à vos réglages, ni au code d'aucune page. Pressless doit être
+ouvert pendant que l'application travaille.
+
+== usage-reports | Activer ou désactiver les rapports d'utilisation
+Les rapports d'utilisation sont anonymes : quels écrans sont utilisés,
+où la configuration s'arrête et ce qui tourne mal. Ils ne contiennent
+jamais vos textes ni l'adresse de votre site.
+
+1. Cliquez sur Plus dans la barre, puis sur Rapports d'utilisation.
+2. Cliquez sur Activer les rapports d'utilisation, ou désactivez-les là.
+
+Le même écran liste chaque rapport envoyé.
+
+== reporting-a-problem | Suggérer une idée ou signaler un problème
+1. Cliquez sur Plus dans la barre, puis sur Suggérer une idée ou signaler un problème.
+2. Cliquez sur Ouvrir le signalement sur GitHub.
+3. Répondez aux questions sur la page de GitHub et envoyez-le.
+
+Un signalement est public. N'y mettez ni l'adresse de votre site, ni vos
+textes, ni votre clé de publication.
+
+== restarting | Redémarrer Pressless
+1. Cliquez sur Réglages dans la barre, puis sur Cet ordinateur.
+2. Cliquez sur Redémarrer Pressless, puis sur Redémarrer.
+
+Tous les onglets Pressless ouverts cessent de fonctionner, et un nouveau
+s'ouvre.
+
+== tray-icon | Utiliser l'icône Pressless près de l'horloge
+Tant que Pressless fonctionne, son icône reste près de l'horloge : dans
+la zone de notification sous Windows, et dans la barre d'état système
+sous Linux. Elle fonctionne même après la fermeture de tous les onglets
+Pressless.
+
+1. Cliquez sur l'icône Pressless pour ouvrir Pressless dans votre navigateur.
+2. Faites un clic droit dessus pour Ouvrir Pressless, Redémarrer et Arrêter Pressless.
+
+Arrêter Pressless l'arrête comme le fait la fermeture de sa fenêtre.
+Certains bureaux Linux n'affichent aucune icône près de l'horloge.
+
+== version | Trouver quelle version vous avez
+1. Cliquez sur Plus dans la barre, puis sur À propos.

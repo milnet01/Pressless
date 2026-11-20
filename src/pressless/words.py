@@ -2885,7 +2885,7 @@ def for_scripts() -> str:
 # tree does (as manual.FOLDER is).
 FOLDER = Path(str(importlib.resources.files("pressless") / "language_files"))
 # The order the pickers show; each language § 4.6 adds puts its code here.
-LANGUAGES: tuple[str, ...] = ("en", "es", "af")
+LANGUAGES: tuple[str, ...] = ("en", "es", "af", "fr")
 
 _chosen = "en"
 _files: dict[tuple[Path, str], dict] = {}     # a file as read, by folder and code
