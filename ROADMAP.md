@@ -8890,6 +8890,12 @@ does not wait on them.
   box. tests/test_words.py's INV-2 test no longer lets month and day
   names through. Next: one commit per language (table, manual, captions),
   each made with scripts/translations.py and checked with Gemini.
+  2026-11-20: Spanish (223e927), Afrikaans (0784490), French (160dfe0)
+  and German (9be942f) committed: table, manual and captions each, read
+  by hand before committing. Left before shipping: Gemini's second
+  opinion on all four (FreeLLMAPI's Gemini routes were out of credits;
+  brief in the session scratchpad, translate/BRIEF.md), and a by-hand
+  look in the browser that each fits its screens.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
