@@ -8897,6 +8897,14 @@ does not wait on them.
   button or heading wrapping where the English one does not. The probe
   was proven on a planted case of each. Not covered: boxes on a
   wizard's later steps. Gemini still out of credits (about 14 hours).
+  2026-11-20: Gemini (web, in Chrome) second opinion done for es, af
+  and fr — table, manual and captions — and committed per language.
+  German: chunks 1-4 done and committed; chunks 5-7 and the German
+  manual and captions still owed (Gemini's web quota ran out). Real
+  defects it surfaced: de "Startseite" for starter site; de and fr
+  doubled or wrong article before the dashboard window phrase; es and
+  fr undo counts in the wrong gender; af "pers" for pressing ordinary
+  buttons.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
