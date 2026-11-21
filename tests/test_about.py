@@ -39,6 +39,6 @@ def test_every_page_links_to_the_about_page(tmp_path: Path) -> None:
         for path in ("/words", "/broken"):
             _, _, body = client.request("GET", path)
             bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
-            assert '<a href="/about">About</a>' in bar, path
+            assert '<a href="/about"' in bar and ">About</a>" in bar, path
     finally:
         served.stop()

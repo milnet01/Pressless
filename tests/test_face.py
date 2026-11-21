@@ -42,6 +42,7 @@ from pressless import (
     page_editor,
     publisher,
     settings,
+    sites,
     store,
     themes,
     usage,
@@ -651,6 +652,7 @@ def test_every_page_links_to_settings(tmp_path: Path) -> None:
     def broken(request: face.Request) -> str:
         raise ValueError("x")
 
+    _set_up(tmp_path)
     served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/words", lambda request: "<p>Words</p>")
@@ -671,6 +673,7 @@ def test_every_page_links_back_to_your_site(tmp_path: Path) -> None:
     def broken(request: face.Request) -> str:
         raise ValueError("x")
 
+    _set_up(tmp_path)
     served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/words", lambda request: "<p>Words</p>")
@@ -1191,6 +1194,7 @@ def test_every_page_links_to_the_report_page(tmp_path: Path) -> None:
     def broken(request: face.Request) -> str:
         raise ValueError("x")
 
+    _set_up(tmp_path)
     served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/words", lambda request: "<p>Words</p>")
@@ -1650,3 +1654,58 @@ def test_a_posted_form_is_read_one_way() -> None:
     assert request.form(blanks=True)["b"] == [""]
     with pytest.raises(UnicodeDecodeError):
         face.Request("POST", "/x", {}, b"a=\xff").form(strict=True)
+
+
+def _set_up(folder: Path) -> None:
+    """A site past setup, so its bar is the ordinary one."""
+    (folder / "site").mkdir()
+    _saved(folder)
+
+
+def _bar(served: face.Face) -> str:
+    served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+    _, _, body = _Client(served).request("GET", "/words")
+    return body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
+
+
+def test_the_top_bar_is_locked_until_setup_is_done(tmp_path) -> None:
+    """User 2026-11-21: a first-time user clicked the top bar while setup was
+    working and could not find the way back. Breaks when a bar link leads
+    away from an unfinished setup, or when Help and More's pages open in the
+    setup's own tab rather than a new one."""
+    served = face.serve(tmp_path)
+    try:
+        bar = _bar(served)
+    finally:
+        served.stop()
+    for address in ("/sites", "/", "/pages", "/journal", "/look", "/files",
+                    "/visitors", "/setup"):
+        assert f'href="{address}"' not in bar, address
+    for address in ("/manual", "/report", "/about"):
+        assert f'href="{address}" target="_blank"' in bar, address
+
+
+def test_the_top_bar_unlocks_once_setup_is_done(tmp_path) -> None:
+    """The lock lifts with the settings file: a set-up site's bar leads
+    everywhere in the same tab."""
+    _set_up(tmp_path)
+    served = face.serve(tmp_path)
+    try:
+        bar = _bar(served)
+    finally:
+        served.stop()
+    assert 'href="/pages"' in bar and 'href="/manual">' in bar
+    assert "target=" not in bar
+
+
+def test_sites_stays_open_while_another_site_is_set_up(tmp_path) -> None:
+    """A second site's setup must not trap him away from his first site."""
+    first = sites.open_site(tmp_path)
+    _set_up(first)
+    second = sites.new_site(tmp_path)
+    served = face.serve(tmp_path, site=second)
+    try:
+        bar = _bar(served)
+    finally:
+        served.stop()
+    assert 'href="/sites"' in bar and 'href="/pages"' not in bar

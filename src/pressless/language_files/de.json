@@ -2105,6 +2105,10 @@
    "4efca0d1",
    "Info"
   ],
+  "face.after_setup": [
+   "4ca59375",
+   "Verfügbar, sobald die Einrichtung fertig ist"
+  ],
   "face.files": [
    "abc7e989",
    "Dateien"
@@ -5518,8 +5522,8 @@
    "Zu deiner Website"
   ],
   "setup.pages": [
-   "44b7dfe0",
-   "Klicke auf Weiter, und Pressless stellt deine Website ins Netz. Was schon im Zuhause deiner Website liegt, kommt auch ins Netz."
+   "49266583",
+   "Klicke auf Weiter, und Pressless prüft deine Website bei GitHub. Ist sie noch nicht im Netz, schaltet Pressless sie ein, und was schon im Zuhause deiner Website liegt, kommt auch ins Netz. Eine Website, die schon im Netz ist, bleibt, wie sie ist."
   ],
   "setup.pages.happening": [
    "5719890f",

@@ -2105,6 +2105,10 @@
    "4efca0d1",
    "Oor"
   ],
+  "face.after_setup": [
+   "4ca59375",
+   "Gereed sodra opstelling klaar is"
+  ],
   "face.files": [
    "abc7e989",
    "Lêers"
@@ -5518,8 +5522,8 @@
    "Gaan na jou werf"
   ],
   "setup.pages": [
-   "44b7dfe0",
-   "Druk Volgende en Pressless sit jou werf op die web. Enigiets wat reeds in jou werf se tuiste is, gaan ook op die web."
+   "49266583",
+   "Klik op Volgende en Pressless kyk jou webwerf by GitHub na. As dit nog nie op die web is nie, skakel Pressless dit aan, en enigiets wat reeds in jou webwerf se tuiste is, gaan ook op die web. 'n Webwerf wat reeds op die web is, bly soos dit is."
   ],
   "setup.pages.happening": [
    "5719890f",

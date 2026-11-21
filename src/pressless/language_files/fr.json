@@ -2106,6 +2106,10 @@
    "4efca0d1",
    "À propos"
   ],
+  "face.after_setup": [
+   "4ca59375",
+   "Disponible une fois la configuration terminée"
+  ],
   "face.files": [
    "abc7e989",
    "Fichiers"
@@ -5519,8 +5523,8 @@
    "Aller à votre site"
   ],
   "setup.pages": [
-   "44b7dfe0",
-   "Cliquez sur Suivant et Pressless met votre site sur le web. Tout ce qui se trouve déjà dans le foyer de votre site va aussi sur le web."
+   "49266583",
+   "Clique sur Suivant et Pressless vérifie ton site auprès de GitHub. S'il n'est pas encore en ligne, Pressless l'active, et tout ce qui se trouve déjà dans le foyer de ton site est mis en ligne aussi. Un site déjà en ligne reste tel quel."
   ],
   "setup.pages.happening": [
    "5719890f",

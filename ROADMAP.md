@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=428 -->
+<!-- ants-roadmap-id-high-water: PRESS=432 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8950,6 +8950,47 @@ does not wait on them.
   Kind: ux.
   Source: user-request-2026-11-21.
   Lanes: Face, Launcher, Updates.
+
+- ✅ [PRESS-0429] **Setup cannot be left half-done from the top bar.**
+  A first-time user clicked the top bar while setup was working and
+  found no way back. While the open site has no settings, the bar's
+  links are locked; Sites stays where another site exists; Help and
+  More's pages open in a new tab. Step 5's words now say a site
+  already on the web stays as it is.
+  **Layman:** While a site is being set up, the top buttons are greyed out, and Help opens in a new tab, so nobody gets lost mid-setup.
+  Kind: ux.
+  Source: user-2026-11-21.
+  Lanes: face.
+
+- 📋 [PRESS-0430] **The practice copy says it never publishes, not "check your internet".**
+  The practice copy refuses every connection on purpose, but the
+  screen shows the Publisher's Unreachable words, which send the
+  reader to check their connection.
+  **Layman:** Pressing Publish in the practice copy says it is a practice copy, instead of blaming your internet.
+  Kind: ux.
+  Source: user-2026-11-21.
+  Lanes: face.
+
+- 📋 [PRESS-0431] **A launch from the local web-server manager uses the port it sets.**
+  The released program picks its own port, so the manager shows the
+  wrong one. Honour PORT where it is set; a port in use is told
+  plainly. The user wants the manager to run the released AppImage,
+  to see what a new user sees; run.sh then points at it.
+  **Layman:** When the web-server manager starts Pressless, Pressless uses the address the manager expects.
+  Kind: feature.
+  Source: user-2026-11-21.
+  Lanes: core.
+
+- 📋 [PRESS-0432] **Pressless opens in the browser the web-server manager names.**
+  Pressless must open its own one-use link, so it cannot leave the
+  opening to the manager. Asked the manager's session to pass the
+  chosen browser as BROWSER, which webbrowser.open honours. Check a
+  packaged build honours it too: the manager's notes say one
+  project's frozen build ignored BROWSER.
+  **Layman:** Pressless opens in the browser you picked in the web-server manager, not always the system default.
+  Kind: feature.
+  Source: user-2026-11-21.
+  Lanes: core.
 
 ## 1.3.0 — a home other than GitHub
 

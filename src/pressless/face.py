@@ -49,6 +49,7 @@ from pressless import (
     publisher,
     settings,
     shortcuts,
+    sites,
     store,
     themes,
     usage,
@@ -788,6 +789,8 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar > a { background: var(--paper); }
 .face .bar > a:hover, .face .nav > a:hover { color: var(--ink); border-color: var(--amber);
   box-shadow: 0 3px 10px var(--shadow); }
+.face .bar > a[aria-disabled] { opacity: .45; cursor: not-allowed;
+  border-color: var(--line); box-shadow: none; }
 .face .bar > a:focus-visible, .face .nav > a:focus-visible { outline: 2px solid var(--amber);
   outline-offset: 2px; }
 .face .nav { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
@@ -1174,11 +1177,16 @@ _ICON = "data:image/svg+xml," + urllib.parse.quote(
 
 def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
           size: int = themes.NO_ZOOM, after: str = "", *,
-          language: str = languages.FOLLOW, offer_languages: bool = False) -> str:
+          language: str = languages.FOLLOW, offer_languages: bool = False,
+          setting_up: bool = False, other_sites: bool = False) -> str:
     """The whole document a Face screen is: `body` inside the top bar, whose
     first link names the open site, or says Sites before there is one.
     `language` is the picker's choice; `offer_languages` puts the list at
-    the top of <main> (PRESS-0241 § 4.3)."""
+    the top of <main> (PRESS-0241 § 4.3).
+
+    While `setting_up`, the bar leads nowhere, so setup cannot be left
+    half-done by a stray click (user, 2026-11-21): Help and More's pages open
+    in a new tab, and Sites stays only where `other_sites` gives a way back."""
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
     if size != themes.NO_ZOOM:
         chosen += f' data-size="{size}"'
@@ -1188,7 +1196,17 @@ def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
              ("/journal", say("face.journal")), ("/look", say("face.look")),
              ("/files", say("face.files")), ("/visitors", say("face.visitors")),
              ("/setup", say("face.settings")), ("/manual", say("face.help")))
-    bar = "".join(f'<a href="{address}">{words_}</a>' for address, words_ in links)
+    away = ' target="_blank" rel="noopener"' if setting_up else ""
+    locked = f'<a aria-disabled="true" title="{html.escape(say("face.after_setup"))}">'
+
+    def bar_link(address: str, words_: str) -> str:
+        if address == "/manual":
+            return f'<a href="{address}"{away}>{words_}</a>'
+        if setting_up and not (address == "/sites" and other_sites):
+            return f"{locked}{words_}</a>"
+        return f'<a href="{address}">{words_}</a>'
+
+    bar = "".join(bar_link(address, words_) for address, words_ in links)
     return (
         f'<!doctype html><html lang="{words.in_use()}"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -1201,11 +1219,11 @@ def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
         # PRESS-0343: the rest under More, which opens over the page.
         f'<details class="more"><summary>{say("face.more")}</summary><div>'
         # PRESS-0179: on every screen, failure pages included.
-        f'<a href="/report">{say("face.report")}</a>'
+        f'<a href="/report"{away}>{say("face.report")}</a>'
         # PRESS-0262 § 4.3: beside Report a problem.
-        f'<a href="{usage.ADDRESS}">{say("face.usage")}</a>'
+        f'<a href="{usage.ADDRESS}"{away}>{say("face.usage")}</a>'
         # PRESS-0278: beside Usage reports.
-        f'<a href="/about">{say("face.about")}</a>'
+        f'<a href="/about"{away}>{say("face.about")}</a>'
         f'{themes.picker(theme)}{themes.size_picker(size)}{languages.picker(language)}'
         "</div></details></header>"
         f'<main>{languages.offer() if offer_languages else ""}{body}</main>'
@@ -1301,9 +1319,17 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001 -- the bar then says Sites
             face.note(f"the site's name could not be read: {type(exc).__name__}")
             name = ""
+        try:
+            setting_up = face.setting_up()
+            other_sites = setting_up and face.other_sites()
+        except Exception as exc:  # noqa: BLE001 -- the bar then stays open
+            face.note(f"setup's state could not be read: {type(exc).__name__}")
+            setting_up = other_sites = False
         self._send(status, _page(body, face._theme, name, face._size, "".join(after),
                                  language=face._language,
-                                 offer_languages=face._offer_languages),
+                                 offer_languages=face._offer_languages,
+                                 setting_up=setting_up,
+                                 other_sites=other_sites),
                    "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int,
@@ -1895,6 +1921,21 @@ class Face:
             return settings.load(self._site).site_address
         except (settings.NotSetUp, settings.SettingsError):
             return ""
+
+    def setting_up(self) -> bool:
+        """Whether the open site is still in first-run setup: it has no
+        settings, or a file carried from another machine (PRESS-0021 § 4.8)."""
+        try:
+            settings.load(self._site)
+        except settings.NotSetUp:
+            return True
+        except settings.SettingsError as exc:
+            return exc.key == "site_folder"
+        return False
+
+    def other_sites(self) -> bool:
+        """Whether Pressless holds a site besides the open one."""
+        return any(site != self._site for site in sites.all_sites(self._folder))
 
     def add_unseen(self, check: Callable[[], bool]) -> None:
         """Have View your site greyed out while `check()` holds: the site has

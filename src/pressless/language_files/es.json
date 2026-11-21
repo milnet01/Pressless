@@ -2105,6 +2105,10 @@
    "4efca0d1",
    "Acerca de"
   ],
+  "face.after_setup": [
+   "4ca59375",
+   "Disponible cuando termine la configuración"
+  ],
   "face.files": [
    "abc7e989",
    "Archivos"
@@ -5518,8 +5522,8 @@
    "Ir a tu sitio"
   ],
   "setup.pages": [
-   "44b7dfe0",
-   "Pulsa Siguiente y Pressless pone tu sitio en la web. Todo lo que ya haya en el hogar de tu sitio también se pone en la web."
+   "49266583",
+   "Pulsa Siguiente y Pressless revisa tu sitio con GitHub. Si aún no está en la web, Pressless lo activa, y todo lo que ya esté en el hogar de tu sitio también se publica. Un sitio que ya está en la web se queda como está."
   ],
   "setup.pages.happening": [
    "5719890f",

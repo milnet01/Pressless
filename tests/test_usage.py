@@ -423,7 +423,7 @@ def test_every_screen_links_to_the_usage_screen(tmp_path):
     """Breaks when the top bar loses the link (§ 4.3)."""
     with _served(tmp_path, _Recorder()) as browser:
         page = browser.request("GET", "/usage")[2]
-    assert '<a href="/usage">Usage reports</a>' in page
+    assert '<a href="/usage"' in page and ">Usage reports</a>" in page
 
 
 def test_an_error_status_is_logged_and_a_success_is_not():

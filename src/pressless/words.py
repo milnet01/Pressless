@@ -507,6 +507,7 @@ _WORDS: dict[str, str] = {
     "face.about": "About",
     "face.more": "More",
     "face.help": "Help",
+    "face.after_setup": "Ready once setup is finished",  # a locked top-bar link
     "face.message.ok": "OK",  # the message box's button (face.message_box)
     "script.message.ok": "OK",  # the same button on a box a script makes (presslessFailed)
     # The editor, and the Pages and Journal screens (editor.py).
@@ -1204,8 +1205,9 @@ _WORDS: dict[str, str] = {
     ),
     "setup.new_key.6": "Click <b>Generate token</b>, then copy it. GitHub shows it only once.",
     "setup.pages": (
-        "Press Next and Pressless puts your site on the web. Anything already in your "
-        "site's home goes on the web too."
+        "Press Next and Pressless checks your site with GitHub. If it is not on the web "
+        "yet, Pressless switches it on, and anything already in your site's home goes on "
+        "the web too. A site already on the web stays as it is."
     ),
     "setup.pages.happening": (
         "GitHub Pages is what puts your repository on the web. Pressless checks it, and "
