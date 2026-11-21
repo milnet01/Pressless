@@ -4789,6 +4789,10 @@
    "565339bc",
    "Aceptar"
   ],
+  "script.opening": [
+   "c926c2c5",
+   "Abriendo…"
+  ],
   "script.pages.ask_rename": [
    "a36a0f29",
    "¿Cómo debería llamarse esta página? Tu sitio cambia ahora, y la dirección antigua seguirá llegando a la página."
@@ -5012,6 +5016,10 @@
   "script.visual.top_label": [
    "b05d95c6",
    "Volver arriba"
+  ],
+  "script.working": [
+   "b3abb348",
+   "Trabajando… esto puede tardar unos minutos. Mantén esta página abierta."
   ],
   "setup.account.have": [
    "535869e2",

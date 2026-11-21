@@ -46,6 +46,7 @@ from pressless import (
     store,
     themes,
     usage,
+    words,
 )
 
 LABEL_WORDS = "the Pressless-data folder, beside the program"
@@ -1709,3 +1710,19 @@ def test_sites_stays_open_while_another_site_is_set_up(tmp_path) -> None:
     finally:
         served.stop()
     assert 'href="/sites"' in bar and 'href="/pages"' not in bar
+
+
+def test_every_page_says_at_once_that_a_press_is_working(tmp_path) -> None:
+    """PRESS-0434 (user, 2026-11-21): people think nothing is happening unless
+    told. Breaks when the frame stops carrying the working note, or its words
+    stop reaching the page's scripts. What the script does in a browser is
+    checked by hand, in a real one."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        _, _, body = _Client(served).request("GET", "/words")
+    finally:
+        served.stop()
+    assert 'addEventListener("submit"' in body and "working-note" in body
+    scripts = json.loads(words.for_scripts())
+    assert scripts["script.working"] and scripts["script.opening"]

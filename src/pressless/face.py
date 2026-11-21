@@ -606,6 +606,48 @@ def _open_folder(folder: Path) -> None:
 # the page, never in a fragment, and it asks for the folder's path only when
 # Copy is clicked, so the path is never in the document.
 _SCRIPT = """
+// PRESS-0434: a press says at once that Pressless is working, on every
+// screen (user, 2026-11-21). A form a script sends itself is left to it, as
+// is anything marked data-quiet. The note is fixed, so nothing on the page
+// moves; the button goes off after the submit, once the form has read it.
+function showWorking(key) {
+  let note = document.getElementById("working-note");
+  if (!note) {
+    note = document.createElement("p");
+    note.id = "working-note";
+    note.setAttribute("role", "status");
+    document.body.append(note);
+  }
+  note.textContent = say(key);
+}
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (event.defaultPrevented || form.target || form.closest("[data-quiet]")) return;
+  showWorking("script.working");
+  const pressed = event.submitter;
+  if (pressed) setTimeout(() => { pressed.disabled = true; pressed.dataset.working = ""; });
+});
+// A link to a screen that takes a moment says so too, after a short wait,
+// so a quick screen never flashes it.
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey
+      || event.metaKey || event.shiftKey || event.altKey || link.target
+      || link.hasAttribute("download") || link.closest("[data-quiet]")) return;
+  const to = new URL(link.href, location.href);
+  if (to.origin !== location.origin || (to.pathname === location.pathname
+      && to.search === location.search)) return;
+  setTimeout(() => showWorking("script.opening"), 600);
+});
+// Back to a page the browser kept: it is not working any more.
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  document.getElementById("working-note")?.remove();
+  document.querySelectorAll("[data-working]").forEach((button) => {
+    button.disabled = false;
+    delete button.dataset.working;
+  });
+});
 document.addEventListener("click", (event) => {
   const view = event.target.closest("button[data-view-site]");
   if (view) window.open(view.dataset.viewSite, "_blank", "noopener");
@@ -789,6 +831,10 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar > a { background: var(--paper); }
 .face .bar > a:hover, .face .nav > a:hover { color: var(--ink); border-color: var(--amber);
   box-shadow: 0 3px 10px var(--shadow); }
+.face #working-note { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+  margin: 0; padding: .7rem 1.2rem; max-width: min(40rem, 90vw); z-index: 20;
+  background: var(--sheet); color: var(--ink); border: 1px solid var(--amber);
+  border-radius: 12px; box-shadow: 0 8px 30px var(--shadow); font-weight: 600; }
 .face .bar > a[aria-disabled] { opacity: .45; cursor: not-allowed;
   border-color: var(--line); box-shadow: none; }
 .face .bar > a:focus-visible, .face .nav > a:focus-visible { outline: 2px solid var(--amber);

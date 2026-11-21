@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=432 -->
+<!-- ants-roadmap-id-high-water: PRESS=435 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8991,6 +8991,45 @@ does not wait on them.
   Kind: feature.
   Source: user-2026-11-21.
   Lanes: core.
+
+- 📋 [PRESS-0433] **Setup's step 5 shows progress while it reads an existing site.**
+  A first-time user with an existing GitHub Pages site saw step 5
+  sit on "Waiting for 127.0.0.1" and gave up. check_pages reads a
+  root that holds a site through takein.look or look_folder, which
+  fetch the whole repository one blob request at a time inside the
+  POST, with nothing on screen. Confirm the cause from the user's
+  pressless.log first; then show the step working, with a count.
+  **Layman:** When setup reads a site you already have on GitHub, it shows how far it has got instead of looking frozen.
+  Kind: fix.
+  Source: user-2026-11-21.
+  Lanes: setup, face.
+
+- ✅ [PRESS-0434] **Every button that sends something shows it is working, at once.**
+  User, 2026-11-21: people think nothing is happening unless told,
+  and this holds site-wide. The page frame marks a pressed submit
+  button as working and unpressable, and says at the top that
+  Pressless is working and it can take a while.
+  Checked in headless Chrome and Firefox against a slow page: note at
+  once, button off, form still sends, slow link says Opening, downloads
+  quiet, Back clears it. Screens whose own scripts send without leaving
+  the page keep their own lines; PRESS-0435 goes through them.
+  **Layman:** Press any button that does something and Pressless says straight away that it is working on it.
+  Kind: ux.
+  Source: user-2026-11-21.
+  Lanes: face.
+
+- 📋 [PRESS-0435] **Long jobs show how far they have got.**
+  A count or step name for each job that can run minutes: reading an
+  existing site in setup (PRESS-0433), publishing, importing, undo and
+  restore, saving and opening a site file. Spans several parts, so it
+  gets a spec first.
+  User, 2026-11-21: show a progress bar for how far a download has got,
+  or at least that it is downloading and how much has come so far.
+  Anything that tells the user what is happening.
+  **Layman:** Long jobs such as publishing or reading your site show a running count, so you can see them moving.
+  Kind: ux.
+  Source: user-2026-11-21.
+  Lanes: face, setup, publishing, import.
 
 ## 1.3.0 — a home other than GitHub
 

@@ -4789,6 +4789,10 @@
    "565339bc",
    "OK"
   ],
+  "script.opening": [
+   "c926c2c5",
+   "Maak oop…"
+  ],
   "script.pages.ask_rename": [
    "a36a0f29",
    "Wat moet hierdie bladsy genoem word? Jou werf verander nou, en die ou adres sal steeds die bladsy bereik."
@@ -5012,6 +5016,10 @@
   "script.visual.top_label": [
    "b05d95c6",
    "Terug na bo"
+  ],
+  "script.working": [
+   "b3abb348",
+   "Besig… dit kan 'n paar minute duur. Hou hierdie bladsy oop."
   ],
   "setup.account.have": [
    "535869e2",

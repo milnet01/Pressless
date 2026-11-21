@@ -465,6 +465,9 @@ _WORDS: dict[str, str] = {
     # The press row's lines (PRESS-0235 § 4.3): Python and the scripts read
     # these same keys.
     "script.press.publishing": "Publishing… this can take a few minutes the first time.",
+    # PRESS-0434: the note every press shows at once, and a slow screen after a moment.
+    "script.working": "Working on it… this can take a few minutes. Keep this page open.",
+    "script.opening": "Opening…",
     # The box before a press (pressing.py, PRESS-0345).
     "script.press.checking": "Checking what will change on your site…",
     "script.plan.title": "Before your site changes",

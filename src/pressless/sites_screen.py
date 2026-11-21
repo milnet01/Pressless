@@ -179,7 +179,7 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
             f'<button>{say("sites_screen.new")}</button></form>'
             # PRESS-0224 § 4.6: the open site to one file, and a file to a site.
             f'<h2>{say("sites_screen.file_title")}</h2><p>{say("sites_screen.file_about")}</p>'
-            f'<p class="nav"><a href="{ADDRESS}/save">{say("sites_screen.save")}</a></p>'
+            f'<p class="nav"><a href="{ADDRESS}/save" download>{say("sites_screen.save")}</a></p>'
             + file_box("site-file", ".zip", f"{ADDRESS}/open-file",
                        say("sites_screen.open_file"), sending="script.sites.opening")
             + f'<h2>{say("sites_screen.backups.title")}</h2>'
@@ -199,7 +199,7 @@ def _move_wizard(own: Path) -> str:
         return html.escape(value, quote=True)
 
     saves = "".join(
-        f'<a href="{ADDRESS}/save?site={attr(site.name)}">'
+        f'<a href="{ADDRESS}/save?site={attr(site.name)}" download>'
         f'{html.escape(say("sites_screen.move.save_one", site=sitefile.name_of(site)))}'
         "</a>" for site in sites.all_sites(own))
     steps = (

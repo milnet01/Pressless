@@ -194,7 +194,7 @@ def test_the_move_wizard_saves_each_site_and_says_what_comes_next(tmp_path: Path
     assert 'data-help="move-wizard"' in page
     wizard = page.split('<dialog id="move-wizard"', 1)[1].split("</dialog>", 1)[0]
     assert wizard.count('data-step="') == 3
-    assert 'href="/sites/save?site=site-1"' in wizard
+    assert 'href="/sites/save?site=site-1" download' in wizard
     assert 'href="/sites/save?site=site-2"' in wizard and "Hill Notes" in wizard
     assert "Open a site file" in wizard and "publishing key" in wizard
 
