@@ -375,7 +375,7 @@
   ],
   "country.AX": [
    "6fc656b1",
-   "Åland"
+   "Ålandinseln"
   ],
   "country.AZ": [
    "efa9150a",
@@ -2899,11 +2899,11 @@
   ],
   "files_screen.footer": [
    "5bd1ea30",
-   "der Fußzeile"
+   "die Fußzeile"
   ],
   "files_screen.header": [
    "ea0d8b25",
-   "der Kopfzeile"
+   "die Kopfzeile"
   ],
   "files_screen.kb": [
    "eb236725",
@@ -2911,7 +2911,7 @@
   ],
   "files_screen.look": [
    "5e5076e7",
-   "dem Aussehen"
+   "das Aussehen"
   ],
   "files_screen.mb": [
    "47bee220",
@@ -2923,7 +2923,7 @@
   ],
   "files_screen.navigation": [
    "b24ccab7",
-   "dem Menü"
+   "das Menü"
   ],
   "files_screen.none": [
    "9998d7de",
@@ -3647,7 +3647,7 @@
   ],
   "look.extra_note": [
    "c283ab80",
-   "Dein eigenes CSS, aus dem Feld unten im Bildschirm Aussehen."
+   "Dein eigenes CSS, aus dem Feld unten auf dem Bildschirm Aussehen."
   ],
   "look.journal_note": [
    "9d714014",
@@ -3735,11 +3735,11 @@
   ],
   "look_screen.effect.lift": [
    "197eaec4",
-   "Bilder heben sich leicht unter dem Zeiger"
+   "Bilder heben sich leicht an, wenn der Zeiger darüber fährt"
   ],
   "look_screen.effect.reveal": [
    "540695d2",
-   "Jeder Teil einer Seite blendet ein, wenn er in den sichtbaren Bereich scrollt"
+   "Jeder Teil einer Seite wird eingeblendet, sobald er beim Scrollen sichtbar wird"
   ],
   "look_screen.effect.smooth": [
    "3a0ef598",
@@ -3803,7 +3803,7 @@
   ],
   "look_screen.restart": [
    "b1cbeef3",
-   "Wenn du hier ein Layout wählst, beginnt es noch einmal mit seinen eigenen Farben und Schriften."
+   "Wenn du hier ein Layout wählst, fängt alles wieder mit dessen eigenen Farben und Schriften an."
   ],
   "look_screen.route": [
    "df81de8b",
@@ -3883,7 +3883,7 @@
   ],
   "look_screen.style.plum.about": [
    "8ddf1b92",
-   "eine Künstlerin, ein Künstler oder ein Handwerk"
+   "jemand, der Kunst oder Handwerk macht"
   ],
   "look_screen.style.sand": [
    "82855c11",
@@ -3971,7 +3971,7 @@
   ],
   "main.moving_in": [
    "75b96938",
-   "Pressless konnte deine Website nicht in den Ordner sites in seinem Ordner {folder} verschieben: {reason}. Nichts ging verloren. Schließe alles, was diesen Ordner benutzt, und starte Pressless noch einmal."
+   "Pressless konnte deine Website nicht in den Ordner sites im Ordner {folder} verschieben: {reason}. Nichts ging verloren. Schließe alles, was diesen Ordner benutzt, und starte Pressless noch einmal."
   ],
   "main.open_link": [
    "b07fafb2",
@@ -4003,7 +4003,7 @@
   ],
   "mark.bold": [
    "6141b6af",
-   "Fett, für ein Wort, das lauter sein soll."
+   "Fett, für ein Wort, das mehr Gewicht haben soll."
   ],
   "mark.bold.example": [
    "19877635",
@@ -4011,7 +4011,7 @@
   ],
   "mark.colour": [
    "19ccb079",
-   "Jede Farbe, die du wählst, geschrieben als Raute und ihr Hex-Code."
+   "Jede Farbe, die du wählst, geschrieben als Raute und Hex-Code."
   ],
   "mark.colour.example": [
    "8e1e21d0",
@@ -4019,7 +4019,7 @@
   ],
   "mark.italic": [
    "f27a25b6",
-   "Kursiv, für ein Wort, das sich vom Rest abwendet."
+   "Kursiv, für ein Wort, das sich leicht abhebt."
   ],
   "mark.italic.example": [
    "2007e7f6",
@@ -4051,7 +4051,7 @@
   ],
   "mark.quote": [
    "3e49953a",
-   "Ein Zitat: Beginne jede seiner Zeilen mit >. Eine Leerzeile beendet es."
+   "Ein Zitat: Beginne jede Zeile mit >. Eine Leerzeile beendet es."
   ],
   "mark.quote.example": [
    "04352220",
@@ -6827,7 +6827,7 @@
   ],
   "youtube.hint.channel": [
    "ea2afa8a",
-   "Das ist nicht die Adresse eines Kanals. Nimm die mit einem @ darin oder die mit /channel/ darin."
+   "Das ist nicht die Adresse eines Kanals. Nimm die mit einem @ oder die mit /channel/."
   ],
   "youtube.hint.key": [
    "07c97c64",

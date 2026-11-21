@@ -94,7 +94,7 @@ kannst du es noch einmal verwenden, ohne die Datei zu wählen.
 
 == writing-in-marks | Mit Markierungen statt mit Schaltflächen schreiben
 Markierungen sind ein paar Zeichen, die du zwischen deine Worte tippst.
-Zwei Sternchen auf jeder Seite eines Wortes machen es fett.
+Zwei Sternchen auf beiden Seiten eines Wortes machen es fett.
 
 1. Öffne den Eintrag und klicke auf Markierungen zeigen.
 picture marks.png | Das Feld mit den Worten eines Eintrags, darunter der geöffnete Spickzettel.
@@ -246,8 +246,8 @@ picture menu.png | Die Links des Menüs, jeder mit einem Feld Wörter, einem Fel
 4. Klicke auf Link hinzufügen für einen neuen.
 5. Klicke auf Auf die Website stellen, um das Menü zu veröffentlichen.
 
-Keine Navigation unter Teile jeder Seite? Klicke dort auf Menü
-hinzufügen. Es verlinkt die Seiten, die schon auf deiner Website sind.
+Steht unter Teile jeder Seite keine Navigation? Klicke dort auf
+Menü hinzufügen. Es verlinkt die Seiten, die schon auf deiner Website sind.
 
 == header-and-footer | Die Kopfzeile oder Fußzeile ändern
 Die Kopfzeile ist der obere Teil jeder Seite deiner Website, und die
@@ -324,7 +324,7 @@ die Zahlen aus Google Analytics liest. Das ist freiwillig.
 2. Klicke auf Mit Google anmelden und melde dich auf der Seite von Google an.
 3. Wähle die Website, für die Pressless Zahlen zeigen soll, und klicke auf Diese Website verwenden.
 
-Besucherzahlen ausschalten, auf demselben Bildschirm, hört damit auf.
+Mit Besucherzahlen ausschalten, auf demselben Bildschirm, hörst du damit auf.
 
 == who-is-reading | Sehen, wer deine Website liest
 1. Klicke in der Leiste auf Besucher.
