@@ -232,6 +232,21 @@ key, Pressless never asks. The steps, as the user first walks them:
 
 The user walked these steps on 2026-10-13; Google's menu names matched.
 
+## The log relay
+
+Send my log (PRESS-0436) posts to a Cloudflare Worker, `relay/`, which
+files each log in the private repository `milnet01/pressless-logs` as a
+GitHub App. `relay/README.md` holds the setup and the tests.
+
+- The Worker's address is `sendlog.RELAY`. `scripts/relay-setup.py` prints
+  it after each deploy; a change of Cloudflare account changes it.
+- The App's key is `~/.config/pressless/log-relay-app.pem`. Never copy it
+  into the tree; `tests/test_no_private_key.py` and the pre-push hook's
+  `gitleaks` scan each refuse a key header.
+- A send that answers 502 means the relay cannot reach GitHub. Run
+  `npx wrangler tail` in `relay/` to see the failing step's status, then
+  run the setup script again.
+
 ## Windows and browser checks
 
 **Windows is testable, and that is not obvious from anything else here.**

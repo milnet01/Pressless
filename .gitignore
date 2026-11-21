@@ -122,3 +122,6 @@ src/pressless/_usage_key.py
 # True high-water mark is the highest ID across ROADMAP.md +
 # CHANGELOG.md + docs/roadmap/*.md (roadmap-format.md § 3.5.1).
 .roadmap-counter
+
+# The log relay: Wrangler's own cache (PRESS-0436)
+relay/.wrangler/

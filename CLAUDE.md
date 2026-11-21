@@ -106,6 +106,8 @@ a time (`read_region` with `section=`). A comment or spec saying
   or `APP_SLUG`, or touching the GitHub sign-in's setup.
 - *Registering the usage-report property* — before writing the usage
   key or touching the usage-report property's setup.
+- *The log relay* — before touching `relay/`, `sendlog.RELAY` or the
+  log relay's GitHub App.
 - *Windows and browser checks* — before checking anything on the Windows
   box or in a browser.
 - *Remaking the manual's pictures and videos* — before retaking a

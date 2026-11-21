@@ -2725,6 +2725,14 @@
    "b91874e7",
    "jou YouTube-sleutel"
   ],
+  "failure.sendlog.LogNotSent.next": [
+   "5bc3df77",
+   "Maak seker dat hierdie rekenaar aanlyn is, en probeer dan oor 'n paar minute weer."
+  ],
+  "failure.sendlog.LogNotSent.what": [
+   "293f0c8a",
+   "Jou log is nie gestuur nie."
+  ],
   "failure.settings.NotSetUp.next": [
    "e625bb8c",
    "Gaan eers deur die opstelling."
@@ -4649,6 +4657,10 @@
    "385d298e",
    "Die boulêer is steeds in die bewaarplek. Verwyder dit eers op GitHub. Niks is verander nie."
   ],
+  "report.log": [
+   "3e2038c6",
+   "Het iets verkeerd geloop? Stuur ook jou log, sodat die ontwikkelaar kan sien wat gebeur het."
+  ],
   "report.open": [
    "cdf87d16",
    "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Maak die verslag op GitHub oop</a>"
@@ -4909,6 +4921,10 @@
    "79b80f2b",
    "Pressless kon nie homself bereik nie, so hierdie bladsy kan nie sê hoe die pers geëindig het nie. Kyk of Pressless nog loop."
   ],
+  "script.sendlog.unreachable": [
+   "25bb1978",
+   "Pressless kon nie homself bereik nie. Jou log is nie gestuur nie."
+  ],
   "script.sites.opening": [
    "c926c2c5",
    "Maak tans oop…"
@@ -5060,6 +5076,34 @@
   "script.working": [
    "b3abb348",
    "Besig… dit kan 'n paar minute duur. Hou hierdie bladsy oop."
+  ],
+  "sendlog.button": [
+   "1b42f5b6",
+   "Stuur my log"
+  ],
+  "sendlog.holds": [
+   "dbf12172",
+   "Die log sê wat Pressless gedoen het en wat verkeerd geloop het. Dit noem jou werf, sy bladsye en sy lêers. Dit word so geskryf dat jou sleutels, wagwoorde, rekeningname en volle paaie uitgelaat word."
+  ],
+  "sendlog.not_now": [
+   "a0e63d7c",
+   "Nie nou nie"
+  ],
+  "sendlog.send": [
+   "f6f4688f",
+   "Stuur"
+  ],
+  "sendlog.sent": [
+   "dc0e7de1",
+   "Gestuur. Dankie. As jy aan die ontwikkelaar hieroor skryf, noem die verwysing <strong>{reference}</strong>."
+  ],
+  "sendlog.what": [
+   "36a0c73b",
+   "Dit stuur Pressless se twee loglêers na sy ontwikkelaar, saam met jou Pressless-weergawe en die naam van jou stelsel."
+  ],
+  "sendlog.where": [
+   "0cf316ab",
+   "Dit gaan privaat na die ontwikkelaar, deur Cloudflare en GitHub, en word gehou waar net die ontwikkelaar dit kan lees."
   ],
   "setup.account.have": [
    "535869e2",

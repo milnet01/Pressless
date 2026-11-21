@@ -327,6 +327,10 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "API key not valid": "Google's own message for a key it does not know, matched "
                              "against its answer",
     },
+    "sendlog.py": {
+        **dict.fromkeys(("Content-Type", "User-Agent"), _HTTP_HEADERS),
+        "Pressless/": "the User-Agent the relay is sent",
+    },
     "usage.py": {
         **dict.fromkeys(("Windows", "Linux", "Linux (", "an unknown system"),
                         "the system's name, sent in a report and the issue form"),

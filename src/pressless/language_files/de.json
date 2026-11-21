@@ -2725,6 +2725,14 @@
    "b91874e7",
    "deinen YouTube-Schlüssel"
   ],
+  "failure.sendlog.LogNotSent.next": [
+   "5bc3df77",
+   "Prüfe, ob dieser Computer online ist, und versuche es in ein paar Minuten noch einmal."
+  ],
+  "failure.sendlog.LogNotSent.what": [
+   "293f0c8a",
+   "Dein Protokoll wurde nicht gesendet."
+  ],
   "failure.settings.NotSetUp.next": [
    "e625bb8c",
    "Gehe zuerst durch die Einrichtung."
@@ -4649,6 +4657,10 @@
    "385d298e",
    "Die Build-Datei ist noch im Repository. Entferne sie zuerst auf GitHub. Es wurde nichts geändert."
   ],
+  "report.log": [
+   "3e2038c6",
+   "Ist etwas schiefgegangen? Schick auch dein Protokoll mit, damit der Entwickler sehen kann, was passiert ist."
+  ],
   "report.open": [
    "cdf87d16",
    "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Die Meldung auf GitHub öffnen</a>"
@@ -4909,6 +4921,10 @@
    "79b80f2b",
    "Pressless konnte sich selbst nicht erreichen, deshalb kann diese Seite nicht sagen, wie das Hochladen ausgegangen ist. Prüfe, ob Pressless noch läuft."
   ],
+  "script.sendlog.unreachable": [
+   "25bb1978",
+   "Pressless konnte sich selbst nicht erreichen. Dein Protokoll wurde nicht gesendet."
+  ],
   "script.sites.opening": [
    "c926c2c5",
    "Wird geöffnet…"
@@ -5060,6 +5076,34 @@
   "script.working": [
    "b3abb348",
    "Wird bearbeitet… das kann ein paar Minuten dauern. Lass diese Seite offen."
+  ],
+  "sendlog.button": [
+   "1b42f5b6",
+   "Mein Protokoll senden"
+  ],
+  "sendlog.holds": [
+   "dbf12172",
+   "Das Protokoll sagt, was Pressless getan hat und was schiefging. Es nennt deine Website, ihre Seiten und ihre Dateien. Es ist so geschrieben, dass deine Schlüssel, Passwörter, Kontonamen und vollständigen Pfade fehlen."
+  ],
+  "sendlog.not_now": [
+   "a0e63d7c",
+   "Nicht jetzt"
+  ],
+  "sendlog.send": [
+   "f6f4688f",
+   "Senden"
+  ],
+  "sendlog.sent": [
+   "dc0e7de1",
+   "Gesendet. Danke. Wenn du dem Entwickler darüber schreibst, nenne die Kennung <strong>{reference}</strong>."
+  ],
+  "sendlog.what": [
+   "36a0c73b",
+   "Damit werden die zwei Protokolldateien von Pressless an seinen Entwickler gesendet, zusammen mit deiner Pressless-Version und dem Namen deines Systems."
+  ],
+  "sendlog.where": [
+   "0cf316ab",
+   "Es geht vertraulich an den Entwickler, über Cloudflare und GitHub, und wird dort aufbewahrt, wo nur der Entwickler es lesen kann."
   ],
   "setup.account.have": [
    "535869e2",

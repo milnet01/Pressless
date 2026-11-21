@@ -57,6 +57,7 @@ import test_publisher as tpub  # noqa: E402
 import test_publishing as tp  # noqa: E402
 from PIL import Image  # noqa: E402
 from test_votes import PASTED, VOTES  # noqa: E402
+from test_sendlog import _Relay  # noqa: E402
 from test_votes import _Google as _CheckedGoogle  # noqa: E402
 
 import pressless_import  # noqa: E402
@@ -81,6 +82,8 @@ from pressless import (  # noqa: E402
     pressing,
     publisher,
     publishing,
+    report,
+    sendlog,
     settings,
     setup,
     sites,
@@ -95,6 +98,7 @@ from pressless import (  # noqa: E402
 
 RESULTS: list[tuple[str, bool, str]] = []
 RESTARTS: list[int] = []
+RELAY = _Relay()          # PRESS-0436: the log relay, recording what it was sent
 # Filled by main's parser, which holds the defaults: parse_args keeps any value
 # a namespace already has, so a default set here would override the parser's.
 OPTIONS = argparse.Namespace()
@@ -166,6 +170,8 @@ def main() -> int:
             helper_own = Path(tmp) / "helper-own"
             helper_own.mkdir()
             pressing.register(served)
+            report.register(served)
+            sendlog.register(served, folder, client=RELAY)
             assistant.register(served, folder, own=helper_own, transport=tp._github())
             # PRESS-0223: the Sites screen over a Pressless-data of its own,
             # holding two sites; a restart is only recorded.
@@ -454,6 +460,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         votes_buttons(page, folder)
         helper_publish(page, origin, folder, helper_own)
         progress_note(page, origin)
+        send_log(page, origin)
         layout_colours(page, origin, folder)    # these two last: they save a look
         layouts_and_styles(page, origin, folder)
 
@@ -1552,6 +1559,46 @@ def _watch_note(page, until: str) -> list[dict]:
     finally:
         page.remove_listener("console", heard)
     return seen
+
+
+def send_log(page, origin: str) -> None:
+    """PRESS-0436 INV-8: Send my log opens its box and sends nothing; Not now
+    sends nothing; Send sends once and the box shows the reference."""
+    page.goto(f"{origin}/report", wait_until="networkidle")
+    box = page.locator("div.send-log dialog")
+    page.get_by_role("button", name="Send my log", exact=True).click()
+    check("PRESS-0436 INV-8 send_log: the box opens", box.evaluate("box => box.open"))
+    check("PRESS-0436 INV-8 send_log: opening it sends nothing", RELAY.sent == [],
+          f"{len(RELAY.sent)} sent")
+    page.get_by_role("button", name="Not now", exact=True).click()
+    page.wait_for_timeout(300)
+    check("PRESS-0436 INV-8 send_log: Not now closes it and sends nothing",
+          not box.evaluate("box => box.open") and RELAY.sent == [], f"{len(RELAY.sent)} sent")
+    page.get_by_role("button", name="Send my log", exact=True).click()
+    page.get_by_role("button", name="Send", exact=True).click()
+    said = box.locator(".said")
+    page.wait_for_function("box => !box.textContent.includes('Cloudflare')",
+                           arg=said.element_handle(), timeout=5000)
+    check("PRESS-0436 INV-8 send_log: Send sends once and shows the reference",
+          len(RELAY.sent) == 1 and "K7Q2MX" in said.inner_text(),
+          f"{len(RELAY.sent)} sent; the box says {said.inner_text()!r}")
+    check("PRESS-0436 send_log: Not now now reads OK",
+          page.get_by_role("button", name="OK", exact=True).count() == 1)
+
+    RELAY._fails = True
+    try:
+        page.goto(f"{origin}/report", wait_until="networkidle")
+        page.get_by_role("button", name="Send my log", exact=True).click()
+        page.get_by_role("button", name="Send", exact=True).click()
+        page.wait_for_function("box => !box.textContent.includes('Cloudflare')",
+                               arg=said.element_handle(), timeout=5000)
+        check("PRESS-0436 INV-4 send_log: a failed send says so, and Send stays to retry",
+              "not sent" in said.inner_text()
+              and box.locator("div.send-log").count() == 0
+              and page.get_by_role("button", name="Send", exact=True).is_enabled(),
+              f"the box says {said.inner_text()!r}")
+    finally:
+        RELAY._fails = False
 
 
 def progress_note(page, origin: str) -> None:

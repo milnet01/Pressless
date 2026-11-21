@@ -236,6 +236,15 @@ KEYS
 step "pytest"
 "$PY" -m pytest -ra || fail "tests"
 
+# The log relay's own tests (PRESS-0436 INV-6), where node is on the path.
+# CI's runners carry node; a machine without it says so and goes on.
+if command -v node >/dev/null; then
+    step "relay tests (node $(node --version))"
+    node --test 'relay/test/*.test.js' || fail "relay tests"
+else
+    printf '\nnote: node is not on the path -- the relay tests did not run\n'
+fi
+
 # The same suite on real Windows, where a machine-local key names one
 # (PRESS-0192). Windows CI found two faults the Linux run could not show, so a
 # push from the maintainer's machine runs Windows too, before GitHub does:

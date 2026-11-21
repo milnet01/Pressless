@@ -60,6 +60,7 @@ from pressless import (
     publishing,
     report,
     restarting,
+    sendlog,
     settings,
     setup,
     shortcuts,
@@ -347,6 +348,7 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray) -> bool:
         cheatsheet.register(served)
         manual.register(served)                             # PRESS-0219
         report.register(served)
+        sendlog.register(served, own)                       # PRESS-0436
         about.register(served)
         usage.register(served, own, site=folder)
         templates.register(served, folder)

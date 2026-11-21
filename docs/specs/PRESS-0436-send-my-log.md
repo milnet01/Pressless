@@ -49,7 +49,10 @@ repository is in the app.
 ### 4.1 The button and the box
 
 `render_failure` and `report._page` gain a button `data-action="send-log"`.
-Its script opens a `<dialog class="message">` holding `sendlog.box`'s words:
+Its script opens a `<dialog class="send-log">` holding `sendlog.button`'s
+words. Not `class="message"`: the Face opens every such box whose words are
+not empty as the page loads.
+
 
 - what goes: the two log files, the Pressless version and the system name;
 - what they hold: what Pressless did and what went wrong, with the names of
@@ -65,14 +68,17 @@ fragment. **Not now** closes the box; nothing is sent.
 ### 4.2 `src/pressless/sendlog.py`
 
 ```python
-RELAY = "https://pressless-logs.<account>.workers.dev/log"  # public, not a secret
+RELAY = "https://pressless-logs.pressless-logs.workers.dev/log"  # public, not a secret
 LARGEST = 2 * log.MAX_BYTES + 65_536
 
 def send(folder: Path, client: https.Client | None = None) -> str:
     """Post both logs; the reference the relay answers. Raises
     LogNotSent, a PublishError subclass with a Face sentence."""
 
-def register(face: Face) -> None:   # POST /log/send
+def button() -> str:                # the button and its box, for both pages
+
+def register(face: Face, folder: Path, *, client: Transport | None = None) -> None:
+    # POST /log/send, sending the logs in `folder`
 ```
 
 The request: `POST RELAY`, `Content-Type: application/json`, body
@@ -165,7 +171,7 @@ script can:
 - **INV-6** — The relay refuses a body over the size limit, a wrong shape
   and a method or path other than `POST /log`, before it asks GitHub for a
   token.
-  *Test:* `node --test relay/test` → every test passes.
+  *Test:* `node --test 'relay/test/*.test.js'` → every test passes.
   *Breaks when:* a check moves after step 4.
 - **INV-7** — No file in this repository holds the App's key, and the app
   holds no credential the relay accepts.

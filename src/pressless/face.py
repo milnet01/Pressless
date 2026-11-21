@@ -49,6 +49,7 @@ from pressless import (
     paths,
     progress,
     publisher,
+    sendlog,
     settings,
     shortcuts,
     sites,
@@ -295,6 +296,10 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "failure.shortcuts.ShortcutError.what",
         "failure.again",
     ),
+    sendlog.LogNotSent: _keys(
+        "failure.sendlog.LogNotSent.what",
+        "failure.sendlog.LogNotSent.next",
+    ),
 }
 
 
@@ -401,6 +406,7 @@ def render_failure(
         f'<p class="next">{e(sentence.next)}</p>'
         + (f'<p class="next"><a href="{e(sentence.link[0], quote=True)}">'
            f"{e(sentence.link[1])}</a></p>" if sentence.link else "")
+        + sendlog.button()
         + f"<details><summary>{say('failure.show_details')}</summary>"
         f"<pre>{e(details_for(failure))}</pre>"
         f"<p>{say('failure.log', log=e(log.FILE_NAME), old=e(log.OLD_NAME))}</p>"
@@ -757,6 +763,35 @@ document.addEventListener("click", async (event) => {
       document.open(); document.write(await answer.text()); document.close();
     }
   }
+});
+// PRESS-0436: Send my log opens its box; only Send in the box posts. The
+// answer, the reference or the failure, takes the box's words. Once sent,
+// Send is hidden, keeping its place, and Not now reads OK; after a failure
+// Send stays, to try again, and the failure's own Send my log is dropped.
+document.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action^='send-log']");
+  if (!button) return;
+  const box = button.closest("div.send-log").querySelector("dialog");
+  if (button.dataset.action === "send-log") { box.showModal(); return; }
+  button.disabled = true;
+  const words = box.querySelector(".said");
+  let said = null;
+  try { said = await (await fetch("/log/send", {method: "POST"})).text(); } catch (error) {
+    // Pressless itself did not answer; Send stays, to try again.
+  }
+  if (said === null) {
+    words.textContent = say("script.sendlog.unreachable");
+    button.disabled = false;
+    return;
+  }
+  words.innerHTML = said;
+  if (words.querySelector(".failure")) {
+    words.querySelectorAll("div.send-log").forEach((inner) => inner.remove());
+    button.disabled = false;
+    return;
+  }
+  button.style.visibility = "hidden";
+  box.querySelector("button[data-close]").textContent = say("script.message.ok");
 });
 // PRESS-0190: a theme is applied the moment it is picked, then remembered.
 document.addEventListener("change", (event) => {

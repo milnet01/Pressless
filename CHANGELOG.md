@@ -12,6 +12,14 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Send my log** (PRESS-0436)
+  When something goes wrong, a failure page and Report a problem carry a
+  Send my log button. It says what goes and where, and sends nothing until
+  you press Send. Pressless's two log files then go privately to the
+  developer, and you get a short reference to quote.
+
 ### Changed
 
 - **Long jobs show how far they have got** (PRESS-0435, PRESS-0433)

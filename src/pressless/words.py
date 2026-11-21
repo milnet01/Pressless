@@ -200,6 +200,10 @@ _WORDS: dict[str, str] = {
     "failure.face.FolderNotOpened.next": (
         "Use Copy location instead, and paste it into your file manager."
     ),
+    "failure.sendlog.LogNotSent.what": "Your log was not sent.",
+    "failure.sendlog.LogNotSent.next": (
+        "Check that this computer is online, then try again in a few minutes."
+    ),
     "failure.face.NoRoom.what": (
         "This computer's drive has too little free space to take that file."
     ),
@@ -647,6 +651,7 @@ _WORDS: dict[str, str] = {
     "script.standing.off_site": "Not on your site yet",
     "script.undo.back": "Back to Your site",
     "script.undo.unreachable": "Pressless could not reach itself. Your site was not changed.",
+    "script.sendlog.unreachable": "Pressless could not reach itself. Your log was not sent.",
     "script.editor.throw_entry": "Throw this entry away",
     "script.editor.not_saved": "Not saved",
     "script.editor.missing_one": (
@@ -2278,6 +2283,30 @@ _WORDS: dict[str, str] = {
     "report.open": (
         "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Open the report on "
         "GitHub</a>"
+    ),
+    "report.log": (
+        "Something went wrong? Send your log too, so the developer can see what happened."
+    ),
+    # Send my log (sendlog.py, PRESS-0436), on Report a problem and failure pages.
+    "sendlog.button": "Send my log",
+    "sendlog.what": (
+        "This sends Pressless's two log files to its developer, with your Pressless version "
+        "and the name of your system."
+    ),
+    "sendlog.holds": (
+        "The log says what Pressless did and what went wrong. It names your site, its pages "
+        "and its files. It is written to leave out your keys, passwords, account names and "
+        "full paths."
+    ),
+    "sendlog.where": (
+        "It goes privately to the developer, through Cloudflare and GitHub, and is kept where "
+        "only the developer can read it."
+    ),
+    "sendlog.send": "Send",
+    "sendlog.not_now": "Not now",
+    "sendlog.sent": (
+        "Sent. Thank you. If you write to the developer about this, quote the reference "
+        "<strong>{reference}</strong>."
     ),
     # About Pressless (about.py), and setup's welcome step (PRESS-0278).
     "about.version": "This is Pressless {version}.",

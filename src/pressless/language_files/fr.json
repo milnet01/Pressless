@@ -2726,6 +2726,14 @@
    "b91874e7",
    "votre clé YouTube"
   ],
+  "failure.sendlog.LogNotSent.next": [
+   "5bc3df77",
+   "Vérifiez que cet ordinateur est connecté à internet, puis réessayez dans quelques minutes."
+  ],
+  "failure.sendlog.LogNotSent.what": [
+   "293f0c8a",
+   "Votre journal n'a pas été envoyé."
+  ],
   "failure.settings.NotSetUp.next": [
    "e625bb8c",
    "Passez d'abord par la configuration."
@@ -4650,6 +4658,10 @@
    "385d298e",
    "Le fichier de construction est toujours dans le dépôt. Supprimez-le d'abord sur GitHub. Rien n'a été modifié."
   ],
+  "report.log": [
+   "3e2038c6",
+   "Quelque chose s'est mal passé ? Envoyez aussi votre journal, pour que le développeur puisse voir ce qui s'est passé."
+  ],
   "report.open": [
    "cdf87d16",
    "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Ouvrir le signalement sur GitHub</a>"
@@ -4910,6 +4922,10 @@
    "79b80f2b",
    "Pressless n'a pas pu se joindre lui-même, donc cette page ne peut pas dire comment l'envoi s'est terminé. Vérifiez que Pressless fonctionne toujours."
   ],
+  "script.sendlog.unreachable": [
+   "25bb1978",
+   "Pressless n'a pas pu se joindre lui-même. Votre journal n'a pas été envoyé."
+  ],
   "script.sites.opening": [
    "c926c2c5",
    "Ouverture…"
@@ -5061,6 +5077,34 @@
   "script.working": [
    "b3abb348",
    "En cours… cela peut prendre quelques minutes. Garde cette page ouverte."
+  ],
+  "sendlog.button": [
+   "1b42f5b6",
+   "Envoyer mon journal"
+  ],
+  "sendlog.holds": [
+   "dbf12172",
+   "Le journal dit ce que Pressless a fait et ce qui s'est mal passé. Il nomme votre site, ses pages et ses fichiers. Il est écrit pour laisser de côté vos clés, mots de passe, noms de compte et chemins complets."
+  ],
+  "sendlog.not_now": [
+   "a0e63d7c",
+   "Pas maintenant"
+  ],
+  "sendlog.send": [
+   "f6f4688f",
+   "Envoyer"
+  ],
+  "sendlog.sent": [
+   "dc0e7de1",
+   "Envoyé. Merci. Si vous écrivez au développeur à ce sujet, donnez la référence <strong>{reference}</strong>."
+  ],
+  "sendlog.what": [
+   "36a0c73b",
+   "Ceci envoie les deux fichiers journaux de Pressless à son développeur, avec votre version de Pressless et le nom de votre système."
+  ],
+  "sendlog.where": [
+   "0cf316ab",
+   "Il part en privé chez le développeur, par Cloudflare et GitHub, et il est gardé là où seul le développeur peut le lire."
   ],
   "setup.account.have": [
    "535869e2",

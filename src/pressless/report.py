@@ -4,16 +4,18 @@ Every screen's top bar links here. The page says the issue will be public,
 points a security problem at GitHub's private route (SECURITY.md), and opens
 a new issue on Pressless's repository with a short form already filled in:
 the Pressless version, the system it runs on, and three questions. Nothing
-else is sent -- no site address, no writing, no settings, no log -- and the
-user reads and changes it before submitting. Usage reports are a separate
-channel, sent only where the user said yes (PRESS-0262, usage.py).
+else goes in the issue -- no site address, no writing, no settings, no log --
+and the user reads and changes it before submitting. The log goes only by
+Send my log, privately, once its box is answered (PRESS-0436, sendlog.py).
+Usage reports are a separate channel, sent only where the user said yes
+(PRESS-0262, usage.py).
 """
 from __future__ import annotations
 
 import html
 import urllib.parse
 
-from pressless import __version__, updater, usage
+from pressless import __version__, sendlog, updater, usage
 from pressless.face import Face, Request
 from pressless.words import say
 
@@ -40,6 +42,7 @@ def _page(request: Request) -> str:
         f'<p>{say("report.public")}</p>'
         f'<p>{say("report.security", address=security)}</p>'
         f'<p>{say("report.open", address=issue)}</p>'
+        f'<p>{say("report.log")}</p>{sendlog.button()}'
     )
 
 

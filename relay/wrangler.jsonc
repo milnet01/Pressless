@@ -1,0 +1,19 @@
+// The log relay's Worker (PRESS-0436 § 4.3). scripts/relay-setup.py fills
+// APP_ID and INSTALLATION_ID; APP_KEY is a secret, set by that script and
+// never written here.
+{
+  "name": "pressless-logs",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "vars": {
+    "APP_ID": "",
+    "INSTALLATION_ID": "",
+    "REPOSITORY": "milnet01/pressless-logs"
+  },
+  // One send per address per minute. Cloudflare's period is 10 or 60
+  // seconds, and its counts are approximate and per location.
+  "ratelimits": [
+    {"name": "SENDS", "namespace_id": "4360", "simple": {"limit": 1, "period": 60}}
+  ]
+}

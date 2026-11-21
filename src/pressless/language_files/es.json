@@ -2725,6 +2725,14 @@
    "b91874e7",
    "tu clave de YouTube"
   ],
+  "failure.sendlog.LogNotSent.next": [
+   "5bc3df77",
+   "Comprueba que este equipo está conectado a internet y vuelve a intentarlo en unos minutos."
+  ],
+  "failure.sendlog.LogNotSent.what": [
+   "293f0c8a",
+   "Tu registro no se envió."
+  ],
   "failure.settings.NotSetUp.next": [
    "e625bb8c",
    "Haz primero la configuración."
@@ -4649,6 +4657,10 @@
    "385d298e",
    "El archivo de construcción sigue en el repositorio. Quítalo primero en GitHub. No se cambió nada."
   ],
+  "report.log": [
+   "3e2038c6",
+   "¿Algo salió mal? Envía también tu registro, para que el desarrollador pueda ver qué pasó."
+  ],
   "report.open": [
    "cdf87d16",
    "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Abrir el informe en GitHub</a>"
@@ -4909,6 +4921,10 @@
    "79b80f2b",
    "Pressless no pudo conectarse consigo mismo, así que esta página no puede saber cómo terminó el envío. Comprueba que Pressless sigue funcionando."
   ],
+  "script.sendlog.unreachable": [
+   "25bb1978",
+   "Pressless no pudo comunicarse consigo mismo. Tu registro no se envió."
+  ],
   "script.sites.opening": [
    "c926c2c5",
    "Abriendo…"
@@ -5060,6 +5076,34 @@
   "script.working": [
    "b3abb348",
    "Trabajando… esto puede tardar unos minutos. Mantén esta página abierta."
+  ],
+  "sendlog.button": [
+   "1b42f5b6",
+   "Enviar mi registro"
+  ],
+  "sendlog.holds": [
+   "dbf12172",
+   "El registro dice lo que hizo Pressless y lo que salió mal. Nombra tu sitio, sus páginas y sus archivos. Está escrito para dejar fuera tus claves, contraseñas, nombres de cuenta y rutas completas."
+  ],
+  "sendlog.not_now": [
+   "a0e63d7c",
+   "Ahora no"
+  ],
+  "sendlog.send": [
+   "f6f4688f",
+   "Enviar"
+  ],
+  "sendlog.sent": [
+   "dc0e7de1",
+   "Enviado. Gracias. Si escribes al desarrollador sobre esto, indica la referencia <strong>{reference}</strong>."
+  ],
+  "sendlog.what": [
+   "36a0c73b",
+   "Esto envía los dos archivos de registro de Pressless a su desarrollador, con tu versión de Pressless y el nombre de tu sistema."
+  ],
+  "sendlog.where": [
+   "0cf316ab",
+   "Va de forma privada al desarrollador, a través de Cloudflare y GitHub, y se guarda donde solo el desarrollador puede leerlo."
   ],
   "setup.account.have": [
    "535869e2",
