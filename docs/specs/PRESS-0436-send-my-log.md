@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0436 — One button sends the log to the developer, privately
 
-**Status:** spec draft (2026-11-21).
+**Status:** accepted (2026-11-21). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0436 (user, 2026-11-21: never ask people for log
 files; one button, private, through a relay that holds the key).
@@ -53,8 +53,8 @@ Its script opens a `<dialog class="message">` holding `sendlog.box`'s words:
 
 - what goes: the two log files, the Pressless version and the system name;
 - what they hold: what Pressless did and what went wrong, with the names of
-  the site, its pages and its files; written to leave out keys, passwords
-  and account names (PRESS-0003 § 5);
+  the site, its pages and its files; written to leave out keys, passwords,
+  account names and full paths (PRESS-0003 § 10);
 - where: privately to the developer, through Cloudflare and GitHub;
 - **Send** and **Not now**.
 
@@ -82,7 +82,7 @@ The request: `POST RELAY`, `Content-Type: application/json`, body
 ```
 
 `log` and `old` are each file read as UTF-8 with `errors="replace"`, "" where
-absent. `system` is `usage.system()`. A body over `LARGEST` sends the newest
+absent. `system` is `usage.system()`, cut to 128 characters. A body over `LARGEST` sends the newest
 part of each file that fits. The answer `200 {"reference": "K7Q2MX"}` gives
 the reference; any other answer, or none, raises `LogNotSent`. Its words
 say the log was not sent and to try again later. The press is logged with
@@ -92,16 +92,19 @@ the reference and never the log text.
 
 `relay/src/index.js` and `relay/wrangler.jsonc`, deployed as the Worker
 `pressless-logs`. Secrets, set by `wrangler secret put` and never in the
-repository: `APP_KEY` (the App's private key, PEM). Plain variables:
+repository: `APP_KEY` (the App's private key as PKCS#8 PEM; GitHub issues
+PKCS#1, which Web Crypto refuses). Plain variables:
 `APP_ID`, `INSTALLATION_ID`, `REPOSITORY`.
 
 `POST /log` only; anything else answers 404. In order:
 
-1. **Rate limit**: Cloudflare's rate-limiting binding, five sends per
-   address per hour. Over → 429.
+1. **Rate limit**: Cloudflare's rate-limiting binding, keyed by the
+   `CF-Connecting-IP` header, one send per 60 seconds. The binding's period
+   is 10 or 60 seconds, and its counts are approximate and per Cloudflare
+   location. Over → 429.
 2. **Size**: a body over 2.2 MiB → 413, read no further.
 3. **Shape**: JSON with string `version` (at most 32 characters, digits,
-   dots, letters and `-`), string `system` (at most 32), strings `log` and
+   dots, letters and `-`), string `system` (at most 128), strings `log` and
    `old` → else 400.
 4. **Token**: a JWT signed RS256 with `APP_KEY` (Web Crypto), exchanged at
    `POST /app/installations/{INSTALLATION_ID}/access_tokens` for a token
@@ -111,7 +114,8 @@ repository: `APP_KEY` (the App's private key, PEM). Plain variables:
    `.../pressless.log.1`, each base64.
 6. **Issue**: `POST /repos/{REPOSITORY}/issues`, title
    `Log {reference}: Pressless {version} on {system}`, body naming both
-   files' paths and the last 100 lines of `log` in a fenced block.
+   files' paths and the last 100 lines of `log`, cut to their last 60,000
+   characters, in a fenced block.
 7. Answer `200 {"reference"}`. A GitHub failure at 4 to 6 → 502, logging
    the status and never the body.
 
@@ -128,9 +132,11 @@ script can:
    writes the key to `~/.config/pressless/log-relay-app.pem` (mode 600) and
    never prints it.
 4. The user installs the App on `milnet01/pressless-logs` alone.
-5. The script reads the installation id, sets the variables, pipes the key
-   into `wrangler secret put APP_KEY`, deploys, and sends a test log whose
-   issue it then closes.
+5. The script reads the installation id, sets the variables, converts the
+   key to PKCS#8 (`openssl pkcs8 -topk8 -nocrypt`), pipes it into
+   `wrangler secret put APP_KEY`, deploys, and sends a test log whose
+   issue it then closes. It prints the Worker's address, which is
+   committed as `sendlog.RELAY`.
 
 ## 5. Invariants
 
@@ -139,8 +145,8 @@ script can:
   *Test:* `tests/test_sendlog.py::test_only_the_send_route_sends`.
   *Breaks when:* any caller besides the route calls `send`.
 - **INV-2** — The body `send` posts holds exactly the keys `version`,
-  `system`, `log`, `old`, with the two files' text, and no site address,
-  settings or path to the folder.
+  `system`, `log`, `old`, with the two files' text and nothing added: no
+  site address, settings or folder path beyond what the files hold.
   *Test:* `tests/test_sendlog.py::test_the_body_is_the_logs_and_nothing_else`.
   *Breaks when:* a key is added, or the folder's path is put in.
 - **INV-3** — A log over the limit sends its newest part, and the body is
@@ -149,7 +155,8 @@ script can:
   *Breaks when:* the oldest part is kept, or the cut is by characters, not
   bytes.
 - **INV-4** — Any answer but `200` with a reference, and no answer, raise
-  `LogNotSent`, and the failure page says the log was not sent.
+  `LogNotSent`, and the box shows the failure fragment saying the log
+  was not sent.
   *Test:* `tests/test_sendlog.py::test_a_refused_send_says_so`.
   *Breaks when:* a 429 or 502 reads as sent.
 - **INV-5** — The log never records the log text it sent.
@@ -162,7 +169,9 @@ script can:
   *Breaks when:* a check moves after step 4.
 - **INV-7** — No file in this repository holds the App's key, and the app
   holds no credential the relay accepts.
-  *Test:* `./scripts/local-ci.sh --docs` → `clean: tree`.
+  *Test:* the machine-wide pre-push hook's `gitleaks` scan refuses a
+  commit holding a private key. The leak sweep in `scripts/local-ci.sh`
+  matches no key.
   *Breaks when:* the key file lands in the tree.
 - **INV-8** — The box appears before anything is sent, and Not now sends
   nothing.
@@ -175,8 +184,8 @@ script can:
   says try again later. Nothing is queued.
 - **The relay's GitHub access lapses** (App removed). Every send answers
   502; `LogNotSent` as above. The setup script run again restores it.
-- **Someone floods the relay.** Five per address per hour; GitHub's own
-  limits behind that. The worst case is junk issues in a private repository.
+- **Someone floods the relay.** About one per address per minute; GitHub's
+  own limits behind that. The worst case is junk issues in a private repository.
 - **The log files are unreadable or absent.** Sent as "" each; the issue
   still records version and system.
 
@@ -185,7 +194,7 @@ script can:
 `tests/test_sendlog.py`, new, in CI: INV-1 to INV-5, through the Face's own
 server with a recording `https.Client` double. `relay/test/index.test.js`,
 `node --test`, with GitHub faked by a replaced `fetch`: INV-6.
-`local-ci.sh` runs it where `node` is on the path. INV-7 is the leak sweep.
+`local-ci.sh` runs it where `node` is on the path. INV-7 is the pre-push hook's `gitleaks` scan.
 INV-8 is a browser row. Each test is seen to fail before its code exists.
 
 ## 8. Alternatives considered (and rejected)
@@ -213,7 +222,7 @@ INV-8 is a browser row. Each test is seen to fail before its code exists.
 | INV-4 | `tests/test_sendlog.py::test_a_refused_send_says_so` |
 | INV-5 | `tests/test_sendlog.py::test_the_send_is_logged_without_the_text` |
 | INV-6 | `relay/test/index.test.js`, where `node` is present |
-| INV-7 | the leak sweep in `scripts/local-ci.sh` |
+| INV-7 | `gitleaks` in the machine-wide pre-push hook; nothing in CI |
 | INV-8 | **Partial:** `scripts/by-hand-browser-checks.py`, by hand; nothing in CI |
 | § 4.3 step 1's rate limit | **nothing** — Cloudflare's binding; checked once after deploy |
 | § 4.3 steps 5 and 6 against real GitHub | **nothing** in CI — the setup script's test send |
