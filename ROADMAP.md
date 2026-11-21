@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=436 -->
+<!-- ants-roadmap-id-high-water: PRESS=437 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9065,6 +9065,19 @@ does not wait on them.
   Kind: feature.
   Source: user-2026-11-21.
   Lanes: face, report.
+
+- 📋 [PRESS-0437] **The publisher's memory test cannot fail from another test's thread.**
+  tests/test_publisher.py::test_a_publish_holds_one_file_at_a_time
+  failed once in a full gate run on 2026-11-21 (peak 9.0 MiB against
+  its 8 MiB bound), under --randomly-seed=3274378973. The same seed
+  then passed in full, and the test passed alone three times.
+  tracemalloc counts every thread, so a background thread left by an
+  earlier test can lift the peak. Measure the publish's own
+  allocations, or wait for other threads, so only a real regression
+  fails it.
+  **Layman:** A test that measures memory sometimes fails by chance; make it measure only what it means to.
+  Kind: test.
+  Source: gate-run-2026-11-21.
 
 ## 1.3.0 — a home other than GitHub
 
