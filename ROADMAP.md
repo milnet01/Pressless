@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=435 -->
+<!-- ants-roadmap-id-high-water: PRESS=436 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9033,6 +9033,21 @@ does not wait on them.
   Kind: ux.
   Source: user-2026-11-21.
   Lanes: face, setup, publishing, import.
+
+- 📋 [PRESS-0436] **One button sends the log to the developer, privately.**
+  User, 2026-11-21: never ask people for log files; most are not good
+  with computers. One button, on failure pages and Report a problem,
+  shows in plain words what goes and where, then sends pressless.log
+  and pressless.log.1, and shows a short reference to quote.
+  Destination, user's choice: an issue in a private GitHub repository.
+  A key in the app would let anyone read every log, so a small relay
+  holds it; the user sets the relay up once (automate it or give
+  steps). Owes the privacy policy text on the Hub, and a spec: new
+  outside service, and it sends personal data.
+  **Layman:** When something goes wrong, press one button and Pressless sends its log privately, so nobody has to hunt for files.
+  Kind: feature.
+  Source: user-2026-11-21.
+  Lanes: face, report.
 
 ## 1.3.0 — a home other than GitHub
 
