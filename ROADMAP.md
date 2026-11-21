@@ -8901,8 +8901,10 @@ does not wait on them.
   and fr — table, manual and captions — and committed per language.
   German: done 2026-11-21 (table, manual and captions; last commit
   a8a7267). Gemini's renames of manual button names were declined: the
-  manual names buttons as the app labels them. Wording changed after
-  the fit and box checks, so they are worth a re-run before release. Real
+  manual names buttons as the app labels them. Fit and box checks
+  re-run on 2026-11-21 after Gemini's wording: 34 screens, 46 boxes,
+  all five languages, both sizes, nothing to look at. (Run them with
+  the system python3: the repository's .venv has no Playwright.) Real
   defects it surfaced: de "Startseite" for starter site; de and fr
   doubled or wrong article before the dashboard window phrase; es and
   fr undo counts in the wrong gender; af "pers" for pressing ordinary
