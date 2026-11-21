@@ -35,7 +35,7 @@ KEPT = Path.home() / ".config" / "pressless"
 KEY = KEPT / "log-relay-app.pem"
 APP = KEPT / "log-relay-app.json"
 GITHUB = "https://api.github.com"
-WAIT_SECONDS = 15 * 60
+WAIT_SECONDS = 60 * 60
 
 
 def _ask(method: str, url: str, token: str | None = None, body: dict | None = None,
@@ -160,9 +160,30 @@ def _wrangler(*arguments: str, given: bytes | None = None) -> str:
     return done.stdout.decode(errors="replace")
 
 
+def _made_by_hand(key: Path, app_id: str, slug: str) -> dict:
+    """An App made on GitHub's own form: keep its downloaded key, owner-only,
+    and remove the download. For a browser that will not post the manifest
+    signed in, which a cross-site form needs."""
+    KEPT.mkdir(parents=True, exist_ok=True)
+    KEY.touch(mode=0o600)
+    KEY.chmod(0o600)
+    KEY.write_bytes(key.read_bytes())
+    key.unlink()
+    kept = {"id": int(app_id), "slug": slug}
+    APP.write_text(json.dumps(kept), encoding="utf-8")
+    return kept
+
+
 def main() -> int:
-    app = json.loads(APP.read_text(encoding="utf-8")) if APP.is_file() and KEY.is_file() \
-        else _make_app()
+    # --key <downloaded .pem> --app-id <id> [--slug <slug>]: an App made by hand.
+    given = dict(zip(sys.argv[1::2], sys.argv[2::2], strict=False))
+    if "--key" in given:
+        app = _made_by_hand(Path(given["--key"]), given["--app-id"],
+                            given.get("--slug", "pressless-log-relay"))
+    elif APP.is_file() and KEY.is_file():
+        app = json.loads(APP.read_text(encoding="utf-8"))
+    else:
+        app = _make_app()
     installation = _installation(app)
     text = SETTINGS.read_text(encoding="utf-8")
     text = re.sub(r'"APP_ID": "[^"]*"', f'"APP_ID": "{app["id"]}"', text)
@@ -187,11 +208,16 @@ def main() -> int:
         reference = json.loads(answer.read())["reference"]
     token = _ask("POST", f"{GITHUB}/app/installations/{installation}/access_tokens",
                  _jwt(app["id"]))["token"]
-    for issue in _ask("GET", f"{GITHUB}/repos/{REPOSITORY}/issues?state=open&per_page=50", token):
-        if issue["title"].startswith(f"Log {reference}:"):
-            _ask("PATCH", issue["url"], token, {"state": "closed"})
+    # GitHub lists a new issue a few seconds after making it.
+    for _ in range(6):
+        found = [issue for issue in _ask("GET", f"{GITHUB}/repos/{REPOSITORY}/issues"
+                                                "?state=open&per_page=50", token)
+                 if issue["title"].startswith(f"Log {reference}:")]
+        if found:
+            _ask("PATCH", found[0]["url"], token, {"state": "closed"})
             print(f"The test log arrived as {reference}, and its issue is closed.")
             break
+        time.sleep(5)
     else:
         print(f"The relay answered {reference}, but no open issue carries it -- look in "
               f"{REPOSITORY}.")

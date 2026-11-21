@@ -7,8 +7,8 @@
   "compatibility_date": "2026-11-01",
   "workers_dev": true,
   "vars": {
-    "APP_ID": "",
-    "INSTALLATION_ID": "",
+    "APP_ID": "5866185",
+    "INSTALLATION_ID": "184457594",
     "REPOSITORY": "milnet01/pressless-logs"
   },
   // One send per address per minute. Cloudflare's period is 10 or 60

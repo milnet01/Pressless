@@ -20,6 +20,20 @@ Once, from the repository root, on the maintainer's machine:
 4. On the install page, choose **Only select repositories**, pick
    `pressless-logs`, and press **Install**.
 
+A browser that withholds GitHub's sign-in from another site's form shows
+"url wasn't supplied" at step 3. Then make the App by hand instead
+(2026-11-21):
+
+1. GitHub, **Settings**, **Developer settings**, **GitHub Apps**, **New
+   GitHub App**. Name it, give the repository's page as its homepage,
+   untick the webhook's **Active**, set **Contents** and **Issues** to
+   **Read and write**, and choose **Only on this account**.
+2. On its page, **Credentials**, **Key pairs**: generate a key, which
+   downloads a `.pem`.
+3. **Install App**, **Only select repositories**, `pressless-logs`.
+4. Run `.venv/bin/python scripts/relay-setup.py --key <the .pem> --app-id
+   <its App ID>`. It moves the key into place and deletes the download.
+
 The script then fills the App's ids into `wrangler.jsonc`, deploys the
 Worker, gives it the App's key as the secret `APP_KEY`, and sends a test log
 whose issue it closes. Commit `wrangler.jsonc` afterwards.
