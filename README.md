@@ -48,12 +48,15 @@ does:
 - keep more than one site, back a site up to one file, and move
   everything to a new computer;
 - open a manual from inside Pressless, under Help (from 0.15.0);
+- show its screens and manual in Spanish, Afrikaans, French or German,
+  following your computer's language (from 1.1.0);
+- keep an icon by the clock to open, restart or stop it once the
+  browser is closed (from 1.1.0);
 - update itself when a new version is out.
 
 Still to come:
 
 - **figures for your music** on Spotify, Apple Music and Amazon Music;
-- **a tray icon**, and Pressless in languages other than English;
 - **publishing to a free host other than GitHub**.
 
 [ROADMAP.md](ROADMAP.md) has the detail. [CHANGELOG.md](CHANGELOG.md)
