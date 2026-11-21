@@ -9058,6 +9058,9 @@ does not wait on them.
   holds it; the user sets the relay up once (automate it or give
   steps). Owes the privacy policy text on the Hub, and a spec: new
   outside service, and it sends personal data.
+  Spec gated 2026-11-21: review-contract, one round (the user's
+  budget for a new spec), two lanes. Nine verified findings fixed in
+  a5f4be1, none deferred. Status accepted; ready to build.
   **Layman:** When something goes wrong, press one button and Pressless sends its log privately, so nobody has to hunt for files.
   Kind: feature.
   Source: user-2026-11-21.
