@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=437 -->
+<!-- ants-roadmap-id-high-water: PRESS=438 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9082,6 +9082,18 @@ does not wait on them.
   **Layman:** A test that measures memory sometimes fails by chance; make it measure only what it means to.
   Kind: test.
   Source: gate-run-2026-11-21.
+
+- 📋 [PRESS-0438] **Send my log's box says a log can hold Google's error message.**
+  sendlog.holds lists what a log holds but not Google's own error
+  text, which face.fail records through insights.detail (up to
+  DETAIL_LIMIT characters) when Analytics, YouTube or the Google
+  sign-in refuses a request; it can name the Analytics property or
+  channel. The Hub's privacy policy was told this on 2026-11-21. Add
+  it to sendlog.holds in all five languages, so the consent box and
+  the policy agree.
+  **Layman:** The Send my log box will mention that a log can hold Google's short error message, as the privacy policy now does.
+  Kind: fix.
+  Source: hub-question-2026-11-21.
 
 ## 1.3.0 — a home other than GitHub
 
