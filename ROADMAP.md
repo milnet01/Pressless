@@ -8987,6 +8987,10 @@ does not wait on them.
   chosen browser as BROWSER, which webbrowser.open honours. Check a
   packaged build honours it too: the manager's notes say one
   project's frozen build ignored BROWSER.
+  2026-11-21, from the web-server manager's session: LWSM-1586 sets
+  BROWSER to the chosen browser's command with %s for the address,
+  and leaves it unset where none is chosen or it is not installed.
+  Untested against Pressless's frozen build; needs an LWSM release.
   **Layman:** Pressless opens in the browser you picked in the web-server manager, not always the system default.
   Kind: feature.
   Source: user-2026-11-21.
