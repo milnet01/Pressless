@@ -8992,13 +8992,15 @@ does not wait on them.
   Source: user-2026-11-21.
   Lanes: core.
 
-- 📋 [PRESS-0433] **Setup's step 5 shows progress while it reads an existing site.**
+- ✅ [PRESS-0433] **Setup's step 5 shows progress while it reads an existing site.**
   A first-time user with an existing GitHub Pages site saw step 5
   sit on "Waiting for 127.0.0.1" and gave up. check_pages reads a
   root that holds a site through takein.look or look_folder, which
   fetch the whole repository one blob request at a time inside the
   POST, with nothing on screen. Confirm the cause from the user's
   pressless.log first; then show the step working, with a count.
+  Done through PRESS-0435: step 5's reads report a count. The
+  user's pressless.log was not read; the cause is from the code.
   **Layman:** When setup reads a site you already have on GitHub, it shows how far it has got instead of looking frozen.
   Kind: fix.
   Source: user-2026-11-21.
@@ -9013,12 +9015,14 @@ does not wait on them.
   once, button off, form still sends, slow link says Opening, downloads
   quiet, Back clears it. Screens whose own scripts send without leaving
   the page keep their own lines; PRESS-0435 goes through them.
+  PRESS-0435 covers the screens whose scripts send without leaving
+  the page.
   **Layman:** Press any button that does something and Pressless says straight away that it is working on it.
   Kind: ux.
   Source: user-2026-11-21.
   Lanes: face.
 
-- 📋 [PRESS-0435] **Long jobs show how far they have got.**
+- ✅ [PRESS-0435] **Long jobs show how far they have got.**
   A count or step name for each job that can run minutes: reading an
   existing site in setup (PRESS-0433), publishing, importing, undo and
   restore, saving and opening a site file. Spans several parts, so it
@@ -9029,6 +9033,12 @@ does not wait on them.
   User, 2026-11-21: no release until this is in. The friend testing a
   first setup tests rarely (hours between offer and test), so the next
   release must carry the progress bar, starting with setup step 5.
+  Built from docs/specs/PRESS-0435-long-job-progress.md. Every POST
+  holds a record; the fetch, publish, crawl and site-file loops report
+  into it, and the note asks GET /progress each second. Checked in
+  headless Chrome and Firefox (scripts/by-hand-browser-checks.py): the
+  count fills while a form waits, the note keeps its box, a quick
+  script POST never shows it.
   **Layman:** Long jobs such as publishing or reading your site show a running count, so you can see them moving.
   Kind: ux.
   Source: user-2026-11-21.

@@ -28,6 +28,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 import certifi
 
 from pressless import __version__, builder, os_reason
+from pressless.progress import count as count_progress
 from pressless.words import say
 
 from . import Export, ImportStopped, _field, _place
@@ -392,6 +393,7 @@ class _Crawl:
         self.urls: dict[str, str] = {}
         self.taken = _Paths()
         self.left: list[tuple[str, str]] = []
+        self.size = 0                       # bytes landed, for PRESS-0435's count
 
     def note(self, address: str, base: str) -> None:
         """`address`, read on the page at `base`, waits its turn if it is the site's."""
@@ -439,7 +441,8 @@ class _Crawl:
             self.landed[asked] = self.landed.get(final, landing)
             self.part.unlink(missing_ok=True)
             return True
-        why = _why_not_kept(landing, self.part.stat().st_size, self.taken)
+        size = self.part.stat().st_size
+        why = _why_not_kept(landing, size, self.taken)
         if why is not None:
             self.left.append((landing, why))
             self.part.unlink(missing_ok=True)
@@ -455,6 +458,8 @@ class _Crawl:
             return False
         self.landed[asked] = self.landed[final] = landing
         self.urls[landing] = final
+        self.size += size
+        count_progress("progress.downloading", len(self.urls), None, self.size)
         try:
             self._read(landing, final, target)
         except OSError:

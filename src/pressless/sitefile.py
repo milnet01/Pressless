@@ -16,7 +16,7 @@ import zipfile
 import zlib
 from pathlib import Path, PurePosixPath
 
-from pressless import credentials, editor, settings, sites, store, zip_member
+from pressless import credentials, editor, progress, settings, sites, store, zip_member
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -98,7 +98,9 @@ def save(site: Path, target: Path) -> None:
     # cannot record it, and strict timestamps would refuse the whole save.
     with editor.LOCK, zipfile.ZipFile(target, "w", strict_timestamps=False) as made:
         made.writestr(MANIFEST, json.dumps({"format": FORMAT, "version": VERSION}))
-        for name, path in _members(site):
+        members = _members(site)
+        for done, (name, path) in enumerate(members):
+            progress.count("progress.packing", done, len(members))
             if name == settings.FILE_NAME:
                 held = json.loads(path.read_text(encoding="utf-8"))
                 held["site_folder"] = ""   # no path on this computer travels
@@ -108,6 +110,7 @@ def save(site: Path, target: Path) -> None:
             kind = (zipfile.ZIP_STORED if name.split("/")[0] in _STORED
                     else zipfile.ZIP_DEFLATED)
             made.write(path, name, compress_type=kind)
+        progress.count("progress.packing", len(members), len(members))
 
 
 def save_part(site: Path, folder: Path) -> Path:
@@ -260,7 +263,12 @@ def open_into(source: Path, own: Path) -> Path:
 def _unpack(source: Path, opening: Path) -> None:
     """§ 4.4 step 2: every member but the manifest, under `opening`."""
     with zipfile.ZipFile(source) as held:
-        for info in held.infolist():
+        infos = held.infolist()
+        whole = sum(info.file_size for info in infos)
+        size = 0
+        for done, info in enumerate(infos):
+            progress.count("progress.unpacking", done, len(infos), size, whole)
+            size += info.file_size
             if info.filename == MANIFEST:
                 continue
             to = opening.joinpath(*PurePosixPath(info.filename).parts)
@@ -270,6 +278,7 @@ def _unpack(source: Path, opening: Path) -> None:
             to.parent.mkdir(parents=True, exist_ok=True)
             with held.open(info) as piece, open(to, "wb") as out:
                 shutil.copyfileobj(piece, out)
+        progress.count("progress.unpacking", len(infos), len(infos), whole, whole)
 
 
 def _replace(target: Path, opening: Path) -> None:

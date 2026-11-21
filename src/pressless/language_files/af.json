@@ -4457,6 +4457,46 @@
    "7be6636a",
    "Daardie naam kan nie 'n bladsy se adres wees nie. Kies 'n ander naam."
   ],
+  "progress.bare": [
+   "b21944cb",
+   "{what}."
+  ],
+  "progress.building": [
+   "5062673c",
+   "Bou jou bladsye"
+  ],
+  "progress.downloading": [
+   "becedb76",
+   "Laai jou werf af"
+  ],
+  "progress.line": [
+   "db0373f5",
+   "{what}: {parts}."
+  ],
+  "progress.of": [
+   "305d3a3d",
+   "{done} van {total} lêers"
+  ],
+  "progress.packing": [
+   "d706dcd8",
+   "Pak die werflêer"
+  ],
+  "progress.sending": [
+   "cacd2f5e",
+   "Stuur jou werf na GitHub"
+  ],
+  "progress.size_of": [
+   "a8168903",
+   "{size} van {whole}"
+  ],
+  "progress.so_far": [
+   "bf528546",
+   "{done} lêers tot dusver"
+  ],
+  "progress.unpacking": [
+   "b017713c",
+   "Pak die werflêer uit"
+  ],
   "publishing.hint": [
    "9567d670",
    "Tik die bewaarplek se naam presies soos hierbo gewys."

@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 from _mode_support import _require_symlinks
 
+import pressless.progress as progress_module
 import pressless.publisher as publisher_module
 from pressless import https
 from pressless.publisher import (
@@ -283,8 +284,9 @@ class _Transport:
 
 def test_publisher_imports_no_forbidden_sibling():
     """INV-1: publisher.py imports no pressless module other than
-    pressless.settings, pressless.https and pressless.os_reason, which
-    imports nothing (PRESS-0401).
+    pressless.settings, pressless.https, pressless.os_reason, which
+    imports nothing (PRESS-0401), and pressless.progress, which imports
+    nothing either (PRESS-0435 INV-4).
 
     Walks the module's AST, as test_settings_imports_nothing_forbidden
     does.
@@ -298,8 +300,30 @@ def test_publisher_imports_no_forbidden_sibling():
     about where the key came from -- and it passes against the stub by
     design.
     """
-    tree = ast.parse(inspect.getsource(publisher_module))
+    pressless_imports, relative_imports = _pressless_imports(publisher_module)
+    progress_imports = _pressless_imports(progress_module)
+    assert progress_imports == (set(), []), (
+        f"progress.py imports {progress_imports!r}; the Publisher calls it, so "
+        f"it must import no part of Pressless (PRESS-0435 INV-4)")
 
+    forbidden = pressless_imports - {"pressless.settings", "pressless.https",
+                                     "pressless.os_reason", "pressless.progress"}
+    assert not forbidden, (
+        f"publisher.py imports {sorted(forbidden)!r}, not just "
+        f"pressless.settings -- this is the breach of docs/design.md "
+        f"rule 10 that INV-1 exists to catch: fetching the key via "
+        f"pressless.credentials rather than taking it as an argument"
+    )
+    assert not relative_imports, (
+        f"publisher.py has relative import(s) "
+        f"{[n.module for n in relative_imports]!r}, which can only name a "
+        f"sibling pressless module"
+    )
+
+
+def _pressless_imports(module) -> tuple[set[str], list]:
+    """The pressless modules `module` imports by name, and its relative imports."""
+    tree = ast.parse(inspect.getsource(module))
     pressless_imports = set()
     relative_imports = []
     for node in ast.walk(tree):
@@ -316,20 +340,7 @@ def test_publisher_imports_no_forbidden_sibling():
                         pressless_imports.add(f"pressless.{alias.name}")
                 else:
                     pressless_imports.add(node.module)
-
-    forbidden = pressless_imports - {"pressless.settings", "pressless.https",
-                                     "pressless.os_reason"}
-    assert not forbidden, (
-        f"publisher.py imports {sorted(forbidden)!r}, not just "
-        f"pressless.settings -- this is the breach of docs/design.md "
-        f"rule 10 that INV-1 exists to catch: fetching the key via "
-        f"pressless.credentials rather than taking it as an argument"
-    )
-    assert not relative_imports, (
-        f"publisher.py has relative import(s) "
-        f"{[n.module for n in relative_imports]!r}, which can only name a "
-        f"sibling pressless module"
-    )
+    return pressless_imports, relative_imports
 
 
 # --------------------------------------------------------------- INV-2 ----

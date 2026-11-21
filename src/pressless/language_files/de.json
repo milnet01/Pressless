@@ -4457,6 +4457,46 @@
    "7be6636a",
    "Dieser Name kann nicht die Adresse einer Seite sein. Wähle einen anderen Namen."
   ],
+  "progress.bare": [
+   "b21944cb",
+   "{what}."
+  ],
+  "progress.building": [
+   "5062673c",
+   "Deine Seiten werden erstellt"
+  ],
+  "progress.downloading": [
+   "becedb76",
+   "Deine Website wird heruntergeladen"
+  ],
+  "progress.line": [
+   "db0373f5",
+   "{what}: {parts}."
+  ],
+  "progress.of": [
+   "305d3a3d",
+   "{done} von {total} Dateien"
+  ],
+  "progress.packing": [
+   "d706dcd8",
+   "Die Website-Datei wird gepackt"
+  ],
+  "progress.sending": [
+   "cacd2f5e",
+   "Deine Website wird an GitHub gesendet"
+  ],
+  "progress.size_of": [
+   "a8168903",
+   "{size} von {whole}"
+  ],
+  "progress.so_far": [
+   "bf528546",
+   "bisher {done} Dateien"
+  ],
+  "progress.unpacking": [
+   "b017713c",
+   "Die Website-Datei wird entpackt"
+  ],
   "publishing.hint": [
    "9567d670",
    "Tippe den Namen des Repositorys genau so, wie er oben steht."

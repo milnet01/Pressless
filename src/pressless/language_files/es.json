@@ -4457,6 +4457,46 @@
    "7be6636a",
    "Ese nombre no puede ser la dirección de una página. Elige otro nombre."
   ],
+  "progress.bare": [
+   "b21944cb",
+   "{what}."
+  ],
+  "progress.building": [
+   "5062673c",
+   "Creando tus páginas"
+  ],
+  "progress.downloading": [
+   "becedb76",
+   "Descargando tu sitio"
+  ],
+  "progress.line": [
+   "db0373f5",
+   "{what}: {parts}."
+  ],
+  "progress.of": [
+   "305d3a3d",
+   "{done} de {total} archivos"
+  ],
+  "progress.packing": [
+   "d706dcd8",
+   "Empaquetando el archivo del sitio"
+  ],
+  "progress.sending": [
+   "cacd2f5e",
+   "Enviando tu sitio a GitHub"
+  ],
+  "progress.size_of": [
+   "a8168903",
+   "{size} de {whole}"
+  ],
+  "progress.so_far": [
+   "bf528546",
+   "{done} archivos hasta ahora"
+  ],
+  "progress.unpacking": [
+   "b017713c",
+   "Desempaquetando el archivo del sitio"
+  ],
   "publishing.hint": [
    "9567d670",
    "Escribe el nombre del repositorio exactamente como se muestra arriba."

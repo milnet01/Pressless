@@ -468,6 +468,17 @@ _WORDS: dict[str, str] = {
     # PRESS-0434: the note every press shows at once, and a slow screen after a moment.
     "script.working": "Working on it… this can take a few minutes. Keep this page open.",
     "script.opening": "Opening…",
+    # PRESS-0435: what a long job is doing, and how far it has got.
+    "progress.line": "{what}: {parts}.",
+    "progress.bare": "{what}.",
+    "progress.of": "{done} of {total} files",
+    "progress.so_far": "{done} files so far",
+    "progress.size_of": "{size} of {whole}",
+    "progress.downloading": "Downloading your site",
+    "progress.sending": "Sending your site to GitHub",
+    "progress.building": "Building your pages",
+    "progress.packing": "Packing the site file",
+    "progress.unpacking": "Unpacking the site file",
     # The box before a press (pressing.py, PRESS-0345).
     "script.press.checking": "Checking what will change on your site…",
     "script.plan.title": "Before your site changes",

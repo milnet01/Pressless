@@ -551,8 +551,9 @@ and `default_branch` are added.
   other than `pressless.settings` and `pressless.https`, the HTTPS client
   it shares with Insights and usage reports (PRESS-0331), and
   `pressless.os_reason`, which gives a failure its reason without its path
-  (PRESS-0401). Neither imports a `pressless` module itself, so no route to
-  Credentials runs through them.
+  (PRESS-0401), and `pressless.progress`, which a long fetch or publish
+  tells how far it has got (PRESS-0435). None imports a `pressless` module
+  itself, so no route to Credentials runs through them.
   *Test:* `tests/test_publisher.py::test_publisher_imports_no_forbidden_sibling`,
   walking the module's imports as
   `tests/test_settings.py::test_settings_imports_nothing_forbidden` does,

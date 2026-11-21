@@ -53,6 +53,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
+import test_publisher as tpub  # noqa: E402
 import test_publishing as tp  # noqa: E402
 from PIL import Image  # noqa: E402
 from test_votes import PASTED, VOTES  # noqa: E402
@@ -78,6 +79,7 @@ from pressless import (  # noqa: E402
     overview,
     page_editor,
     pressing,
+    publisher,
     publishing,
     settings,
     setup,
@@ -174,6 +176,7 @@ def main() -> int:
                 store.write_identity(site, store.Identity(named))
             sites.choose(sites_own, "site-1")
             sites_screen.register(served, sites_own, lambda: RESTARTS.append(1))
+            _register_slow_read(served, Path(tmp))
             parts = urllib.parse.urlsplit(served.url)
             secret = urllib.parse.parse_qs(parts.query)["t"][0]
             origin = f"http://{parts.netloc}"
@@ -450,6 +453,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         votes_screen(page, origin, folder)
         votes_buttons(page, folder)
         helper_publish(page, origin, folder, helper_own)
+        progress_note(page, origin)
         layout_colours(page, origin, folder)    # these two last: they save a look
         layouts_and_styles(page, origin, folder)
 
@@ -1465,6 +1469,123 @@ _MANUAL = """\
 == theme | Choosing a theme
 1. Pick a theme on the Look screen, then publish.
 """
+
+
+# ---- PRESS-0435: the note's bar and count -----------------------------------
+
+_SLOW_BLOBS = 8
+
+
+class _SlowBlobs(tpub._Transport):
+    """GitHub answering each blob read after a pause, so a read takes seconds."""
+
+    def request(self, method, url, body, headers):
+        if "/git/blobs/" in url:
+            time.sleep(0.5)
+        return super().request(method, url, body, headers)
+
+
+def _register_slow_read(served, tmp: Path) -> None:
+    """A form and a script that each POST a real fetch_state over _SlowBlobs,
+    and a POST that answers at once."""
+    listing = json.dumps({"sha": "base-tree-sha", "truncated": False, "tree": [
+        {"path": f"page-{n}.html", "type": "blob", "sha": f"s{n}", "size": 50_000}
+        for n in range(_SLOW_BLOBS)]}).encode()
+
+    def read(request) -> str:
+        publisher.fetch_state(tpub._settings(), tp.KEY, tmp / "slow-read", ("/",),
+                              "base-commit-sha",
+                              _SlowBlobs(reads=tpub._reads(listing, blob=b"words")))
+        return '<p id="slow-done">Read.</p>'
+
+    served.add_page("GET", "/check/slow", lambda request: (
+        '<form method="post" action="/check/slow/read"><button id="slow-form">Read'
+        '</button></form><button id="slow-script" type="button">Read by script</button>'
+        '<button id="quick-script" type="button">Quick</button><p id="slow-said"></p>'
+        '<script>'
+        'document.getElementById("slow-script").addEventListener("click", async () => {'
+        ' const r = await fetch("/check/slow/read", {method: "POST"});'
+        ' document.getElementById("slow-said").textContent = r.status; });'
+        'document.getElementById("quick-script").addEventListener("click", async () => {'
+        ' await fetch("/check/quick", {method: "POST"});'
+        ' document.getElementById("slow-said").textContent = "quick"; });'
+        '</script>'))
+    served.add_page("POST", "/check/slow/read", read)
+    served.add_page("POST", "/check/quick", lambda request: "<p>Quick.</p>")
+
+
+def _note(page) -> dict | None:
+    return page.evaluate("""() => {
+      const note = document.getElementById("working-note");
+      if (!note) return null;
+      const box = note.getBoundingClientRect();
+      return {width: box.width, height: box.height, left: box.left, top: box.top,
+              count: note.querySelector(".count").textContent,
+              value: note.querySelector("progress").value};
+    }""")
+
+
+# The page itself says what its note shows, every 200 ms, on its console:
+# Playwright's evaluate waits while a form's reply is awaited, so it cannot see
+# the old page then, but its console is heard throughout.
+_NOTE_REPORTER = """setInterval(() => {
+  const note = document.getElementById("working-note");
+  if (!note) return;
+  const box = note.getBoundingClientRect();
+  console.log("note " + JSON.stringify({width: box.width, height: box.height,
+    left: box.left, top: box.top, count: note.querySelector(".count").textContent,
+    value: note.querySelector("progress").value}));
+}, 200);"""
+
+
+def _watch_note(page, until: str) -> list[dict]:
+    """What the note showed until `until` is on the page."""
+    seen: list[dict] = []
+
+    def heard(message) -> None:
+        if message.text.startswith("note "):
+            seen.append(json.loads(message.text[5:]))
+
+    page.on("console", heard)
+    try:
+        page.locator(until).wait_for(timeout=20000)
+    finally:
+        page.remove_listener("console", heard)
+    return seen
+
+
+def progress_note(page, origin: str) -> None:
+    """INV-6: the count fills while a form's reply is awaited, and the note
+    keeps its box. INV-7: a script's POST over 600 ms shows it and takes it
+    down; a quick one never shows it."""
+    page.add_init_script(_NOTE_REPORTER)
+    page.goto(f"{origin}/check/slow", wait_until="networkidle")
+    page.locator("#slow-form").click(no_wait_after=True)
+    seen = _watch_note(page, "#slow-done")
+    counted = [n for n in seen if n["count"]]
+    check("PRESS-0435 INV-6: the note is up while the form waits", bool(seen),
+          f"{len(seen)} reads")
+    check("PRESS-0435 INV-6: the count fills in during the wait",
+          bool(counted) and f"of {_SLOW_BLOBS} files" in counted[-1]["count"],
+          counted[-1]["count"] if counted else "no count seen")
+    boxes = {(n["width"], n["height"], n["left"], n["top"]) for n in seen}
+    check("PRESS-0435 INV-6: the note keeps its size and place", len(boxes) == 1,
+          f"{boxes}")
+    check("PRESS-0435 INV-6: the bar moves on",
+          len({n["value"] for n in counted}) > 1, f"{[n['value'] for n in counted]}")
+
+    page.goto(f"{origin}/check/slow", wait_until="networkidle")
+    page.locator("#slow-script").click()
+    seen = _watch_note(page, "#slow-said:text('200')")
+    check("PRESS-0435 INV-7: a slow script POST shows the note and count",
+          any(f"of {_SLOW_BLOBS} files" in n["count"] for n in seen),
+          seen[-1]["count"] if seen else "no note seen")
+    page.wait_for_timeout(300)
+    check("PRESS-0435 INV-7: the note goes when it is answered", _note(page) is None)
+    page.locator("#quick-script").click()
+    page.wait_for_timeout(1000)
+    check("PRESS-0435 INV-7: a quick script POST never shows it",
+          page.locator("#slow-said").text_content() == "quick" and _note(page) is None)
 
 
 def _manual_folder(tmp: Path) -> Path:

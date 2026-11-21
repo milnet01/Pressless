@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from pressless import https, os_reason
+from pressless import https, os_reason, progress
 from pressless.settings import Settings
 
 API = "https://api.github.com"
@@ -285,17 +285,22 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         )
 
     entries = []
+    whole = sum(file.size for file in uploaded.values())
+    size = 0
+    progress.count("progress.sending", 0, len(uploaded), size, whole)
     for path, file in uploaded.items():
+        content = _read_again(path, file)
         sha = _required(
             session.write("POST", _repo_url(settings.repository, "git/blobs"),
-                          {"content": base64.b64encode(
-                              _read_again(path, file)).decode("ascii"),
+                          {"content": base64.b64encode(content).decode("ascii"),
                            "encoding": "base64"},
                           pace=BLOB_PACE_SECONDS),
             "sha", "a blob",
         )
         entries.append({"path": path, "mode": BLOB_MODE, "type": "blob",
                         "sha": sha})
+        size += len(content)
+        progress.count("progress.sending", len(entries), len(uploaded), size, whole)
     for path in removed:
         entries.append({"path": path, "mode": BLOB_MODE, "type": "blob",
                         "sha": REMOVED})
@@ -696,6 +701,16 @@ def _fetch(session: _Session, repository: str, commit: str,
     if _ON_WINDOWS:
         _refuse_what_windows_cannot_hold(listing, prefixes)
 
+    wanted = [entry for entry in listing.get("tree", [])
+              if entry.get("path") and entry.get("type") == "blob"
+              and any(_within_prefix(entry["path"], prefix) for prefix in prefixes)]
+    # PRESS-0435: the listing gives each blob's size; a listing without one
+    # leaves the bar to run on files.
+    sizes = [entry.get("size") for entry in wanted]
+    whole = sum(sizes) if all(isinstance(size, int) for size in sizes) else None
+    size = 0
+    progress.count("progress.downloading", 0, len(wanted), size, whole)
+
     def not_written(exc: OSError) -> FetchNotWritten:
         return FetchNotWritten(
             f"the fetched state could not be written to the fetch area: {os_reason.of(exc)}")
@@ -713,12 +728,8 @@ def _fetch(session: _Session, repository: str, commit: str,
 
     try:
         written = []
-        for entry in listing.get("tree", []):
-            path = entry.get("path")
-            if not path or entry.get("type") != "blob":
-                continue
-            if not any(_within_prefix(path, prefix) for prefix in prefixes):
-                continue
+        for entry in wanted:
+            path = entry["path"]
             # _blobs_in reads the same field with .get; this site indexed it
             # and raised a bare KeyError on an entry without one, which is
             # neither of §4.1's types (PRESS-0073).
@@ -738,6 +749,8 @@ def _fetch(session: _Session, repository: str, commit: str,
             except OSError as exc:
                 raise not_written(exc) from exc
             written.append(path)
+            size += entry["size"] if isinstance(entry.get("size"), int) else 0
+            progress.count("progress.downloading", len(written), len(wanted), size, whole)
 
         try:
             # Every directory first, so the moves that follow are renames
@@ -1084,6 +1097,7 @@ class _Local:
 
     path: Path
     sha: str
+    size: int = 0                     # bytes when read, for PRESS-0435's count
 
 
 def _unreadable(relative: str, exc: OSError) -> PublishError:
@@ -1093,9 +1107,10 @@ def _unreadable(relative: str, exc: OSError) -> PublishError:
         f"{relative} is in the site folder but could not be read: {os_reason.of(exc)}")
 
 
-def _hash_file(relative: str, path: Path) -> str:
+def _hash_file(relative: str, path: Path) -> tuple[str, int]:
     """`path`'s git blob hash, as blob_hash gives it, read a mebibyte at a
-    time. A file whose length moved during the read has changed."""
+    time, and its length. A file whose length moved during the read has
+    changed."""
     try:
         with path.open("rb") as handle:
             size = os.fstat(handle.fileno()).st_size
@@ -1108,7 +1123,7 @@ def _hash_file(relative: str, path: Path) -> str:
         raise _unreadable(relative, exc) from exc
     if read != size:
         raise _changed(relative)
-    return digest.hexdigest()
+    return digest.hexdigest(), size
 
 
 def _changed(relative: str) -> PublishError:
@@ -1150,7 +1165,7 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, _Local
                 continue    # a directory carries no bytes of its own
         except OSError as exc:
             raise _unreadable(relative, exc) from exc
-        files[relative] = _Local(path, _hash_file(relative, path))
+        files[relative] = _Local(path, *_hash_file(relative, path))
     return files
 
 

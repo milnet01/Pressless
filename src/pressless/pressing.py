@@ -183,7 +183,13 @@ window.presslessPress = window.presslessPress || (() => {
         break;
       }
       missed = 0;
-      if (now.running) { line.textContent = now.said; continue; }
+      // PRESS-0435: the frame's note shows how far the press has got.
+      if (now.running) {
+        line.textContent = now.said;
+        if (window.presslessWorking) window.presslessWorking("script.working");
+        continue;
+      }
+      document.getElementById("working-note")?.remove();
       if (line.dataset.press === "hold") { window.location.reload(); return; }
       line.textContent = now.said || standing();
       if (failure && now.failure) failure.innerHTML = now.failure;

@@ -4458,6 +4458,46 @@
    "7be6636a",
    "Ce nom ne peut pas être l'adresse d'une page. Choisissez un autre nom."
   ],
+  "progress.bare": [
+   "b21944cb",
+   "{what}."
+  ],
+  "progress.building": [
+   "5062673c",
+   "Création de vos pages"
+  ],
+  "progress.downloading": [
+   "becedb76",
+   "Téléchargement de votre site"
+  ],
+  "progress.line": [
+   "db0373f5",
+   "{what} : {parts}."
+  ],
+  "progress.of": [
+   "305d3a3d",
+   "{done} fichiers sur {total}"
+  ],
+  "progress.packing": [
+   "d706dcd8",
+   "Création du fichier du site"
+  ],
+  "progress.sending": [
+   "cacd2f5e",
+   "Envoi de votre site à GitHub"
+  ],
+  "progress.size_of": [
+   "a8168903",
+   "{size} sur {whole}"
+  ],
+  "progress.so_far": [
+   "bf528546",
+   "{done} fichiers pour l’instant"
+  ],
+  "progress.unpacking": [
+   "b017713c",
+   "Ouverture du fichier du site"
+  ],
   "publishing.hint": [
    "9567d670",
    "Saisissez le nom du dépôt exactement comme il est affiché ci-dessus."

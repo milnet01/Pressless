@@ -19,6 +19,7 @@ import contextlib
 import enum
 import html
 import http.server
+import json
 import os
 import secrets
 import shutil
@@ -46,6 +47,7 @@ from pressless import (
     look,
     os_reason,
     paths,
+    progress,
     publisher,
     settings,
     shortcuts,
@@ -343,6 +345,44 @@ def details_for(failure: BaseException) -> str:
     return text
 
 
+def _size(count: int) -> str:
+    """`count` bytes in KB, MB or GB to one decimal, marked as the language
+    in use marks a decimal: a comma wherever it marks thousands otherwise."""
+    value, unit = count / 1024, "KB"
+    for bigger in ("MB", "GB"):
+        if value < 1024:
+            break
+        value, unit = value / 1024, bigger
+    decimal = "." if words.number(1000) == "1,000" else ","
+    return f"{value:.1f}".replace(".", decimal) + f" {unit}"
+
+
+def progress_said(counted: progress.Counted) -> dict:
+    """GET /progress's answer for a running job (PRESS-0435 § 4.3): its words,
+    with each number not known left out, and how far it has got, as a
+    fraction, where that is known."""
+    parts = []
+    if counted.total is not None:
+        parts.append(say("progress.of", done=words.number(counted.done),
+                         total=words.number(counted.total)))
+    elif counted.done:
+        parts.append(say("progress.so_far", done=words.number(counted.done)))
+    if counted.whole is not None:
+        parts.append(say("progress.size_of", size=_size(counted.size),
+                         whole=_size(counted.whole)))
+    elif counted.size:
+        parts.append(_size(counted.size))
+    what = say(counted.key)
+    said = (say("progress.line", what=what, parts=", ".join(parts)) if parts
+            else say("progress.bare", what=what))
+    fraction = None
+    if counted.whole:
+        fraction = counted.size / counted.whole
+    elif counted.total:
+        fraction = counted.done / counted.total
+    return {"running": True, "said": said, "fraction": fraction}
+
+
 def render_failure(
     failure: BaseException, *, publishing: bool, secret: str | None = None
 ) -> str:
@@ -610,19 +650,70 @@ _SCRIPT = """
 // screen (user, 2026-11-21). A form a script sends itself is left to it, as
 // is anything marked data-quiet. The note is fixed, so nothing on the page
 // moves; the button goes off after the submit, once the form has read it.
+// PRESS-0435: the note also holds a bar and a count line, both there from the
+// start so the note keeps its size, and asks GET /progress each second while
+// it is up. A form's page keeps running until its reply arrives, so the count
+// fills in during the wait.
+const sendFetch = window.fetch.bind(window);
+let askingProgress = false;
+async function askProgress() {
+  if (askingProgress) return;
+  askingProgress = true;
+  let missed = 0;
+  while (missed < 5) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const note = document.getElementById("working-note");
+    if (!note) break;
+    let now;
+    try { now = await (await sendFetch("/progress")).json(); } catch (error) {
+      missed += 1;
+      continue;
+    }
+    missed = 0;
+    if (!now.running || !now.said) continue;
+    note.querySelector(".count").textContent = now.said;
+    if (now.fraction !== null) note.querySelector("progress").value = now.fraction;
+  }
+  askingProgress = false;
+}
 function showWorking(key) {
   let note = document.getElementById("working-note");
   if (!note) {
-    note = document.createElement("p");
+    note = document.createElement("div");
     note.id = "working-note";
     note.setAttribute("role", "status");
+    const words = document.createElement("p");
+    const bar = document.createElement("progress");
+    const count = document.createElement("p");
+    count.className = "count";
+    note.append(words, bar, count);
     document.body.append(note);
   }
-  note.textContent = say(key);
+  note.querySelector("p").textContent = say(key);
+  askProgress();
 }
+window.presslessWorking = showWorking;
+// A POST a page's own script sends shows the note too, once it has run for
+// more than a moment, and takes it down when the last such POST is answered.
+let sending = 0, submitted = false;
+window.fetch = (resource, options = {}) => {
+  const method = (options.method || resource.method || "GET").toUpperCase();
+  if (method !== "POST") return sendFetch(resource, options);
+  sending += 1;
+  const timer = setTimeout(() => showWorking("script.working"), 600);
+  const settled = () => {
+    clearTimeout(timer);
+    sending -= 1;
+    if (!sending && !submitted) document.getElementById("working-note")?.remove();
+  };
+  const sent = sendFetch(resource, options);
+  sent.then(settled, settled);
+  return sent;
+};
 document.addEventListener("submit", (event) => {
   const form = event.target;
   if (event.defaultPrevented || form.target || form.closest("[data-quiet]")) return;
+  submitted = true;
   showWorking("script.working");
   const pressed = event.submitter;
   if (pressed) setTimeout(() => { pressed.disabled = true; pressed.dataset.working = ""; });
@@ -642,6 +733,7 @@ document.addEventListener("click", (event) => {
 // Back to a page the browser kept: it is not working any more.
 window.addEventListener("pageshow", (event) => {
   if (!event.persisted) return;
+  submitted = false;
   document.getElementById("working-note")?.remove();
   document.querySelectorAll("[data-working]").forEach((button) => {
     button.disabled = false;
@@ -832,9 +924,13 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar > a:hover, .face .nav > a:hover { color: var(--ink); border-color: var(--amber);
   box-shadow: 0 3px 10px var(--shadow); }
 .face #working-note { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
-  margin: 0; padding: .7rem 1.2rem; max-width: min(40rem, 90vw); z-index: 20;
+  margin: 0; padding: .7rem 1.2rem; width: min(40rem, 90vw); box-sizing: border-box; z-index: 20;
   background: var(--sheet); color: var(--ink); border: 1px solid var(--amber);
   border-radius: 12px; box-shadow: 0 8px 30px var(--shadow); font-weight: 600; }
+.face #working-note p { margin: 0; }
+.face #working-note progress { display: block; width: 100%; height: .8rem; margin: .5rem 0;
+  accent-color: var(--amber); }
+.face #working-note .count { font-weight: 400; min-height: 2.8em; line-height: 1.4; }
 .face .bar > a[aria-disabled] { opacity: .45; cursor: not-allowed;
   border-color: var(--line); box-shadow: none; }
 .face .bar > a:focus-visible, .face .nav > a:focus-visible { outline: 2px solid var(--amber);
@@ -1315,7 +1411,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self._dispatch("GET")
 
     def do_POST(self) -> None:  # noqa: N802
-        self._dispatch("POST")
+        # PRESS-0435: a long job's loops report how far they have got into
+        # this request's record, which GET /progress reads.
+        with progress.job():
+            self._dispatch("POST")
 
     def send_header(self, keyword: str, value: str) -> None:
         if keyword.lower() == "content-security-policy":
@@ -1512,6 +1611,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         else:
             self._refuse("face.link_spent")
 
+    def _send_progress(self, face: Face) -> None:
+        """PRESS-0435 § 4.3. Takes no lock but progress's own, so it answers
+        during a press."""
+        counted = progress.now()
+        said = progress_said(counted) if counted else {"running": False, "said": "",
+                                                        "fraction": None}
+        self._send(200, json.dumps(said), "application/json")
+
     def _send_location(self, face: Face) -> None:
         self._send(200, str(face._folder), "text/plain")
 
@@ -1618,6 +1725,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     # route a part registers (add_page's docstring names them too).
     _OWN: dict[tuple[str, str], Callable[[_Handler, Face], None]] = {
         ("GET", "/folder/location"): _send_location,
+        ("GET", "/progress"): _send_progress,
         ("POST", "/folder/open"): _open_the_folder,
         ("POST", "/theme"): _choose_theme,
         ("POST", "/text-size"): _choose_size,

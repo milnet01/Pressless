@@ -12,6 +12,23 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Long jobs show how far they have got** (PRESS-0435, PRESS-0433)
+  While Pressless downloads your site, sends it to GitHub, builds your pages
+  or packs and unpacks a site file, its note shows a bar and a running count,
+  such as "120 of 480 files, 3.2 MB of 14.0 MB". Setup's step 5 shows it
+  while it reads a site you already have, instead of looking frozen.
+
+- **Every button that does something says so at once** (PRESS-0434)
+  Press a button that sends something and a note says straight away that
+  Pressless is working, and the button turns off until it is done.
+
+- **Setup cannot be left half-done from the top bar** (PRESS-0429)
+  While a site is being set up, the top bar's buttons are greyed out, and
+  Help opens in a new tab. Step 5 says that a site already on the web stays
+  as it is.
+
 ## [1.1.0] - 2026-11-21
 
 **Theme:** A tray icon, and Pressless in your language

@@ -28,6 +28,7 @@ from pressless import (
     editor,
     github_setup,
     pressing,
+    progress,
     publisher,
     settings,
     starter,
@@ -206,6 +207,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         _refuse(folder, settings, key, transport, taking_over=taking_over)
         if not emptying:
             _guard(folder, settings)
+        progress.count("progress.building")
         builder.build(folder, settings, settings.site_folder)
         _refuse_kept(folder, settings, settings.site_folder)
 
