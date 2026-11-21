@@ -9026,6 +9026,9 @@ does not wait on them.
   User, 2026-11-21: show a progress bar for how far a download has got,
   or at least that it is downloading and how much has come so far.
   Anything that tells the user what is happening.
+  User, 2026-11-21: no release until this is in. The friend testing a
+  first setup tests rarely (hours between offer and test), so the next
+  release must carry the progress bar, starting with setup step 5.
   **Layman:** Long jobs such as publishing or reading your site show a running count, so you can see them moving.
   Kind: ux.
   Source: user-2026-11-21.
