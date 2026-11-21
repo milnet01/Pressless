@@ -184,6 +184,7 @@ jeepney==0.9.0 ; sys_platform == 'linux' \
     --hash=sha256:97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683 \
     --hash=sha256:cf0e9e845622b81e4a28df94c40345400256ec608d0e55bb8a3feaa9163f5732
     # via
+    #   pressless (pyproject.toml)
     #   keyring
     #   secretstorage
 keyring==25.7.0 \

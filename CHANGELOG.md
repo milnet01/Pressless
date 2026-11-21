@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-21
+
+**Theme:** A tray icon, and Pressless in your language
+
 ### Added
 
 - **Pressless in Spanish, Afrikaans, French and German** (PRESS-0241)
@@ -36,6 +40,17 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   already on your site.
 
 ### Fixed
+
+- **A section with a coded character opens as itself, not as code** (PRESS-0426)
+  A picture, text, heading or button whose words held a character typed
+  as a code, such as `&#8217;` for a curly apostrophe, opened in the page
+  editor as a code section. It now opens as what it is, and the code is
+  kept as typed.
+
+- **Stopping Pressless as it restarts still tidies up** (PRESS-0427)
+  A stop that arrived while a restart waited for a save left files
+  behind, such as the one an AI app uses to find Pressless. Pressless
+  now stops at once and tidies up.
 
 - **A site started blank can publish its pages** (PRESS-0423)
   A site set up without the starter had no header, menu or footer, and every
