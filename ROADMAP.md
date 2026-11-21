@@ -8899,8 +8899,10 @@ does not wait on them.
   wizard's later steps. Gemini still out of credits (about 14 hours).
   2026-11-20: Gemini (web, in Chrome) second opinion done for es, af
   and fr — table, manual and captions — and committed per language.
-  German: chunks 1-4 done and committed; chunks 5-7 and the German
-  manual and captions still owed (Gemini's web quota ran out). Real
+  German: done 2026-11-21 (table, manual and captions; last commit
+  a8a7267). Gemini's renames of manual button names were declined: the
+  manual names buttons as the app labels them. Wording changed after
+  the fit and box checks, so they are worth a re-run before release. Real
   defects it surfaced: de "Startseite" for starter site; de and fr
   doubled or wrong article before the dashboard window phrase; es and
   fr undo counts in the wrong gender; af "pers" for pressing ordinary
