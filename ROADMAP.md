@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=427 -->
+<!-- ants-roadmap-id-high-water: PRESS=428 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3844,6 +3844,13 @@ it decides how pages, the menu and the look are held.
   backend files the newest secret under the bare service name and keeps
   the older ones as account@service, so a re-saved GitHub sign-in shows
   this; not a defect. Signed and published after. v1.0.1 has no release.
+  1.1.0, 2026-11-21: every by-hand check passed. Linux, draft AppImage on
+  Plasma: the user ran PRESS-0204 § 7's tray check (icon, Open after the
+  browser closed, Restart, Stop). Windows box, draft zip from a desktop
+  task, by a helper: starts, console report with WinVaultKeyring, a real
+  publish to pressless-test-3 (page live), vault count 3 before and after,
+  the tray check, and German on the bar. Then signed and published; the
+  real 1.0.2 to 1.1.0 update on Linux passed (PRESS-0408 note).
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8381,6 +8388,13 @@ icon reaches it once the browser is closed.
   for § 7.1 steps 1 and 3. The real update from 1.0.2 (1.0.1 was never
   released) to the next release on Linux, started in a terminal, is the
   check, owed at that next release.
+  Owed check done 2026-11-21: 1.0.2's AppImage, started in Konsole,
+  updated to the published 1.1.0. update.log read swapped, started; it
+  came back in the same terminal as the same process, with one mount
+  left; the restarted copy's check stopped at step 3 (no newer release);
+  Ctrl+C exited 0 and left no mount. Pressless-data changed only in
+  pressless.log and the new update.log. The new tab it opened is
+  PRESS-0428.
   **Layman:** After updating on Linux, Pressless comes back the way you started it.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
@@ -8715,6 +8729,10 @@ icon reaches it once the browser is closed.
   Owed at the next release: § 7's by-hand check from the built
   bundles on Linux and the box (icon shows; Open after the browser
   closed; Restart; Stop), and INV-7's clean-room --self-check.
+  § 7 passed 2026-11-21 on the 1.1.0 draft: by the user on Plasma, and
+  on the Windows box by a helper driving the icon from desktop tasks. On
+  the box Restart kept the same process and opened a fresh tab on a new
+  port; the tray menu closes within a couple of seconds under automation.
   **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
   Kind: feature.
   Source: user request 2026-10-02.
@@ -8917,6 +8935,21 @@ does not wait on them.
   Kind: feature.
   Source: user-request-2026-09-02.
   Lanes: Insights.
+
+- 📋 [PRESS-0428] **After an update or a restart, Pressless comes back in the tab it was in.**
+  The user, 2026-11-21, during the real 1.0.2 to 1.1.0 update on
+  Linux: the update opened a new tab, and the user would like it to stay
+  in the same one. Today every start opens a fresh tab on a new port with
+  a one-use link (PRESS-0203, PRESS-0013 § 4.5 step 6), so the old tab is
+  left behind; the tray's Restart does the same. Open for the design: how
+  the old tab learns the new address and gets a session without weakening
+  the one-use link, and what happens when that tab is already closed.
+  Touches the Face, the launcher and the updater, and the link's security,
+  so check spec-format.md § 1 before building.
+  **Layman:** After Pressless updates or restarts, it carries on in the same browser tab instead of opening a new one.
+  Kind: ux.
+  Source: user-request-2026-11-21.
+  Lanes: Face, Launcher, Updates.
 
 ## 1.3.0 — a home other than GitHub
 
