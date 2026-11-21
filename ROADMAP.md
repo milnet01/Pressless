@@ -9048,7 +9048,7 @@ does not wait on them.
   Source: user-2026-11-21.
   Lanes: face, setup, publishing, import.
 
-- 📋 [PRESS-0436] **One button sends the log to the developer, privately.**
+- ✅ [PRESS-0436] **One button sends the log to the developer, privately.**
   User, 2026-11-21: never ask people for log files; most are not good
   with computers. One button, on failure pages and Report a problem,
   shows in plain words what goes and where, then sends pressless.log
@@ -9061,6 +9061,10 @@ does not wait on them.
   Spec gated 2026-11-21: review-contract, one round (the user's
   budget for a new spec), two lanes. Nine verified findings fixed in
   a5f4be1, none deferred. Status accepted; ready to build.
+  Shipped 2026-11-21 (b6a51ef, 3c59109). Relay live at
+  pressless-logs.pressless-logs.workers.dev; App "Pressless log relay"
+  installed on pressless-logs alone. Live checks: G97EB6 (setup) and
+  BRN8FC (sendlog.send) both arrived intact.
   **Layman:** When something goes wrong, press one button and Pressless sends its log privately, so nobody has to hunt for files.
   Kind: feature.
   Source: user-2026-11-21.
