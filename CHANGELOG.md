@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-21
+
+**Theme:** Pressless shows it is working, and can send its log
+
 ### Added
 
 - **Send my log** (PRESS-0436)
