@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0428 — Come back in the same tab after an update or a restart
 
-**Status:** spec draft (2026-11-22).
+**Status:** accepted (2026-11-22).
 **Kind:** ux.
 **Source:** ROADMAP PRESS-0428 (the user, 2026-11-21, during the real 1.0.2
 to 1.1.0 update on Linux).
@@ -11,10 +11,10 @@ using carries on working, instead of Pressless opening a new one.
 
 ## 1. Goal
 
-After a Restart (Settings, the tray, opening another site) or an Update
-now, every Pressless tab still open keeps working against the new Face, and
-the tab that asked goes on to the home page by itself. A new tab opens only
-where no open tab comes back.
+After a Restart (Settings or the tray) or an Update now, every Pressless
+tab still open keeps working against the new Face, and the tab that asked
+goes on to the home page by itself. A new tab opens only where no open tab
+comes back. Opening another site still opens a new tab (§ 3 decision 5).
 
 ## 2. Problem
 
@@ -41,11 +41,14 @@ and the cookie's name carries the port, so a tab is tied to one Face.
 3. **A fresh start is unchanged** (decided here). A double-click after a
    stop still makes a new port, session and tab. Only a restart or an
    update hands over, because only then is an open tab known to exist.
-4. **Only the pages that asked move on** (decided here). The restart,
-   site-switch and update pages go to `/` once the new Face answers. Any
+4. **Only the pages that asked move on** (decided here). The restart and
+   update pages go to `/` once the new Face answers. Any
    other open page stays as it is, and its next click reaches the new
    Face. Reloading it could lose words typed in a box that does not save
    by itself.
+5. **Opening another site hands nothing over** (decided here). The new
+   Face serves another site's files, so an old tab's save would land in
+   the wrong site. It opens a new tab, as today.
 
 ## 4. Design
 
@@ -83,8 +86,9 @@ different cookie name, so no tab could present it there.
 ### 4.2 Within one process
 
 `__main__._serve_held` keeps the last Face's `hand_over()` and gives it to
-the next `_serve_once`. This covers Settings' Restart, the tray's Restart
-and opening another site (PRESS-0223 § 4.4).
+the next `_serve_once`. This covers Settings' Restart and the tray's
+Restart. Where the next pass opens a different site folder from the last
+Face's (`sites.open_site`, PRESS-0223 § 4.4), it gets no hand-over.
 
 ### 4.3 Across an update
 
@@ -133,13 +137,13 @@ tab both work. A Face with no hand-over opens its tab at once, as today.
 
 ### 4.5 The pages that asked
 
-The three pages answering a restart — `restarting`'s `POST /restart`,
-`sites_screen._going` and `updating._update_now`'s answer — carry
-`<p data-after-restart="/">` in their reply. When `/alive` answers with a
-`face` id other than the one the page first saw, a page holding that
-element calls `location.replace("/")`. A page that never saw an answer
-(the Face stopped before its first ask) treats the first answer after a
-failed ask as the new Face.
+The two pages answering a restart — `restarting`'s `POST /restart` and
+`updating._update_now`'s answer — carry
+`<p data-after-restart="/" data-face="<id>">`, where `<id>` is the id of
+the Face serving the reply. A page holding that element calls
+`location.replace("/")` once `/alive` answers with any other `face` id. The
+id comes with the reply, not from an ask, because the new Face can be
+answering before the page first asks.
 
 Words change to match:
 
@@ -147,11 +151,12 @@ Words change to match:
   typed and not saved in another tab is still lost.
 - `restarting.going` and `updating.installing`: this tab carries on by
   itself once Pressless is back; if a new tab opens instead, use that.
+- `sites_screen._going` keeps today's words, under a key of its own.
 
 ## 5. Invariants
 
-- **INV-1** — A restart within one process serves the same port and
-  accepts the old session cookie. *Test:*
+- **INV-1** — A restart within one process, of the same site, serves the
+  same port and accepts the old session cookie. *Test:*
   `tests/test_main.py::test_a_restart_keeps_the_port_and_session`.
   *Breaks when:* `_serve_once` is given no hand-over, or `serve` ignores
   `session`.
@@ -186,6 +191,10 @@ Words change to match:
   `scripts/by-hand-browser-checks.py`.
   *Breaks when:* the page script never compares `face` ids, or the
   launcher opens a tab before waiting.
+- **INV-9** — Opening another site serves a new session, so no old tab is
+  admitted to the other site. *Test:*
+  `tests/test_main.py::test_another_site_hands_nothing_over`.
+  *Breaks when:* `_serve_held` hands over whatever the next pass opens.
 
 ## 6. Failure modes
 
@@ -207,7 +216,7 @@ https://developer.chrome.com/blog/timer-throttling-in-chrome-88/
 ## 7. Tests
 
 Each test in § 5 is written first and seen to fail against today's code.
-INV-1 to INV-5 drive `__main__` with the `_Opened` stand-in in
+INV-1 to INV-5 and INV-9 drive `__main__` with the `_Opened` stand-in in
 `tests/test_main.py`, as the PRESS-0431 port tests do. INV-4 reads the
 arguments the installer would pass, without starting anything. INV-6 and
 INV-7 use a real `Face` and `urllib`. INV-8 is by hand, on Linux and on the
@@ -249,6 +258,7 @@ Windows box, once per release.
 | INV-6 | `tests/test_face.py::test_a_handed_session_keeps_the_link_one_use` |
 | INV-7 | `tests/test_face.py::test_alive_needs_the_session` |
 | INV-8 | **by hand** — `scripts/by-hand-browser-checks.py`, once per release |
+| INV-9 | `tests/test_main.py::test_another_site_hands_nothing_over` |
 | § 4.3's "deleted before anything starts a program" | INV-3's test, for `_serve`; nothing checks code added earlier in `main` |
 
 ## 11. Cross-doc impact
@@ -260,8 +270,6 @@ Windows box, once per release.
   comes back in the open tab where one returns.
 - `docs/specs/PRESS-0204-tray-icon.md` — the by-hand Restart check
   expects the same tab.
-- `docs/specs/PRESS-0223-several-sites.md` INV-9 — opening another site
-  carries on in the same tab.
 - `src/pressless/restarting.py`'s docstring.
 - CHANGELOG, under the release that ships it.
 

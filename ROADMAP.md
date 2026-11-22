@@ -8952,6 +8952,14 @@ does not wait on them.
   the one-use link, and what happens when that tab is already closed.
   Touches the Face, the launcher and the updater, and the link's security,
   so check spec-format.md § 1 before building.
+  2026-11-22: spec docs/specs/PRESS-0428-same-tab-after-restart.md
+  accepted after its one review loop; both verified findings fixed, and
+  those fixes were read by no lane. Opening another site now hands
+  nothing over (§ 3 decision 5). Two Windows questions this machine
+  could not run, for the build to settle on the Windows box: whether a
+  bind with SO_REUSEADDR succeeds on a port another program holds (§ 4.1's
+  "held" rows), and whether the batch file started with UseShellExecute
+  inherits the helper's PRESSLESS_RESUME (§ 4.3).
   **Layman:** After Pressless updates or restarts, it carries on in the same browser tab instead of opening a new one.
   Kind: ux.
   Source: user-request-2026-11-21.
