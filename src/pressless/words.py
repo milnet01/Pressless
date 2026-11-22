@@ -2296,7 +2296,8 @@ _WORDS: dict[str, str] = {
     "sendlog.holds": (
         "The log says what Pressless did and what went wrong. It names your site, its pages "
         "and its files. It is written to leave out your keys, passwords, account names and "
-        "full paths."
+        "full paths. If Google refused a request, it keeps Google's own short error "
+        "message, which can name your Analytics property or YouTube channel."
     ),
     "sendlog.where": (
         "It goes privately to the developer, through Cloudflare and GitHub, and is kept where "

@@ -5083,8 +5083,8 @@
    "Envoyer mon journal"
   ],
   "sendlog.holds": [
-   "dbf12172",
-   "Le journal dit ce que Pressless a fait et ce qui s'est mal passé. Il nomme votre site, ses pages et ses fichiers. Il est écrit pour laisser de côté vos clés, mots de passe, noms de compte et chemins complets."
+   "ee8a8fe5",
+   "Le journal dit ce que Pressless a fait et ce qui s'est mal passé. Il nomme votre site, ses pages et ses fichiers. Il est écrit pour laisser de côté vos clés, mots de passe, noms de compte et chemins complets. Si Google a refusé une demande, il garde le court message d'erreur de Google lui-même, qui peut nommer votre propriété Analytics ou votre chaîne YouTube."
   ],
   "sendlog.not_now": [
    "a0e63d7c",

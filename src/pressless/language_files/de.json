@@ -5082,8 +5082,8 @@
    "Mein Protokoll senden"
   ],
   "sendlog.holds": [
-   "dbf12172",
-   "Das Protokoll sagt, was Pressless getan hat und was schiefging. Es nennt deine Website, ihre Seiten und ihre Dateien. Es ist so geschrieben, dass deine Schlüssel, Passwörter, Kontonamen und vollständigen Pfade fehlen."
+   "ee8a8fe5",
+   "Das Protokoll sagt, was Pressless getan hat und was schiefging. Es nennt deine Website, ihre Seiten und ihre Dateien. Es ist so geschrieben, dass deine Schlüssel, Passwörter, Kontonamen und vollständigen Pfade fehlen. Hat Google eine Anfrage abgelehnt, behält es Googles eigene kurze Fehlermeldung, die deine Analytics-Property oder deinen YouTube-Kanal nennen kann."
   ],
   "sendlog.not_now": [
    "a0e63d7c",

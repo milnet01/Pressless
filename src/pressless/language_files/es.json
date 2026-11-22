@@ -5082,8 +5082,8 @@
    "Enviar mi registro"
   ],
   "sendlog.holds": [
-   "dbf12172",
-   "El registro dice lo que hizo Pressless y lo que salió mal. Nombra tu sitio, sus páginas y sus archivos. Está escrito para dejar fuera tus claves, contraseñas, nombres de cuenta y rutas completas."
+   "ee8a8fe5",
+   "El registro dice lo que hizo Pressless y lo que salió mal. Nombra tu sitio, sus páginas y sus archivos. Está escrito para dejar fuera tus claves, contraseñas, nombres de cuenta y rutas completas. Si Google rechazó una petición, guarda el breve mensaje de error del propio Google, que puede nombrar tu propiedad de Analytics o tu canal de YouTube."
   ],
   "sendlog.not_now": [
    "a0e63d7c",

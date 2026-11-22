@@ -57,7 +57,9 @@ not empty as the page loads.
 - what goes: the two log files, the Pressless version and the system name;
 - what they hold: what Pressless did and what went wrong, with the names of
   the site, its pages and its files; written to leave out keys, passwords,
-  account names and full paths (PRESS-0003 § 10);
+  account names and full paths (PRESS-0003 § 10); and, where Google refused
+  a request, Google's own short error message, which can name the Analytics
+  property or YouTube channel (`insights.detail`);
 - where: privately to the developer, through Cloudflare and GitHub;
 - **Send** and **Not now**.
 
