@@ -8879,6 +8879,8 @@ does not wait on them.
   now. It waits on nobody; look again when the user raises it. The route
   to offer then is a CSV the artist downloads, one reader, built on a
   real sample, as the columns are not documented.
+  Kept in 1.2.0 by the user 2026-11-22, still parked: 1.2.0 waits for
+  it.
   **Layman:** The dashboard also shows how his music is doing on Spotify.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -8907,6 +8909,8 @@ does not wait on them.
   Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
   route exists, it leaves the milestone rather than holding it up.
   Parked with PRESS-0082 by the user 2026-11-01.
+  Kept in 1.2.0 by the user 2026-11-22, still parked: 1.2.0 waits for
+  it.
   **Layman:** The dashboard also shows how his music is doing on Apple Music.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -8931,6 +8935,8 @@ does not wait on them.
   Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
   route exists, it leaves the milestone rather than holding it up.
   Parked with PRESS-0082 by the user 2026-11-01.
+  Kept in 1.2.0 by the user 2026-11-22, still parked: 1.2.0 waits for
+  it.
   **Layman:** The dashboard also shows how his music is doing on Amazon Music.
   Kind: feature.
   Source: user-request-2026-09-02.
