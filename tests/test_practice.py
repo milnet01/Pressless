@@ -139,6 +139,39 @@ def test_every_route_out_refuses(route, monkeypatch, no_network):
         _ROUTES[route]()
 
 
+def test_a_refused_publish_says_it_is_a_practice_copy(monkeypatch, tmp_path):
+    """PRESS-0430. Breaks when the practice copy's refusal reads as the
+    real program's "check your internet connection"."""
+    from pressless import face
+
+    practice = _practice()
+    practice.seed(tmp_path)
+    practice.disarm(monkeypatch.setattr)
+    practice.reword(monkeypatch.setitem)
+    with pytest.raises(publisher.Unreachable) as refused:
+        publisher.publish(settings.load(tmp_path), tmp_path / "site", "not-a-key",
+                          "practice")
+    said = face.sentence_for(refused.value, publishing=True)
+    assert "practice copy" in said.what
+    assert "internet" not in said.what + said.next
+
+
+def test_every_could_not_reach_failure_is_reworded(monkeypatch):
+    """Breaks when a service's "could not reach" sentence, such as Google's
+    or YouTube's, is left saying to check the connection."""
+    from pressless import (
+        __main__,  # noqa: F401 -- loads every screen's sentences
+        face,
+    )
+
+    _practice().reword(monkeypatch.setitem)
+    unreachable = [kind for kind in face.SENTENCES if kind.__name__ == "Unreachable"]
+    assert len(unreachable) >= 3   # GitHub, Google and YouTube at least
+    for kind in unreachable:
+        said = face.sentence_for(kind.__new__(kind), publishing=False)
+        assert "practice copy" in said.what, kind
+
+
 def test_both_sign_ins_are_switched_off(monkeypatch):
     _practice().disarm(monkeypatch.setattr)
     assert google_signin.available() is False
@@ -160,6 +193,8 @@ def main_without_serving(monkeypatch, tmp_path):
     monkeypatch.delenv("PORT", raising=False)
     disarm = practice.disarm
     monkeypatch.setattr(practice, "disarm", lambda: disarm(monkeypatch.setattr))
+    reword = practice.reword
+    monkeypatch.setattr(practice, "reword", lambda: reword(monkeypatch.setitem))
     monkeypatch.setattr(face, "serve", face.serve)
     old = signal.getsignal(signal.SIGTERM)
 

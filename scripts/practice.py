@@ -16,6 +16,7 @@ Windows.
 """
 from __future__ import annotations
 
+import operator
 import os
 import signal
 import sys
@@ -35,6 +36,7 @@ from pressless import (  # noqa: E402
     sites,
     store,
     updater,
+    words,
 )
 from pressless_import import fetch  # noqa: E402
 
@@ -144,6 +146,32 @@ def disarm(set_attribute=setattr) -> None:
     set_attribute(github_signin, "available", lambda: False)
 
 
+PRACTICE_WHAT = "failure.practice.what"
+PRACTICE_NEXT = "failure.practice.next"
+# English only: these words belong to this script, not the shipped program,
+# so they are not in words.ENGLISH or the language files.
+PRACTICE_WORDS = {
+    PRACTICE_WHAT: "This is a practice copy, so it never publishes or connects to anything.",
+    PRACTICE_NEXT: "Nothing changed anywhere. To publish for real, use Pressless itself.",
+}
+
+
+def reword(set_item=operator.setitem) -> None:
+    """Make every "could not reach" failure say this is a practice copy.
+
+    disarm's refusal reaches the screen as each service's Unreachable, whose
+    words tell him to check his connection (PRESS-0430). Call it once every
+    screen has added its sentences, as importing the launcher does.
+    `set_item` is there so a test can pass monkeypatch.setitem.
+    """
+    for key, text in PRACTICE_WORDS.items():
+        set_item(words.ENGLISH, key, text)
+    for kind, sentence in list(face.SENTENCES.items()):
+        if kind.__name__ == "Unreachable":
+            set_item(face.SENTENCES, kind,
+                     face.Sentence(PRACTICE_WHAT, sentence.site, PRACTICE_NEXT, None))
+
+
 def _stop(signum: int, frame: object) -> None:
     # The manager signals the whole process group, so a second SIGTERM can
     # land while the first is shutting down (PRESS-0208).
@@ -170,6 +198,7 @@ def main() -> int:
     if not (site / settings.FILE_NAME).exists():
         seed(site)
     disarm()
+    reword()
     real_serve = face.serve
     face.serve = lambda served_folder, **kwargs: real_serve(served_folder, port, **kwargs)
     signal.signal(signal.SIGTERM, _stop)

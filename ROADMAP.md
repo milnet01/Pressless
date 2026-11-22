@@ -8962,10 +8962,13 @@ does not wait on them.
   Source: user-2026-11-21.
   Lanes: face.
 
-- 📋 [PRESS-0430] **The practice copy says it never publishes, not "check your internet".**
+- ✅ [PRESS-0430] **The practice copy says it never publishes, not "check your internet".**
   The practice copy refuses every connection on purpose, but the
   screen shows the Publisher's Unreachable words, which send the
   reader to check their connection.
+  Shipped 2026-11-22: scripts/practice.py's reword() points every
+  service's Unreachable sentence (GitHub, Google, YouTube) at the
+  practice copy's own English words. The shipped program is unchanged.
   **Layman:** Pressing Publish in the practice copy says it is a practice copy, instead of blaming your internet.
   Kind: ux.
   Source: user-2026-11-21.
