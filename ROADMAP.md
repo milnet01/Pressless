@@ -8990,7 +8990,7 @@ does not wait on them.
   Source: user-2026-11-21.
   Lanes: core.
 
-- 📋 [PRESS-0432] **Pressless opens in the browser the web-server manager names.**
+- ✅ [PRESS-0432] **Pressless opens in the browser the web-server manager names.**
   Pressless must open its own one-use link, so it cannot leave the
   opening to the manager. Asked the manager's session to pass the
   chosen browser as BROWSER, which webbrowser.open honours. Check a
@@ -9000,6 +9000,11 @@ does not wait on them.
   BROWSER to the chosen browser's command with %s for the address,
   and leaves it unset where none is chosen or it is not installed.
   Untested against Pressless's frozen build; needs an LWSM release.
+  Shipped 2026-11-22, no code needed: the launcher opens its link
+  with webbrowser.open, which reads BROWSER. Measured against the
+  released 1.1.1 AppImage: with BROWSER="<recorder> %s", the recorder
+  received the /setup one-use link. The hand check in Brave belongs to
+  LWSM-1586 and waits on an LWSM release.
   **Layman:** Pressless opens in the browser you picked in the web-server manager, not always the system default.
   Kind: feature.
   Source: user-2026-11-21.
