@@ -9070,7 +9070,7 @@ does not wait on them.
   Source: user-2026-11-21.
   Lanes: face, report.
 
-- 📋 [PRESS-0437] **The publisher's memory test cannot fail from another test's thread.**
+- ✅ [PRESS-0437] **The publisher's memory test cannot fail from another test's thread.**
   tests/test_publisher.py::test_a_publish_holds_one_file_at_a_time
   failed once in a full gate run on 2026-11-21 (peak 9.0 MiB against
   its 8 MiB bound), under --randomly-seed=3274378973. The same seed
@@ -9079,11 +9079,17 @@ does not wait on them.
   earlier test can lift the peak. Measure the publish's own
   allocations, or wait for other threads, so only a real regression
   fails it.
+  Shipped 2026-11-22: the publish is measured in a fresh process. Under the
+  failing seed no other thread was alive at the test's start, and the
+  publish alone peaks at 5.36 MiB every time, so the 9.0 MiB came from
+  something else running during it. A thread allocating 4 MiB fails the
+  old test and not the new one; a publisher keeping every file's bytes
+  still fails it (24.4 MiB).
   **Layman:** A test that measures memory sometimes fails by chance; make it measure only what it means to.
   Kind: test.
   Source: gate-run-2026-11-21.
 
-- 📋 [PRESS-0438] **Send my log's box says a log can hold Google's error message.**
+- ✅ [PRESS-0438] **Send my log's box says a log can hold Google's error message.**
   sendlog.holds lists what a log holds but not Google's own error
   text, which face.fail records through insights.detail (up to
   DETAIL_LIMIT characters) when Analytics, YouTube or the Google
@@ -9091,6 +9097,8 @@ does not wait on them.
   channel. The Hub's privacy policy was told this on 2026-11-21. Add
   it to sendlog.holds in all five languages, so the consent box and
   the policy agree.
+  Shipped 2026-11-22: English and all four translations, and the
+  PRESS-0436 spec's list.
   **Layman:** The Send my log box will mention that a log can hold Google's short error message, as the privacy policy now does.
   Kind: fix.
   Source: hub-question-2026-11-21.

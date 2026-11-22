@@ -17,6 +17,8 @@ import http.client
 import inspect
 import json
 import os
+import subprocess
+import sys
 import time
 import traceback
 import tracemalloc
@@ -522,20 +524,36 @@ def test_a_publish_holds_one_file_at_a_time(tmp_path):
     again only to be sent, so peak memory is about one file's worth
     however large the site. Breaks when every file's bytes are held from
     the comparison to the commit: twenty files then peak above twenty of
-    them."""
+    them.
+
+    The publish runs in a fresh process: tracemalloc counts every thread,
+    so in the suite a thread an earlier test left running could lift the
+    peak (PRESS-0437)."""
     size = 1024 * 1024
     for n in range(20):
         (tmp_path / f"track{n:02}.mp3").write_bytes(os.urandom(size))
-    transport = _ForgetsBlobs(reads=_reads(_listing([])), writes=_writes())
-
-    tracemalloc.start()
-    try:
-        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
-        peak = tracemalloc.get_traced_memory()[1]
-    finally:
-        tracemalloc.stop()
+    here = Path(__file__).parent
+    measured = subprocess.run(  # noqa: S603 -- fixed arguments
+        [sys.executable, "-c",
+         "import sys; sys.path[:0] = sys.argv[1:3]; import test_publisher; "
+         "print(test_publisher._publish_peak(sys.argv[3]))",
+         str(here), str(here.parent / "src"), str(tmp_path)],
+        capture_output=True, text=True, timeout=120)
+    assert measured.returncode == 0, measured.stderr
+    peak = int(measured.stdout)
 
     assert peak < 8 * size, f"peak {peak / size:.1f} MiB for twenty 1 MiB files"
+
+
+def _publish_peak(folder: str) -> int:
+    """The traced peak, in bytes, of publishing `folder` to a fresh repository."""
+    transport = _ForgetsBlobs(reads=_reads(_listing([])), writes=_writes())
+    tracemalloc.start()
+    try:
+        publish(_settings(), Path(folder), "a-token", "message", transport=transport)
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
 
 
 class _ChangesAFile(_Transport):
