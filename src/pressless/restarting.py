@@ -1,16 +1,16 @@
 """Restart Pressless from inside the app (PRESS-0203).
 
 The launcher owns the restart; this part only asks for one. Settings links
-here, and the page asks before restarting: the new Face has a new link and a
-new session, so every open Pressless tab stops working, and anything typed
-there and not saved is lost. The launch opens a fresh tab, and the tab that
-asked says so rather than going dead.
+here, and the page asks before restarting. The new Face keeps the port and
+session (PRESS-0428), so open Pressless tabs carry on, but anything typed in
+one and not saved is lost. The page that asked goes on to the home page once
+the new Face answers; where no tab comes back, the launch opens a new one.
 """
 from __future__ import annotations
 
 from collections.abc import Callable
 
-from pressless.face import Face, Request
+from pressless.face import Face, Request, after_restart
 from pressless.words import say
 
 PATH = "/restart"
@@ -35,7 +35,7 @@ def register(face: Face, restart: Callable[[], None]) -> None:
     def go(request: Request) -> str:
         face.after_reply(restart)
         return (f'<h1>{say("restarting.going.title")}</h1>'
-                f'<p>{say("restarting.going")}</p>')
+                f'<p {after_restart(face)}>{say("restarting.going")}</p>')
 
     face.add_page("GET", PATH, ask)
     face.add_page("POST", PATH, go)

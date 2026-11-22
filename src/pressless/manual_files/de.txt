@@ -489,8 +489,10 @@ und deinen Veröffentlichungsschlüssel weg.
 1. Klicke in der Leiste auf Einstellungen und dann auf Dieser Computer.
 2. Klicke auf Pressless neu starten und dann auf Neu starten.
 
-Jeder jetzt geöffnete Pressless-Tab funktioniert dann nicht mehr, und ein
-neuer öffnet sich.
+Geöffnete Pressless-Tabs funktionieren weiter, sobald es zurück ist, und
+der Tab, aus dem du neu gestartet hast, geht zum Bildschirm Deine
+Website. Was geschrieben und nicht gespeichert ist, geht verloren. Ein
+neuer Tab öffnet sich nur, wenn keiner zurückgekommen ist.
 
 == tray-icon | Das Pressless-Symbol neben der Uhr benutzen
 Solange Pressless läuft, sitzt sein Symbol neben der Uhr: im

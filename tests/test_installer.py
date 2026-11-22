@@ -362,3 +362,37 @@ def test_the_windows_helper_starts_the_new_program_afresh(tmp_path, monkeypatch)
     installer.apply_windows(program, staged, folder)
     [(_, kwargs)] = spawned.calls
     assert kwargs.get("env", {}).get("PYINSTALLER_RESET_ENVIRONMENT") == "1", kwargs.get("env")
+
+
+def test_the_hand_over_travels_in_the_environment(tmp_path, monkeypatch, _signals_put_back):
+    """PRESS-0428 INV-4: the open tab's session reaches the new process in
+    its environment, which only his account reads, and never on a command
+    line, which every account can. Breaks when the session is added to an
+    argument list."""
+    session = "handed-over-session-" + "x" * 23
+    resume = f"8471:{session}"
+    folder = tmp_path / "Pressless-data"
+    folder.mkdir()
+    appimage = tmp_path / "Pressless-0.1.2-x86_64.AppImage"
+    appimage.write_bytes(b"new")
+    execs: list[tuple] = []
+    monkeypatch.setattr(installer.os, "execve",
+                        lambda path, args, env: execs.append((path, list(args), dict(env))),
+                        raising=False)
+    installer.reopen_linux(appimage, folder, resume)
+    [(path, args, env)] = execs
+    assert args == [str(appimage)], args
+    assert env[installer.RESUME_VARIABLE] == resume
+
+    program = tmp_path / "Pressless"
+    program.mkdir()
+    staged = tmp_path / "Pressless.new-c"
+    (staged / "Pressless").mkdir(parents=True)
+    spawned = _Spawned(monkeypatch)
+    installer.apply_windows(program, staged, folder, resume)
+    [(args, kwargs)] = spawned.calls
+    assert args[-3:] == [str(program), str(staged), str(folder / "update.log")], args
+    assert not any(session in arg for arg in args), args
+    script = Path(args[args.index("-File") + 1])
+    assert session not in script.read_text(encoding="utf-8")
+    assert kwargs["env"][installer.RESUME_VARIABLE] == resume

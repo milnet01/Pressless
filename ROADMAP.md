@@ -8942,7 +8942,7 @@ does not wait on them.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 📋 [PRESS-0428] **After an update or a restart, Pressless comes back in the tab it was in.**
+- 🚧 [PRESS-0428] **After an update or a restart, Pressless comes back in the tab it was in.**
   The user, 2026-11-21, during the real 1.0.2 to 1.1.0 update on
   Linux: the update opened a new tab, and the user would like it to stay
   in the same one. Today every start opens a fresh tab on a new port with
@@ -8960,6 +8960,11 @@ does not wait on them.
   bind with SO_REUSEADDR succeeds on a port another program holds (§ 4.1's
   "held" rows), and whether the batch file started with UseShellExecute
   inherits the helper's PRESSLESS_RESUME (§ 4.3).
+  2026-11-22: built from the spec. INV-1 to INV-7 and INV-9 written first,
+  seen red, then green; each "Breaks when" mutation turns its test red.
+  INV-8's row in scripts/by-hand-browser-checks.py passes in headless
+  Chrome. Owed before shipping: the two Windows questions above, on the
+  box, which was off. The probe is in the session scratchpad (box-0428).
   **Layman:** After Pressless updates or restarts, it carries on in the same browser tab instead of opening a new one.
   Kind: ux.
   Source: user-request-2026-11-21.

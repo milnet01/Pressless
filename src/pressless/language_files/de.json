@@ -4690,8 +4690,8 @@
    "Das öffnet auf der Seite von Pressless auf GitHub ein neues Issue, mit einem kurzen, schon ausgefüllten Formular: welches Pressless du hast, das System, auf dem es läuft, und drei Fragen, die du beantworten sollst. Nichts anderes wird gesendet, und du kannst alles lesen und ändern, bevor du es abschickst."
   ],
   "restarting.ask": [
-   "d82393ed",
-   "Pressless schließt sich und öffnet sich in einem neuen Tab wieder. Jeder jetzt geöffnete Pressless-Tab funktioniert dann nicht mehr, speichere also zuerst alles, was du in einem anderen Tab schreibst."
+   "6d878e2f",
+   "Pressless schließt sich und öffnet sich wieder. Jetzt geöffnete Pressless-Tabs funktionieren weiter, sobald es zurück ist, aber was du in einem anderen Tab geschrieben und nicht gespeichert hast, geht verloren. Speichere es also zuerst."
   ],
   "restarting.ask.title": [
    "bcdf11e1",
@@ -4702,8 +4702,8 @@
    "Zurück zu den Einstellungen"
   ],
   "restarting.going": [
-   "5ce91cbb",
-   "Es öffnet sich gleich in einem neuen Tab wieder. Du kannst diesen schließen."
+   "cd0a86e9",
+   "Dieser Tab macht von selbst weiter, sobald Pressless zurück ist. Öffnet sich stattdessen ein neuer Tab, nimm diesen."
   ],
   "restarting.going.title": [
    "56281953",
@@ -6145,6 +6145,10 @@
    "cc183fe4",
    "Pressless-Website"
   ],
+  "sites_screen.going": [
+   "5ce91cbb",
+   "Es öffnet sich gleich in einem neuen Tab wieder. Du kannst diesen schließen."
+  ],
   "sites_screen.move.button": [
    "8fb33101",
    "Pressless auf einen neuen Computer umziehen"
@@ -6646,8 +6650,8 @@
    "Pressless wird aktualisiert. Du kannst dieses Fenster schließen."
   ],
   "updating.installing": [
-   "3a5a96ad",
-   "Pressless installiert Version {version} und öffnet sich gleich von selbst wieder. Du kannst diesen Tab schließen."
+   "72b6a77e",
+   "Pressless installiert Version {version} und öffnet sich gleich von selbst wieder. Dieser Tab macht von selbst weiter, sobald es zurück ist. Öffnet sich stattdessen ein neuer Tab, nimm diesen."
   ],
   "updating.later": [
    "73b6e48a",

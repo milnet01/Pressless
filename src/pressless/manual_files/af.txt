@@ -467,7 +467,10 @@ publiseersleutel uit.
 1. Klik Instellings in die balk, dan Hierdie rekenaar.
 2. Klik Herbegin Pressless, dan Herbegin.
 
-Elke Pressless-oortjie wat oop is, hou op werk, en 'n nuwe een maak oop.
+Pressless-oortjies wat oop is, werk verder sodra dit terug is, en die
+oortjie waarvandaan jy herbegin het, gaan na die Jou werf-skerm.
+Enigiets wat getik en nie gestoor is nie, gaan verlore. 'n Nuwe oortjie
+maak net oop waar geen oortjie teruggekom het nie.
 
 == tray-icon | Die Pressless-ikoon by die horlosie gebruik
 Terwyl Pressless loop, sit sy ikoon by die horlosie: in die kennisgewingarea

@@ -462,7 +462,9 @@ publishing key.
 1. Click Settings in the bar, then This computer.
 2. Click Restart Pressless, then Restart.
 
-Every Pressless tab open stops working, and a new one opens.
+Pressless tabs that are open carry on once it is back, and the tab you
+restarted from goes to the Your site screen. Anything typed and not saved
+is lost. A new tab opens only where none came back.
 
 == tray-icon | Using the Pressless icon by the clock
 While Pressless runs, its icon sits by the clock: in the notification

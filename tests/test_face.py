@@ -1726,3 +1726,47 @@ def test_every_page_says_at_once_that_a_press_is_working(tmp_path) -> None:
     assert 'addEventListener("submit"' in body and "working-note" in body
     scripts = json.loads(words.for_scripts())
     assert scripts["script.working"] and scripts["script.opening"]
+
+
+# PRESS-0428: a restart hands the port and session to the next Face. What the
+# sentinel is: a session a previous Face would have made, 43 URL-safe
+# characters, written so no scanner reads it as a real token.
+_HANDED = "handed-over-session-" + "x" * 23
+
+
+def test_a_handed_session_keeps_the_link_one_use(tmp_path) -> None:
+    """PRESS-0428 INV-6. Breaks when serve(session=s) derives the secret from
+    s, or lets the link be followed twice."""
+    first = face.serve(tmp_path, session=_HANDED)
+    second = face.serve(tmp_path, session=_HANDED)
+    try:
+        secrets_ = [urllib.parse.parse_qs(urllib.parse.urlsplit(each.url).query)["t"][0]
+                    for each in (first, second)]
+        assert _HANDED not in secrets_ and secrets_[0] != secrets_[1], secrets_
+        assert first.hand_over() == face.HandOver(first.port, _HANDED)
+        assert session_cookie(first.url) == f"pressless-{first.port}={_HANDED}"
+        status, _ = follow_link(first.url)
+        assert status == 403, "the link was followed twice"
+    finally:
+        first.stop()
+        second.stop()
+
+
+def test_alive_needs_the_session(tmp_path) -> None:
+    """PRESS-0428 INV-7, and § 4.4's answer and the returned flag. Breaks
+    when /alive is a return page or a door, or the flag is set by a request
+    the cookie did not admit."""
+    served = face.serve(tmp_path)
+    try:
+        client = _Client(served)
+        assert not served.returned.is_set(), "following the link is not a return"
+        status, _, _ = client.request("GET", "/alive", cookie=False)
+        assert status == 403
+        assert not served.returned.is_set()
+        status, headers, text = client.request("GET", "/alive")
+    finally:
+        served.stop()
+    assert status == 200 and headers["Content-Type"].startswith("application/json")
+    said = json.loads(text)
+    assert said == {"face": served.id} and re.fullmatch(r"[0-9a-f]{16}", served.id), said
+    assert served.returned.is_set()

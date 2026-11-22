@@ -12,6 +12,14 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **A restart or an update carries on in the same tab** (PRESS-0428)
+  After Restart, or after Update now, the Pressless tabs you have open keep
+  working, and the tab you pressed it in goes to the Your site screen by
+  itself. A new tab opens only where none of them comes back. Opening
+  another site still opens a new tab.
+
 ## [1.1.1] - 2026-11-21
 
 **Theme:** Pressless shows it is working, and can send its log

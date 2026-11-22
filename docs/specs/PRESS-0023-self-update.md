@@ -437,7 +437,8 @@ start.
 3. Apply (§ 4.7) up to the spawn. A failure releases the lock and shows its
    sentence.
 4. Answer with a page: *"Pressless is installing version <X.Y.Z> and will open
-   again by itself in a moment. You can close this tab."* On Windows the
+   again by itself in a moment. This tab carries on by itself once it is back.
+   If a new tab opens instead, use that one."* On Windows the
    console also prints *"Pressless is updating. You can close this window."*
 5. Once the answer is sent, through `Face.after_reply(action)`, which runs
    `action` once the current response is flushed: on Windows, exit. On Linux,
@@ -446,7 +447,8 @@ start.
    a closed window before that stops Pressless, and nothing reopens. Where the
    exec fails the console prints *"Pressless is updated to version <X.Y.Z> but
    could not open again by itself. Close its window and start it again."* The
-   new process opens a fresh tab as any start does.
+   new process takes this Face's port and session, and opens a fresh tab
+   only where no open tab comes back (PRESS-0428 § 4.3).
 
 ### 4.10 Failures he can see
 

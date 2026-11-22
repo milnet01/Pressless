@@ -254,7 +254,8 @@ INV-1 to INV-6 as § 5 names them, each seen to fail first against code
 without the clause. INV-7 rests on the packaging check.
 
 **By hand**, from a released build, once per system: the icon shows;
-close the browser, then Open reaches the page; Restart opens a fresh tab;
+close the browser, then Open reaches the page; Restart carries on in an
+open tab, and opens a fresh one only where none is open (PRESS-0428);
 Stop ends the process and the icon goes. On Linux, under Plasma (the
 maintainer's desktop); on Windows, on the box (`docs/working-here.md`
 § Windows and browser checks).

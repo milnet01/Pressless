@@ -21,6 +21,7 @@ import html
 import http.server
 import json
 import os
+import re
 import secrets
 import shutil
 import subprocess
@@ -884,6 +885,27 @@ document.addEventListener("change", (event) => {
   document.getElementById("preview").classList.toggle("undimmed", box.checked);
   fetch("/true-colours", {method: "POST", body: box.checked ? "1" : "0"});
 });
+// PRESS-0428 § 4.4: every page asks who is answering, which tells a
+// restarted Pressless that this tab came back. The page that asked for the
+// restart goes home once another Face answers; any other page stays, so
+// nothing typed is lost. One loop per window.
+if (!window.presslessAsksAlive) {
+  window.presslessAsksAlive = true;
+  const asked = document.querySelector("[data-after-restart]");
+  const askAlive = async () => {
+    try {
+      const now = await (await sendFetch("/alive")).json();
+      if (asked && now.face !== asked.dataset.face) {
+        location.replace(asked.dataset.afterRestart);
+        return;
+      }
+    } catch (error) {
+      // Stopped or restarting: ask again.
+    }
+    setTimeout(askAlive, 2000);
+  };
+  setTimeout(askAlive, 2000);
+}
 """
 
 # PRESS-0242 § 4.3: a page script's words. It fills `{name}` gaps and turns
@@ -1595,12 +1617,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if method == "GET" and "t" in query:
             self._follow_link(face, parts.path or "/", query["t"])
             return
-        if not self._has_cookie(face) and not (method == "GET" and parts.path in face._returns):
+        admitted = self._has_cookie(face)
+        if not admitted and not (method == "GET" and parts.path in face._returns):
             # Besides a door, the one page reached without the cookie is one
             # Google's redirect lands on, which authenticates the request
             # itself (PRESS-0122 § 4.3).
             self._refuse()
             return
+        if admitted:
+            face.returned.set()   # PRESS-0428 § 4.4: a tab holds this session
         if method == "POST":
             # A POST from any other origin names it, as "null" where its page
             # hides it, so one naming none is from here; the cookie admits it.
@@ -1653,6 +1678,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         said = progress_said(counted) if counted else {"running": False, "said": "",
                                                         "fraction": None}
         self._send(200, json.dumps(said), "application/json")
+
+    def _send_alive(self, face: Face) -> None:
+        """PRESS-0428 § 4.4: which Face is answering."""
+        self._send(200, json.dumps({"face": face.id}), "application/json")
 
     def _send_location(self, face: Face) -> None:
         self._send(200, str(face._folder), "text/plain")
@@ -1761,6 +1790,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     _OWN: dict[tuple[str, str], Callable[[_Handler, Face], None]] = {
         ("GET", "/folder/location"): _send_location,
         ("GET", "/progress"): _send_progress,
+        ("GET", "/alive"): _send_alive,
         ("POST", "/folder/open"): _open_the_folder,
         ("POST", "/theme"): _choose_theme,
         ("POST", "/text-size"): _choose_size,
@@ -1954,10 +1984,37 @@ class _Upload:
 PLACES = ("site-notices", "site-tiles", "site-below", "journal-below", "computer")
 
 
+@dataclass(frozen=True)
+class HandOver:
+    """What one Face leaves the next, so a tab still open carries on
+    (PRESS-0428 § 4.1): its port, and the session its tabs' cookie holds."""
+
+    port: int
+    session: str
+
+    def text(self) -> str:
+        """`<port>:<session>`, as PRESSLESS_RESUME carries it (§ 4.3)."""
+        return f"{self.port}:{self.session}"
+
+    @classmethod
+    def read(cls, text: str | None) -> HandOver | None:
+        """The hand-over `text` holds, or None for anything a Face would not
+        have written: a port from 1 to 65535 and a session token_urlsafe(32)
+        made."""
+        found = _HAND_OVER.fullmatch(text or "")
+        if found is None or not 1 <= int(found[1]) <= 65535:
+            return None
+        return cls(int(found[1]), found[2])
+
+
+_HAND_OVER = re.compile(r"([0-9]{1,5}):([A-Za-z0-9_-]{43})")
+
+
 class Face:
     """The running server. Made by `serve`; one per launch."""
 
-    def __init__(self, folder: Path, port: int = 0, *, site: Path | None = None) -> None:
+    def __init__(self, folder: Path, port: int = 0, *, site: Path | None = None,
+                 session: str | None = None) -> None:
         # PRESS-0223 § 4.4: the log and the theme are the machine's, in
         # Pressless's own folder; the settings and choices are the open site's.
         self._folder = Path(folder)
@@ -1972,12 +2029,19 @@ class Face:
         self._offer_languages = languages.for_screens(self._folder)[1]
         for code in words.unreadable():
             self._log.note(f"the language file {code}.json could not be read")
+        # PRESS-0428 § 4.1: a restart's Face keeps the session open tabs hold.
+        # The link is always new, since it is not the session.
+        self._session = session if session is not None else secrets.token_urlsafe(32)
         self._secret = secrets.token_urlsafe(32)
-        self._session = secrets.token_urlsafe(32)
         # The link carrying the secret travels on a command line, where other
         # programs can read it, so it must never also be the cookie (§ 4.5).
-        while self._session == self._secret:
-            self._session = secrets.token_urlsafe(32)
+        while self._secret == self._session:
+            self._secret = secrets.token_urlsafe(32)
+        # PRESS-0428 § 4.4: which Face answers /alive, so the page that asked
+        # for a restart can tell the new one from the old. Not a secret.
+        self.id = secrets.token_hex(8)
+        # Set by the first request the session cookie admits: a tab came back.
+        self.returned = threading.Event()
         self._link_spent = False
         self._link_lock = threading.Lock()
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
@@ -2013,9 +2077,9 @@ class Face:
     def add_page(self, method: str, path: str, page: Page, *, publishing: bool = False) -> None:
         """Register `page` for `method` and `path`, replacing any before it.
 
-        A door's path, the Face's own routes (/folder/location, /folder/open,
-        /theme, /text-size and /true-colours) and an upload's path answer
-        first, so a page registered at one of those is never reached."""
+        A door's path, the Face's own routes (_Handler._OWN) and an upload's
+        path answer first, so a page registered at one of those is never
+        reached."""
         self._pages[(method.upper(), path)] = (page, publishing)
 
     def add_upload(self, path: str, handler: Callable[[Path], str | Reply], into: Path, *,
@@ -2055,6 +2119,10 @@ class Face:
     @property
     def port(self) -> int:
         return int(self._server.server_address[1])
+
+    def hand_over(self) -> HandOver:
+        """This Face's port and session, for the next Face (PRESS-0428)."""
+        return HandOver(self.port, self._session)
 
     @property
     def origin(self) -> str:
@@ -2190,7 +2258,15 @@ class Face:
         self._log.close()
 
 
-def serve(folder: Path, port: int = 0, *, site: Path | None = None) -> Face:
+def after_restart(served: Face) -> str:
+    """The attributes that send the page answering a restart home once a new
+    Face answers /alive (PRESS-0428 § 4.5). The id is the Face sending the
+    page, since the new one can answer before the page first asks."""
+    return f'data-after-restart="/" data-face="{served.id}"'
+
+
+def serve(folder: Path, port: int = 0, *, site: Path | None = None,
+          session: str | None = None) -> Face:
     """Start the Face on 127.0.0.1, on a port the system chooses.
 
     A caller naming `port` gets that port or the bind's OSError. The
@@ -2199,6 +2275,7 @@ def serve(folder: Path, port: int = 0, *, site: Path | None = None) -> Face:
     Opens no browser and prints nothing: the launcher (PRESS-0013 § 4.5) owns
     which page opens first and the link printed where no browser opens.
     `site` is the open site's folder (PRESS-0223 § 4.4), `folder` where none
-    is named.
+    is named. `session` is the one a restart hands on (PRESS-0428 § 4.1), in
+    place of a new one; the link is new either way.
     """
-    return Face(folder, port, site=site)
+    return Face(folder, port, site=site, session=session)

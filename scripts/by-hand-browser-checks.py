@@ -60,6 +60,7 @@ from test_votes import PASTED, VOTES  # noqa: E402
 from test_sendlog import _Relay  # noqa: E402
 from test_votes import _Google as _CheckedGoogle  # noqa: E402
 
+import pressless.__main__ as launcher  # noqa: E402
 import pressless_import  # noqa: E402
 from pressless import (  # noqa: E402
     __version__,
@@ -83,6 +84,7 @@ from pressless import (  # noqa: E402
     publisher,
     publishing,
     report,
+    restarting,
     sendlog,
     settings,
     setup,
@@ -452,6 +454,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         added_by_upload(page, origin, folder)
         sites_listed(page, origin, folder)
         site_file(page, origin, folder)
+        same_tab_after_restart(page)
         folder_chosen(browser, folder)
         move_wizard(page, origin)
         enlarge_photograph(page, origin, folder)
@@ -731,6 +734,44 @@ def sites_listed(page, origin: str, folder: Path) -> None:
           opened == "site-2" and _restarted(1) == 1
           and "Pressless is restarting." in page.locator("main").inner_text(),
           f"open={opened} restarts={RESTARTS}")
+
+
+def same_tab_after_restart(page) -> None:
+    """PRESS-0428 INV-8: after Restart, the restart page goes home by itself
+    on the next Face, which the launcher's own _start makes from the hand-over,
+    and that Face hears the tab come back, so the launcher opens no tab. A
+    Face of its own, so the rows' Face keeps serving."""
+    if OPTIONS.cdp:
+        print("  [SKIP] PRESS-0428 INV-8: --cdp forwards two ports; this row needs a third")
+        return
+    with tempfile.TemporaryDirectory(prefix="pressless-restart-check-") as tmp:
+        own = Path(tmp)
+        faces = [face.serve(own)]
+        stopped: list[face.Face] = []
+
+        def swap() -> None:
+            old = faces[0]
+            old.stop()
+            stopped.append(old)
+            served, _ = launcher._start(own, own, 0, old.hand_over())
+            faces.append(served)
+
+        restarting.register(faces[0], lambda: threading.Thread(target=swap).start())
+        try:
+            page.goto(faces[0].url, wait_until="networkidle")
+            page.goto(f"{faces[0].origin}{restarting.PATH}", wait_until="networkidle")
+            page.get_by_role("button", name=words.say("restarting.restart"),
+                             exact=True).click()
+            page.wait_for_url(f"{faces[0].origin}/", timeout=15000)
+            new = faces[-1]
+            check("PRESS-0428 INV-8: the restart page goes home by itself, and the next "
+                  "Face hears it, so no tab opens",
+                  len(faces) == 2 and new.port == faces[0].port and new.returned.is_set(),
+                  f"faces={len(faces)} url={page.url}")
+        finally:
+            for each in faces:
+                if each not in stopped:
+                    each.stop()
 
 
 def site_file(page, origin: str, folder: Path) -> None:

@@ -134,10 +134,15 @@ class Request:
 
 Page = Callable[[Request], str]      # returns the page's HTML body
 
-def serve(folder: Path, port: int = 0) -> Face: ...   # 0: the system chooses
+def serve(folder: Path, port: int = 0, *, site: Path | None = None,
+          session: str | None = None) -> Face: ...  # 0: the system chooses;
+                                     # session: a restart's (PRESS-0428 § 4.1)
 
 class Face:
     url: str                                  # the one link carrying the secret
+    id: str                 # answered by GET /alive, a Face's own route (PRESS-0428 § 4.4)
+    returned: threading.Event                 # set by the first request the cookie admits
+    def hand_over(self) -> HandOver: ...      # port and session, for the next Face
     def add_page(self, method: str, path: str, page: Page, *,
                  publishing: bool = False) -> None: ...    # § 4.5
     def capture(self) -> ContextManager[list[str]]: ...   # notices, § 4.4

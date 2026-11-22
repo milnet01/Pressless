@@ -4690,8 +4690,8 @@
    "Esto abre una incidencia nueva en la página de Pressless en GitHub, con un formulario corto ya rellenado: qué Pressless tienes, el sistema en el que funciona y tres preguntas para que respondas. No se envía nada más, y puedes leer y cambiar todo antes de enviarlo."
   ],
   "restarting.ask": [
-   "d82393ed",
-   "Pressless se cerrará y se abrirá de nuevo en una pestaña nueva. Todas las pestañas de Pressless abiertas ahora dejarán de funcionar, así que guarda antes lo que estés escribiendo en otra pestaña."
+   "6d878e2f",
+   "Pressless se cerrará y se abrirá de nuevo. Las pestañas de Pressless abiertas ahora siguen funcionando cuando vuelva, pero lo que hayas escrito en otra pestaña sin guardar se pierde, así que guárdalo antes."
   ],
   "restarting.ask.title": [
    "bcdf11e1",
@@ -4702,8 +4702,8 @@
    "Volver a Ajustes"
   ],
   "restarting.going": [
-   "5ce91cbb",
-   "Se abre de nuevo en una pestaña nueva en un momento. Puedes cerrar esta."
+   "cd0a86e9",
+   "Esta pestaña sigue por sí sola cuando Pressless vuelva. Si en su lugar se abre una pestaña nueva, usa esa."
   ],
   "restarting.going.title": [
    "56281953",
@@ -6145,6 +6145,10 @@
    "cc183fe4",
    "Sitio de Pressless"
   ],
+  "sites_screen.going": [
+   "5ce91cbb",
+   "Se abre de nuevo en una pestaña nueva en un momento. Puedes cerrar esta."
+  ],
   "sites_screen.move.button": [
    "8fb33101",
    "Mover Pressless a un ordenador nuevo"
@@ -6646,8 +6650,8 @@
    "Pressless se está actualizando. Puedes cerrar esta ventana."
   ],
   "updating.installing": [
-   "3a5a96ad",
-   "Pressless está instalando la versión {version} y se abrirá de nuevo por sí solo en un momento. Puedes cerrar esta pestaña."
+   "72b6a77e",
+   "Pressless está instalando la versión {version} y se abrirá de nuevo por sí solo en un momento. Esta pestaña sigue por sí sola cuando vuelva. Si en su lugar se abre una pestaña nueva, usa esa."
   ],
   "updating.later": [
    "73b6e48a",

@@ -143,7 +143,7 @@ def _asking(own: Path, site: Path) -> str:
 def _going(face: Face, restart: Callable[[], None]) -> str:
     face.after_reply(restart)
     return (f'<h1>{say("restarting.going.title")}</h1>'
-            f'<p>{say("restarting.going")}</p>')
+            f'<p>{say("sites_screen.going")}</p>')
 
 
 def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:

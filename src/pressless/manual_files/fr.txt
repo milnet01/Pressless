@@ -488,8 +488,10 @@ textes, ni votre clé de publication.
 1. Cliquez sur Réglages dans la barre, puis sur Cet ordinateur.
 2. Cliquez sur Redémarrer Pressless, puis sur Redémarrer.
 
-Tous les onglets Pressless ouverts cessent de fonctionner, et un nouveau
-s'ouvre.
+Les onglets Pressless ouverts continuent de fonctionner une fois qu'il
+est revenu, et l'onglet depuis lequel vous avez redémarré va à l'écran
+Votre site. Ce qui a été écrit sans être enregistré est perdu. Un nouvel
+onglet ne s'ouvre que si aucun n'est revenu.
 
 == tray-icon | Utiliser l'icône Pressless près de l'horloge
 Tant que Pressless fonctionne, son icône reste près de l'horloge : dans

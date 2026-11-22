@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import errno
+import http.client
+import os
 import signal
 import socket
 import sys
@@ -15,6 +17,7 @@ import threading
 import urllib.parse
 
 import pytest
+from _face_session import session_cookie
 from conftest import QuietIcon
 from test_paths import _artefact, _frozen_linux
 
@@ -489,7 +492,7 @@ def test_a_failure_at_launch_names_no_path(monkeypatch, tmp_path, capsys):
     _store(monkeypatch, Choice("keyring", "SecretService"))
     secret = str(tmp_path / "a-private-path")
 
-    def broken(folder, port=0):
+    def broken(folder, port=0, *, resume=None):
         raise RuntimeError(secret)
 
     monkeypatch.setattr(main_module, "_serve", broken)
@@ -655,7 +658,7 @@ def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys
 
     for number, site in ((0, own / "sites" / "site-1"), (1, own / "sites" / "site-2")):
         made = [call for call in calls if call[0] == "face"][number]
-        assert made[1] == own and made[2] == {"port": 0, "site": site}, made
+        assert made[1] == own and made[2] == {"port": 0, "site": site, "session": None}, made
         for name in _SITE_PARTS:
             assert [c[1] for c in calls if c[0] == name][number] == site, name
         for name in _OWN_PARTS:
@@ -831,3 +834,148 @@ def test_an_update_reopens_in_this_process_once_it_has_stopped(monkeypatch, tmp_
     finally:
         for name, handler in kept.items():
             signal.signal(getattr(signal, name), handler)
+
+
+# ------------------------------------------------------------- PRESS-0428 ---
+# A restart or an update hands the port and session to the next Face, so a
+# tab still open carries on. A session a previous Face would have made: 43
+# URL-safe characters, written so no scanner reads it as a real token.
+_HANDED = "handed-over-session-" + "x" * 23
+
+
+def _alive(port: int, cookie: str) -> int:
+    """GET /alive on `port` with `cookie`; the status."""
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        conn.putrequest("GET", "/alive", skip_host=True, skip_accept_encoding=True)
+        conn.putheader("Host", f"127.0.0.1:{port}")
+        conn.putheader("Cookie", cookie)
+        conn.endheaders()
+        response = conn.getresponse()
+        response.read()
+        return response.status
+    finally:
+        conn.close()
+
+
+def test_a_restart_keeps_the_port_and_session(monkeypatch, tmp_path):
+    """PRESS-0428 INV-1. Breaks when _serve_once is given no hand-over, or
+    serve ignores `session`."""
+    opened = _launch(monkeypatch, tmp_path)
+    monkeypatch.setattr(main_module, "RETURN_SECONDS", 0.1)
+    cookies: list[str] = []
+    statuses: list[int] = []
+
+    def wait(restart):
+        if not cookies:
+            cookies.append(session_cookie(opened.faces[0].url))
+            return True
+        statuses.append(_alive(opened.faces[1].port, cookies[0]))
+        return False
+
+    monkeypatch.setattr(main_module, "_wait", wait)
+    assert main_module.main([]) == 0
+    assert [face.port for face in opened.faces] == [opened.faces[0].port] * 2
+    assert statuses == [200], "the old tab's cookie was refused after the restart"
+
+
+def test_a_held_handed_port_starts_afresh(monkeypatch, tmp_path, capsys):
+    """PRESS-0428 INV-2: § 4.1's table. Breaks when the session is carried
+    to another port, or the fallback raises."""
+    opened = _launch(monkeypatch, tmp_path)
+    with socket.socket() as holder:
+        holder.bind(("127.0.0.1", 0))
+        holder.listen()
+        port = holder.getsockname()[1]
+        monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+        assert main_module.main([]) == 0
+        [served] = opened.faces
+        assert served.port != port and served.hand_over().session != _HANDED
+        assert len(opened.links) == 1, "no tab opened for a session no tab holds"
+
+        monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+        monkeypatch.setenv("PRESSLESS_PORT", str(port))
+        assert main_module.main([]) == 1
+    told = main_module.face.sentence_for(main_module.PortHeld(port), publishing=False)
+    assert told.what in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("value, handed", [
+    (f"8471:{_HANDED}", (8471, _HANDED)),
+    ("8471", None), (f"0:{_HANDED}", None), (f"65536:{_HANDED}", None),
+    (f"port:{_HANDED}", None), ("8471:short", None), (f"8471:{_HANDED}:more", None),
+    (f"8471:{_HANDED[:-1]}!", None), ("", None),
+])
+def test_the_resume_variable_is_read_once_and_removed(monkeypatch, tmp_path, value, handed):
+    """PRESS-0428 INV-3. Breaks when the variable is read and left in place,
+    so a browser started later inherits the session."""
+    _launch(monkeypatch, tmp_path)
+    monkeypatch.setenv("PRESSLESS_RESUME", value)
+    seen = []
+
+    def serve(own, port=0, *, resume=None):
+        seen.append((os.environ.get("PRESSLESS_RESUME"),
+                     resume and (resume.port, resume.session)))
+        return 0
+
+    monkeypatch.setattr(main_module, "_serve", serve)
+    assert main_module.main([]) == 0
+    assert seen == [(None, handed)]
+
+
+def test_a_returning_tab_means_no_new_tab(monkeypatch, tmp_path):
+    """PRESS-0428 INV-5. Breaks when the launcher opens a tab regardless, or
+    never opens one."""
+    opened = _launch(monkeypatch, tmp_path)
+    real_serve = main_module.face.serve
+    port = _free_port()
+
+    def returning(folder, **kwargs):
+        served = real_serve(folder, **kwargs)
+        if kwargs.get("session") == _HANDED:
+            threading.Thread(target=_alive, args=(
+                served.port, f"pressless-{served.port}={_HANDED}"), daemon=True).start()
+        return served
+
+    monkeypatch.setattr(main_module.face, "serve", returning)
+    monkeypatch.setattr(main_module, "RETURN_SECONDS", 5)
+    monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+    assert main_module.main([]) == 0
+    assert opened.links == [], "a tab opened although the old one came back"
+
+    # Nobody comes back: the launcher opens the tab once the wait ends.
+    monkeypatch.setattr(main_module.face, "serve", real_serve)
+    opened = _Opened(monkeypatch)
+    monkeypatch.setattr(main_module, "RETURN_SECONDS", 0.1)
+    monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+    assert main_module.main([]) == 0
+    [served] = opened.faces
+    [link] = opened.links
+    assert (served.port, served.hand_over().session) == (port, _HANDED)
+    assert urllib.parse.parse_qs(urllib.parse.urlsplit(link).query) == \
+        urllib.parse.parse_qs(urllib.parse.urlsplit(served.url).query)
+
+
+def test_another_site_hands_nothing_over(monkeypatch, tmp_path):
+    """PRESS-0428 INV-9 and § 3 decision 5: an old tab's save would land in
+    the other site. Breaks when _serve_held hands over whatever the next
+    pass opens."""
+    opened = _launch(monkeypatch, tmp_path)
+    cookies: list[str] = []
+    statuses: list[int] = []
+
+    def wait(restart):
+        if not cookies:
+            cookies.append(session_cookie(opened.faces[0].url))
+            made = main_module.sites.new_site(opened.faces[0]._folder)
+            main_module.sites.choose(opened.faces[0]._folder, made.name)   # POST /sites/open
+            return True
+        statuses.append(_alive(opened.faces[1].port, cookies[0]))
+        return False
+
+    monkeypatch.setattr(main_module, "_wait", wait)
+    assert main_module.main([]) == 0
+    first, second = opened.faces
+    assert first._site != second._site
+    assert second.hand_over().session != first.hand_over().session
+    assert statuses == [403] and len(opened.links) == 2

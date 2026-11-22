@@ -139,11 +139,17 @@ def _stamp(log: Path, word: str, *, first: bool = False) -> None:
         pass
 
 
-def _helper_environment() -> dict[str, str]:
+# PRESS-0428 § 4.3: the open tab's port and session, `<port>:<session>`,
+# handed to the new version. Only in its environment, which his own account
+# alone reads: a command line is readable by every account.
+RESUME_VARIABLE = "PRESSLESS_RESUME"
+
+
+def _helper_environment(resume: str | None = None) -> dict[str, str]:
     """The environment the new program starts in, and on Windows the helper
     that starts it (FIBR-0122). PYINSTALLER_RESET_ENVIRONMENT makes the new
     program start afresh rather than as part of the old bundle, on either
-    system.
+    system. `resume` is RESUME_VARIABLE's value, or None for none.
 
     On Linux the AppImage runtime sets its own variables afresh for the new
     file, and PyInstaller's bundle path must not reach it: a /bin/sh that
@@ -153,6 +159,9 @@ def _helper_environment() -> dict[str, str]:
     for name in ("APPDIR", "APPIMAGE", "ARGV0"):
         env.pop(name, None)
     env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    env.pop(RESUME_VARIABLE, None)
+    if resume is not None:
+        env[RESUME_VARIABLE] = resume
     restore_loader_paths(env, drop_copies=True)
     return env
 
@@ -195,9 +204,10 @@ def apply_linux(appimage: Path, staged: Path, folder: Path) -> None:
 _RESTORED_SIGNALS = ("SIGPIPE", "SIGXFSZ")
 
 
-def reopen_linux(appimage: Path, folder: Path) -> None:
+def reopen_linux(appimage: Path, folder: Path, resume: str | None = None) -> None:
     """Replace this process with the AppImage apply_linux put in place
-    (PRESS-0408), with no arguments, as a double-click starts it. The same
+    (PRESS-0408), with no arguments, as a double-click starts it, and
+    `resume` in its environment (_helper_environment). The same
     process keeps his terminal, so Ctrl+C and closing the window still stop
     Pressless, and a later Restart works. Call it once the stop steps have
     run and from the main thread. Returns only where the new file could not
@@ -224,7 +234,8 @@ def reopen_linux(appimage: Path, folder: Path) -> None:
         if hasattr(signal, name):   # a test on Windows has neither
             signal.signal(getattr(signal, name), signal.SIG_DFL)
     try:
-        os.execve(str(appimage), [str(appimage)], _helper_environment())  # noqa: S606 -- no shell
+        os.execve(str(appimage), [str(appimage)],  # noqa: S606 -- no shell
+                  _helper_environment(resume))
     except OSError:
         _stamp(log, "not started")
 
@@ -236,9 +247,12 @@ def powershell() -> str:
                       "powershell.exe"))
 
 
-def apply_windows(program: Path, staged: Path, folder: Path) -> None:
+def apply_windows(program: Path, staged: Path, folder: Path,
+                  resume: str | None = None) -> None:
     """Start the helper that swaps the unpacked `staged` folder in for
-    `program` once every process running from it has gone.
+    `program` once every process running from it has gone. The helper, and
+    the new program it starts, get `resume` in their environment
+    (_helper_environment).
 
     Raises InstallFailed, removing the staged folder, where the helper cannot
     be started. Everything after the spawn is the helper's.
@@ -257,7 +271,7 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
              "-File", str(script), str(program), str(staged), str(log)],
             # Not the program's own folder: Windows refuses to rename a folder
             # that is a live process's working folder (PRESS-0135).
-            cwd=str(Path(program).parent), env=_helper_environment(),
+            cwd=str(Path(program).parent), env=_helper_environment(resume),
             creationflags=flags, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL)
     except OSError as exc:

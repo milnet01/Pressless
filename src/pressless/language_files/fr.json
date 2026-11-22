@@ -4691,8 +4691,8 @@
    "Ceci ouvre un nouveau ticket sur la page de Pressless sur GitHub, avec un court formulaire déjà rempli : quel Pressless vous avez, le système sur lequel il fonctionne, et trois questions auxquelles vous répondez. Rien d'autre n'est envoyé, et vous pouvez tout lire et tout modifier avant de l'envoyer."
   ],
   "restarting.ask": [
-   "d82393ed",
-   "Pressless va se fermer et se rouvrir dans un nouvel onglet. Tous les onglets Pressless ouverts maintenant cesseront de fonctionner, alors enregistrez d'abord ce que vous écrivez dans un autre onglet."
+   "6d878e2f",
+   "Pressless va se fermer et se rouvrir. Les onglets Pressless ouverts maintenant continuent de fonctionner une fois qu'il est revenu, mais ce que vous avez écrit dans un autre onglet sans l'enregistrer est perdu, alors enregistrez-le d'abord."
   ],
   "restarting.ask.title": [
    "bcdf11e1",
@@ -4703,8 +4703,8 @@
    "Retourner aux Réglages"
   ],
   "restarting.going": [
-   "5ce91cbb",
-   "Il se rouvre dans un nouvel onglet dans un instant. Vous pouvez fermer celui-ci."
+   "cd0a86e9",
+   "Cet onglet reprend tout seul une fois Pressless revenu. Si un nouvel onglet s'ouvre à la place, utilisez celui-là."
   ],
   "restarting.going.title": [
    "56281953",
@@ -6146,6 +6146,10 @@
    "cc183fe4",
    "Site Pressless"
   ],
+  "sites_screen.going": [
+   "5ce91cbb",
+   "Il se rouvre dans un nouvel onglet dans un instant. Vous pouvez fermer celui-ci."
+  ],
   "sites_screen.move.button": [
    "8fb33101",
    "Déplacer Pressless vers un nouvel ordinateur"
@@ -6647,8 +6651,8 @@
    "Pressless se met à jour. Vous pouvez fermer cette fenêtre."
   ],
   "updating.installing": [
-   "3a5a96ad",
-   "Pressless installe la version {version} et se rouvrira tout seul dans un instant. Vous pouvez fermer cet onglet."
+   "72b6a77e",
+   "Pressless installe la version {version} et se rouvrira tout seul dans un instant. Cet onglet reprend tout seul une fois qu'il est revenu. Si un nouvel onglet s'ouvre à la place, utilisez celui-là."
   ],
   "updating.later": [
    "73b6e48a",

@@ -33,7 +33,8 @@ def test_restart_asks_first_and_restarts_only_on_the_post(tmp_path):
 
         status, _, page = browser.request("POST", restarting.PATH)
         assert status == 200
-        assert "new tab" in page
+        # PRESS-0428 § 4.5: the page goes home once another Face answers.
+        assert f'data-after-restart="/" data-face="{served.id}"' in page
         assert asked.wait(5), "the POST did not ask the launcher to restart"
     finally:
         served.stop()

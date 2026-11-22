@@ -375,7 +375,8 @@ def test_a_failed_fetch_stays_shown_until_next_tries_it_again(tmp_path, monkeypa
         for _ in range(2):
             _status, _headers, page = browser.request("GET", importing.ADDRESS)
         assert asked == ["one"], asked
-        assert "location.replace" not in page and "Next" in page, page
+        # Its own reload, not the frame's restart check (PRESS-0428 § 4.5).
+        assert importing._RELOAD not in page and "Next" in page, page
 
         _next(browser, "media")
         page = _through_fetching(browser)

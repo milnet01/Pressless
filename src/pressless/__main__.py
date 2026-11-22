@@ -26,6 +26,7 @@ import os
 import signal
 import sys
 import threading
+import time
 import urllib.parse
 import webbrowser
 from collections.abc import Callable
@@ -97,6 +98,9 @@ def main(argv: list[str]) -> int:
     program cannot tell a machine with no store from a bundle that lost its
     metadata, and PRESS-0022 § 7 decides which by controlling the machine.
     """
+    # PRESS-0428 § 4.3: out of the environment before anything starts a
+    # program, so no browser, opener or helper inherits the session.
+    resume = face.HandOver.read(os.environ.pop(installer.RESUME_VARIABLE, None))
     told_folder = (len(argv) == 2 and argv[0] == "--assistant"
                    and not getattr(sys, "frozen", False))
     if argv not in ([], ["--self-check"], ["--assistant"]) and not told_folder:
@@ -136,7 +140,7 @@ def main(argv: list[str]) -> int:
         print(say("main.port_unusable", name=PORT_VARIABLE, value=str(named)))
         return 2
     try:
-        return _serve(own, port)
+        return _serve(own, port, resume=resume)
     except PortHeld as exc:
         told = face.sentence_for(exc, publishing=False)
         print(f"{told.what} {told.next}")
@@ -169,6 +173,19 @@ class PortHeld(Exception):
 
 face.SENTENCES[PortHeld] = face.Sentence(
     "failure.main.PortHeld.what", face.Site.UNCHANGED, "failure.main.PortHeld.next")
+
+# PRESS-0428 § 4.4: how long a Face that took a hand-over waits for an open
+# tab to come back before opening a new one. A tab asks every two seconds.
+RETURN_SECONDS = 6
+
+
+class _Last:
+    """What the last Face leaves the next (PRESS-0428 § 4.2): the site it
+    served, None for one an update handed on, and its port and session."""
+
+    def __init__(self, hand: face.HandOver | None) -> None:
+        self.site: Path | None = None
+        self.hand = hand
 
 
 def port_from(text: str | None) -> int:
@@ -236,23 +253,28 @@ def _hold(own: Path) -> BinaryIO | None:
 _HELD = frozenset({errno.EAGAIN, errno.EWOULDBLOCK, errno.EACCES, errno.EDEADLK})
 
 
-def _serve(own: Path, port: int = 0) -> int:
+def _serve(own: Path, port: int = 0, *, resume: face.HandOver | None = None) -> int:
     """Serve behind the folder's lock until stopped. Where a Linux Update now
     put a new version in place, it then replaces this process (PRESS-0408),
-    once the stop steps have run and the lock is let go. `port` 0 lets the
-    system choose; any other is every Face's, restarts included, or PortHeld."""
+    once the stop steps have run and the lock is let go, and hands it the
+    last Face's port and session (PRESS-0428 § 4.3). `port` 0 lets the
+    system choose; any other is every Face's, restarts included, or PortHeld.
+    `resume` is what the version before handed on."""
     updates = updating.Updates()
-    code = _serve_behind_lock(own, updates, port)
+    last = _Last(resume)
+    code = _serve_behind_lock(own, updates, port, last)
     if updates.installed is None:
         return code
     program, version = updates.installed
     print(say("restarting.going.title"), flush=True)
-    installer.reopen_linux(program, own)   # returns only where it could not
+    handed = last.hand.text() if last.hand is not None else None
+    installer.reopen_linux(program, own, handed)   # returns only where it could not
     print(say("updating.not_reopened", version=version))
     return 1
 
 
-def _serve_behind_lock(own: Path, updates: updating.Updates, port: int = 0) -> int:
+def _serve_behind_lock(own: Path, updates: updating.Updates, port: int,
+                       last: _Last) -> int:
     """PRESS-0013 § 4.5 steps 3 to 6, behind the folder's lock."""
     held = _hold(own)
     if held is None:
@@ -279,7 +301,7 @@ def _serve_behind_lock(own: Path, updates: updating.Updates, port: int = 0) -> i
         # PRESS-0204 § 4.4: one per process. Its Stop is Ctrl+C's way out.
         icon = tray.Tray(_thread.interrupt_main)
         try:
-            return _serve_held(own, updates, icon, port)
+            return _serve_held(own, updates, icon, port, last)
         finally:
             icon.close()    # after the last Face's stop steps
             stopped.set()   # the stop steps have run: a closing console may end us
@@ -357,32 +379,31 @@ def _console_handler(on_event: Callable[[int], bool]) -> Callable[[], None]:
 
 
 def _serve_held(own: Path, updates: updating.Updates, icon: tray.Tray,
-                port: int = 0) -> int:
+                port: int, last: _Last) -> int:
     # `updates` and `icon` are one per process: a restart keeps the update
     # offer and a Later, and does not check again (PRESS-0023 § 4.9), and
-    # keeps the one tray icon (PRESS-0204 § 4.4).
-    while _serve_once(own, updates, icon, port):
+    # keeps the one tray icon (PRESS-0204 § 4.4). `last` carries each Face's
+    # port and session to the next (PRESS-0428 § 4.2).
+    while _serve_once(own, updates, icon, port, last):
         print(say("restarting.going.title"))
     return 0
 
 
 def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
-                port: int = 0) -> bool:
+                port: int, last: _Last) -> bool:
     """One Face, from start to stop. True where he asked for a restart
     (PRESS-0203): the caller then serves a new one, behind the same lock.
     Each pass opens the site sites.json names now, so opening another site is
     a restart (PRESS-0223 § 4.4): the machine's parts take Pressless's own
-    folder, and the site's take the site's."""
+    folder, and the site's take the site's. The same site takes the last
+    Face's port and session, and another site neither (PRESS-0428 § 4.2)."""
     restart = threading.Event()
     stopping = threading.Event()
     again = False
     folder = sites.open_site(own)
-    try:
-        served = face.serve(own, port=port, site=folder)
-    except OSError as exc:
-        if port:   # a port he named is never swapped for another
-            raise PortHeld(port) from exc
-        raise
+    handed = last.hand if last.site in (None, folder) else None
+    served, handed = _start(own, folder, port, handed)
+    last.site, last.hand = folder, served.hand_over()
     try:
         setup.register(served, folder, own=own)
         github_setup.register(served, folder)
@@ -430,14 +451,9 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
                 if exc.key == "site_folder":
                     first = "/setup"
 
-        link = urllib.parse.urlunsplit(
-            urllib.parse.urlsplit(served.url)._replace(path=first))
-        try:
-            opened = webbrowser.open(link)
-        except Exception:  # noqa: BLE001 -- no browser is a case, not a failure
-            opened = False
-        if not opened:
-            print(say("main.open_link", link=link))
+        # PRESS-0428 § 4.4: a tab that came back is his, so none opens.
+        if handed is None or not _came_back(served):
+            _open_tab(served, first)
         print(say("main.running"))
         # PRESS-0225: today's backups, then a look every hour, behind this Face.
         backups.start(own, stopping, served.note)
@@ -466,6 +482,49 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
         else:
             served.stop()
     return again
+
+
+def _start(own: Path, folder: Path, port: int,
+           handed: face.HandOver | None) -> tuple[face.Face, face.HandOver | None]:
+    """Serve a Face as PRESS-0428 § 4.1's table says, and the hand-over it
+    took, or None. A session goes only to the port it came from: elsewhere
+    the cookie's name differs, so no tab could present it."""
+    session = handed.session if handed is not None and port in (0, handed.port) else None
+    wanted = port or (handed.port if handed is not None else 0)
+    try:
+        served = face.serve(own, port=wanted, site=folder, session=session)
+    except OSError as exc:
+        if port:   # a port he named is never swapped for another
+            raise PortHeld(port) from exc
+        if not wanted:
+            raise
+        # The handed port is held: the system's choice, and a new session.
+        return face.serve(own, port=0, site=folder, session=None), None
+    return served, handed if session is not None else None
+
+
+def _came_back(served: face.Face) -> bool:
+    """Whether a tab holding the handed session asked within RETURN_SECONDS.
+    In short spells, as _wait waits, so an interrupt on Windows is not held
+    until the end."""
+    deadline = time.monotonic() + RETURN_SECONDS
+    while not served.returned.wait(0.25):
+        if time.monotonic() >= deadline:
+            return False
+    return True
+
+
+def _open_tab(served: face.Face, first: str) -> None:
+    """Open `first` through the Face's link, or print the link where no
+    browser opens (PRESS-0013 § 4.5 step 6)."""
+    link = urllib.parse.urlunsplit(
+        urllib.parse.urlsplit(served.url)._replace(path=first))
+    try:
+        opened = webbrowser.open(link)
+    except Exception:  # noqa: BLE001 -- no browser is a case, not a failure
+        opened = False
+    if not opened:
+        print(say("main.open_link", link=link))
 
 
 def _refresh_shortcuts(served: face.Face) -> None:

@@ -4690,8 +4690,8 @@
    "Dit maak 'n nuwe kwessie op Pressless se bladsy op GitHub oop, met 'n kort vorm reeds ingevul: watter Pressless jy het, die stelsel waarop dit loop, en drie vrae vir jou om te beantwoord. Niks anders word gestuur nie, en jy kan alles lees en verander voordat jy dit indien."
   ],
   "restarting.ask": [
-   "d82393ed",
-   "Pressless sal toemaak en in 'n nuwe oortjie weer oopmaak. Elke Pressless-oortjie wat nou oop is, hou op werk, so stoor eers enigiets wat jy in 'n ander oortjie skryf."
+   "6d878e2f",
+   "Pressless sal toemaak en weer oopmaak. Pressless-oortjies wat nou oop is, werk verder sodra dit terug is, maar enigiets wat jy in 'n ander oortjie getik en nie gestoor het nie, gaan verlore, so stoor dit eers."
   ],
   "restarting.ask.title": [
    "bcdf11e1",
@@ -4702,8 +4702,8 @@
    "Gaan terug na Instellings"
   ],
   "restarting.going": [
-   "5ce91cbb",
-   "Dit maak oor 'n oomblik weer in 'n nuwe oortjie oop. Jy kan hierdie een toemaak."
+   "cd0a86e9",
+   "Hierdie oortjie gaan vanself voort sodra Pressless terug is. As 'n nuwe oortjie eerder oopmaak, gebruik daardie een."
   ],
   "restarting.going.title": [
    "56281953",
@@ -6145,6 +6145,10 @@
    "cc183fe4",
    "Pressless-werf"
   ],
+  "sites_screen.going": [
+   "5ce91cbb",
+   "Dit maak oor 'n oomblik weer in 'n nuwe oortjie oop. Jy kan hierdie een toemaak."
+  ],
   "sites_screen.move.button": [
    "8fb33101",
    "Skuif Pressless na 'n nuwe rekenaar"
@@ -6646,8 +6650,8 @@
    "Pressless dateer op. Jy kan hierdie venster toemaak."
   ],
   "updating.installing": [
-   "3a5a96ad",
-   "Pressless installeer weergawe {version} en sal oor 'n oomblik vanself weer oopmaak. Jy kan hierdie oortjie toemaak."
+   "72b6a77e",
+   "Pressless installeer weergawe {version} en sal oor 'n oomblik vanself weer oopmaak. Hierdie oortjie gaan vanself voort sodra dit terug is. As 'n nuwe oortjie eerder oopmaak, gebruik daardie een."
   ],
   "updating.later": [
    "73b6e48a",

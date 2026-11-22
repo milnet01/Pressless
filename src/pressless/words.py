@@ -2158,7 +2158,8 @@ _WORDS: dict[str, str] = {
     "updating.look": "Look when Pressless starts",
     "updating.installing": (
         "Pressless is installing version {version} and will open again by itself in a "
-        "moment. You can close this tab."
+        "moment. This tab carries on by itself once it is back. If a new tab opens "
+        "instead, use that one."
     ),
     "updating.not_reopened": (
         "Pressless is updated to version {version} but could not open again by itself. Close "
@@ -2169,15 +2170,20 @@ _WORDS: dict[str, str] = {
     "restarting.link": "Restart Pressless",
     "restarting.ask.title": "Restart Pressless?",
     "restarting.ask": (
-        "Pressless will close and open again in a new tab. Every Pressless tab open now "
-        "stops working, so save anything you are writing in another tab first."
+        "Pressless will close and open again. Pressless tabs open now carry on once it is "
+        "back, but anything typed in another tab and not saved is lost, so save it first."
     ),
     "restarting.restart": "Restart",
     "restarting.back": "Go back to Settings",
     "restarting.going.title": "Pressless is restarting.",
-    "restarting.going": "It opens again in a new tab in a moment. You can close this one.",
+    "restarting.going": (
+        "This tab carries on by itself once Pressless is back. If a new tab opens "
+        "instead, use that one."
+    ),
     # The Sites screen (sites_screen.py, PRESS-0223).
     "sites_screen.title": "Your sites",
+    # Another site opens in a new tab: an old tab is never handed over (PRESS-0428).
+    "sites_screen.going": "It opens again in a new tab in a moment. You can close this one.",
     "sites_screen.about": (
         "Pressless can look after more than one website. Opening another one restarts "
         "Pressless in a new tab, so save anything you are writing first."

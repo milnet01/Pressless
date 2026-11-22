@@ -478,8 +478,10 @@ clave de publicación.
 1. Haz clic en Ajustes en la barra y luego en Este ordenador.
 2. Haz clic en Reiniciar Pressless y luego en Reiniciar.
 
-Todas las pestañas de Pressless abiertas dejan de funcionar, y se abre una
-nueva.
+Las pestañas de Pressless abiertas siguen funcionando cuando vuelve, y
+la pestaña desde la que reiniciaste va a la pantalla Tu sitio. Lo
+escrito sin guardar se pierde. Solo se abre una pestaña nueva si ninguna
+ha vuelto.
 
 == tray-icon | Usar el icono de Pressless junto al reloj
 Mientras Pressless funciona, su icono está junto al reloj: en el área de

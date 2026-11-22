@@ -23,7 +23,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from pressless import __version__, editor, installer, paths, updater
-from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site
+from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, after_restart
 from pressless.words import say
 
 # § 4.10. The base carries the generic sentence; each type below it its own.
@@ -271,7 +271,8 @@ def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
         editor.LOCK.acquire()
         try:
             if platform == "windows":
-                installer.apply_windows(artefact, staged, own)
+                # PRESS-0428 § 4.3: the new version takes this tab's session.
+                installer.apply_windows(artefact, staged, own, face.hand_over().text())
             else:
                 installer.apply_linux(artefact, staged, own)
         except installer.UpdateError as exc:
@@ -293,4 +294,5 @@ def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
     else:
         state.installed = (artefact, offer.version)
         face.after_reply(stop)
-    return f'<p>{say("updating.installing", version=html.escape(offer.version))}</p>'
+    return (f'<p {after_restart(face)}>'
+            f'{say("updating.installing", version=html.escape(offer.version))}</p>')
