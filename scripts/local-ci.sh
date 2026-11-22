@@ -71,7 +71,7 @@ fi
 # any process on this machine can read. Inside .git, as windows-gate.sh's
 # scratch is: on the repository's own disk, never /tmp, which is RAM here.
 patterns=$(mktemp "$(git rev-parse --path-format=absolute --git-common-dir)/leak-sweep.XXXXXX")
-trap 'rm -f "$patterns"' EXIT
+trap 'rm -f "$patterns" "$patterns.lines" "$patterns.hits"' EXIT
 printf '%s\n' "$PAT" >"$patterns"
 # grep exits 1 for no match and 2 for a pattern it cannot read. A malformed key
 # would otherwise match nothing, everywhere, and pass.
@@ -91,7 +91,16 @@ scan() {
     }
     printf 'clean: %s\n' "$what"
 }
-matching() { grep -a -iE -f "$patterns" || (($? == 1)); }
+# Keeps the `where<TAB>text` lines whose TEXT matches. The location is never
+# searched: a line number ending in digits could otherwise complete a pattern
+# with the text after it (PRESS-0439).
+matching() {
+    cat >"$patterns.lines"
+    { cut -f2- "$patterns.lines" | grep -an -iE -f "$patterns" || (($? == 1)); } \
+        | cut -d: -f1 >"$patterns.hits"
+    awk -v hits="$patterns.hits" \
+        'BEGIN { while ((getline n < hits) > 0) want[n] } FNR in want' "$patterns.lines"
+}
 # git grep's lines. --null keeps a `:` in a path from shifting the fields. A
 # binary file's match carries no text, only `Binary file X matches`, and fails
 # the gate all the same: a picture's metadata can hold a name.

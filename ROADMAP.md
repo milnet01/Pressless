@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=438 -->
+<!-- ants-roadmap-id-high-water: PRESS=439 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9130,6 +9130,21 @@ does not wait on them.
   **Layman:** The Send my log box will mention that a log can hold Google's short error message, as the privacy policy now does.
   Kind: fix.
   Source: hub-question-2026-11-21.
+
+- ✅ [PRESS-0439] **The leak sweep matches a line's text, never its location.**
+  Found by PRESS-0428's review, 2026-11-22: --sweep and the commit
+  and ref surfaces tag each line with its location, then match the
+  pattern against the whole line, so a location ending in digits could
+  complete a pattern with the text after it. A false alarm on a clean
+  review packet. The tree and history surfaces match text only.
+  Shipped 2026-11-22: matching() searches the text column alone and
+  returns the whole tagged lines, so a location can never complete a
+  match. tests/test_local_ci.py::test_a_location_never_completes_a_match
+  was red before, green after; every surface swept clean.
+  **Layman:** The check that keeps the writer's name out of this public project no longer raises false alarms because of a line number.
+  Kind: review-fix.
+  Source: review-contract-2026-11-22.
+  Lanes: gate.
 
 ## 1.3.0 — a home other than GitHub
 

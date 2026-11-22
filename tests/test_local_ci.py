@@ -51,6 +51,16 @@ def test_a_clean_file_passes_and_nothing_else_runs(tmp_path):
     assert "=== ruff ===" not in ran.stdout
 
 
+def test_a_location_never_completes_a_match(tmp_path):
+    """PRESS-0439. Breaks when the pattern is matched against the line's
+    location as well as its text: line 18 starting "down" read as a hit."""
+    packet = tmp_path / "packet.md"
+    packet.write_text("Plain words.\n" * 17 + "down the road\n", encoding="utf-8")
+    ran = _sweep(packet)
+    assert ran.returncode == 0, ran.stderr
+    assert f"clean: {packet}" in ran.stdout
+
+
 def test_every_file_named_is_swept(tmp_path):
     clean, named = tmp_path / "clean.md", tmp_path / "named.md"
     clean.write_text("Plain words.\n", encoding="utf-8")
