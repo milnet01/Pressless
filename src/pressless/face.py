@@ -2193,8 +2193,8 @@ class Face:
 def serve(folder: Path, port: int = 0, *, site: Path | None = None) -> Face:
     """Start the Face on 127.0.0.1, on a port the system chooses.
 
-    A caller naming `port` gets that port or the bind's OSError; only the
-    practice copy's start script names one (PRESS-0202).
+    A caller naming `port` gets that port or the bind's OSError. The
+    launcher names one only where PRESSLESS_PORT is set (PRESS-0431).
 
     Opens no browser and prints nothing: the launcher (PRESS-0013 § 4.5) owns
     which page opens first and the link printed where no browser opens.

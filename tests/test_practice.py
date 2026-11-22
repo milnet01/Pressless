@@ -36,18 +36,6 @@ def _practice():
     return load_script("practice.py")
 
 
-@pytest.mark.parametrize("text, port", [(None, 0), ("", 0), (" ", 0),
-                                        ("1", 1), ("8471", 8471), ("65535", 65535)])
-def test_a_port_is_read_from_port(text, port):
-    assert _practice().port_from(text) == port
-
-
-@pytest.mark.parametrize("text", ["0", "65536", "-1", "eighty", "84.71"])
-def test_anything_else_is_refused(text):
-    with pytest.raises(ValueError):
-        _practice().port_from(text)
-
-
 def test_the_seeded_folder_is_one_the_launcher_accepts(tmp_path):
     """Breaks when the launcher would send the practice copy to /setup."""
     _practice().seed(tmp_path)
@@ -216,7 +204,7 @@ def test_a_second_sigterm_while_stopping_still_exits_0(main_without_serving):
     can arrive twice; the second one used to escape as KeyboardInterrupt."""
     run, terminate = main_without_serving
 
-    def serve(folder):
+    def serve(folder, port=0):
         try:
             terminate()
         except KeyboardInterrupt:
@@ -230,7 +218,7 @@ def test_a_sigterm_while_starting_exits_0(main_without_serving):
     """Before the launcher's wait, nothing in it catches the interruption."""
     run, terminate = main_without_serving
 
-    def serve(folder):
+    def serve(folder, port=0):
         terminate()
         return 0
 
@@ -239,20 +227,26 @@ def test_a_sigterm_while_starting_exits_0(main_without_serving):
 
 def test_the_practice_site_is_seeded_once_inside_sites(main_without_serving, tmp_path):
     """PRESS-0223: the practice copy's site is site-1, like any other. Breaks
-    when a second start seeds again at the top, or the port wrapper refuses
-    the launcher's site."""
+    when a second start seeds again at the top."""
     from pressless import face
 
     run, _ = main_without_serving
-    unwrapped = face.serve
 
-    def serve(folder):
-        face.serve(folder, site=folder / "sites" / "site-1").stop()
+    def serve(folder, port=0):
+        face.serve(folder, port=port, site=folder / "sites" / "site-1").stop()
         return 0
 
     assert run(serve) == 0
-    face.serve = unwrapped   # each start is its own process
     assert run(serve) == 0
     own = tmp_path / _practice().FOLDER_NAME
     assert settings.load(own / "sites" / "site-1").repository == "practice/not-a-real-repository"
     assert not (own / "settings.json").exists()
+
+
+def test_the_managers_port_reaches_the_launcher(main_without_serving, monkeypatch):
+    """PRESS-0202: the local web-server manager's PORT is the port served."""
+    run, _ = main_without_serving
+    monkeypatch.setenv("PORT", "8471")
+    given = []
+    assert run(lambda folder, port=0: given.append(port) or 0) == 0
+    assert given == [8471]

@@ -81,6 +81,15 @@ ensurepip` in it once. The script installs the dependencies on each run.
 The box also has an installed Python, put there on 2026-08-05; the gate
 does not use it.
 
+**`run.sh` runs a released program where a key names one** (PRESS-0431),
+so the local web-server manager starts what a new user gets. Unset, it
+runs the practice copy. The manager's port reaches the program as
+`PRESSLESS_PORT`:
+
+```bash
+git config ants.pressless.runProgram /path/to/Pressless-x86_64.AppImage
+```
+
 ## Writing or changing tests
 
 **Two test results mean less than they look.** `test_marks_is_pure`

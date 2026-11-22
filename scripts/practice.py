@@ -8,7 +8,8 @@ Pressless can open refuse. The update check runs only in a packaged copy
 (`updating.register`), so it never runs here.
 
 `run.sh` starts this for the local web-server manager, which sets PORT and
-stops it with SIGTERM. Without PORT the system chooses the port. It runs on
+stops it with SIGTERM, where no released program is named for it to run.
+Without PORT the system chooses the port. It runs on
 Linux only: its made-up key is kept in a file, which Pressless refuses on
 Windows.
 
@@ -73,16 +74,6 @@ ABOUT = """<!doctype html>
 </body></html>
 """
 STYLE = "body{font-family:Georgia,serif;max-width:40rem;margin:2rem auto}\n"
-
-
-def port_from(text: str | None) -> int:
-    """The port PORT names, or 0 for the system's choice. ValueError otherwise."""
-    if text is None or text.strip() == "":
-        return 0
-    port = int(text.strip())   # ValueError for anything that is not a number
-    if not 1 <= port <= 65535:
-        raise ValueError(f"{port} is not a port number")
-    return port
 
 
 def practice_folder() -> Path:
@@ -184,7 +175,7 @@ def main() -> int:
         print("The practice copy runs on Linux only.", file=sys.stderr)
         return 2
     try:
-        port = port_from(os.environ.get("PORT"))
+        port = launcher.port_from(os.environ.get("PORT"))
     except ValueError:
         print(f"PORT must be a port number, 1 to 65535; it is {os.environ['PORT']!r}.",
               file=sys.stderr)
@@ -199,12 +190,13 @@ def main() -> int:
         seed(site)
     disarm()
     reword()
-    real_serve = face.serve
-    face.serve = lambda served_folder, **kwargs: real_serve(served_folder, port, **kwargs)
     signal.signal(signal.SIGTERM, _stop)
     print(f"Practice copy of Pressless, in {folder}. It never publishes.", flush=True)
     try:
-        return launcher._serve(folder)
+        return launcher._serve(folder, port)
+    except launcher.PortHeld:
+        print(f"Port {port} is in use by another program.", file=sys.stderr)
+        return 1
     except KeyboardInterrupt:   # stopped before the launcher's wait caught it
         return 0
 

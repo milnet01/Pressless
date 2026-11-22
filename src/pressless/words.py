@@ -106,6 +106,11 @@ _WORDS: dict[str, str] = {
     "failure.settings.SettingsError.next": (
         "Pressless changed nothing in them. Send the details below to whoever helps you."
     ),
+    "failure.main.PortHeld.what": (
+        "Pressless could not start on port {port}, which {name} asks for: another program "
+        "is using it."
+    ),
+    "failure.main.PortHeld.next": "Close that program, or start Pressless without {name}.",
     "failure.publisher.PublishError.what": "GitHub answered in a way Pressless did not expect.",
     "failure.publisher.Unreachable.what": "Pressless could not reach GitHub.",
     "failure.publisher.Unreachable.next": "Check your internet connection and try again.",
@@ -2789,6 +2794,10 @@ _WORDS: dict[str, str] = {
         "again."
     ),
     "main.open_link": "Open this link in your browser: {link}",
+    "main.port_unusable": (
+        "{name} must be a port number from 1 to 65535, but it is {value}. Correct it, or "
+        "start Pressless without {name}."
+    ),
     "main.running": (
         "Pressless is running. Keep this window open while you use it, and close it to stop "
         "Pressless."

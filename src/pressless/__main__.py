@@ -87,7 +87,8 @@ def main(argv: list[str]) -> int:
     `--self-check` is non-zero only where a report question could not be
     answered at all -- NotPackaged, FolderUnusable, or choose() raising. A
     double-click also returns 1 where moving in, an Import's moves or the
-    launch failed, or an updated version could not be opened, 3 where another
+    launch failed, an updated version could not be opened or the port
+    PRESSLESS_PORT names is held, 2 where that names no port, 3 where another
     Pressless holds the folder, and 130 for an interrupt before the Face was
     waiting. An unknown argument exits 2, and `--assistant` returns the
     bridge's own code. A source run's `--assistant` takes the folder its Face
@@ -128,8 +129,18 @@ def main(argv: list[str]) -> int:
 
     if argv == ["--self-check"]:
         return 0
+    named = os.environ.get(PORT_VARIABLE)
     try:
-        return _serve(own)
+        port = port_from(named)
+    except ValueError:
+        print(say("main.port_unusable", name=PORT_VARIABLE, value=str(named)))
+        return 2
+    try:
+        return _serve(own, port)
+    except PortHeld as exc:
+        told = face.sentence_for(exc, publishing=False)
+        print(f"{told.what} {told.next}")
+        return 1
     except KeyboardInterrupt:
         # Ctrl+C, or a closed terminal (_stop_on_close), before the Face was
         # waiting: he asked it to stop, so no words, and no traceback.
@@ -139,6 +150,35 @@ def main(argv: list[str]) -> int:
         # (PRESS-0011 § 4.5's rule, reached before handle_error exists).
         print(say("main.could_not_start", kind=type(exc).__name__))
         return 1
+
+
+# PRESS-0431: the port a starter such as the local web-server manager names.
+# Never a bare PORT, which any tool may export (PRESS-0011 § 8); run.sh
+# passes the manager's PORT on under this name.
+PORT_VARIABLE = "PRESSLESS_PORT"
+
+
+class PortHeld(Exception):
+    """The port PORT_VARIABLE named could not be bound. It reaches the
+    console, never a page, but carries a sentence as every failure does."""
+
+    def __init__(self, port: int) -> None:
+        super().__init__(port)
+        self.slots = {"port": str(port), "name": PORT_VARIABLE}
+
+
+face.SENTENCES[PortHeld] = face.Sentence(
+    "failure.main.PortHeld.what", face.Site.UNCHANGED, "failure.main.PortHeld.next")
+
+
+def port_from(text: str | None) -> int:
+    """The port `text` names, or 0 for the system's choice. ValueError otherwise."""
+    if text is None or text.strip() == "":
+        return 0
+    port = int(text.strip())   # ValueError for anything that is not a number
+    if not 1 <= port <= 65535:
+        raise ValueError(f"{port} is not a port number")
+    return port
 
 
 def _unbundle_environment() -> None:
@@ -196,12 +236,13 @@ def _hold(own: Path) -> BinaryIO | None:
 _HELD = frozenset({errno.EAGAIN, errno.EWOULDBLOCK, errno.EACCES, errno.EDEADLK})
 
 
-def _serve(own: Path) -> int:
+def _serve(own: Path, port: int = 0) -> int:
     """Serve behind the folder's lock until stopped. Where a Linux Update now
     put a new version in place, it then replaces this process (PRESS-0408),
-    once the stop steps have run and the lock is let go."""
+    once the stop steps have run and the lock is let go. `port` 0 lets the
+    system choose; any other is every Face's, restarts included, or PortHeld."""
     updates = updating.Updates()
-    code = _serve_behind_lock(own, updates)
+    code = _serve_behind_lock(own, updates, port)
     if updates.installed is None:
         return code
     program, version = updates.installed
@@ -211,7 +252,7 @@ def _serve(own: Path) -> int:
     return 1
 
 
-def _serve_behind_lock(own: Path, updates: updating.Updates) -> int:
+def _serve_behind_lock(own: Path, updates: updating.Updates, port: int = 0) -> int:
     """PRESS-0013 § 4.5 steps 3 to 6, behind the folder's lock."""
     held = _hold(own)
     if held is None:
@@ -238,7 +279,7 @@ def _serve_behind_lock(own: Path, updates: updating.Updates) -> int:
         # PRESS-0204 § 4.4: one per process. Its Stop is Ctrl+C's way out.
         icon = tray.Tray(_thread.interrupt_main)
         try:
-            return _serve_held(own, updates, icon)
+            return _serve_held(own, updates, icon, port)
         finally:
             icon.close()    # after the last Face's stop steps
             stopped.set()   # the stop steps have run: a closing console may end us
@@ -315,16 +356,18 @@ def _console_handler(on_event: Callable[[int], bool]) -> Callable[[], None]:
     return lambda: windll.kernel32.SetConsoleCtrlHandler(routine, False)
 
 
-def _serve_held(own: Path, updates: updating.Updates, icon: tray.Tray) -> int:
+def _serve_held(own: Path, updates: updating.Updates, icon: tray.Tray,
+                port: int = 0) -> int:
     # `updates` and `icon` are one per process: a restart keeps the update
     # offer and a Later, and does not check again (PRESS-0023 § 4.9), and
     # keeps the one tray icon (PRESS-0204 § 4.4).
-    while _serve_once(own, updates, icon):
+    while _serve_once(own, updates, icon, port):
         print(say("restarting.going.title"))
     return 0
 
 
-def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray) -> bool:
+def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
+                port: int = 0) -> bool:
     """One Face, from start to stop. True where he asked for a restart
     (PRESS-0203): the caller then serves a new one, behind the same lock.
     Each pass opens the site sites.json names now, so opening another site is
@@ -334,7 +377,12 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray) -> bool:
     stopping = threading.Event()
     again = False
     folder = sites.open_site(own)
-    served = face.serve(own, site=folder)
+    try:
+        served = face.serve(own, port=port, site=folder)
+    except OSError as exc:
+        if port:   # a port he named is never swapped for another
+            raise PortHeld(port) from exc
+        raise
     try:
         setup.register(served, folder, own=own)
         github_setup.register(served, folder)

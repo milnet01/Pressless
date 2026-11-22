@@ -2449,6 +2449,14 @@
    "17d11667",
    "Een van die voorkoms se keuses is nie een wat Pressless bied nie, so niks is gestoor nie."
   ],
+  "failure.main.PortHeld.next": [
+   "de9b2831",
+   "Maak daardie program toe, of begin Pressless sonder {name}."
+  ],
+  "failure.main.PortHeld.what": [
+   "6c330b98",
+   "Pressless kon nie op poort {port} begin nie, wat {name} vra: 'n ander program gebruik dit."
+  ],
   "failure.manual.ManualMissing.next": [
    "7757150f",
    "Alles anders werk nog. Laai Pressless weer af om die handleiding terug te kry."
@@ -3988,6 +3996,10 @@
   "main.open_link": [
    "b07fafb2",
    "Maak hierdie skakel in jou blaaier oop: {link}"
+  ],
+  "main.port_unusable": [
+   "343ea1db",
+   "{name} moet 'n poortnommer van 1 tot 65535 wees, maar dit is {value}. Maak dit reg, of begin Pressless sonder {name}."
   ],
   "main.running": [
    "c37fe663",

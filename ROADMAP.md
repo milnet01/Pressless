@@ -8974,11 +8974,17 @@ does not wait on them.
   Source: user-2026-11-21.
   Lanes: face.
 
-- 📋 [PRESS-0431] **A launch from the local web-server manager uses the port it sets.**
+- ✅ [PRESS-0431] **A launch from the local web-server manager uses the port it sets.**
   The released program picks its own port, so the manager shows the
   wrong one. Honour PORT where it is set; a port in use is told
   plainly. The user wants the manager to run the released AppImage,
   to see what a new user sees; run.sh then points at it.
+  Shipped 2026-11-22: the launcher serves the port PRESSLESS_PORT
+  names, restarts included, and says so plainly where it is held. A bare
+  PORT is never read (PRESS-0011 § 8). run.sh runs the program the
+  machine-local ants.pressless.runProgram key names, passing the
+  manager's PORT as PRESSLESS_PORT; unset, it runs the practice copy.
+  Setting the key is the user's step (docs/working-here.md).
   **Layman:** When the web-server manager starts Pressless, Pressless uses the address the manager expects.
   Kind: feature.
   Source: user-2026-11-21.

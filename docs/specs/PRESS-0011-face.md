@@ -6,8 +6,10 @@ no longer opens a browser and loses its `open_browser` parameter; the
 launcher, PRESS-0013 § 4.5, is the one place that opens it. That
 changes a declared surface, so the gate re-armed.
 **Amended 2026-10-02, before implementation** (PRESS-0202): `serve`
-takes an optional `port`, which only the practice copy's start script
-names (§ 3 decision 2, § 4.5, INV-11).
+takes an optional `port`, which the practice copy's start script names
+(§ 3 decision 2, § 4.5, INV-11).
+**Amended 2026-11-22** (PRESS-0431): the packaged launcher names one
+where `PRESSLESS_PORT` is set (§ 3 decision 2, § 8).
 **Amended 2026-10-12 by the user's decision** (PRESS-0245): a spent link
 followed by a browser holding the session goes to the page; any other is
 told to start Pressless again (§ 3 decision 3, § 4.5, INV-5).
@@ -59,11 +61,15 @@ server they sit on and the error contract every page keeps.
    port collides with whatever else holds it. Pressless opens the browser on
    every launch, so nobody bookmarks the address.
    **Amended 2026-10-02 (PRESS-0202, the user's choice that day):** `serve`
-   binds the port its caller names, when it names one. The packaged
-   launcher never names one, so the double-click keeps a port the system
-   chooses. The one caller that does is the practice copy's start script,
-   which passes the `PORT` a local web-server manager sets: a program that
-   starts and stops a server has to know where it listens.
+   binds the port its caller names, when it names one: a program that
+   starts and stops a server has to know where it listens. The practice
+   copy's start script passes the `PORT` a local web-server manager sets.
+   **Amended 2026-11-22 (PRESS-0431, the user's request of 2026-11-21):**
+   the packaged launcher passes `PRESSLESS_PORT` where it is set, to every
+   Face it serves, restarts included. Where that port is held, the launch
+   stops with a sentence saying so, and nothing tries another. `run.sh`
+   passes the manager's `PORT` on under that name. Without it, the
+   double-click keeps a port the system chooses.
 3. **(decided here) Every request carries a secret made at launch.** Without
    it, any page he visits can send requests to the server through his browser.
    **Amended 2026-09-26 (PRESS-0151, decided by the user):** the opening link's
@@ -493,6 +499,8 @@ once the code lands, one mutation per *Breaks when* route.
   test that starts a Face would bind one port whenever the shell exported
   `PORT`, and the double-click would take a fixed port from whatever
   started it. The caller reads its own environment and names the port.
+  The launcher reads `PRESSLESS_PORT`, a name only a starter of Pressless
+  sets, and never a bare `PORT`.
 - **Loopback with no secret.** Any page he visits can send requests to a
   loopback server through his browser, and the `Host` check alone does not
   stop a request whose `Host` is right.

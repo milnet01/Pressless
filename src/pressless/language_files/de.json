@@ -2449,6 +2449,14 @@
    "17d11667",
    "Eine der Auswahlen für das Aussehen gibt es bei Pressless nicht, deshalb wurde nichts gespeichert."
   ],
+  "failure.main.PortHeld.next": [
+   "de9b2831",
+   "Schließe dieses Programm, oder starte Pressless ohne {name}."
+  ],
+  "failure.main.PortHeld.what": [
+   "6c330b98",
+   "Pressless konnte nicht auf Port {port} starten, den {name} verlangt: Ein anderes Programm benutzt ihn."
+  ],
   "failure.manual.ManualMissing.next": [
    "7757150f",
    "Alles andere funktioniert weiter. Lade Pressless noch einmal herunter, um das Handbuch zurückzubekommen."
@@ -3988,6 +3996,10 @@
   "main.open_link": [
    "b07fafb2",
    "Öffne diesen Link in deinem Browser: {link}"
+  ],
+  "main.port_unusable": [
+   "343ea1db",
+   "{name} muss eine Portnummer von 1 bis 65535 sein, ist aber {value}. Korrigiere das, oder starte Pressless ohne {name}."
   ],
   "main.running": [
    "c37fe663",

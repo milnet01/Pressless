@@ -25,6 +25,8 @@ process cannot reach it:
 
 1. The Face listens on 127.0.0.1 at a port the system picks
    (`face.Face.__init__` binds port 0), and nothing writes the port down.
+   A starter that names one through `PRESSLESS_PORT` knows it
+   (PRESS-0431); item 2 still stands between it and the Face.
 2. It admits a request only with the session cookie, which the one-use link
    sets (`face._Handler._dispatch`). The link secret and the cookie live in
    the `Face` object alone.

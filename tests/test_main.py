@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import errno
 import signal
+import socket
 import sys
 import threading
 import urllib.parse
@@ -62,6 +63,8 @@ class _Opened:
     def __init__(self, monkeypatch):
         self.faces = []
         self.links = []
+        # A port named in the shell running the suite would pin every launch.
+        monkeypatch.delenv("PRESSLESS_PORT", raising=False)
         real_serve = main_module.face.serve
 
         def serve(folder, **kwargs):
@@ -486,7 +489,7 @@ def test_a_failure_at_launch_names_no_path(monkeypatch, tmp_path, capsys):
     _store(monkeypatch, Choice("keyring", "SecretService"))
     secret = str(tmp_path / "a-private-path")
 
-    def broken(folder):
+    def broken(folder, port=0):
         raise RuntimeError(secret)
 
     monkeypatch.setattr(main_module, "_serve", broken)
@@ -494,6 +497,87 @@ def test_a_failure_at_launch_names_no_path(monkeypatch, tmp_path, capsys):
     out, err = capsys.readouterr()
     assert "RuntimeError" in out
     assert secret not in out + err and "Traceback" not in out + err
+
+
+@pytest.mark.parametrize("text, port", [(None, 0), ("", 0), (" ", 0),
+                                        ("1", 1), ("8471", 8471), ("65535", 65535)])
+def test_a_port_is_read_from_port(text, port):
+    assert main_module.port_from(text) == port
+
+
+@pytest.mark.parametrize("text", ["0", "65536", "-1", "eighty", "84.71"])
+def test_anything_but_a_port_is_refused(text):
+    with pytest.raises(ValueError):
+        main_module.port_from(text)
+
+
+def _free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+def _launch(monkeypatch, tmp_path):
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    return _Opened(monkeypatch)
+
+
+def _port_of(face) -> int:
+    return urllib.parse.urlsplit(face.url).port
+
+
+def test_the_port_pressless_port_names_is_served(monkeypatch, tmp_path):
+    """PRESS-0431: the local web-server manager starts Pressless on a port it
+    knows. Breaks when the launcher ignores PRESSLESS_PORT, or a restart
+    moves to another port."""
+    opened = _launch(monkeypatch, tmp_path)
+    port = _free_port()
+    monkeypatch.setenv("PRESSLESS_PORT", str(port))
+    passes = iter([True, False])
+    monkeypatch.setattr(main_module, "_wait", lambda restart: next(passes))
+
+    assert main_module.main([]) == 0
+    assert [_port_of(face) for face in opened.faces] == [port, port]
+
+
+def test_a_bare_port_variable_is_not_read(monkeypatch, tmp_path):
+    """PRESS-0011 § 8: a PORT some other tool exported must not pin the
+    double-click's port."""
+    opened = _launch(monkeypatch, tmp_path)
+    port = _free_port()
+    monkeypatch.setenv("PORT", str(port))
+
+    assert main_module.main([]) == 0
+    assert _port_of(opened.faces[0]) != port
+
+
+def test_a_held_port_is_told_plainly(monkeypatch, tmp_path, capsys):
+    """PRESS-0431. Breaks when a held port reads as "could not start
+    (OSError)", or Pressless moves to a port the manager does not watch."""
+    opened = _launch(monkeypatch, tmp_path)
+    with socket.socket() as holder:
+        holder.bind(("127.0.0.1", 0))
+        holder.listen()
+        port = holder.getsockname()[1]
+        monkeypatch.setenv("PRESSLESS_PORT", str(port))
+        assert main_module.main([]) == 1
+    out = capsys.readouterr().out
+    told = main_module.face.sentence_for(main_module.PortHeld(port), publishing=False)
+    assert f"{told.what} {told.next}" in out and str(port) in told.what
+    assert opened.faces == [] and opened.links == []
+
+
+@pytest.mark.parametrize("text", ["0", "65536", "eighty"])
+def test_a_port_that_is_no_port_is_refused(monkeypatch, tmp_path, capsys, text):
+    opened = _launch(monkeypatch, tmp_path)
+    monkeypatch.setenv("PRESSLESS_PORT", text)
+
+    assert main_module.main([]) == 2
+    assert main_module.say("main.port_unusable", name="PRESSLESS_PORT",
+                           value=text) in capsys.readouterr().out
+    assert opened.faces == []
 
 
 def test_the_double_click_refreshes_the_shortcuts(monkeypatch, tmp_path, capsys):
@@ -571,7 +655,7 @@ def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys
 
     for number, site in ((0, own / "sites" / "site-1"), (1, own / "sites" / "site-2")):
         made = [call for call in calls if call[0] == "face"][number]
-        assert made[1] == own and made[2] == {"site": site}, made
+        assert made[1] == own and made[2] == {"port": 0, "site": site}, made
         for name in _SITE_PARTS:
             assert [c[1] for c in calls if c[0] == name][number] == site, name
         for name in _OWN_PARTS:

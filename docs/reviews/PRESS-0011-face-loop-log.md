@@ -16,3 +16,4 @@
 | amend | 2026-11-17 | none — PRESS-0372; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5: a wrapped page's policy is PRESS-0012 § 4.3's, which now also limits styles, fonts and pictures. |
 | amend | 2026-11-17 | none — PRESS-0397; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: `site_name` and `live_address` raise no notice, so they stay outside `capture`; a test fails if either starts to. |
 | amend | 2026-11-18 | none — PRESS-0204; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5: `fresh_link` replaces the secret and re-arms the link; the session stays. PRESS-0204 INV-1 and INV-2 test it. |
+| amend | 2026-11-22 | none — PRESS-0431; no reviewer dispatched | 0 | 0 | 0 | 0 | § 3 decision 2, § 8: the launcher serves the port `PRESSLESS_PORT` names, never a bare `PORT`; tests/test_main.py's port tests cover it. |
