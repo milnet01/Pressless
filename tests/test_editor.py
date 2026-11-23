@@ -1083,6 +1083,136 @@ def test_press_says_publishing_the_instant_it_is_clicked(answer, tmp_path):
         assert seen["off"] is False
 
 
+# PRESS-0346 § 4.5: the visual view's model, driven through a frame with
+# just enough of a document to pair, pick, type and remove. The case to run
+# comes from the command line.
+_VISUAL_HARNESS = _STAND_IN + r"""
+class El {
+  constructor(doc, localName, own = "") {
+    Object.assign(this, {ownerDocument: doc, localName, own, children: [], parent: null,
+                         attrs: {}});
+  }
+  get textContent() { return this.own + this.children.map((c) => c.textContent).join(""); }
+  set textContent(text) { this.own = text; this.children = []; }
+  get innerHTML() { return this.textContent; }
+  set innerHTML(text) { this.textContent = text; }
+  append(...added) {
+    for (const e of added) { e.remove(); e.parent = this; this.children.push(e); }
+  }
+  appendChild(e) { this.append(e); }
+  remove() {
+    if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1);
+    this.parent = null;
+  }
+  after(e) { e.remove(); e.parent = this.parent;
+             this.parent.children.splice(this.parent.children.indexOf(this) + 1, 0, e); }
+  before(e) { e.remove(); e.parent = this.parent;
+              this.parent.children.splice(this.parent.children.indexOf(this), 0, e); }
+  contains(e) { for (; e; e = e.parent) if (e === this) return true; return false; }
+  setAttribute(name, value) { this.attrs[name] = value; }
+  removeAttribute(name) { delete this.attrs[name]; }
+  getAttribute(name) { return name in this.attrs ? this.attrs[name] : null; }
+  focus() {}
+  querySelector(tag) {
+    for (const c of this.children) {
+      const found = c.localName === tag ? c : c.querySelector(tag);
+      if (found) return found;
+    }
+    return null;
+  }
+}
+const kase = process.argv[2];
+const paragraph = (marks) => ({kind: "paragraph", typed: true, marks});
+const doc = {readyState: "complete", body: {}, URL: "http://face/preview/", handlers: {},
+             head: {appendChild() {}},
+             createElement: (name) => new El(doc, name),
+             addEventListener(type, handler) { this.handlers[type] = handler; },
+             getSelection: () => ({rangeCount: 0, collapse() {}})};
+const holder = new El(doc, "div");
+holder.setAttribute("class", "entry-body");
+const blocks = kase === "reshaped-list"
+  ? [paragraph("one"), {kind: "list", typed: false, marks: "- a"}, paragraph("three")]
+  : [paragraph("one"), paragraph("two")];
+holder.append(...blocks.map((block) => new El(doc, "p", block.marks)));
+doc.querySelectorAll = () => kase === "no-body" ? [] : [holder];
+Object.assign(element("#preview"), {contentDocument: doc,
+                                     contentWindow: {scrollY: 0, scrollTo() {}}});
+form.dataset.view = "visual";
+element("#blocks").textContent = JSON.stringify({
+  blocks, body_class: "entry-body", link: "^https?://",
+  colours: {named: {}, picked: null}, originals: "/originals/"});
+const panel = element("#panel");
+panel.querySelector = (selector) => element(selector);
+panel.querySelectorAll = () => [];
+globalThis.Node = {ELEMENT_NODE: 1};
+window.presslessTyping = {text: (t) => t, inline: (el) => el.textContent};
+window.presslessEntryPage = {changed() {}, switchTo() {}, stop() {}};
+%s
+const entry = window.presslessEntry;
+const [one, two] = holder.children;
+const pick = (el) => doc.handlers.click({target: el, preventDefault() {}});
+const type = (el, words) => { el.textContent = words; doc.handlers.input({target: el}); };
+const mark = (value) => panel.handlers.input({stopPropagation() {},
+                                             target: {dataset: {field: "marks"}, value}});
+const posts = [];
+const post = () => { const p = entry.post(); posts.push({blocks: p.blocks, removed: p.removed});
+                     return p; };
+if (kase === "removed") {
+  pick(two);
+  type(two, "");
+  const first = post();
+  element("[data-act=remove]").handlers.click();
+  first.saved({outline: [paragraph("one")], preview: ""});
+} else if (kase === "no-body") {
+  element("#add-kind").value = "paragraph";
+  element("[data-act=add]").handlers.click();
+} else if (kase === "reshaped-list") {
+  pick(one); mark("x\n\ny");
+  pick(holder.children[2]); mark("z");
+  const first = post();
+  pick(one); mark("x2");
+  first.saved({outline: [paragraph("x"), paragraph("y"), blocks[1], paragraph("z")],
+               preview: "/preview/a.html"});
+} else {
+  pick(one); mark("x\n\ny");
+  const first = post();
+  if (kase === "reshaped-typed") { pick(two); type(two, "two typed"); }
+  first.saved({outline: [paragraph("x"), paragraph("y"), paragraph("two")],
+               preview: "/preview/a.html"});
+}
+post();
+process.stdout.write(JSON.stringify(posts));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize(("case", "last"), [
+    ("removed", {"blocks": [{"keep": 0}], "removed": []}),
+    ("no-body", {"blocks": [{"keep": 0}, {"keep": 1}], "removed": []}),
+    ("reshaped", {"blocks": [{"keep": 0}, {"keep": 1}, {"keep": 2}], "removed": []}),
+    ("reshaped-typed", {"blocks": [{"marks": "x\n\ny"}, {"paragraph": "two typed"}],
+                        "removed": [0, 1, 2]}),
+    ("reshaped-list", {"blocks": [{"marks": "x2"}, {"marks": "- a"}, {"marks": "z"}],
+                       "removed": [0, 1, 2, 3]}),
+])
+def test_a_visual_save_keeps_saving_what_the_page_shows(case, last, tmp_path):
+    """PRESS-0346 § 4.5: each block index is named once, and what is typed
+    while a save is out is posted by the next. Breaks when a block emptied by
+    one save and removed while it was out is named again by the next, which
+    the Face refuses; when a block added while the preview has no body throws
+    and stops saving; or when a marks box saved as more blocks throws away
+    words typed meanwhile in another block, or posts a list between two
+    marks boxes as a paragraph."""
+    harness = tmp_path / "visual.js"
+    harness.write_text(_VISUAL_HARNESS % editor._VISUAL_SCRIPT,
+                       encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), case], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    seen = [{"blocks": json.loads(p["blocks"]), "removed": json.loads(p["removed"])}
+            for p in json.loads(run.stdout)]
+    assert seen[-1] == last
+
+
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_an_edit_during_an_address_change_is_saved_at_the_new_address(tmp_path):
     """PRESS-0309: typing while /address runs posts no save beside it, which

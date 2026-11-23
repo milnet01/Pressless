@@ -1691,8 +1691,10 @@ _VISUAL_SCRIPT = r"""
   const typeable = (item) => item && item.kind !== "photo" && item.typed && !item.edited;
 
   // ---- what is posted (§ 4.5) ------------------------------------------
+  // A block added while the frame has no body has nothing typed in it yet.
   const empty = (item) => item.kind === "photo" ? !item.name
-    : typeable(item) && item.el !== null && !item.el.textContent.trim();
+    : typeable(item) && (item.el === null ? item.index === null
+                                          : !item.el.textContent.trim());
   // A quotation's paragraphs; words typed loose in it, as a browser may
   // leave them, are a paragraph of their own.
   const quoted = (element) => {
@@ -1723,15 +1725,16 @@ _VISUAL_SCRIPT = r"""
     const gone = removed.filter((item) => item.index !== null);
     const named = [...gone.map((item) => item.index), ...model
       .filter((item) => item.changed && item.index !== null).map((item) => item.index)];
+    const marked = sent.filter((item) => item.edited);
     return {
       blocks: JSON.stringify(sent.map(itemOf)),
       removed: JSON.stringify(named),
       saved(reply) {
-        removed = removed.filter((item) => !gone.includes(item));
+        // The server removed every block named; one removed while this save
+        // was out keeps a place only where it was sent.
+        removed = removed.filter((item) => sent.includes(item));
         if (reply.outline.length !== sent.length) {
-          // A marks box written as more or fewer blocks: open the body afresh.
-          open(reply.outline);
-          rebuild(reply.preview);
+          reshaped(reply, sent, marked, revs);
           return;
         }
         model.forEach((item) => { if (!sent.includes(item)) item.index = null; });
@@ -1746,6 +1749,49 @@ _VISUAL_SCRIPT = r"""
         if (reply.preview) rebuild(reply.preview);
       },
     };
+  }
+
+  // A marks box written as more or fewer blocks. Blocks sent before the
+  // first marks box and after the last keep their place, shifted; the span
+  // between is unknown. With nothing changed since the save, the body opens
+  // afresh. Otherwise what was typed meanwhile is kept: the span is posted
+  // again from the page, and the blocks it became are removed.
+  function reshaped(reply, sent, marked, revs) {
+    const since = (item) => revs.get(item) !== item.rev;
+    const first = sent.findIndex((item) => marked.includes(item));
+    const last = sent.findLastIndex((item) => marked.includes(item));
+    const grown = reply.outline.length - sent.length;
+    const place = (item) => {
+      const at = sent.indexOf(item);
+      if (at < 0 || first < 0 || (at >= first && at <= last)) return null;
+      return at < first ? at : at + grown;
+    };
+    const span = model.filter((item) => sent.includes(item) && place(item) === null);
+    if (!model.some(since)
+        || span.some((item) => item.changed && typeable(item) && item.el === null)) {
+      open(reply.outline);
+      rebuild(reply.preview);
+      return;
+    }
+    removed = removed.filter((item) => place(item) !== null);
+    removed.forEach((item) => { item.index = place(item); });
+    for (const item of model) {
+      item.index = place(item);
+      if (item.index === null) {
+        // Posted again as its marks, unless what is posted is on the page.
+        if (span.includes(item) && (!item.changed || (item.kind !== "photo"
+                                                      && !typeable(item)))) item.edited = true;
+        item.changed = true;
+      } else if (!since(item)) {
+        const block = reply.outline[item.index];
+        Object.assign(item, {changed: false, edited: false, kind: block.kind,
+                             typed: block.typed, marks: block.marks});
+      }
+    }
+    const from = first < 0 ? 0 : first, to = first < 0 ? reply.outline.length : last + grown + 1;
+    reply.outline.slice(from, to).forEach((block, at) => removed.push(node(block, from + at)));
+    if (picked) fill();
+    changed();
   }
 
   // ---- the frame (§ 4.2) -----------------------------------------------
