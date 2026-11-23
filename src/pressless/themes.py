@@ -208,7 +208,7 @@ def declarations(theme: Theme) -> str:
     return " ".join(f"--{name}: {colour};" for name, colour in pairs)
 
 
-def preview(dark: bool) -> str:
+def preview_dimming(dark: bool) -> str:
     """PRESS-0187: the preview shows his site's own colours, so a dark look
     dims it rather than let a light site glare. The switch that brings the
     true colours back shows only where there is dimming."""
@@ -227,7 +227,7 @@ def css() -> str:
         shadow = "rgba(0, 0, 0, .45)" if theme.dark else "rgba(60, 40, 10, .10)"
         scheme = "dark" if theme.dark else "light"
         rules.append(f':root[data-theme="{theme.key}"] {{ color-scheme: {scheme}; '
-                     f"{values} --shadow: {shadow}; {preview(theme.dark)} }}")
+                     f"{values} --shadow: {shadow}; {preview_dimming(theme.dark)} }}")
     rules.extend(f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}'
                  for size in SIZES if size != NO_ZOOM)
     return "\n".join(rules)

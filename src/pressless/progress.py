@@ -25,8 +25,8 @@ class Counted:
     key: str
     done: int = 0
     total: int | None = None
-    size: int = 0
-    whole: int | None = None
+    bytes_done: int = 0
+    bytes_total: int | None = None
 
 
 # One record per running job, keyed by its thread. _LOCK is held only to read
@@ -51,13 +51,13 @@ def job() -> Iterator[None]:
 
 
 def count(key: str, done: int = 0, total: int | None = None,
-          size: int = 0, whole: int | None = None) -> None:
+          bytes_done: int = 0, bytes_total: int | None = None) -> None:
     """The calling thread's record now says `key` with these numbers. Nothing
     happens on a thread holding no record."""
     me = threading.get_ident()
     with _LOCK:
         if me in _held:
-            _held[me] = (next(_ticks), Counted(key, done, total, size, whole))
+            _held[me] = (next(_ticks), Counted(key, done, total, bytes_done, bytes_total))
 
 
 def now() -> Counted | None:

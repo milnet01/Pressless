@@ -114,9 +114,10 @@ def test_fetch_and_publish_count_every_blob(tmp_path):
         publisher.fetch_state(_settings(), "a key", tmp_path / "fetched",
                               ("index.html", "about.html"), "base-commit-sha", fetching)
         fetched = progress.now()
-    assert [(c.done, c.total, c.whole) for c in fetching.seen] == [(0, 2, 400), (1, 2, 400)]
+    assert [(c.done, c.total, c.bytes_total) for c in fetching.seen] == [(0, 2, 400), (1, 2, 400)]
     assert fetched.key == "progress.downloading"
-    assert (fetched.done, fetched.total, fetched.size, fetched.whole) == (2, 2, 400, 400)
+    assert (fetched.done, fetched.total,
+            fetched.bytes_done, fetched.bytes_total) == (2, 2, 400, 400)
 
     site = tmp_path / "site"
     site.mkdir()
@@ -128,9 +129,9 @@ def test_fetch_and_publish_count_every_blob(tmp_path):
     with progress.job():
         publisher.publish(_settings(untouchable=()), site, "a key", "A message.", sending)
         sent = progress.now()
-    assert [(c.key, c.done, c.total, c.whole) for c in sending.seen] == [
+    assert [(c.key, c.done, c.total, c.bytes_total) for c in sending.seen] == [
         ("progress.sending", 0, 2, 8), ("progress.sending", 1, 2, 8)]
-    assert (sent.done, sent.total, sent.size, sent.whole) == (2, 2, 8, 8)
+    assert (sent.done, sent.total, sent.bytes_done, sent.bytes_total) == (2, 2, 8, 8)
 
 
 # ------------------------------------------------------------------ INV-5 ---

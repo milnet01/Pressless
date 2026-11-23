@@ -8,9 +8,10 @@ prose; the sentences live here, keyed by the failure's class, and their words
 in the words table (PRESS-0242).
 
 Nothing here keeps state between requests (`docs/design.md` § State) beyond
-what the server itself needs: the secret made at launch, whether its link is
-spent, the pages later items add, the log it holds open, and the chosen theme
-and text size, which a request may change.
+what the server itself needs: its link's secret, which `fresh_link` replaces,
+and whether that link is spent; the session a restart hands on, and whether a
+tab came back; the pages later items add; the log it holds open; and the
+choices a request may change: theme, text size and language.
 """
 
 from __future__ import annotations
@@ -351,7 +352,7 @@ def details_for(failure: BaseException) -> str:
     return text
 
 
-def _size(count: int) -> str:
+def _said_bytes(count: int) -> str:
     """`count` bytes in KB, MB or GB to one decimal, marked as the language
     in use marks a decimal: a comma wherever it marks thousands otherwise."""
     value, unit = count / 1024, "KB"
@@ -373,17 +374,17 @@ def progress_said(counted: progress.Counted) -> dict:
                          total=words.number(counted.total)))
     elif counted.done:
         parts.append(say("progress.so_far", done=words.number(counted.done)))
-    if counted.whole is not None:
-        parts.append(say("progress.size_of", size=_size(counted.size),
-                         whole=_size(counted.whole)))
-    elif counted.size:
-        parts.append(_size(counted.size))
+    if counted.bytes_total is not None:
+        parts.append(say("progress.size_of", size=_said_bytes(counted.bytes_done),
+                         whole=_said_bytes(counted.bytes_total)))
+    elif counted.bytes_done:
+        parts.append(_said_bytes(counted.bytes_done))
     what = say(counted.key)
     said = (say("progress.line", what=what, parts=", ".join(parts)) if parts
             else say("progress.bare", what=what))
     fraction = None
-    if counted.whole:
-        fraction = counted.size / counted.whole
+    if counted.bytes_total:   # truthy, not `is not None`: a total of 0 counts files
+        fraction = counted.bytes_done / counted.bytes_total
     elif counted.total:
         fraction = counted.done / counted.total
     return {"running": True, "said": said, "fraction": fraction}
@@ -1073,6 +1074,9 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   overflow: hidden; text-overflow: ellipsis; }
 .face #editor > #photograph-missing { min-height: 4.65em; max-height: 4.65em;
   overflow-y: auto; margin-top: 0; }
+/* A hidden note here keeps its space, so nothing beside a control moves;
+   the same for .states and #standing below. #panel's hidden rows are
+   dropped instead. */
 .face #photograph-missing[hidden] { display: block; visibility: hidden; }
 .face #address[hidden] { display: inline; visibility: hidden; }
 .face .sign-in-slot { min-height: 6.5em; }
@@ -1215,9 +1219,9 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 
 _STYLE = (
     f":root {{ color-scheme: light dark; {themes.declarations(themes.find('light'))}"
-    f" --shadow: rgba(60, 40, 10, .10); {themes.preview(False)} }}\n"
+    f" --shadow: rgba(60, 40, 10, .10); {themes.preview_dimming(False)} }}\n"
     f"@media (prefers-color-scheme: dark) {{ :root {{ {themes.declarations(themes.find('dark'))}"
-    f" --shadow: rgba(0, 0, 0, .45); {themes.preview(True)} }} }}\n"
+    f" --shadow: rgba(0, 0, 0, .45); {themes.preview_dimming(True)} }} }}\n"
     + themes.css() + _SHAPES
 )
 
@@ -1477,7 +1481,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def setup(self) -> None:
         # A client that declares a body and stops sending holds this thread
-        # until the stall limit, not for ever. Read here, per connection.
+        # until the stall limit, not for ever. Read here, per connection, so
+        # a test that shortens _STALL_SECONDS reaches the next one.
         self.timeout = _STALL_SECONDS
         super().setup()
 
@@ -1959,8 +1964,8 @@ _POLL_SECONDS = 0.5
 # the browser is on this machine.
 _STALL_SECONDS = 60
 
-# The longest body the theme, text-size and true-colours routes take: the
-# longest theme key with room to spare. A longer body is no choice of any.
+# The longest body the theme, text-size, language and true-colours routes
+# take: the longest theme key with room to spare. A longer body is no choice of any.
 _CHOICE_LIMIT = 64
 
 # The ceiling on a registered page's POST body, read whole into memory. It sits

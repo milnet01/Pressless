@@ -1,10 +1,10 @@
 """A small JSON file Pressless keeps for itself, marked with its version
 (PRESS-0398).
 
-theme.json, choices.json, backups.json, sites.json, updates.json and the
-starter's record of what it filled are each one JSON object carrying
-`"version": 1`. They are read and written here, so they read alike: a file
-this Pressless did not write reads as no fields, never as a guess at them.
+Every small JSON file Pressless keeps for itself is one object carrying
+`"version": 1`; a search for `json_record.read` and `json_record.write` finds
+them all. They are read and written here, so they read alike: a file this
+Pressless did not write reads as no fields, never as a guess at them.
 
 It imports no part of Pressless but `safe_write`, which imports none, so a
 module whose import rule admits `safe_write` reaches nothing else through it.
