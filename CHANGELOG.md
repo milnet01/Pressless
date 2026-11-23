@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Pressless can start on a port you choose** (PRESS-0431)
+  Set `PRESSLESS_PORT` and Pressless serves on that port, restarts
+  included. Where another program already holds it, Pressless says so
+  plainly.
+
 ### Changed
 
 - **A restart or an update carries on in the same tab** (PRESS-0428)
@@ -19,6 +26,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   working, and the tab you pressed it in goes to the Your site screen by
   itself. A new tab opens only where none of them comes back. Opening
   another site still opens a new tab.
+
+- **Send my log says a log can hold Google's error message** (PRESS-0438)
+  If Google refused a request, the log keeps Google's own short error
+  message, which can name your Analytics property or YouTube channel. The
+  box that asks before sending now says so, in every language.
 
 ## [1.1.1] - 2026-11-21
 

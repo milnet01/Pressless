@@ -8843,104 +8843,11 @@ icon reaches it once the browser is closed.
   Source: user-request-2026-10-07.
   Lanes: Face, Editor, Setup.
 
-## 1.2.0 — music figures
+## 1.2.0 — it carries on where you were
 
-No new sign. It widens S11 to the music services, where they publish
-figures at all (PRESS-0080). Its items are parked by the user and are
-not built until the user says so; they sit after 1.0.0 so that 1.0.0
-does not wait on them.
-
-- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
-  What this fetches, and whether it can fetch anything, is PRESS-0080's
-  to answer first. The doubt is specific: Spotify's public API is a
-  catalogue API, and the stream and listener figures an artist actually
-  wants live in Spotify for Artists behind a sign-in.
-
-  So there are two shapes this could take and PRESS-0080 picks one. If
-  an API reaches the figures, this is PRESS-0019's shape again. If it
-  does not, the honest version reads an export he downloads himself,
-  shows the figures dated, and says on the dashboard when they were last
-  refreshed -- which is worth building and is not what was asked for, so
-  it goes back to him before it is built.
-
-  What is reachable without a sign-in either way, and may be enough:
-  follower count and Spotify's own popularity score for each release.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): whether this is buildable as asked is
-  PRESS-0080's to answer, and this item's own doubt is that the figures
-  live behind a sign-in with no public API. Placing it under a version
-  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
-  and goes back to the user if the honest version reads an export
-  instead.
-  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
-  route exists, it leaves the milestone rather than holding it up.
-  Parked by the user 2026-11-01: the writer is focusing on YouTube for
-  now. It waits on nobody; look again when the user raises it. The route
-  to offer then is a CSV the artist downloads, one reader, built on a
-  real sample, as the columns are not documented.
-  Kept in 1.2.0 by the user 2026-11-22, still parked: 1.2.0 waits for
-  it.
-  **Layman:** The dashboard also shows how his music is doing on Spotify.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
-  Same shape as the Spotify item and the same doubt, one step worse:
-  Apple's Music API is a catalogue API, and Apple Music for Artists --
-  where the play figures are -- is believed to publish no API at all.
-  PRESS-0080 confirms or refutes that.
-
-  If it publishes none, the export route is the only one, and this item
-  becomes reading a file he downloads rather than talking to Apple.
-  That is a different feature from the one asked for, so it goes back to
-  him rather than being substituted quietly.
-
-  Apple's catalogue API also needs a developer token signed with a
-  private key from a paid developer account, which is a cost the other
-  three do not carry. Price that before committing to it.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
-  for Artists publishes anything is PRESS-0080's to answer, and the paid
-  developer account is a cost to price before committing. It joins 0.9.0
-  only if a route exists.
-  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
-  route exists, it leaves the milestone rather than holding it up.
-  Parked with PRESS-0082 by the user 2026-11-01.
-  Kept in 1.2.0 by the user 2026-11-22, still parked: 1.2.0 waits for
-  it.
-  **Layman:** The dashboard also shows how his music is doing on Apple Music.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
-  The least likely of the four to be buildable as asked. Amazon Music
-  for Artists is believed to publish no public API whatever, so unlike
-  Spotify and Apple there may be no catalogue surface to fall back on
-  either. PRESS-0080 settles it.
-
-  If that holds, the only routes are an export he downloads, or nothing
-  -- and "nothing" is a real outcome to report rather than a failure to
-  work around. Do not reach for scraping the artist dashboard: it needs
-  his sign-in, it breaks whenever the page changes, and it is the kind
-  of thing that gets an account suspended.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): same reason as PRESS-0082, and this is the
-  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
-  real outcome to report rather than work to schedule.
-  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
-  route exists, it leaves the milestone rather than holding it up.
-  Parked with PRESS-0082 by the user 2026-11-01.
-  Kept in 1.2.0 by the user 2026-11-22, still parked: 1.2.0 waits for
-  it.
-  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
+No new sign. Pressless comes back in the same tab after an update or a
+restart, shows that it is working and how far a long job has got, and
+starts the way the local web-server manager asks.
 
 - ✅ [PRESS-0428] **After an update or a restart, Pressless comes back in the tab it was in.**
   The user, 2026-11-21, during the real 1.0.2 to 1.1.0 update on
@@ -9183,6 +9090,107 @@ A site can be published to a free host other than GitHub Pages.
   Kind: enhancement.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
+
+## 1.4.0 — music figures
+
+No new sign. It widens S11 to the music services, where they publish
+
+figures at all (PRESS-0080). Its items are parked by the user and are
+
+not built until the user says so; they sit last so that no other
+
+version waits on them.
+
+- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
+  What this fetches, and whether it can fetch anything, is PRESS-0080's
+  to answer first. The doubt is specific: Spotify's public API is a
+  catalogue API, and the stream and listener figures an artist actually
+  wants live in Spotify for Artists behind a sign-in.
+
+  So there are two shapes this could take and PRESS-0080 picks one. If
+  an API reaches the figures, this is PRESS-0019's shape again. If it
+  does not, the honest version reads an export he downloads himself,
+  shows the figures dated, and says on the dashboard when they were last
+  refreshed -- which is worth building and is not what was asked for, so
+  it goes back to him before it is built.
+
+  What is reachable without a sign-in either way, and may be enough:
+  follower count and Spotify's own popularity score for each release.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): whether this is buildable as asked is
+  PRESS-0080's to answer, and this item's own doubt is that the figures
+  live behind a sign-in with no public API. Placing it under a version
+  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
+  and goes back to the user if the honest version reads an export
+  instead.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  Parked by the user 2026-11-01: the writer is focusing on YouTube for
+  now. It waits on nobody; look again when the user raises it. The route
+  to offer then is a CSV the artist downloads, one reader, built on a
+  real sample, as the columns are not documented.
+  Moved to 1.4.0 by the user 2026-11-23, still parked, so 1.2.0 could
+  release. The user has asked the writer whether a CSV he downloads and
+  Pressless imports is the route he wants.
+  **Layman:** The dashboard also shows how his music is doing on Spotify.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
+  Same shape as the Spotify item and the same doubt, one step worse:
+  Apple's Music API is a catalogue API, and Apple Music for Artists --
+  where the play figures are -- is believed to publish no API at all.
+  PRESS-0080 confirms or refutes that.
+
+  If it publishes none, the export route is the only one, and this item
+  becomes reading a file he downloads rather than talking to Apple.
+  That is a different feature from the one asked for, so it goes back to
+  him rather than being substituted quietly.
+
+  Apple's catalogue API also needs a developer token signed with a
+  private key from a paid developer account, which is a cost the other
+  three do not carry. Price that before committing to it.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
+  for Artists publishes anything is PRESS-0080's to answer, and the paid
+  developer account is a cost to price before committing. It joins 0.9.0
+  only if a route exists.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  Parked with PRESS-0082 by the user 2026-11-01.
+  Moved to 1.4.0 with PRESS-0082 by the user 2026-11-23, still parked.
+  **Layman:** The dashboard also shows how his music is doing on Apple Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
+  The least likely of the four to be buildable as asked. Amazon Music
+  for Artists is believed to publish no public API whatever, so unlike
+  Spotify and Apple there may be no catalogue surface to fall back on
+  either. PRESS-0080 settles it.
+
+  If that holds, the only routes are an export he downloads, or nothing
+  -- and "nothing" is a real outcome to report rather than a failure to
+  work around. Do not reach for scraping the artist dashboard: it needs
+  his sign-in, it breaks whenever the page changes, and it is the kind
+  of thing that gets an account suspended.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082, and this is the
+  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
+  real outcome to report rather than work to schedule.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  Parked with PRESS-0082 by the user 2026-11-01.
+  Moved to 1.4.0 with PRESS-0082 by the user 2026-11-23, still parked.
+  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
 
 ## Done outside a version
 
@@ -14965,4 +14973,4 @@ add any file (0.10.0), bring an existing site in (0.11.0), widen the
 visitor figures and add likes (0.12.0), find their way around without
 being technical (0.13.0), bring in more kinds of site (0.14.0), and let
 an AI helper drive it (0.15.0). 1.0.0 freezes the format; the writer's
-language and a tray icon follow in 1.1.0, and music figures in 1.2.0. Every open item sits in a version (user, 2026-11-03).
+language and a tray icon follow in 1.1.0, and music figures in 1.4.0. Every open item sits in a version (user, 2026-11-03).
