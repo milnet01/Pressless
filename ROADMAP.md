@@ -9079,7 +9079,7 @@ starts the way the local web-server manager asks.
 
 Every valid finding of the review of the code changed since 1.0.0-4: review-code, review-code --performance, review-tests, review-readability and verify-delivery. Filed by subject, and fixed before 1.3.0's work starts. The review records stay outside this public repository, in the gitignored local-archive/reviews/.
 
-- 📋 [PRESS-0440] **Second-round review fixes: the Face core (server, log, themes, progress).**
+- 🚧 [PRESS-0440] **Second-round review fixes: the Face core (server, log, themes, progress).**
   Subject 01. Review types: Codebase, Test.
   Findings: review-code lane-01, review-readability lane-01, and the
   performance and test reviews' findings on these files and their tests.
@@ -9147,12 +9147,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Findings: review-code lane-07, review-readability lane-07, and the
   performance and test reviews' findings on these files and their tests.
   Among them: tests that make symlinks without _require_symlinks.
+  Also from verify-delivery's headless drive (2026-11-23): a site started
+  blank cannot publish its first page, against 1.1.0's "A site started
+  blank can publish its pages" (PRESS-0423). publishing._guard refuses
+  with NothingToPublish: the journal stays on after a blank setup, no
+  entry exists, and the site folder was never built into. The suite
+  misses it because test_pages' blank-site test seeds a published entry.
   **Layman:** Bug fixes and tidy-ups in sending your site to GitHub.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0447] **Second-round review fixes: setup, settings and the key store.**
+- 🚧 [PRESS-0447] **Second-round review fixes: setup, settings and the key store.**
   Subject 08. Review types: Codebase, Test.
   Findings: review-code lane-08, review-readability lane-08, and the
   performance and test reviews' findings on these files and their tests.
@@ -9237,7 +9243,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0456] **Second-round review fixes: screen words, the manual and languages.**
+- 🚧 [PRESS-0456] **Second-round review fixes: screen words, the manual and languages.**
   Subject 17. Review types: Codebase, Test.
   Findings: review-code lane-17, review-readability lane-17, and the
   performance and test reviews' findings on these files and their tests.
