@@ -1545,6 +1545,66 @@ def test_a_media_zip_that_cannot_be_written_keeps_what_it_filled(tmp_path, monke
     assert not list(media.rglob(".*.part"))
 
 
+def _cut_partway(files: dict[str, bytes], *, blanked: bool = False) -> bytes:
+    """A ZIP of `files`, compressed, whose last member's data stops halfway,
+    as a download that lost part of itself does. Its directory still follows,
+    so the members before the cut read whole. `blanked` keeps the member's
+    length and blanks its second half instead, so the damage shows only as
+    it is read."""
+    import io
+    import struct
+    import zipfile
+
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as made:
+        for name, content in files.items():
+            made.writestr(name, content)
+    whole = out.getvalue()
+    last = zipfile.ZipFile(io.BytesIO(whole)).infolist()[-1]
+    at = last.header_offset
+    name_size, extra_size = struct.unpack("<HH", whole[at + 26:at + 30])
+    start = at + 30 + name_size + extra_size
+    cut = start + last.compress_size // 2
+    if blanked:
+        end = start + last.compress_size
+        return whole[:cut] + bytes(end - cut) + whole[end:]
+    # The directory's place is in the last 22 bytes, at their 16th; it moves
+    # back to just after the cut.
+    end = len(whole) - 22
+    directory = struct.unpack("<I", whole[end + 16:end + 20])[0]
+    moved = whole[:cut] + whole[directory:]
+    end = len(moved) - 22
+    return moved[:end + 16] + struct.pack("<I", cut) + moved[end + 20:]
+
+
+# Data that does not compress away, so half of it is a real cut.
+_UNEVEN = bytes((i * 7919 + i // 13) % 256 for i in range(40_000))
+
+
+@pytest.mark.parametrize("blanked", [False, True], ids=["cut short", "blanked"])
+def test_a_media_zip_cut_partway_keeps_what_it_filled(tmp_path, blanked):
+    """PRESS-0125 § 4.4 (PRESS-0484): a media download whose data stops
+    partway, or is blanked from there, stops the unpacking as damaged, and
+    names the places filled before the damage, which stay filled.
+
+    Breaks when the damage escapes as an unexpected error, or reads as a
+    download that filled nothing, and the places it filled are lost."""
+    from pressless_import import MediaDamaged, unpack_media
+
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    made.write_bytes(_cut_partway({"2013/06/a.jpg": b"a", "2013/06/b.jpg": _UNEVEN},
+                                 blanked=blanked))
+
+    with pytest.raises(MediaDamaged) as stopped:
+        unpack_media(made, media, ("2013/06/a.jpg", "2013/06/b.jpg"), lambda: 10**9)
+
+    assert stopped.value.filled == ("2013/06/a.jpg",), stopped.value.filled
+    assert (media / "2013/06/a.jpg").read_bytes() == b"a"
+    assert not (media / "2013/06/b.jpg").exists()
+    assert not list(media.rglob(".*.part"))
+
+
 def test_a_stop_leaves_the_store_empty(tmp_path):
     """PRESS-0125 INV-7: a Store refusal while writing leaves the Store
     holding no site, and the fetched files where they were.

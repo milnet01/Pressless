@@ -9482,11 +9482,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Tray.
 
-- 📋 [PRESS-0460] **Photographs build faster: decode at the size needed, on several cores.**
+- ✅ [PRESS-0460] **Photographs build faster: decode at the size needed, on several cores.**
   Review type: Codebase. From review-code --performance, two HIGHs.
   builder.py decodes every JPEG at full size before shrinking it (no
   draft()), and re-encodes photographs one at a time on one core.
   Measure a press of a photograph-heavy site before and after.
+  Shipped 2026-11-23, 50f1d51 (merged 4546d80). JPEGs are decoded at the
+  size needed (draft), and photographs are encoded by up to
+  PHOTOGRAPH_WORKERS = min(4, cores) at once. Measured 2026-11-23 on 24
+  camera JPEGs and 4 large PNGs: press 16.3 s to about 4.1 s; peak memory
+  253 MB to about 690 MB. Web copies keep their sizes and quality (lowest
+  PSNR 49.8 dB against the old ones); builds still match. PRESS-0008
+  amended. Full suite 2855 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0460.json.
   **Layman:** Publishing a site with many photographs takes less time.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9798,11 +9806,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0485] **JPEG XL decodes to PAM rather than PNG, keeping colour profile and alpha.**
+- ✅ [PRESS-0485] **JPEG XL decodes to PAM rather than PNG, keeping colour profile and alpha.**
   Review type: Codebase. Queued by PRESS-0455 from review-code
   --performance lane-03 (jpegxl.py decodes to PNG). Measured 2026-11-23 on
   30 MP: PNG 2.87 s, PAM 0.64 s. Changes PRESS-0275's fixed decoder command
   (INV-3); the colour profile (--icc_out) and alpha must be kept another way.
+  Shipped 2026-11-23, c2ed9bf (merged 4546d80). djxl writes PAM, read at
+  any bit depth; the colour profile and alpha are kept, and the decoder
+  runs one at a time. Measured 2026-11-23 on a 30 MP picture: decode 7.7 s
+  to about 1.8 s; a press of five JPEG XL photographs 20 s to about 4.4 s.
+  Web copies are byte-identical for the probes; 16-bit grey pictures now
+  keep their tones. PRESS-0275 amended (INV-3). Real-decoder tests passed
+  on Linux and the Windows box.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0485.json.
   **Layman:** Publishing JPEG XL photographs takes less time.
   Kind: perf.
   Source: review-2026-11-23.

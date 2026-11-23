@@ -303,6 +303,9 @@ def register(face: Face, folder: Path) -> None:
             # Those written before the failure stay, so they leave the gaps.
             filled = exc.filled
             unwritten = message_box("import-hint", say("import.gaps.unwritten", why=exc.why))
+        except pressless_import.MediaDamaged as exc:
+            filled = exc.filled
+            unwritten = message_box("import-hint", say("import.gaps.damaged"))
         except pressless_import.ImportStopped:
             return shown_again(message_box("import-hint", say("import.gaps.refused")))
         for place in filled:
