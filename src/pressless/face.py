@@ -954,6 +954,8 @@ function say(key, slots = {}) {
 # colours only where his stylesheet sets none. The body resets every property
 # first, because a rule of his can set one no `.face` rule does, as a
 # two-column `body { display: grid }` would (PRESS-0133).
+# A hidden #photograph-missing, #address, .states or #standing child keeps its
+# space, so nothing beside a control moves; #panel's hidden rows are dropped.
 # PRESS-0261: a code box's textarea is reached as `.code-box > :last-child`, so
 # a site's own textarea rule cannot cover the coloured copy behind it.
 # PRESS-0338: the text size zooms the body. A width rule is therefore a
@@ -1074,9 +1076,6 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   overflow: hidden; text-overflow: ellipsis; }
 .face #editor > #photograph-missing { min-height: 4.65em; max-height: 4.65em;
   overflow-y: auto; margin-top: 0; }
-/* A hidden note here keeps its space, so nothing beside a control moves;
-   the same for .states and #standing below. #panel's hidden rows are
-   dropped instead. */
 .face #photograph-missing[hidden] { display: block; visibility: hidden; }
 .face #address[hidden] { display: inline; visibility: hidden; }
 .face .sign-in-slot { min-height: 6.5em; }
