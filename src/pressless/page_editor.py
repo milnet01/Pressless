@@ -1600,6 +1600,9 @@ _CODE_SCRIPT = r"""
     "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth"];
   const NAME = /<\/?([A-Za-z][\w:.-]*)/y;
   const ATTRIBUTE = /(\s+)|([^\s"'>\/=]+)(?:(\s*=\s*)("[^"]*"?|'[^']*'?|[^\s>]*))?|(\/)|(>)/y;
+  // Where a style or script ends: its closing tag in any case, found in the
+  // text itself, so no lower-cased copy is made per tag.
+  const CLOSING = {style: /<\/style/gi, script: /<\/script/gi};
   const CSS = new RegExp(String.raw`/\*[\s\S]*?(?:\*/|$)|"(?:[^"\\\n]|\\.)*"?|` +
                          String.raw`'(?:[^'\\\n]|\\.)*'?|[{}:;]|[^{}:;"'/]+|/`, "g");
 
@@ -1638,8 +1641,9 @@ _CODE_SCRIPT = r"""
       }
       const tag = name[1].toLowerCase();
       if (closed && name[0][1] !== "/" && (tag === "style" || tag === "script")) {
-        const end = text.toLowerCase().indexOf("</" + tag, at);
-        const inner = text.slice(at, end < 0 ? text.length : end);
+        CLOSING[tag].lastIndex = at;
+        const found = CLOSING[tag].exec(text);
+        const inner = text.slice(at, found ? found.index : text.length);
         if (tag === "style") pieces.push(...sheet(inner)); else put(inner);
         at += inner.length;
       }

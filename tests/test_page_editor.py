@@ -1443,3 +1443,13 @@ def test_a_refused_post_is_not_quoted_into_the_log():
         with pytest.raises(menu.Refused) as refused:
             menu.arranged(starter.navigation(), posted)
         assert "words typed" not in str(refused.value)
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize("closing", ["</script>", "</SCRIPT>"])
+def test_a_scripts_end_is_found_where_it_is(closing, tmp_path):
+    """PRESS-0261: a script ends at its closing tag, in any case, though a
+    letter before it changes length when lower-cased. Breaks when the end is
+    looked for in a lower-cased copy, which puts it a letter late."""
+    pieces = _coloured(f"<script>İ{closing}", tmp_path)
+    assert pieces[2:] == [("İ", ""), (closing[:-1], "tag"), (">", "tag")]
