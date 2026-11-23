@@ -47,6 +47,7 @@ from pressless import (
     store,
     takein,
     takeover,
+    undo,
     usage,
     votes,
     wizard,
@@ -60,6 +61,8 @@ SITE_FOLDER = "site"                  # inside Pressless's own folder
 
 # The answers a refused SettingsError can name; any other key is a failure.
 _ANSWERED = ("repository", "site_address", "measurement_id")
+# The answers that are settings fields of the same name; the rest are the Store's.
+_SETTINGS_ANSWERS = ("repository", "site_address", "daily_prompt_filter", "measurement_id")
 _FIELDS = ("repository", "site_name", "site_description", "site_icon", "site_picture",
            "site_language", "site_address", "daily_prompt_filter", "measurement_id")
 # PRESS-0213 § 4.6: the answers the Store keeps, by the field each is given in;
@@ -243,7 +246,9 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
             offer: bool, section: str | None = None) -> str:
     """Settings: check the answers, then the save sequence. With `section`,
     a refusal shows that section again, and a save says so there."""
-    box = (answers["start"] == "starter") if offer else None   # PRESS-0126 § 4.4
+    # PRESS-0126 § 4.4: None where the starter is not offered, else whether
+    # its box is ticked -- `_form`'s `start`.
+    start = (answers["start"] == "starter") if offer else None
     typed_key = answers["key"]
     values = {name: answers[name] for name in _FIELDS}
     hints: dict[str, str] = {}
@@ -266,7 +271,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
         hints[refused_identity] = say(_HINTS[refused_identity])
     if hints:
         return _elsewhere(hints, section) + _form(
-            values, hints, google_on=_google_on(saved), start=box, look=answers["look"],
+            values, hints, google_on=_google_on(saved), start=start, look=answers["look"],
             signed_in=_signed_in(folder, saved), section=section)
 
     # § 4.6 step 1: the key in hand, or the pass a sign-in buys (PRESS-0231).
@@ -283,13 +288,13 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
     done = _save_sequence(face, folder, candidate, identity, key, transport,
                           typed_key=typed_key, starter_ticked=answers["start"] == "starter",
                           look=answers["look"], choice=None, where=None,
-                          kept=saved.untouchable,
+                          kept=saved.untouchable, owned=_owned(section),
                           after=None if section is None else (
                               lambda final: _section_saved(folder, final, section)))
     if isinstance(done, publisher.RemoteStateMissing):
         missing = {"repository": say("setup.hint.no_such_repository")}
         return _elsewhere(missing, section) + _form(
-            values, missing, google_on=_google_on(saved), start=box, look=answers["look"],
+            values, missing, google_on=_google_on(saved), start=start, look=answers["look"],
             signed_in=_signed_in(folder, saved), section=section)
     return done.page if isinstance(done, _Saved) else done
 
@@ -317,6 +322,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    take_in_commit: str = "", bring_in_commit: str = "",
                    take_over: bool = False,
                    after: Callable[[settings.Settings], str] | None = None,
+                   owned: tuple[str, ...] | None = None,
                    ) -> _Saved | str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
@@ -329,7 +335,11 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     starter would be filled, and the identity is the one it wrote
     (PRESS-0218 § 4.5); `identity` is then None. `bring_in_commit` does the same
     for a repository of plain pages (PRESS-0210 § 4.11). With `take_over`, those pages
-    came from the live site, and the takeover is owed before the save (PRESS-0333 § 4.3)."""
+    came from the live site, and the takeover is owed before the save (PRESS-0333 § 4.3).
+
+    `owned` names the settings fields a Settings save writes; every other one
+    is taken from the file as it stands at the save (`_onto_saved_now`). None
+    is first run's, whose save writes the whole file."""
     # Step 2: ask GitHub.
     try:
         entries = publisher.root_entries(candidate, key, transport)
@@ -359,16 +369,18 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
         return render_notices(fill.notices) + fill.failure
     taken, brought = fill.taken, fill.brought
 
-    # Step 3, choosing the store, is first run's, on the wizard's key step
-    # (PRESS-0212 § 4.4). Step 5: save, last, with step 2's list (§ 4.7).
+    # Step 3, choosing the store, is first run's: on the wizard's key step
+    # (PRESS-0212 § 4.4), or for a sign-in in `check_signin` and `continue_as`
+    # (PRESS-0231). Step 5: save, last, with step 2's list (§ 4.7).
     kept_there = untouchable(entries, kept, folder)
     if brought is not None:
         kept_there = _without_roots(kept_there, brought.roots)
     final = dataclasses.replace(candidate, untouchable=kept_there)
     with face.capture() as notices:
         try:
+            final = _onto_saved_now(folder, final, owned)
             settings.save(folder, final)
-        except settings.SettingsError as exc:
+        except (settings.SettingsError, settings.NotSetUp) as exc:
             failed = face.fail(exc, publishing=False)
         else:
             failed = None
@@ -405,6 +417,82 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                   # First run offers both shortcuts ticked; Settings' computer
                   # section shows them as they are.
                   + (_shortcut_form(where, (True, True)) if where else ""))
+
+
+def _owned(section: str | None) -> tuple[str, ...]:
+    """PRESS-0021 § 4.9: the settings fields a Settings save writes, from the
+    answers its section holds (all of them for the one-page form, None). A
+    typed key makes `credentials` its own: its store and GitHub account only.
+    The site folder and the untouchable list are every save's."""
+    held = _FIELDS + ("key",) if section is None else _SECTION_FIELDS[section]
+    return (tuple(name for name in held if name in _SETTINGS_ANSWERS)
+            + (("credentials",) if "key" in held else ()))
+
+
+# The markers first run's pages step leaves in the answers, saying what Finish
+# carries in (`_carried_in`). Read by `check_site`, `show_site` and
+# `show_bring_in`, and passed to `_fill`.
+_CARRY_MARKERS = ("take_in_commit", "bring_in_commit", "take_over")
+
+
+def _carried_in(folder: Path, reading: settings.Settings, key: str,
+                shown: publisher.Pages, transport: publisher.Transport | None,
+                ) -> dict[str, str] | wizard.Hint:
+    """What first run carries in from the repository, as `_CARRY_MARKERS`, read
+    before anything is written. One of:
+
+    - `bring_in_commit` with `take_over` "yes": plain pages from the live site
+      an Actions build, or a workflow pushing to another branch, serves
+      (PRESS-0333 § 4.3, PRESS-0336).
+    - `take_in_commit`: a root holding a site Pressless made (PRESS-0218 § 4.5).
+    - `bring_in_commit`: a root of plain pages (PRESS-0210 § 4.11).
+    - none: nothing to carry in, so the starter is offered.
+
+    A Hint where the pages cannot be used: Pages serving a folder nothing can
+    take over (PRESS-0229 gives no advice to re-point it, which would take the
+    site offline), or pages a tool builds from."""
+    if shown.on and not shown.serves_root:
+        can_take_over = (shown.built_elsewhere and shown.address
+                         and takeover.build_files(folder, reading, key, shown, transport))
+        if not can_take_over:
+            return wizard.Hint("", say("setup.hint.elsewhere"))
+        plain, commit = takein.look_site(folder, reading, key, shown.address,
+                                         transport=transport)
+        if plain.built_by_a_tool or "index.html" not in plain.pages:
+            takein.forget_folder(folder)
+            return wizard.Hint("", say("setup.hint.site_unreadable"))
+        return {"bring_in_commit": commit, "take_over": "yes"}
+    entries = publisher.root_entries(reading, key, transport)
+    if not any(entry.rstrip("/").casefold() in _HOLDS_A_SITE for entry in entries):
+        return {}
+    found = takein.look(folder, reading, key, transport=transport)
+    if found.made_here:
+        return {"take_in_commit": found.commit}
+    plain, commit = takein.look_folder(folder, reading, key, transport=transport)
+    if plain.built_by_a_tool or "index.html" not in plain.pages:
+        takein.forget_folder(folder)
+        return wizard.Hint("", say("setup.hint.made_elsewhere"))
+    return {"bring_in_commit": commit}
+
+
+def _onto_saved_now(folder: Path, final: settings.Settings,
+                    owned: tuple[str, ...] | None) -> settings.Settings:
+    """`final`'s own fields over the settings file as it stands now.
+
+    The request loaded the file before GitHub's round trips, and another
+    screen -- Google, YouTube, Votes, or another section in a second tab --
+    may have saved since. Writing that early load back would undo it
+    (PRESS-0021 § 4.9). With `owned` None, `final` is the whole file."""
+    if owned is None:
+        return final
+    now = settings.load(folder)
+    taken = {name: getattr(final, name)
+             for name in ("site_folder", "untouchable", *owned) if name != "credentials"}
+    if "credentials" in owned:
+        taken["credentials"] = dataclasses.replace(
+            now.credentials, store=final.credentials.store,
+            github_account=final.credentials.github_account)
+    return dataclasses.replace(now, **taken)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -444,7 +532,7 @@ def _fill(face: Face, folder: Path, candidate: settings.Settings,
             face.fail(exc, publishing=False)            # noted in the log
             return _Filled(notices, message_box(f"<p>{say('setup.takein.moved')}</p>"))
         except (pressless_import.ImportStopped, StoreError, publisher.PublishError,
-                OSError) as exc:
+                undo.FetchAreaInUse, OSError) as exc:
             return _Filled(notices, face.fail(exc, publishing=False))
         return _Filled(notices, brought=brought)
     if take_in_commit:
@@ -455,7 +543,10 @@ def _fill(face: Face, folder: Path, candidate: settings.Settings,
         except publisher.RemoteStateMissing as exc:
             face.fail(exc, publishing=False)            # noted in the log
             return _Filled(notices, message_box(f"<p>{say('setup.takein.moved')}</p>"))
-        except (takein.TakeInStopped, StoreError, publisher.PublishError) as exc:
+        except (takein.TakeInStopped, StoreError, publisher.PublishError,
+                undo.FetchAreaInUse, OSError) as exc:
+            # Emptying the fetch area can leave a file Windows holds open, or
+            # fail outright, as a bring-in's can.
             return _Filled(notices, face.fail(exc, publishing=False))
         return _Filled(notices, taken=taken)
     filled = False
@@ -610,7 +701,9 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
     def shown(name: str) -> bool:
         return section is None or section == name
 
-    # In the one-page form's order, each section's boxes where it is shown.
+    # In the one-page form's order, each section's boxes where it is shown. A
+    # box added here goes in its section's _SECTION_FIELDS too, or a section
+    # save drops its answer.
     held = ""
     if shown("connection"):
         held += field("repository", say("setup.field.repository"))
@@ -654,6 +747,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
 
 # PRESS-0353 § 4.5: each section of Settings, by its address, and the answers
 # it holds; the AI helper's section is its own screen, at assistant.SETUP.
+# `_form` draws each section's boxes by name, so the two change together.
 _SECTION_FIELDS = {
     "site": ("site_name", "site_description", "site_icon", "site_picture", "site_language",
              "start", "look"),
@@ -698,7 +792,13 @@ def _section(face: Face, folder: Path, request: Request, name: str,
             values = _values_from(folder, saved)
         except settings.NotSetUp:
             return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
-        except (settings.SettingsError, StoreError) as exc:
+        except settings.SettingsError as exc:
+            # A site_folder refusal is a file carried from another machine,
+            # which /setup treats as first run (§ 4.2).
+            if exc.key == "site_folder":
+                return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
+            return render_notices(notices) + face.fail(exc, publishing=False)
+        except StoreError as exc:
             return render_notices(notices) + face.fail(exc, publishing=False)
     if name == "computer":
         where = shortcut_places()   # PRESS-0183: the shortcuts as they are now
@@ -1169,39 +1269,13 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         # The markers this step sets, cleared first, so a press after Back
         # decides again from what GitHub holds now.
         kept = {field: value for field, value in answers.items()
-                if field not in ("take_in_commit", "bring_in_commit", "take_over")}
+                if field not in _CARRY_MARKERS}
         try:
             shown = publisher.pages(name, key, transport)
-            if shown.on and not shown.serves_root:
-                # PRESS-0229: never advice to re-point Pages, which would take
-                # that site offline. PRESS-0333: one Actions builds can be taken
-                # over, and nothing changes on GitHub here; PRESS-0336: so can one a
-                # workflow pushes to another branch.
-                if (not shown.built_elsewhere or not shown.address
-                        or not takeover.build_files(folder, probe(name), key, shown,
-                                                    transport)):
-                    return wizard.Hint("", say("setup.hint.elsewhere"))
-                plain, commit = takein.look_site(folder, probe(name), key, shown.address,
-                                                 transport=transport)
-                if plain.built_by_a_tool or "index.html" not in plain.pages:
-                    takein.forget_folder(folder)
-                    return wizard.Hint("", say("setup.hint.site_unreadable"))
-                kept.update(bring_in_commit=commit, take_over="yes")
-            # PRESS-0218 § 4.5: a root holding a site is read before any
-            # write. One Pressless made is taken in; PRESS-0210 § 4.11: plain
-            # pages are brought in, and what a tool builds from goes no further.
-            elif any(entry.rstrip("/").casefold() in _HOLDS_A_SITE
-                     for entry in publisher.root_entries(probe(name), key, transport)):
-                found = takein.look(folder, probe(name), key, transport=transport)
-                if found.made_here:
-                    kept["take_in_commit"] = found.commit
-                else:
-                    plain, commit = takein.look_folder(folder, probe(name), key,
-                                                       transport=transport)
-                    if plain.built_by_a_tool or "index.html" not in plain.pages:
-                        takein.forget_folder(folder)
-                        return wizard.Hint("", say("setup.hint.made_elsewhere"))
-                    kept["bring_in_commit"] = commit
+            carried = _carried_in(folder, probe(name), key, shown, transport)
+            if isinstance(carried, wizard.Hint):
+                return carried
+            kept.update(carried)
             if not shown.on:
                 shown = publisher.switch_pages_on(name, key, transport)
         except publisher.Refused:
@@ -1218,9 +1292,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     def check_site(answers: wizard.Answers):
         # PRESS-0218 § 4.5: a take-in brings its own identity, or none; so does
         # a bring-in (PRESS-0210 § 4.9).
-        bringing_in = answers.get("bring_in_commit", "")
-        taking_in = answers.get("take_in_commit", "")
-        carrying_in = bool(taking_in or bringing_in)
+        bring_in_commit = answers.get("bring_in_commit", "")
+        take_in_commit = answers.get("take_in_commit", "")
+        carrying_in = bool(take_in_commit or bring_in_commit)
         identity = None
         if not carrying_in:
             # PRESS-0227 § 4.2: the pictures a carried Store already names are kept.
@@ -1257,8 +1331,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                               starter_ticked=not carrying_in and answers.get("start") == "starter",
                               look=answers.get("look", ""), choice=choice, where=shortcut_places(),
                               signed_in=signing_in, narrow=narrow,
-                              take_in_commit=taking_in,
-                              bring_in_commit=bringing_in,
+                              take_in_commit=take_in_commit,
+                              bring_in_commit=bring_in_commit,
                               take_over=answers.get("take_over") == "yes")
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
@@ -1267,18 +1341,19 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         return wizard.Stop(done)
 
     def show_site(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-        commit = answers.get("take_in_commit", "")
-        bringing_in = answers.get("bring_in_commit", "")
-        if bringing_in:
-            return show_bring_in(answers, bringing_in)
-        if not commit:
+        take_in_commit = answers.get("take_in_commit", "")
+        bring_in_commit = answers.get("bring_in_commit", "")
+        if bring_in_commit:
+            return show_bring_in(answers, bring_in_commit)
+        if not take_in_commit:
             return _show_site(folder, answers, hint)
         # PRESS-0218 § 4.5: what the state shown at pages holds, read again.
         key = key_for(answers)
         if isinstance(key, wizard.Stop):
             return key.fragment
         try:
-            found = takein.look(folder, probe(repository(answers)), key, commit, transport)
+            found = takein.look(folder, probe(repository(answers)), key, take_in_commit,
+                                 transport)
         except (publisher.PublishError, StoreError) as exc:
             return face.fail(exc, publishing=False)
         return _show_take_in(found)

@@ -228,3 +228,110 @@ def test_a_folder_that_cannot_be_synced_does_not_fail_a_save(tmp_path, monkeypat
     target = tmp_path / "state.json"
     write_whole(target, "text", prefix=".state-")
     assert target.read_text(encoding="utf-8") == "text"
+
+
+# ----------------------------------------------- the shared reader (PRESS-0447) ----
+# Settings and Credentials read their versioned JSON file through one reader.
+# Each refusal either made before is asked of all four doors: settings load and
+# save, credentials read and write. A file refused is never written over.
+
+_SECRETS = b', "secrets": {}}'
+_REFUSED = {
+    "not-utf8": (b"\xff\xfe{", b"\xff\xfe{"),                          # PRESS-0049, -0135
+    "nested-too-deep": (b"[" * 100_000 + b"]" * 100_000,) * 2,         # PRESS-0066, -0135
+    "not-json": (b"{not json", b"{not json"),
+    "not-an-object": (b"[]", b"[]"),
+    "version-true": (b'{"version": true}', b'{"version": true' + _SECRETS),   # PRESS-0066, -0100
+    "version-float": (b'{"version": 1.0}', b'{"version": 1.0' + _SECRETS),
+    "version-other": (b'{"version": 2}', b'{"version": 2' + _SECRETS),        # PRESS-0053
+    "version-absent": (b'{"other": 1}', b'{"other": 1' + _SECRETS),
+}
+
+
+def _settings_value(folder):
+    from pressless import settings
+    return settings.Settings(
+        site_folder=folder / "site", repository="owner/name",
+        site_address="https://example.org", daily_prompt_filter="", untouchable=(),
+        credentials=settings.Credentials(store="keyring", github_account="github",
+                                         google_account=None),
+        analytics_property_id=None)
+
+
+def _doors(folder):
+    """Each reader's four doors, with the error each must raise."""
+    from pressless import credentials, settings
+    return {
+        "settings load": (lambda: settings.load(folder), settings.SettingsError),
+        "settings save": (lambda: settings.save(folder, _settings_value(folder)),
+                          settings.SettingsError),
+        "credentials read": (lambda: credentials.read("file", folder, "publishing-key"),
+                             credentials.CredentialError),
+        "credentials write": (lambda: credentials.write("file", folder, "publishing-key",
+                                                        "a-secret"),
+                              credentials.CredentialError),
+        "credentials delete": (lambda: credentials.delete("file", folder, "publishing-key"),
+                               credentials.CredentialError),
+    }
+
+
+@pytest.mark.parametrize("case", sorted(_REFUSED))
+def test_both_readers_refuse_each_file_they_refused_before(tmp_path, monkeypatch, case):
+    """Breaks when the shared reader drops a refusal, or one module stops
+    calling it: the door that no longer refuses either succeeds or raises an
+    error of the wrong type, and a write replaces the file."""
+    from pressless import credentials, settings
+    monkeypatch.setattr(sys, "platform", "linux")   # the file store writes off Windows only
+    as_settings, as_credentials = _REFUSED[case]
+    for door, (call, error) in _doors(tmp_path).items():
+        name = settings.FILE_NAME if door.startswith("settings") else credentials.FILE_NAME
+        content = as_settings if door.startswith("settings") else as_credentials
+        (tmp_path / name).write_bytes(content)
+        with pytest.raises(error):
+            call()
+        assert (tmp_path / name).read_bytes() == content, f"{door} replaced a refused file"
+
+
+@pytest.mark.parametrize("shape", ["fifo", "folder"])
+def test_both_readers_refuse_what_is_not_an_ordinary_file(tmp_path, monkeypatch, shape):
+    """PRESS-0162's refusal, now the settings file's too: a FIFO planted at
+    either name would hold the open forever, and launch reads the settings
+    file. Run in a thread with a bound, so a reader that waits fails rather
+    than hanging the suite. Breaks when the open loses O_NONBLOCK or the
+    regular-file check."""
+    import threading
+
+    from pressless import credentials, settings
+    if shape == "fifo" and not hasattr(os, "mkfifo"):
+        pytest.skip("this platform has no FIFO")
+    monkeypatch.setattr(sys, "platform", "linux")
+    for name in (settings.FILE_NAME, credentials.FILE_NAME):
+        if shape == "fifo":
+            os.mkfifo(tmp_path / name)
+        else:
+            (tmp_path / name).mkdir()
+    doors = {**_doors(tmp_path),
+             "settings retired name": (lambda: settings.retired_site_name(tmp_path), None)}
+    for door, (call, error) in doors.items():
+        outcome: list[object] = []
+
+        def attempt(call=call, outcome=outcome):
+            try:
+                outcome.append(call())
+            except BaseException as exc:  # noqa: BLE001 -- inspected below
+                outcome.append(exc)
+
+        worker = threading.Thread(target=attempt, daemon=True)
+        worker.start()
+        worker.join(5)
+        if worker.is_alive():
+            for name in (settings.FILE_NAME, credentials.FILE_NAME):
+                os.close(os.open(tmp_path / name, os.O_WRONLY | os.O_NONBLOCK))
+            pytest.fail(f"{door} waited on the FIFO")
+        if error is None:
+            assert outcome == [None], door
+        else:
+            # Refused as what it is: read as a file, a FIFO answers empty and
+            # a device answers forever.
+            assert isinstance(outcome[0], error), (door, outcome)
+            assert "not an ordinary file" in str(outcome[0]), (door, outcome)

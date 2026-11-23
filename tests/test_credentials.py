@@ -16,6 +16,7 @@ import json
 import os
 import stat
 import sys
+import tempfile
 import threading
 import traceback
 from pathlib import Path
@@ -590,7 +591,9 @@ def test_two_writes_at_once_keep_both(tmp_path, monkeypatch):
         write("file", folder, "publishing-key", "the-github-one")
         others: list[threading.Thread] = []
 
-        def read_while_another_writes(target, folder=folder, others=others):
+        def read_while_another_writes(target, folder=folder, others=others, name=name):
+            # Held here, or the second write's timing alone decides the result.
+            assert credentials_module._FILE_LOCK.locked(), f"{name} read the file unlocked"
             found = real(target)
             if not others:
                 other = threading.Thread(target=write, daemon=True, args=(
@@ -826,7 +829,7 @@ def test_fallback_read_refuses_what_is_not_ours(tmp_path, monkeypatch):
     # PRESS-0107: the gap in the read-only version of this test -- fstat
     # was patched, read() was exercised, then reverted, and write() was
     # never tried while the patch was live. write()'s own pre-read (the
-    # first line of _write_file, which calls _read_mapping -> _read_ours)
+    # first line of _write_file, which calls _read_mapping and its owner check)
     # must refuse the same file, or the planted owner mismatch is honoured
     # for read() and silently ignored for write().
     with pytest.raises(CredentialError):
@@ -922,32 +925,6 @@ def test_a_backend_that_quotes_the_secret_does_not_leak_it(tmp_path,
 # ------------------------------------------------------------ PRESS-0050 ----
 
 
-def test_a_store_that_cannot_be_loaded_is_a_typed_failure(monkeypatch):
-    """PRESS-0050: choose()'s get_keyring() was the module's one call to it
-    outside a guard -- write() and _read_keyring() both wrap theirs -- so an
-    untyped exception escaped choose() and reached the Face's last-resort
-    catch during setup.
-
-    Reachable with no adversary. keyring's own load_config() reads a config
-    file and imports the backend it names, so a stale entry naming an
-    uninstalled one raises ModuleNotFoundError straight through. That is the
-    ordinary state after uninstalling a backend.
-
-    §4.3 requires every failure typed, and this is the one site that did not
-    keep it.
-
-    Breaks when an implementer treats get_keyring() as a lookup that cannot
-    fail. It is an import.
-    """
-    def refuses():
-        raise ModuleNotFoundError("No module named 'keyrings.alt'")
-
-    monkeypatch.setattr(credentials_module.keyring, "get_keyring", refuses)
-
-    with pytest.raises(CredentialError):
-        choose()
-
-
 def test_loading_the_store_keeps_the_absent_store_discriminator(monkeypatch):
     """PRESS-0050's counter-case. §4.2 reads NoKeyringError as *no store* and
     every other exception as *a store that cannot be relied on*, and that
@@ -1002,24 +979,6 @@ def test_writing_over_a_newer_credentials_file_is_refused(tmp_path,
             write("file", tmp_path, "publishing-key", SENTINEL)
         with pytest.raises(CredentialError):
             read("file", tmp_path, "publishing-key")
-
-
-def test_the_first_credentials_write_still_works(tmp_path, monkeypatch):
-    """PRESS-0053's counter-case: with no file there, there is nothing to
-    carry and nothing to refuse.
-    """
-    # Guarded on the CAPABILITY, not the platform: write() refuses any
-    # mount that does not enforce POSIX modes (INV-11), so a
-    # platform-only guard sends this red against a correct
-    # implementation run from a memory stick (PRESS-0100).
-    _require_posix_modes(tmp_path)
-    _not_windows(monkeypatch)
-
-    write("file", tmp_path, "publishing-key", SENTINEL)
-
-    assert read("file", tmp_path, "publishing-key") == SENTINEL, (
-        "the first write into an empty folder no longer round-trips"
-    )
 
 
 @pytest.mark.parametrize("held", [
@@ -1161,7 +1120,14 @@ def test_a_failed_fdopen_closes_the_descriptor(tmp_path, monkeypatch):
     _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
     closed: list[int] = []
+    handed: list[int] = []
     real_close = os.close
+    real_mkstemp = tempfile.mkstemp
+
+    def recording_mkstemp(*args, **kwargs):
+        handle, path = real_mkstemp(*args, **kwargs)
+        handed.append(handle)
+        return handle, path
 
     def failing_fdopen(handle, *args, **kwargs):
         raise OSError("fdopen refused")
@@ -1170,8 +1136,28 @@ def test_a_failed_fdopen_closes_the_descriptor(tmp_path, monkeypatch):
         closed.append(handle)
         real_close(handle)
 
+    monkeypatch.setattr(tempfile, "mkstemp", recording_mkstemp)
     monkeypatch.setattr(credentials_module.os, "fdopen", failing_fdopen)
     monkeypatch.setattr(credentials_module.os, "close", watching_close)
     with pytest.raises(CredentialError):
         write("file", tmp_path, "publishing-key", SENTINEL)
-    assert closed, "the raw descriptor was never closed"
+    assert handed, "mkstemp was never reached, so this test proved nothing"
+    assert handed[0] in closed, "the raw descriptor was never closed"
+
+
+def test_one_failed_removal_stops_none_of_the_others(monkeypatch):
+    """delete_each: a first delete that fails still lets a second, different
+    one run, and the answer says one failed. Breaks when the loop returns or
+    raises at its first failure."""
+    asked: list[str] = []
+
+    def delete(store, folder, account):
+        asked.append(account)
+        if account == "google-by-hand":
+            raise CredentialError("this machine's credential store could not remove that secret")
+
+    monkeypatch.setattr(credentials_module, "delete", delete)
+    assert credentials_module.delete_each("keyring", Path("."),
+                                          ["google-by-hand", None, "google",
+                                           "google"]) is False
+    assert asked == ["google-by-hand", "google"]

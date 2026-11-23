@@ -417,11 +417,12 @@ once the code exists.
 
 - **INV-1** — `src/pressless/credentials.py` imports no other `pressless`
   module but `pressless.safe_write`, which carries §4.4's temporary-file,
-  sync and replace steps (PRESS-0001 §4.4 and §11), and
+  sync and replace steps and the reading steps Settings shares (PRESS-0001
+  §4.4 and §11), and
   `pressless.os_reason`, which gives a failure its reason without its path
   (PRESS-0401). Neither imports a `pressless` module, so the rule holds
   through them. The
-  descriptor's mode is still read and refused in `credentials.py`, before
+  descriptor's mode is still refused in `credentials.py`, before
   the secret is written (§4.6), as the `check` PRESS-0001 §4.4 gives
   `write_whole`: it runs on the raw descriptor before a byte is written.
   *Test:* `tests/test_credentials.py::test_credentials_imports_no_sibling`,
@@ -832,3 +833,4 @@ exit code.
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0405: § 4.1 and § 4.3 gain `delete_each`, which a Turn off uses to delete under both names. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0406: the title, § 2, § 3 decision 4, § 4.1, § 4.4 and § 9 stop counting the secrets as two. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0447: INV-1 names `safe_write`'s reading steps, which the fallback file is now read through. |
