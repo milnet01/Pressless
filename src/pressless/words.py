@@ -1822,6 +1822,10 @@ _WORDS: dict[str, str] = {
         "Pressless could not save every file from that ZIP file on this computer: {why}. "
         "The ones it saved are kept."
     ),
+    "import.gaps.damaged": (
+        "That ZIP file is damaged partway through, so Pressless stopped taking files "
+        "from it. The ones it took are kept."
+    ),
     "import.look": (
         "Your WordPress theme does not come across, so choose how your site looks. You "
         "can change it later on the Look screen."

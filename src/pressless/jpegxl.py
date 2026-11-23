@@ -59,7 +59,12 @@ _CONTAINER = b"\x00\x00\x00\x0cJXL \r\n\x87\x0a"
 # The names the decoder is given, inside the work directory it runs in.
 # Plain ASCII, so no code page can mangle them on Windows.
 SOURCE = "original.jxl"
-DECODED = "decoded.png"
+DECODED = "decoded.pam"
+PROFILE = "decoded.icc"
+# PAM rather than PNG: nothing compresses it, so the decoder is several times
+# quicker. PAM holds no colour profile, so the decoder writes it beside
+# (PRESS-0485).
+COMMAND = (SOURCE, DECODED, f"--icc_out={PROFILE}")
 # The SizeHeader's fixed aspect ratios, width over height (ISO/IEC 18181-1).
 _RATIOS = {1: (1, 1), 2: (12, 10), 3: (4, 3), 4: (3, 2), 5: (16, 9), 6: (5, 4), 7: (2, 1)}
 
@@ -287,8 +292,9 @@ def _limit_windows(process: subprocess.Popen, limit: int) -> Callable[[], None]:
 
 
 def decode(program: Path, original: Path, work: Path) -> Path:
-    """§ 4.4: `original` decoded to `work`/decoded.png by `program`, hashed
-    again first. `work` is a fresh directory the caller removes."""
+    """§ 4.4: `original` decoded to `work`/DECODED by `program`, hashed
+    again first, its colour profile, where it has one, in `work`/PROFILE.
+    `work` is a fresh directory the caller removes."""
     system = this_system()
     if system is None or not _matches(program, PINS[system]):
         raise NotInstalled("the JPEG XL decoder is not the file Pressless expects")
@@ -296,8 +302,8 @@ def decode(program: Path, original: Path, work: Path) -> Path:
     shutil.copyfile(original, Path(work) / SOURCE)
     out = Path(work) / DECODED
     try:
-        process = subprocess.Popen(  # noqa: S603 -- the pinned program, two fixed names
-            [str(program), SOURCE, DECODED], cwd=work,
+        process = subprocess.Popen(  # noqa: S603 -- the pinned program, fixed names
+            [str(program), *COMMAND], cwd=work,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except OSError as exc:

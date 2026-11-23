@@ -112,16 +112,18 @@ def test_log_imports_nothing_identifying():
 # --- INV-2 -----------------------------------------------------------------
 
 
-def test_rolls_by_size_keeping_one_old_copy(tmp_path):
+def test_rolls_by_size_keeping_one_old_copy(tmp_path, monkeypatch):
     """INV-2: past the size the log rolls, and exactly one old copy is kept.
 
     Asserts the EXACT file set. A test asserting merely that the old copy
     exists passes just as well with a `.2` beside it, which is the unbounded
     case wearing the bounded case's clothes (spec §5 INV-2).
     """
+    # A small size rolls the same way, several times over, in less writing.
+    monkeypatch.setattr(log_module, "MAX_BYTES", 4096)
     handle = log_module.open_log(tmp_path)
     line = "x" * 200
-    for _ in range(40_000):
+    for _ in range(200):
         handle.note(line)
     handle.close()
 
@@ -425,3 +427,22 @@ def test_the_log_and_its_old_copy_are_owner_only(tmp_path):
         os.umask(old)
     for name in ("pressless.log", "pressless.log.1"):
         assert stat.S_IMODE((tmp_path / name).stat().st_mode) == 0o600, name
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows keeps access lists; no mode is narrowed")
+def test_a_drive_that_keeps_no_modes_still_gets_its_log(tmp_path, monkeypatch):
+    """SECURITY.md's owner-only mode is narrowed only where the system
+    allows: a mount that keeps no modes refuses the change. Breaks when that
+    refusal stops the log, or an upload, from being written."""
+    def refused(descriptor, mode):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(log_module.os, "fchmod", refused)
+    with open(tmp_path / "kept.txt", "w", encoding="utf-8",
+              opener=log_module.owner_only) as kept:
+        kept.write("written")
+    assert (tmp_path / "kept.txt").read_text(encoding="utf-8") == "written"
+    log = log_module.open_log(tmp_path)
+    log.note("noted")
+    log.close()
+    assert "noted" in log_module.path_for(tmp_path).read_text(encoding="utf-8")

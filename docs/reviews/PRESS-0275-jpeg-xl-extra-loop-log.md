@@ -9,3 +9,4 @@
 | fix | 2026-11-17 | none; PRESS-0389 closing review findings; no reviewer dispatched | - | - | - | - | 1 | 1 | § 4.8: the release is a draft until its assets check, then published. |
 | fix | 2026-11-23 | none; PRESS-0455 closing review findings; no reviewer dispatched | - | - | - | - | 2 | 2 | § 4.4: `jxlp` parts joined before the size header is read; the decoder held to a memory limit (INV-10). |
 | fix | 2026-11-23 | none; PRESS-0455 closing review findings; no reviewer dispatched | - | - | - | - | 1 | 1 | §§ 4.3, 4.6, 6: a folder that refuses the decoder is `NotWritable`, with its own sentence. |
+| amend | 2026-11-23 | none; PRESS-0485; no reviewer dispatched | - | - | - | - | 0 | 0 | § 4.4, INV-3, INV-9: the decoder writes a PAM and its profile beside; alpha kept, the decoder's own sRGB profile dropped. |

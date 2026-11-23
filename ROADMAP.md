@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=486 -->
+<!-- ants-roadmap-id-high-water: PRESS=487 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9482,11 +9482,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Tray.
 
-- 📋 [PRESS-0460] **Photographs build faster: decode at the size needed, on several cores.**
+- ✅ [PRESS-0460] **Photographs build faster: decode at the size needed, on several cores.**
   Review type: Codebase. From review-code --performance, two HIGHs.
   builder.py decodes every JPEG at full size before shrinking it (no
   draft()), and re-encodes photographs one at a time on one core.
   Measure a press of a photograph-heavy site before and after.
+  Shipped 2026-11-23, 50f1d51 (merged 4546d80). JPEGs are decoded at the
+  size needed (draft), and photographs are encoded by up to
+  PHOTOGRAPH_WORKERS = min(4, cores) at once. Measured 2026-11-23 on 24
+  camera JPEGs and 4 large PNGs: press 16.3 s to about 4.1 s; peak memory
+  253 MB to about 690 MB. Web copies keep their sizes and quality (lowest
+  PSNR 49.8 dB against the old ones); builds still match. PRESS-0008
+  amended. Full suite 2855 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0460.json.
   **Layman:** Publishing a site with many photographs takes less time.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9540,25 +9548,40 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0465] **The test suite runs faster and lighter.**
+- ✅ [PRESS-0465] **The test suite runs faster and lighter.**
   Review type: Test. From review-tests dimension 12.
   Four test_main tests wait out RETURN_SECONDS: about 24 s of an 80 s
   suite, measured at 1.26 s with it patched. Nine fixed negative waits
   cost about 5 s; test_words re-parses the source tree; test_log writes
   about 8.8 MB; test_dashboard starts a server it never uses;
   test_publish_jpeg_xl makes a folder above the repository.
+  Shipped 2026-11-23, 8220c11 (merged 23bc16c). 14 instances fixed. The
+  suite ran 66 s against 111 s before (2026-11-23, /usr/bin/time, with
+  other projects' work on the machine), peak memory unchanged. test_main
+  patches RETURN_SECONDS; test_words parses each source once; test_log
+  patches MAX_BYTES; test_dashboard starts no Face; test_credentials waits
+  on a signalled lock. Each changed test went red against a mutation.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0465.json.
   **Layman:** The checks that run before every push finish sooner.
   Kind: optimize.
   Source: review-2026-11-23.
   Lanes: Tests.
 
-- 📋 [PRESS-0466] **Tests for the shipped promises that have none.**
+- ✅ [PRESS-0466] **Tests for the shipped promises that have none.**
   Review type: Test. From verify-delivery and review-tests U3.
   No test found for: PRESS-0372's empty-body save, PRESS-0373's three
   sentences, PRESS-0381's stricter unpacking, PRESS-0382's answer,
   PRESS-0414's failure pages, PRESS-0415's footer name and PRESS-0429's
   setup top bar. Also the untested branches review-tests lists by lane,
   where the owning subject item does not take them.
+  Shipped 2026-11-23, d3ce452 (merged 23bc16c). 13 rows: 5 fixed, 8
+  dismissed as already covered, each proven by a mutation going red.
+  Before this, dropping TYPING_SCRIPT from either editor left the whole
+  suite green; now both load it once and take keys from it. A caption
+  holding a link is read-only (node test plus a by-hand row); the setup top
+  bar's Usage link opens a new tab; _said_bytes's decimal mark and
+  log.owner_only on a mode-refusing drive are tested. Full suite 2839
+  passed. Ledger: local-archive/reviews/2026-11-23/close-findings/0466.json.
   **Layman:** Promises made in the release notes get a check that runs every time.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9603,7 +9626,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0471] **A publish too large for GitHub's hourly allowance is handled before it fails.**
+- ✅ [PRESS-0471] **A publish too large for GitHub's hourly allowance is handled before it fails.**
   Review type: Codebase. Queued by PRESS-0446 from review-code lane-07
   (publisher.py: past the hourly request allowance a publish fails late and
   resends everything). Needs the user's choice: wait out the reset with
@@ -9613,6 +9636,14 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   User decision 2026-11-23: wait and carry on. Past the hourly allowance,
   Pressless pauses until GitHub's reset, showing a countdown, then
   finishes; the publish stays one commit.
+  Shipped 2026-11-23, 7f1de14 (merged ab270a3), as the user decided. Past
+  the hourly allowance a publish waits for the reset GitHub names, counting
+  down in the progress note, then finishes as one commit. A reset over
+  MAX_RESET_WAIT_SECONDS away, a second reset, a long Retry-After or a
+  request outside a publish still end in RateLimited. PRESS-0009 and
+  PRESS-0435 amended. Full suite 2835 passed; ruff clean. Fetches (take-in,
+  undo, takeover reads) still fail at once past the allowance.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0471.json.
   **Layman:** A very large publish no longer fails late and starts again from nothing.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9622,6 +9653,11 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Review type: Codebase. Queued by PRESS-0446 from review-code
   --performance lane-05 (publisher.py's pause between uploads). Needs real
   GitHub, and a clock on the Transport seam PRESS-0009 § 4.1 pins.
+  Measured 2026-11-23 with a stand-in ($R/close-findings/0472-measure.py):
+  Pressless's own work is about 0.21 ms a file; the gap between uploads is
+  the 0.5 s pause plus GitHub's reply time. Shortening the pause saves up
+  to GitHub's reply time per file, unknown until a real publish is timed
+  on a scratch repository, which the user approves. Ledger: 0472.json.
   **Layman:** Publishing many files may get faster once a real publish is timed.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9640,11 +9676,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Tray.
 
-- 📋 [PRESS-0474] **Review-code lane-07's four open questions are answered.**
+- ✅ [PRESS-0474] **Review-code lane-07's four open questions are answered.**
   Review type: Codebase. From review-code lane-07's open questions, left
   open by PRESS-0446: the takeover fetch-area race; a file becoming a
   folder within one tree write; English commit messages; repository names
   unquoted in URLs. Each ends fixed, filed or dismissed with evidence.
+  Shipped 2026-11-23, e424c3c (merged ab270a3). The takeover read emptied
+  the fetch area under an undo (shown by a test): undo, take-in and the
+  takeover read now share undo.fetch_area, holding it for the whole
+  sequence. A file becoming a folder is PRESS-0487. English commit
+  messages are PRESS-0241 decision 9; repository names are confined by
+  settings.check, so the URL cannot change host. PRESS-0015 amended.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0474.json.
   **Layman:** Four possible publishing problems the review could not settle are checked.
   Kind: investigate.
   Source: review-2026-11-23.
@@ -9710,6 +9753,10 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   words, subject 08, shipped).
   Also, passed on by PRESS-0449: publisher.py's docstring says "Tests are its
   only other caller", which is false because github_signin.py uses it.
+  Also, surfaced by PRESS-0465: scripts/by-hand-browser-checks.py cannot
+  run as documented here: system python3 has Playwright but no pytest, so
+  its import of test_publisher fails, and .venv has no Playwright. Make the
+  documented way run, and say it in docs/working-here.md.
   **Layman:** Two messages that vanished too soon now stay until they are read.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9759,11 +9806,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0485] **JPEG XL decodes to PAM rather than PNG, keeping colour profile and alpha.**
+- ✅ [PRESS-0485] **JPEG XL decodes to PAM rather than PNG, keeping colour profile and alpha.**
   Review type: Codebase. Queued by PRESS-0455 from review-code
   --performance lane-03 (jpegxl.py decodes to PNG). Measured 2026-11-23 on
   30 MP: PNG 2.87 s, PAM 0.64 s. Changes PRESS-0275's fixed decoder command
   (INV-3); the colour profile (--icc_out) and alpha must be kept another way.
+  Shipped 2026-11-23, c2ed9bf (merged 4546d80). djxl writes PAM, read at
+  any bit depth; the colour profile and alpha are kept, and the decoder
+  runs one at a time. Measured 2026-11-23 on a 30 MP picture: decode 7.7 s
+  to about 1.8 s; a press of five JPEG XL photographs 20 s to about 4.4 s.
+  Web copies are byte-identical for the probes; 16-bit grey pictures now
+  keep their tones. PRESS-0275 amended (INV-3). Real-decoder tests passed
+  on Linux and the Windows box.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0485.json.
   **Layman:** Publishing JPEG XL photographs takes less time.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9781,6 +9836,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: security.
   Source: review-2026-11-23.
   Lanes: Pipeline.
+
+- 📋 [PRESS-0487] **A publish where a file becomes a folder of the same name is tried on a scratch repository.**
+  Review type: Codebase. From PRESS-0474 (review-code lane-07's open
+  question). GitHub does not document how it orders a removal and an
+  addition of the same name in one tree write, so only a real repository
+  settles it. A refused write cannot harm the site: nothing moves until
+  the final branch update. Needs a publish to a scratch repository, which
+  the user approves.
+  **Layman:** An unusual publish is checked against real GitHub so it cannot fail unexpectedly.
+  Kind: investigate.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
 
 ## 1.3.0 — a home other than GitHub
 

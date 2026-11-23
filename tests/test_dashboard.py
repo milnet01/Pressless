@@ -138,8 +138,7 @@ def test_the_door_asks_only_for_the_three_windows_too(tmp_path: Path) -> None:
     a days value outside the set reaches Google as it was passed."""
     _saved(tmp_path)
     google = _Google()
-    with _served(tmp_path, google):
-        dashboard.figures(tmp_path, 90, client=google)
+    dashboard.figures(tmp_path, 90, client=google)
     assert google.windows_asked() == [f"{dashboard.DEFAULT_DAYS}daysAgo"]
 
 

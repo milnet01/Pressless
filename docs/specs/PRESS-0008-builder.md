@@ -337,7 +337,9 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
 6. **A picture Pillow cannot re-encode is `BuildStopped`** naming the file,
    never a site folder that cannot be written.
 
-Each web copy is written once, however many entries name it.
+Each web copy is written once, however many entries name it. Web copies
+may be made side by side (§13); a build stops with the failure a build
+making them in turn would meet first, the earliest-named photograph's.
 
 ### 4.7 `content/`
 
@@ -715,6 +717,7 @@ mutation-probed once it lands.
 | INV-15 | `tests/test_builder_archive.py::test_the_first_publish_moves_no_page` — **skipped in CI**; it runs where the archive, the originals and the live site are |
 | INV-16 | `tests/test_builder.py::test_a_picture_only_entry_is_described_by_its_captions` |
 | INV-17 | `tests/test_builder.py::test_a_listing_lead_is_its_count_alone` |
+| §4.6's earliest failure; §13's worker bound and JPEG scale | `tests/test_builder.py::test_a_web_copy_fails_as_a_serial_build_would`, `::test_web_copies_are_made_side_by_side`, `::test_a_large_jpeg_is_decoded_at_the_scale_it_needs` |
 | That a publish build never passes `change` | **nothing here** — the Face's call; PRESS-0012 |
 | That the Face never hands the preview folder to the Publisher | **nothing here** — the Face's sequence (`docs/design.md` rule 1) |
 | That an ordinary non-dot stray in the site folder is refused | **nothing** — `Built.files` declares the output, and the Publisher does not read it yet (§9) |
@@ -752,8 +755,11 @@ Rows live in `../reviews/PRESS-0008-builder-loop-log.md`.
 ## 13. Resource cost
 
 A build holds every published entry in memory, one entry file at a time
-read and rendered, and one image at a time decoded. It keeps nothing between
-builds. Every web copy is re-encoded on every publish build, so a build's
+read and rendered. Web copies are made on `PHOTOGRAPH_WORKERS` threads, so
+at most that many pictures are decoded at once, each holding up to two
+full-size bitmaps: the constant, not the core count, bounds the memory
+(PRESS-0460). A JPEG is decoded at the smallest scale, ½, ¼ or ⅛, still
+covering `LONGEST_SIDE`. It keeps nothing between builds. Every web copy is re-encoded on every publish build, so a build's
 time grows with the photographs published entries name; INV-15's run prints
 it. A preview build writes no web copies. New dependency: Pillow, already
 chosen in `docs/design.md` § The stack.

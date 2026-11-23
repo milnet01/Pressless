@@ -164,3 +164,15 @@ def test_the_count_is_said_in_words(counted, said, fraction):
     from pressless import face
     assert face.progress_said(counted) == {"running": True, "said": said,
                                            "fraction": fraction}
+
+
+def test_a_size_takes_the_languages_decimal_mark():
+    """PRESS-0241 § 4.4: a size in the working note takes the language's
+    decimal mark. Breaks when German reads 1.5 KB, which it reads as fifteen
+    hundred."""
+    from pressless import face, words
+    words.choose("de")
+    assert face._said_bytes(1536) == "1,5 KB"
+    assert face._said_bytes(3 * 1024 * 1024 // 2) == "1,5 MB"
+    words.choose("en")
+    assert face._said_bytes(1536) == "1.5 KB"

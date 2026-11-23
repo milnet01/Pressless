@@ -21,6 +21,8 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 import weakref
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -395,6 +397,8 @@ def test_a_folder_held_for_a_moment_on_windows_is_still_replaced(
 
 _BUILD_IN_A_SUBPROCESS = """
 import sys
+import threading
+import time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 sys.path.insert(0, sys.argv[2])
@@ -735,9 +739,10 @@ def test_writing_renders_through_marks(tmp_path, monkeypatch):
 _ALLOWED_IMPORTS = {
     "__future__",
     "contextlib", "dataclasses", "datetime", "fnmatch", "html", "io", "os", "pathlib", "re",
-    "shutil", "tempfile",
+    "shutil", "tempfile", "threading",
+    "concurrent", "concurrent.futures",   # PRESS-0460: web copies on several cores
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
-    "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
+    "PIL", "PIL.Image", "PIL.ImageCms", "PIL.ImageOps", "PIL.ImageSequence",
     "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
     "pressless.votes",                       # PRESS-0211 § 4.3: text alone, no disk or network
     "pressless.jpegxl",                      # PRESS-0275 § 4.1: runs the decoder, no network
@@ -2409,3 +2414,179 @@ def test_a_device_name_tag_is_refused_for_its_own_reason(tmp_path):
     store.write(folder, _entry("seaside", tags=("No",)), draft=False)
     with pytest.raises(BuildStopped, match="'No'.*a-z, 0-9 and '-'"):
         build(folder, _settings(), tmp_path / "site")
+
+
+# ------------------------------------------------------------- PRESS-0460 ---
+# PRESS-0008 § 4.6 and § 13: web copies made on several threads, at most
+# PHOTOGRAPH_WORKERS at once, each JPEG decoded at the scale it needs.
+
+
+def _pictures_entry(folder: Path, names, slug="pictures", date="2020-01-02 03:04:05"):
+    body = "\n\n".join(f"{{photo: {name}}}" for name in names)
+    store.write(folder, _entry(slug, date, body=body), draft=False)
+
+
+def _counting(monkeypatch, owner, attribute, *, wait=None, pause=0.0):
+    """Wraps `owner.attribute`, returning the most calls seen at once. `wait`
+    is called inside each, after `pause` seconds."""
+    real = getattr(owner, attribute)
+    lock = threading.Lock()
+    running, most = [0], [0]
+
+    def watched(*args, **kwargs):
+        with lock:
+            running[0] += 1
+            most[0] = max(most[0], running[0])
+        try:
+            time.sleep(pause)
+            if wait:
+                wait()
+            return real(*args, **kwargs)
+        finally:
+            with lock:
+                running[0] -= 1
+
+    monkeypatch.setattr(owner, attribute, watched)
+    return most
+
+
+def test_web_copies_are_made_side_by_side(tmp_path, monkeypatch):
+    """§ 13: web copies are made PHOTOGRAPH_WORKERS at a time, never more.
+    Breaks when they are made one after another, or the pool is unbounded."""
+    monkeypatch.setattr(builder, "PHOTOGRAPH_WORKERS", 2)
+    folder = _store(tmp_path)
+    names = [f"p{k}.jpg" for k in range(6)]
+    for name in names:
+        _photograph(folder, name, _image("JPEG"))
+    _pictures_entry(folder, names)
+    together = threading.Barrier(2, timeout=5)   # broken unless two run at once
+    most = _counting(monkeypatch, builder, "_write_web_copy", wait=together.wait)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert most[0] == 2
+    assert sorted(p.name for p in (into / "photographs").iterdir()) == names
+
+
+@pytest.mark.parametrize("later", [".hidden.jpg", "second.jpg"])
+def test_a_web_copy_fails_as_a_serial_build_would(tmp_path, monkeypatch, later):
+    """§ 4.6 steps 1 and 6: the build stops with the failure a one-at-a-time
+    build meets first, the earliest-named photograph's, however long it
+    takes and whatever fails after it."""
+    folder = _store(tmp_path)
+    for name in ("first.jpg", "second.jpg"):
+        _photograph(folder, name, b"not a picture")
+    _pictures_entry(folder, ["first.jpg"], "newer", "2021-01-01 00:00:00")
+    _pictures_entry(folder, [later], "older", "2020-01-01 00:00:00")
+    _counting(monkeypatch, builder, "_write_web_copy", pause=0.3)
+    with pytest.raises(BuildStopped, match="first.jpg could not be read"):
+        build(folder, _settings(), tmp_path / "site")
+    assert not (tmp_path / "site").exists()
+
+
+def test_a_large_jpeg_is_decoded_at_the_scale_it_needs(tmp_path, monkeypatch):
+    """§ 13: a 6400 by 4800 JPEG is decoded at half scale, the smallest still
+    covering LONGEST_SIDE, and still published at LONGEST_SIDE."""
+    folder = _store(tmp_path)
+    _photograph(folder, "camera.jpg", _image("JPEG", (6400, 4800)))
+    _pictures_entry(folder, ["camera.jpg"])
+    seen = []
+    real = builder.ImageOps.exif_transpose
+
+    def upright(picture, **kwargs):
+        seen.append(picture.size)
+        return real(picture, **kwargs)
+
+    monkeypatch.setattr(builder.ImageOps, "exif_transpose", upright)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert seen == [(3200, 2400)]
+    with Image.open(into / "photographs" / "camera.jpg") as web:
+        assert web.size == (LONGEST_SIDE, 1200)
+
+
+def test_the_jpeg_xl_decoder_runs_once_at_a_time(tmp_path, monkeypatch):
+    """§ 13: two JPEG XL web copies never run the decoder together; it uses
+    every core itself, and its memory limit is per run (PRESS-0275 § 4.4)."""
+    import _jxl_standin as standin
+
+    from pressless import jpegxl
+    folder = _jxl_store(tmp_path, monkeypatch,
+                        body="{photo: seaside.jxl}\n\n{photo: harbour.jxl}")
+    _photograph(folder, "harbour.jxl", standin.CONTAINER)
+    most = _counting(monkeypatch, jpegxl, "decode", pause=0.3)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert most[0] == 1
+    assert sorted(p.name for p in (into / "photographs").iterdir()) == [
+        "harbour.jxl.webp", "seaside.jxl.webp"]
+
+
+# ------------------------------------------------------------- PRESS-0485 ---
+# PRESS-0275 § 4.4 step 5: the decoder's PAM read as an eight-bit picture,
+# its colour profile beside it.
+
+
+def _pam(path: Path, kind: str, top: int, samples: list[int], width: int, height: int) -> Path:
+    depth = {"GRAYSCALE": 1, "GRAYSCALE_ALPHA": 2, "RGB": 3, "RGB_ALPHA": 4}[kind]
+    wide = top > 255
+    head = (f"P7\nWIDTH {width}\nHEIGHT {height}\nDEPTH {depth}\nMAXVAL {top}\n"
+            f"TUPLTYPE {kind}\nENDHDR\n").encode("ascii")
+    path.write_bytes(head + b"".join(v.to_bytes(2 if wide else 1, "big") for v in samples))
+    return path
+
+
+@pytest.mark.parametrize("kind, top, samples, mode, pixels", [
+    ("RGB", 255, [10, 20, 30, 40, 50, 60], "RGB", [(10, 20, 30), (40, 50, 60)]),
+    ("RGB_ALPHA", 65535, [0xFF01, 0x8000, 0x00FF, 0x7F7F] * 2, "RGBA", [(255, 128, 0, 127)] * 2),
+    ("GRAYSCALE", 4095, [4095, 2049], "L", [255, 128]),
+    ("GRAYSCALE_ALPHA", 3, [3, 1, 0, 2], "LA", [(255, 85), (0, 170)]),
+])
+def test_a_pam_of_any_depth_reads_as_eight_bits(tmp_path, kind, top, samples, mode, pixels):
+    """PRESS-0485: the decoder writes the original's own depth; a 16-bit
+    sample keeps its high byte, as a 16-bit PNG's does, and any other depth
+    is scaled to 0-255. The file is gone once read."""
+    decoded = _pam(tmp_path / "decoded.pam", kind, top, samples, 2, 1)
+    picture = builder._from_pam(decoded, tmp_path / "none.icc")
+    assert picture.mode == mode
+    assert [picture.getpixel((x, 0)) for x in range(2)] == pixels
+    assert "icc_profile" not in picture.info
+    assert not decoded.exists()
+
+
+@pytest.mark.parametrize("head", [
+    b"P6\n2 1\n255\n", b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 3\nMAXVAL 255\nTUPLTYPE RGB\n",
+    b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 3\nMAXVAL 255\nTUPLTYPE CMYK\nENDHDR\n",
+    b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 3\nMAXVAL 0\nTUPLTYPE RGB\nENDHDR\n",
+    b"P7\nWIDTH 9\nHEIGHT 9\nDEPTH 3\nMAXVAL 255\nTUPLTYPE RGB\nENDHDR\n",
+], ids=["not-pam", "no-end", "unknown-kind", "no-depth", "cut-short"])
+def test_a_pam_it_cannot_read_is_a_picture_error(tmp_path, head):
+    """§ 4.4 step 4's sentence, through _PICTURE_ERRORS: a ValueError."""
+    decoded = tmp_path / "decoded.pam"
+    decoded.write_bytes(head + bytes(6))
+    with pytest.raises(ValueError):
+        builder._from_pam(decoded, tmp_path / "none.icc")
+
+
+def test_a_grey_profile_is_dropped(tmp_path):
+    """A WebP holds RGB, which a grey profile cannot describe."""
+    grey = ImageCms.ImageCmsProfile(ImageCms.createProfile("LAB"))   # not RGB
+    (tmp_path / "decoded.icc").write_bytes(grey.tobytes())
+    decoded = _pam(tmp_path / "decoded.pam", "GRAYSCALE", 255, [1, 2], 2, 1)
+    assert "icc_profile" not in builder._from_pam(decoded, tmp_path / "decoded.icc").info
+
+
+def test_jpeg_xl_keeps_its_colour_profile_and_alpha(tmp_path, monkeypatch):
+    """PRESS-0485: a PAM holds no profile; the one the decoder writes beside
+    it reaches the web copy, and so does the alpha."""
+    folder = _jxl_store(tmp_path, monkeypatch)
+    profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    picture = Image.new("RGBA", (3000, 1500), (200, 40, 40, 255))
+    picture.paste((0, 0, 255, 128), (1500, 0, 3000, 1500))
+    picture.save(tmp_path / "decoded.png", icc_profile=profile)   # what the stand-in hands back
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    with Image.open(into / "photographs" / "seaside.jxl.webp") as web:
+        assert web.mode == "RGBA"
+        assert web.info.get("icc_profile") == profile
+        assert web.getpixel((100, 400))[3] == 255
+        assert abs(web.getpixel((1500, 400))[3] - 128) <= 2
