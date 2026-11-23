@@ -78,9 +78,12 @@ def test_it_imports_only_safe_write():
     """A module whose import rule admits safe_write may use it and reach
     nothing else through it (PRESS-0223 § 4.1, PRESS-0023 § 4.1).
 
-    Breaks when it imports another part of Pressless."""
+    Breaks when it imports another part of Pressless, by a relative import
+    too, whose module reads as None or a bare name."""
     imported = [node for node in ast.walk(ast.parse(inspect.getsource(json_record)))
                 if isinstance(node, (ast.Import, ast.ImportFrom))]
+    assert not [node.module for node in imported
+                if isinstance(node, ast.ImportFrom) and node.level], "a relative import"
     ours = {node.module for node in imported
             if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("pressless")}
     ours |= {alias.name for node in imported if isinstance(node, ast.Import)
