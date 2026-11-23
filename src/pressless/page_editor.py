@@ -868,14 +868,16 @@ def _publish(face: Face, folder: Path, request: Request,
 def press_page(folder: Path, form: dict[str, str], *,
                capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
                notices: list | None = None,
-               transport: publisher.Transport | None = None) -> publishing.Published:
+               transport: publisher.Transport | None = None,
+               noted: Callable[[str], None] = lambda _line: None) -> publishing.Published:
     """§ 4.7's press: write the form's waiting copy, then publish it. Raises
     what `write_copy` refuses with, or what the publish raises. The caller holds
-    editor.LOCK (PRESS-0337 § 4.7)."""
+    editor.LOCK (PRESS-0337 § 4.7). Why a copy stayed goes to `noted`."""
     gathered = notices if notices is not None else []
     new, _ = gatherer(capture, gathered)(lambda: write_copy(folder, form))
     return _press_written(folder, form.get("kind", ""), form.get("name", ""), new,
-                          capture=capture, notices=gathered, transport=transport)
+                          capture=capture, notices=gathered, transport=transport,
+                          noted=noted)
 
 
 def _press_written(folder: Path, kind: str, name: str, new: str, *,
