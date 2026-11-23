@@ -8942,7 +8942,7 @@ does not wait on them.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 🚧 [PRESS-0428] **After an update or a restart, Pressless comes back in the tab it was in.**
+- ✅ [PRESS-0428] **After an update or a restart, Pressless comes back in the tab it was in.**
   The user, 2026-11-21, during the real 1.0.2 to 1.1.0 update on
   Linux: the update opened a new tab, and the user would like it to stay
   in the same one. Today every start opens a fresh tab on a new port with
@@ -8965,6 +8965,10 @@ does not wait on them.
   INV-8's row in scripts/by-hand-browser-checks.py passes in headless
   Chrome. Owed before shipping: the two Windows questions above, on the
   box, which was off. The probe is in the session scratchpad (box-0428).
+  Windows checked on the box 2026-11-23 with the gate's portable
+  Python: a held port is refused (winerror 10013) whether this program
+  or another holds it; a closed Face's port rebinds at once; the
+  helper's batch file sees PRESSLESS_RESUME. windows-gate.sh passed.
   **Layman:** After Pressless updates or restarts, it carries on in the same browser tab instead of opening a new one.
   Kind: ux.
   Source: user-request-2026-11-21.
