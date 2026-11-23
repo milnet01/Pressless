@@ -10,7 +10,6 @@ import json
 import lzma
 import subprocess
 import tarfile
-import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -106,12 +105,21 @@ def test_a_failing_gh_or_7z_is_a_refusal_in_its_own_words(tmp_path):
         script.extract_windows(archive, tmp_path, run=_failing("Can not open the file"))
 
 
-def test_a_release_is_public_only_once_its_assets_check(monkeypatch, tmp_path):
+def test_a_windows_archive_without_the_program_is_refused(tmp_path):
+    """review-code: 7z extracting nothing and saying so with a 0 was a
+    FileNotFoundError traceback."""
+    script = _script()
+    with pytest.raises(script.Refused, match="djxl.exe"):
+        script.extract_windows(tmp_path / "a.zip", tmp_path, run=_Gh())
+
+
+def test_a_release_is_public_only_once_its_assets_check(monkeypatch, tmp_path, capsys):
     """review-code: the pre-release was public before its asset list was
     checked, so a wrong one stayed published. It is a draft until then, and
     its files are worked on beside the repository, never in /tmp, which is
     memory on the maintainer's machine."""
     script = _script()
+    monkeypatch.setattr(script, "ROOT", tmp_path / "repository")
     where = []
 
     def archives(into, run=None):
@@ -131,12 +139,27 @@ def test_a_release_is_public_only_once_its_assets_check(monkeypatch, tmp_path):
     assert script.main(run=gh) == 1
     assert [argv[1:3] for argv in gh.calls] == [["release", "create"], ["release", "view"]]
     assert "--draft" in gh.calls[0]
-    assert not Path(where[0]).is_relative_to(tempfile.gettempdir())
+    assert Path(where[0]).parent == tmp_path
+    # review-code: the draft a refusal leaves blocks the next run, so it is named.
+    assert f"gh release delete {script.jpegxl.RELEASE}" in capsys.readouterr().err
 
     gh.calls.clear()
     gh.answer = json.dumps({"assets": [{"name": "djxl"}, {"name": "djxl.exe"}]})
     assert script.main(run=gh) == 0
     edit = gh.calls[-1]
+    assert "gh release delete" not in capsys.readouterr().err
     assert edit[1:3] == ["release", "edit"]
     assert "--draft=false" in edit
     assert "--latest=false" in edit
+
+
+def test_a_refusal_before_the_draft_names_no_draft(monkeypatch, tmp_path, capsys):
+    script = _script()
+    monkeypatch.setattr(script, "ROOT", tmp_path / "repository")
+
+    def refused(into, run=None):
+        raise script.Refused("GitHub's digest differs")
+
+    monkeypatch.setattr(script, "fetch_archives", refused)
+    assert script.main(run=_Gh()) == 1
+    assert "gh release delete" not in capsys.readouterr().err

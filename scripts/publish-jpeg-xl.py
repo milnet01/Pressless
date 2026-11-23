@@ -9,7 +9,8 @@ below stands in for subprocess.run, so a test reaches no program.
 
 1. Downloads libjxl's two archives for the version in `jpegxl.RELEASE`, and
    requires each one's GitHub digest, and its own bytes, to match the
-   SHA-256 written below.
+   SHA-256 written below in ARCHIVES. A new `jpegxl.RELEASE` needs ARCHIVES
+   measured again.
 2. Takes `tools/djxl` out of the Linux archive with lzma and tarfile, and
    `x64-windows-static/bin/djxl.exe` out of the Windows one with 7z. Each
    must match `jpegxl.PINS`.
@@ -28,7 +29,6 @@ import hashlib
 import io
 import json
 import lzma
-import subprocess
 import sys
 import tarfile
 import tempfile
@@ -38,6 +38,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from pressless import jpegxl  # noqa: E402 -- after the path it is found on
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _refusing  # noqa: E402 -- beside this script, shared with sign-release.py
+from _refusing import Refused  # noqa: E402
 
 LIBJXL = "libjxl/libjxl"
 REPOSITORY = "milnet01/Pressless"
@@ -55,22 +59,13 @@ NOTES = ("libjxl's djxl decoder (BSD-3-Clause), for Pressless's JPEG XL support.
          "before every use. The licence files are libjxl's and its libraries'.")
 
 
-class Refused(Exception):
-    """A check failed; nothing was published."""
-
-
 def libjxl_tag() -> str:
     return "v" + jpegxl.RELEASE.removeprefix("jpeg-xl-")
 
 
 def _run(argv: list[str], run=None) -> str:
     """What `argv` printed. A failure is a refusal carrying what it said."""
-    try:
-        return (run or subprocess.run)(argv, check=True, capture_output=True,
-                                       encoding="utf-8", errors="replace").stdout
-    except subprocess.CalledProcessError as exc:
-        said = (exc.stderr or exc.stdout or "").strip()
-        raise Refused(f"{' '.join(argv[:3])} failed: {said}") from None
+    return _refusing.run(argv, run)
 
 
 def gh(args: list[str], run=None) -> str:
@@ -140,6 +135,8 @@ def extract_windows(archive: Path, into: Path, run=None) -> tuple[Path, list[Pat
     out.mkdir()
     _run(["7z", "e", "-y", f"-o{out}", str(archive), _WINDOWS_PROGRAM, _WINDOWS_LICENCES], run)
     program = into / jpegxl.PINS["windows"].name
+    if not (out / "djxl.exe").is_file():
+        raise Refused(f"the Windows archive holds no {_WINDOWS_PROGRAM}")
     (out / "djxl.exe").replace(program)
     licences = []
     for licence in sorted(out.glob("LICENSE.*")):
@@ -183,6 +180,7 @@ def main(run=None) -> int:
     # are downloaded, and on the maintainer's machine /tmp is memory.
     with tempfile.TemporaryDirectory(prefix="publish-jpeg-xl-", dir=ROOT.parent) as work:
         where = Path(work)
+        created = False
         try:
             archives = fetch_archives(where, run)
             linux, linux_licences = extract_linux(archives["linux"], where)
@@ -191,10 +189,17 @@ def main(run=None) -> int:
             check_pin(windows, "windows")
             files = [linux, windows, *linux_licences, *windows_licences]
             create(files, run)
+            created = True
             check_assets({path.name for path in files}, run)
             publish(run)
         except Refused as exc:
             print(f"Refused: {exc}", file=sys.stderr)
+            if created:
+                # gh refuses to create the release again while the draft is there.
+                print(f"The draft {jpegxl.RELEASE} is still on {REPOSITORY}, not public. "
+                      f"Remove it before running this again:\n"
+                      f"    gh release delete {jpegxl.RELEASE} -R {REPOSITORY} --yes",
+                      file=sys.stderr)
             return 1
     print(f"Published {jpegxl.RELEASE} on {REPOSITORY} as a pre-release.")
     return 0
