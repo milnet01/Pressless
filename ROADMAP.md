@@ -9102,12 +9102,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 🚧 [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
+- ✅ [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
   Subject 02. Review types: Codebase, Test.
   Findings: review-code lane-02, review-readability lane-02, and the
   performance and test reviews' findings on these files and their tests.
   Worst: tests/test_editor.py's press test asserts a bare string in its
   go case, so that case checks nothing (review-tests HIGH).
+  Shipped 2026-11-23, ec75e5c..c539ae7 (merged a2bd19b). 31 findings: 25
+  fixed, 3 queued (PRESS-0476 to PRESS-0478), 3 dismissed. The press
+  test's go case now checks what it posts (the review-tests HIGH), red
+  with the path changed. The visual view keeps saving after a removal, an
+  Add on a failed preview, or a marks box saved as several blocks. Files
+  sizes read 1.0 MB at 999,500 bytes, with the language's decimal mark;
+  a half-written photograph is not listed; uploads say what they add.
+  PRESS-0346 § 4.5 amended. Full suite 2630 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/02.json.
   **Layman:** Bug fixes and tidy-ups in the screen where you write an entry, and in the Files screen.
   Kind: review-fix.
   Source: review-2026-11-23.
