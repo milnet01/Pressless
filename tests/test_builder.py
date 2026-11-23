@@ -21,6 +21,7 @@ import re
 import shutil
 import subprocess
 import sys
+import weakref
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
@@ -45,7 +46,6 @@ from pressless.builder import (
 from pressless.settings import Credentials, Settings
 
 SENTINEL = "zqxsentinelzqx"
-YEAR = datetime.now().year
 
 HEADER = (
     "<!-- header: the comment the build removes -->\n"
@@ -494,7 +494,7 @@ def test_a_fixed_page_keeps_its_own_bytes(tmp_path):
     folder = _store(tmp_path, pages={"index": home, "about": about, "plain": plain})
 
     into = tmp_path / "site"
-    build(folder, _settings(), into)
+    build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
 
     # Bytes, not read_text: universal newlines would turn the fixture's CRLF into LF.
     built_home = (into / "index.html").read_bytes().decode("utf-8")
@@ -517,7 +517,7 @@ def test_a_fixed_page_keeps_its_own_bytes(tmp_path):
             in built_about)
     assert built_about.count('aria-current="page"') == 1
     assert "the menu keeps this comment" in built_about
-    assert f"&copy; {YEAR} " in built_about
+    assert f"&copy; {REPRODUCIBLE_TODAY.year} " in built_about
     assert 'href="../pages/privacy.html"' in built_about
     assert "the comment the build removes" not in built_about
     assert "the comment the build removes" not in built_home
@@ -1055,7 +1055,10 @@ def test_a_linked_site_folder_keeps_building(tmp_path):
     real.parent.mkdir()
     link = tmp_path / "site"
     build(folder, _settings(), real)
-    link.symlink_to(real, target_is_directory=True)
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except OSError as exc:   # Windows, for an account without the right to make links
+        pytest.skip(f"this account cannot make a link: {exc}")
     for _ in range(3):
         build(folder, _settings(), link)
     assert link.is_symlink() and (link / "index.html").is_file()
@@ -2274,3 +2277,122 @@ def test_changing_layout_changes_no_page(tmp_path):
         }, layout
         styles.add(files[f"{store.LOOK_FOLDER}/{store.STYLE_CODE_NAME}"])
     assert len(styles) == len(starter_look.LAYOUTS)
+
+
+# ------------------------------------------------- review 2026-11-23 -------
+
+
+def test_a_moving_picture_holds_one_frame_at_a_time(tmp_path, monkeypatch):
+    """§4.6 step 4: every frame of a GIF is published, its timing kept. Each
+    is shrunk as the saver takes it, so a long GIF does not hold every frame
+    in full colour at once.
+
+    Breaks when the frames are all shrunk before the save, or a timing or a
+    frame is lost on the way."""
+    count = 12
+    frames = [Image.new("RGB", (60, 40), (20 * n, 40, 200 - 10 * n)) for n in range(count)]
+    out = io.BytesIO()
+    frames[0].save(out, "GIF", save_all=True, append_images=frames[1:],
+                   duration=[50 + 10 * n for n in range(count)], loop=0)
+    folder = _store(tmp_path)
+    _photograph(folder, "moving.gif", out.getvalue())
+    store.write(folder, _entry("seaside", body="{photo: moving.gif}"), draft=False)
+
+    alive: list[weakref.ref] = []
+    held: list[int] = []
+    shrunk = builder._shrunk
+
+    def counted(picture):
+        alive.append(weakref.ref(picture))
+        held.append(sum(1 for frame in alive if frame() is not None))
+        return shrunk(picture)
+
+    monkeypatch.setattr(builder, "_shrunk", counted)
+    build(folder, _settings(), tmp_path / "site")
+
+    assert len(held) == count and max(held) <= 3, held
+    with Image.open(tmp_path / "site/photographs/moving.gif") as gif:
+        assert gif.n_frames == count
+        durations = []
+        for number in range(count):
+            gif.seek(number)
+            durations.append(gif.info["duration"])
+    assert durations == [50 + 10 * n for n in range(count)]
+
+
+def test_words_naming_a_tag_do_not_stand_for_it(tmp_path):
+    """PRESS-0199 § 4.2 and PRESS-0227 § 4.3: a page keeps its own counting
+    code, icon or sharing picture, found as a tag. An entry whose words name
+    `og:image` or Google's tag address, and a link whose `data-rel` says
+    icon, are not one.
+
+    Breaks when the test is a substring of the whole page."""
+    folder = _store(tmp_path, pages={
+        "index": '<html><head><link rel="stylesheet" href="x.css" data-rel="icon">'
+                 "</head><body><p>Home</p></body></html>\n"})
+    entry = _entry("about-tags", body="Set og:image, and load "
+                   "https://www.googletagmanager.com/gtag/js for counting.")
+    store.write(folder, entry, draft=False)
+    store.write_identity(folder, store.Identity("A", icon="i.png", picture="share.jpg"))
+    _photograph(folder, "i.png", _image("PNG"))
+    _photograph(folder, "share.jpg", _image("JPEG"))
+    into = tmp_path / "site"
+    build(folder, _settings(measurement_id="G-ABC123"), into)
+
+    page = _entry_page(into, entry).read_text(encoding="utf-8")
+    assert '<meta property="og:image"' in page
+    assert "?id=G-ABC123" in page
+    assert "site-icon.png" in (into / "index.html").read_text(encoding="utf-8")
+
+
+def test_a_card_shows_what_the_entry_page_shows(tmp_path):
+    """§4.3: a card's excerpt is the entry's words as its page shows them.
+    Its words are decoded to be cut, so a written `&amp;lt;` shows `&lt;` on
+    both, never `<` on the card.
+
+    Breaks when the decoded excerpt is escaped by Marks' text rule, which
+    keeps a decoded `&lt;` as a reference."""
+    folder = _store(tmp_path)
+    titled = _entry("titled", "2020-05-09 00:00:00", title="Tags",
+                    body="Writes &amp;lt;b&amp;gt; and A &amp; B.")
+    untitled = _entry("untitled", "2020-05-08 00:00:00", body="Writes &amp;lt;i&amp;gt;.")
+    for entry in (titled, untitled):
+        store.write(folder, entry, draft=False)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    journal = (into / "blog/index.html").read_text(encoding="utf-8")
+    assert ('<p class="post-excerpt">Writes &amp;lt;b&amp;gt; and A &amp; B.</p>'
+            in journal), journal
+    assert _card_label(journal, untitled) == "Writes &amp;lt;i&amp;gt;."
+    assert "Writes &amp;lt;b&amp;gt;" in _entry_page(into, titled).read_text(encoding="utf-8")
+
+
+def test_a_site_name_is_shown_as_typed(tmp_path):
+    """§4.4: the placeholders are filled in one pass, so a site's name or
+    description holding a placeholder's spelling shows it as typed.
+
+    Breaks when one placeholder is filled into text another then fills."""
+    folder = _store(tmp_path)
+    store.write_html(folder, store.FURNITURE_FOLDER, "header",
+                     HEADER.replace("{{NAVIGATION}}",
+                                    "{{NAVIGATION}}<b>{{SITE_NAME}}</b><i>{{SITE_DESCRIPTION}}</i>"))
+    store.write_identity(folder, store.Identity("Since {{YEAR}}", "{{SITE_NAME}} {{UP}}"))
+    into = tmp_path / "site"
+    build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
+    home = (into / "index.html").read_text(encoding="utf-8")
+    assert "<b>Since {{YEAR}}</b><i>{{SITE_NAME}} {{UP}}</i>" in home, home
+
+
+def test_a_device_name_tag_is_refused_for_its_own_reason(tmp_path):
+    """§4.3: a category or tag the Store's slug test refuses stops the build
+    with the Store's reason, so a Windows device name is not told to use
+    a-z, which it does.
+
+    Breaks when the Builder words the reason itself."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside", tags=("con",)), draft=False)
+    with pytest.raises(BuildStopped, match="seaside.*'con'.*Windows reserves"):
+        build(folder, _settings(), tmp_path / "site")
+    store.write(folder, _entry("seaside", tags=("No",)), draft=False)
+    with pytest.raises(BuildStopped, match="'No'.*a-z, 0-9 and '-'"):
+        build(folder, _settings(), tmp_path / "site")
