@@ -286,10 +286,24 @@ file, and delete the task afterwards.
 pipe.** Check the packaged program from a console, or with
 `--self-check`, which prints and exits.
 
-**A browser check runs through Playwright.** The Claude-in-Chrome
-extension is not connected on this machine; the `playwright` Python
-package is installed and drives `/usr/bin/google-chrome` headless, or
-its own Firefox build with `--browser firefox`.
+**A browser check runs through Playwright, from a venv of its own.** The
+Claude-in-Chrome extension is not connected on this machine. The by-hand
+scripts import the test modules, so they need the dev tools beside
+Playwright. `.venv` stays what a fresh install resolves, so it holds no
+Playwright. Make the gitignored `.venv-browsers` once, with the machine's
+own Playwright version so its downloaded Firefox matches, as the Windows
+gate does on the box:
+
+```bash
+python3 -m venv .venv-browsers
+.venv-browsers/bin/python -m pip install -e '.[dev]' \
+    "playwright==$(python3 -c 'import importlib.metadata as m; print(m.version("playwright"))')"
+.venv-browsers/bin/python scripts/by-hand-browser-checks.py
+```
+
+It drives `/usr/bin/google-chrome` headless, or Playwright's own Firefox
+build with `--browser firefox`. `scripts/by-hand-editor-races.py` runs
+the same way.
 
 **On the Windows box the same checks run unattended** (PRESS-0292):
 

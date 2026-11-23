@@ -815,7 +815,8 @@ class _Door:
             if entry is not None:
                 slug, draft = _entry_file(folder, entry)
                 if draft:
-                    publishing.press_entry(folder, _entry_form(folder, slug), **pressed)
+                    publishing.press_entry(folder, _entry_form(folder, slug), **pressed,
+                                           noted=self.face.note)
                     return
             elif page is not None:
                 kind = _kind(page)
@@ -825,7 +826,7 @@ class _Door:
                     page_editor.press_page(folder, {
                         "kind": kind, "name": page, "waiting": "1",
                         "base": editor.digest(copy), "view": page_editor.CODE, "text": text},
-                        **pressed)
+                        **pressed, noted=self.face.note)
                     return
             # § 4.5: an entry or page with nothing waiting publishes the site
             # as it stands, as `plan` showed it.

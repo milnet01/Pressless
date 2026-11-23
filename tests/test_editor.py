@@ -1072,7 +1072,6 @@ process.stdout.write(JSON.stringify({stopped, status: shown["save-status"].textC
 """
 
 
-@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_the_undo_row_leads_with_its_buttons_and_says_a_press_runs():
     """PRESS-0015 § 4.6 and PRESS-0353 § 4.3: what Your site puts before Undo
     shares its row, and a running press marks the status line. Breaks when
@@ -1085,6 +1084,46 @@ def test_the_undo_row_leads_with_its_buttons_and_says_a_press_runs():
 
 
 
+# PRESS-0480: three saves; between the second and third, a press's refusal
+# fills the failure box, as a refused Remove or Rename does.
+_SEND_HARNESS = """
+const shown = {};
+globalThis.document = {getElementById: (id) => shown[id] || (shown[id] = {innerHTML: ""})};
+globalThis.window = globalThis;
+globalThis.say = (key) => key;
+const replies = [{failure: "no preview"}, {failure: null}, {failure: null}];
+globalThis.fetch = async () => ({status: 200,
+                                 text: async () => JSON.stringify(replies.shift())});
+%s
+const send = window.presslessSend({address: "/save", posting: () => "", fields: () => "",
+                                   unsaved: () => {}, stop: () => {}, saved: () => {}});
+(async () => {
+  const box = () => shown.failure.innerHTML;
+  await send();
+  const own = box();
+  await send();
+  const cleared = box();
+  shown.failure.innerHTML = "refused";
+  await send();
+  process.stdout.write(JSON.stringify({own, cleared, kept: box()}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_save_clears_only_the_failure_a_save_showed(tmp_path):
+    """PRESS-0480: a save that answers clean clears a failure an earlier save
+    showed, and leaves one a press showed meanwhile, such as a refused Remove
+    or Rename, until it is read. Breaks when a clean save empties the failure
+    box whatever it holds, or stops clearing its own."""
+    harness = tmp_path / "send.js"
+    harness.write_text(_SEND_HARNESS % editor.SAVING_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    assert json.loads(run.stdout) == {"own": "no preview", "cleared": "", "kept": "refused"}
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_both_editors_stop_saving_alike(tmp_path):
     """PRESS-0012 § 4.8: saving stops with its flag set, "not saved" on the
     status line and the failure shown, in either editor. Breaks when the

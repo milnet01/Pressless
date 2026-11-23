@@ -8,6 +8,7 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 .venv/
+.venv-browsers/
 
 # OS
 .DS_Store

@@ -198,6 +198,8 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
     assert "was left in place after publishing" in notices, notices
     assert "Your site has been updated." in notices, notices
     assert "Your site has not changed." not in notices, notices
+    # PRESS-0480: why it was left is in the log, for Send my log.
+    assert "the bin is not writable" in (folder / "pressless.log").read_text(encoding="utf-8")
 
 
 # ------------------------------------------------------------------ INV-3 ---
@@ -332,6 +334,7 @@ def test_an_unknown_outcome_says_the_copy_was_left(tmp_path, monkeypatch):
     assert "Pressless cannot tell whether your site changed." in notices, notices
     assert "was left in place after publishing" not in notices, notices
     assert "Your site has been updated." not in notices, notices
+    assert "the bin is not writable" in (folder / "pressless.log").read_text(encoding="utf-8")
 
 
 # ------------------------------------------------------------------ INV-5 ---

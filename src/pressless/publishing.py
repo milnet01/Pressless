@@ -43,6 +43,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    details_for,
     gatherer,
     message_box,
     nothing_captured,
@@ -191,9 +192,11 @@ def publish(folder: Path, saved: settings.Settings, key: str, *, entry: str | No
             emptying: bool = False, taking_over: bool = False,
             capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str | Notice] | None = None,
-            transport: publisher.Transport | None = None) -> Published:
+            transport: publisher.Transport | None = None,
+            noted: Callable[[str], None] = lambda _line: None) -> Published:
     """§ 4.3: move the entry, guard, build, upload, finish. `capture` wraps every
-    step but the upload, and what each capture gathers is added to `notices`."""
+    step but the upload, and what each capture gathers is added to `notices`.
+    Why a working copy could not be binned goes to `noted`, the Face's log."""
     folder = Path(folder)
     gathered = notices if notices is not None else []
 
@@ -220,7 +223,8 @@ def publish(folder: Path, saved: settings.Settings, key: str, *, entry: str | No
         try:
             for path in moved.copy:
                 captured(lambda target=path: store.move_to_bin(folder, target))
-        except Exception:  # noqa: BLE001 -- never replaces the publish's result (§ 4.3 step 5)
+        except Exception as exc:  # noqa: BLE001 -- never replaces the publish's result (§ 4.3 step 5)
+            noted(details_for(exc))
             return True
         return False
 
@@ -567,7 +571,8 @@ def _publish_site(face: Face, folder: Path,
 def press_entry(folder: Path, form: dict[str, str], *,
                 capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
                 notices: list[str | Notice] | None = None,
-                transport: publisher.Transport | None = None
+                transport: publisher.Transport | None = None,
+                noted: Callable[[str], None] = lambda _line: None
                 ) -> tuple[store.Entry, Published]:
     """§ 4.2's press: save the form, then publish the entry it wrote. Raises
     editor.SAVE_FAILURES from the save, or what `publish` raises. The caller
@@ -575,17 +580,18 @@ def press_entry(folder: Path, form: dict[str, str], *,
     gathered = notices if notices is not None else []
     written, _ = gatherer(capture, gathered)(lambda: editor.save(folder, form))
     return written, _press_written(folder, written, capture=capture, notices=gathered,
-                                   transport=transport)
+                                   transport=transport, noted=noted)
 
 
 def _press_written(folder: Path, written: store.Entry, *,
                    capture: Callable[[], AbstractContextManager[list[str]]],
-                   notices: list, transport: publisher.Transport | None) -> Published:
+                   notices: list, transport: publisher.Transport | None,
+                   noted: Callable[[str], None] = lambda _line: None) -> Published:
     """`press_entry` after its save, which the screen's press splits from the
     save to answer each failure differently."""
     saved, key = settings_and_key(folder, gatherer(capture, notices))
     return publish(folder, saved, key, entry=written.slug, capture=capture,
-                   notices=notices, transport=transport)
+                   notices=notices, transport=transport, noted=noted)
 
 
 def press_site(folder: Path, *,
@@ -618,7 +624,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
 
         try:
             result = _press_written(folder, written, capture=face.capture, notices=notices,
-                                    transport=transport)
+                                    transport=transport, noted=face.note)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = press_failure(face, exc)
             published = False

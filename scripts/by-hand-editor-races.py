@@ -2,9 +2,10 @@
 
 Like scripts/by-hand-browser-checks.py, deliberately outside the gate and CI:
 it needs Chrome on the machine. Run it by hand after changing either editor's
-script:
+script, from the venv docs/working-here.md § "Windows and browser checks"
+makes:
 
-    python3 scripts/by-hand-editor-races.py
+    .venv-browsers/bin/python scripts/by-hand-editor-races.py
 
 It drives a throwaway instance -- a folder beside the repository, the
 Publisher tests' recording transport double slowed so a publish lasts a few
