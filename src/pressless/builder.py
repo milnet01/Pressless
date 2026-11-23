@@ -25,12 +25,14 @@ import os
 import re
 import shutil
 import tempfile
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, unquote, urljoin, urlsplit
 
-from PIL import Image, ImageOps, ImageSequence
+from PIL import Image, ImageCms, ImageOps, ImageSequence
 
 from pressless import blocks, jpegxl, marks, os_reason, store, votes, words
 from pressless.safe_write import patiently
@@ -50,6 +52,13 @@ SITE_SHEETS = (*STYLESHEETS, STYLE_CODE, EXTRA_CSS)   # the links a build may re
 PIECES_SCRIPT = "look/pieces.js"   # PRESS-0217 § 4.3; never under assets/ (decision 3)
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
+# Web copies made at once (§ 4.6): Pillow lets go of the interpreter while it
+# decodes, shrinks and encodes, so a press uses this many cores. Each one may
+# hold a full-size picture, so this, not the core count, bounds the memory.
+PHOTOGRAPH_WORKERS = min(4, os.cpu_count() or 1)
+# The JPEG XL decoder runs once at a time: it uses every core itself, and its
+# memory limit is per run (PRESS-0275 § 4.4).
+_DECODING = threading.Lock()
 SITE_ICON = "site-icon.png"   # PRESS-0227 § 4.3: the chosen icon, at the root
 ICON_SIDE = 180
 JOURNAL = "Journal"   # PRESS-0008 § 4.4: the data-nav every generated page marks
@@ -266,8 +275,9 @@ def web_photograph(name: str) -> str:
 @contextlib.contextmanager
 def open_original(path: Path):
     """The one place the Builder opens an original (PRESS-0275 § 4.5). A
-    JPEG XL file is decoded by the extra into a work directory, and the PNG
-    it gives is yielded with `format` "JXL"; anything else is Image.open's.
+    JPEG XL file is decoded by the extra into a work directory, and the
+    picture it gives is yielded with `format` "JXL"; anything else is
+    Image.open's.
     Raises jpegxl.NotInstalled where the extra is missing."""
     with open(path, "rb") as source:
         head = source.read(16)
@@ -280,11 +290,62 @@ def open_original(path: Path):
         raise jpegxl.NotInstalled("JPEG XL support is not added")
     work = Path(tempfile.mkdtemp(prefix="pressless-jxl-"))
     try:
-        with Image.open(jpegxl.decode(program, Path(path), work)) as picture:
+        with _DECODING:
+            decoded = jpegxl.decode(program, Path(path), work)
+        with _from_pam(decoded, work / jpegxl.PROFILE) as picture:
             picture.format = "JXL"
             yield picture
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+# The PAM tuple types jpegxl.COMMAND writes. It writes the original's own bit
+# depth, so MAXVAL is anything from 1 to 65535.
+_PAM_MODES = {(b"1", b"GRAYSCALE"): "L", (b"2", b"GRAYSCALE_ALPHA"): "LA",
+              (b"3", b"RGB"): "RGB", (b"4", b"RGB_ALPHA"): "RGBA"}
+# How the decoder describes the sRGB profile it writes for a picture with
+# none of its own: dropped, as a web copy with no profile already means sRGB.
+_DECODER_SRGB = re.compile(r"sRGB|RGB_D65_SRG_(Per|Rel|Sat|Abs)_SRG")
+
+
+def _from_pam(decoded: Path, profile: Path) -> Image.Image:
+    """The decoder's PAM as an eight-bit picture, with its colour profile
+    (PRESS-0275 § 4.4 step 5). The file is deleted once read, so the picture
+    is not held twice. ValueError where it is not a PAM jpegxl.COMMAND
+    writes; DecompressionBombError past Pillow's limit."""
+    data = decoded.read_bytes()
+    decoded.unlink()
+    header, ended, pixels = data.partition(b"\nENDHDR\n")
+    lines = header.split(b"\n")
+    fields = dict(line.split(b" ", 1) for line in lines[1:] if b" " in line)
+    mode = _PAM_MODES.get((fields.get(b"DEPTH"), fields.get(b"TUPLTYPE")))
+    if lines[0] != b"P7" or not ended or mode is None:
+        raise ValueError("the JPEG XL decoder gave no picture Pressless reads")
+    size = (int(fields[b"WIDTH"]), int(fields[b"HEIGHT"]))
+    top = int(fields[b"MAXVAL"])
+    if not 0 < top < 65536:
+        raise ValueError("the JPEG XL decoder gave no picture Pressless reads")
+    Image._decompression_bomb_check(size)  # as Image.open applies it
+    if top == 255:
+        picture = Image.frombytes(mode, size, pixels)
+    elif top == 65535:   # each sample's high byte, as Pillow reads a 16-bit PNG
+        picture = Image.frombytes(mode, size, pixels, "raw", mode + ";16B")
+    else:                # another depth: every sample scaled to 0-255
+        samples = (size[0] * len(mode), size[1])
+        if top > 255:    # point() truncates on "I", so a half is added
+            wide = Image.frombytes("I;16B", samples, pixels).convert("I")
+            scaled = wide.point(lambda value: value * (255 / top) + 0.5).convert("L")
+        else:            # and rounds on "L"
+            scaled = Image.frombytes("L", samples, pixels).point(lambda value: value * (255 / top))
+        picture = Image.frombytes(mode, size, scaled.tobytes())
+    if profile.is_file():
+        icc = profile.read_bytes()
+        described = ImageCms.ImageCmsProfile(io.BytesIO(icc))
+        # A grey profile cannot describe the RGB a WebP holds.
+        if (described.profile.xcolor_space.strip() == "RGB" and not _DECODER_SRGB.fullmatch(
+                ImageCms.getProfileDescription(described).strip())):
+            picture.info["icc_profile"] = icc
+    return picture
 
 
 def webp_copy(original: Path, target: Path) -> None:
@@ -892,6 +953,9 @@ class _Build:
         self.files: list[str] = []
         self.photographs_done: set[str] = set()   # written, or named alone
         self.copied_files: set[str] = set()
+        # While run() runs: web copies being made, in the order named.
+        self.making: ThreadPoolExecutor | None = None
+        self.made: list[Future] = []
         self.marked = ""  # the furniture file whose marks stay, for its preview alone
         self.furniture_pieces = False  # whether the header or footer holds a piece
         self.pieces_linked = False     # whether any page written links pieces.js
@@ -1009,6 +1073,31 @@ class _Build:
             key=lambda entry: entry.date, reverse=True)
 
     def run(self) -> Built:
+        with self.web_copies_made():
+            return self.run_pages()
+
+    @contextlib.contextmanager
+    def web_copies_made(self):
+        """Makes web copies on PHOTOGRAPH_WORKERS threads, and waits for them
+        all before the build is whole. A failure is the one a serial build
+        would meet first: the earliest-named web copy's, else the pages'."""
+        self.making = ThreadPoolExecutor(PHOTOGRAPH_WORKERS, thread_name_prefix="web-copy")
+        try:
+            try:
+                yield
+            finally:
+                for made in self.made:
+                    try:
+                        made.result()
+                    except BaseException:
+                        for later in self.made:
+                            later.cancel()
+                        raise
+        finally:
+            self.making.shutdown(wait=True, cancel_futures=True)
+            self.making = None
+
+    def run_pages(self) -> Built:
         # PRESS-0214 § 4.2: with the journal off the entries are read as none,
         # so no entry page or forward is written, and nothing under blog/.
         journal = store.journal_on(self.folder)
@@ -1260,33 +1349,17 @@ class _Build:
         if published != name and published in self.held_photographs:
             raise BuildStopped(f"the photograph {name} would be published as {published}, "
                                "which is another photograph's name")
-        if not self.writes_photographs:
-            self._name(f"{store.PHOTOGRAPHS_FOLDER}/{published}")
-            self.photographs_done.add(name)
-            return
-        # Decoded and encoded in memory first, so a picture Pillow cannot read
-        # is told apart from a site folder that cannot be written.
-        with _opened(original, name) as picture:
-            # A web copy's suffix must say what it holds (§ 4.5).
-            if (picture.format == "JXL") != (published != name):
-                raise BuildStopped(
-                    f"the photograph {name} is a {picture.format} picture, and only "
-                    "a JPEG XL picture's name ends in .jxl")
-            fmt = _REENCODED.get(picture.format, picture.format)
-            if fmt == "GIF":
-                # Encoded while the original is open: its frames are read as
-                # the saver takes them.
-                data = _gif_copy(picture, name)
-            elif picture.format in _REENCODED:
-                copy, options = _reencoded(picture, fmt)
-                data = None
-            else:
-                raise BuildStopped(
-                    f"the photograph {name} is a {fmt} picture, which Pressless does not publish")
-        if data is None:
-            data = _encoded(copy, fmt, name, **options)
-        self.write_bytes(f"{store.PHOTOGRAPHS_FOLDER}/{published}", data)
+        relative = f"{store.PHOTOGRAPHS_FOLDER}/{published}"
         self.photographs_done.add(name)
+        if not self.writes_photographs:
+            self._name(relative)
+            return
+        self.files.append(relative)
+        if self.making is None:
+            _write_web_copy(original, name, published, self.root / relative)
+        else:
+            self.made.append(self.making.submit(
+                _write_web_copy, original, name, published, self.root / relative))
 
     def original(self, name: str) -> Path:
         """The Store's photograph `name`, or BuildStopped: web_copy's and
@@ -1652,6 +1725,34 @@ def _encoded(picture: Image.Image, fmt: str, name: str, **options) -> bytes:
     return out.getvalue()
 
 
+def _write_web_copy(original: Path, name: str, published: str, target: Path) -> None:
+    """§ 4.6: the photograph `name`'s web copy, written at `target`. Run on a
+    web-copy thread, so it touches nothing a _Build holds."""
+    # Decoded and encoded in memory first, so a picture Pillow cannot read
+    # is told apart from a site folder that cannot be written.
+    with _opened(original, name) as picture:
+        # A web copy's suffix must say what it holds (§ 4.5).
+        if (picture.format == "JXL") != (published != name):
+            raise BuildStopped(
+                f"the photograph {name} is a {picture.format} picture, and only "
+                "a JPEG XL picture's name ends in .jxl")
+        fmt = _REENCODED.get(picture.format, picture.format)
+        if fmt == "GIF":
+            # Encoded while the original is open: its frames are read as
+            # the saver takes them.
+            data = _gif_copy(picture, name)
+        elif picture.format in _REENCODED:
+            copy, options = _reencoded(picture, fmt)
+            data = None
+        else:
+            raise BuildStopped(
+                f"the photograph {name} is a {fmt} picture, which Pressless does not publish")
+    if data is None:
+        data = _encoded(copy, fmt, name, **options)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+
+
 def _no_jpeg_xl(name: str) -> str:
     return (f"the photograph {name} is a JPEG XL picture, and JPEG XL support is not "
             "added: add it from the list page")
@@ -1664,6 +1765,9 @@ def _reencoded(picture: Image.Image, fmt: str) -> tuple[Image.Image, dict]:
                if fmt == "JPEG" else {})
     if "icc_profile" in picture.info:
         options["icc_profile"] = picture.info["icc_profile"]
+    # A JPEG is decoded at the smallest scale still covering LONGEST_SIDE
+    # (½, ¼ or ⅛), never the whole of a camera's picture; a no-op otherwise.
+    picture.draft(None, (LONGEST_SIDE, LONGEST_SIDE))
     return _bare(_shrunk(ImageOps.exif_transpose(picture))), options
 
 

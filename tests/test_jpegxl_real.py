@@ -7,16 +7,19 @@ scripts/make-jxl-fixtures.py:
 
 - still.jxl: a lossy 64x48 picture, left half red, right half blue;
 - oriented.jxl: a 64x48 JPEG with EXIF orientation 6, recompressed losslessly;
-- animation.jxl: two 32x32 frames, red then green.
+- animation.jxl: two 32x32 frames, red then green;
+- profiled.jxl: a lossless 64x48 picture, left half red and opaque, right
+  half blue and half see-through, carrying a profile that is not sRGB.
 """
 from __future__ import annotations
 
+import io
 import os
 import shutil
 from pathlib import Path
 
 import pytest
-from PIL import Image, ImageOps
+from PIL import Image, ImageCms, ImageOps
 
 from pressless import builder, jpegxl
 
@@ -72,12 +75,13 @@ def test_an_oriented_jpeg_comes_out_upright(decoder):
 
 
 def test_an_animation_gives_its_first_frame(decoder, tmp_path):
-    """Decision 6, and § 6's row on numbered files: one decoded.png."""
+    """Decision 6, and § 6's row on numbered files: one decoded.pam."""
     work = tmp_path / "work"
     work.mkdir()
     out = jpegxl.decode(decoder, _FIXTURES / "animation.jxl", work)
-    assert sorted(path.name for path in work.iterdir()) == ["decoded.png", "original.jxl"]
-    with Image.open(out) as picture:
+    assert sorted(path.name for path in work.iterdir()) == [
+        "decoded.icc", "decoded.pam", "original.jxl"]
+    with builder._from_pam(out, work / "decoded.icc") as picture:
         assert picture.size == (32, 32)
         assert _near(picture.convert("RGB").getpixel((16, 16)), (255, 0, 0))
 
@@ -88,3 +92,26 @@ def test_the_web_copy_is_webp(decoder, tmp_path):
     with Image.open(target) as web:
         assert web.format == "WEBP"
         assert web.size == (48, 64)
+
+
+def test_the_web_copy_keeps_a_profile_and_see_through_parts(decoder, tmp_path):
+    """PRESS-0485: the decoder's PAM holds no profile, so the one it writes
+    beside reaches the web copy, and the alpha comes through with it."""
+    target = tmp_path / "view.webp"
+    builder.webp_copy(_FIXTURES / "profiled.jxl", target)
+    with Image.open(target) as web:
+        assert web.mode == "RGBA"
+        assert _near(web.getpixel((8, 24)), (255, 0, 0), slack=8)
+        assert web.getpixel((8, 24))[3] == 255
+        assert abs(web.getpixel((56, 24))[3] - 128) <= 2
+        profile = ImageCms.ImageCmsProfile(io.BytesIO(web.info["icc_profile"]))
+    assert ImageCms.getProfileDescription(profile).strip() == "Pressless wide test"
+
+
+def test_a_picture_with_no_profile_gets_none(decoder, tmp_path):
+    """PRESS-0485: the sRGB profile the decoder writes for a picture with
+    none is dropped, as the web copy means sRGB without it."""
+    target = tmp_path / "view.webp"
+    builder.webp_copy(_FIXTURES / "still.jxl", target)
+    with Image.open(target) as web:
+        assert "icc_profile" not in web.info

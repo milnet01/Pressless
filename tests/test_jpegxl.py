@@ -15,6 +15,7 @@ from pathlib import Path
 
 import _jxl_standin as standin
 import pytest
+from PIL import Image
 
 from pressless import jpegxl, jpegxl_screen, setup, updater, words
 from pressless.words import say
@@ -60,7 +61,7 @@ def test_a_changed_decoder_never_runs(tmp_path, monkeypatch):
     with pytest.raises(jpegxl.NotInstalled):
         jpegxl.decode(program, original, work)
     assert not marker.exists(), "the changed decoder ran"
-    assert not (work / "decoded.png").exists()
+    assert not (work / "decoded.pam").exists()
 
 
 def test_the_same_size_with_other_bytes_is_not_installed(tmp_path, monkeypatch):
@@ -133,8 +134,8 @@ def test_a_decoder_that_cannot_run_is_not_installed(tmp_path, monkeypatch):
 @pytest.mark.parametrize("folder", ["photographs", "Fotografías été"], ids=["plain", "accented"])
 def test_decode_runs_one_fixed_command(tmp_path, monkeypatch, folder):
     """INV-3: the stand-in runs in the work directory and is given exactly
-    its copy of the original and decoded.png there, plain names whatever
-    the paths hold, and its picture is returned."""
+    its copy of the original, decoded.pam and decoded.icc there, plain names
+    whatever the paths hold, and its picture is returned."""
     own = tmp_path / "own"
     picture = standin.png(tmp_path / "decoded-source.png")
     program = standin.installed(monkeypatch, own, picture)
@@ -147,9 +148,11 @@ def test_decode_runs_one_fixed_command(tmp_path, monkeypatch, folder):
 
     out = jpegxl.decode(program, Path("séaside.jxl"), work)
 
-    assert out == work / "decoded.png"
-    assert out.read_bytes() == picture.read_bytes()
-    assert json.loads(record.read_text(encoding="utf-8")) == ["original.jxl", "decoded.png"]
+    assert out == work / "decoded.pam"
+    with Image.open(picture) as given:
+        assert out.read_bytes().endswith(given.tobytes())
+    assert json.loads(record.read_text(encoding="utf-8")) == [
+        "original.jxl", "decoded.pam", "--icc_out=decoded.icc"]
     assert (work / "original.jxl").read_bytes() == standin.CODESTREAM
 
 
@@ -249,7 +252,7 @@ def test_a_decoder_past_its_memory_gives_no_picture(tmp_path, monkeypatch):
     original.write_bytes(standin.CODESTREAM)
     with pytest.raises(jpegxl.Unreadable):
         jpegxl.decode(program, original, work)
-    assert not (work / "decoded.png").exists()
+    assert not (work / "decoded.pam").exists()
 
     standin.tell(own / jpegxl.FOLDER_NAME, hog=1 << 20, png=str(tmp_path / "p.png"))
     assert jpegxl.decode(program, original, work).is_file()
@@ -349,7 +352,7 @@ def test_a_decoder_past_its_time_is_stopped(tmp_path, monkeypatch):
     with pytest.raises(jpegxl.Unreadable):
         jpegxl.decode(program, original, work)
     assert time.monotonic() - started < 4
-    assert not (work / "decoded.png").exists()
+    assert not (work / "decoded.pam").exists()
     if sys.platform != "win32":
         # On Windows the stand-in is a batch file, so the Python it starts is
         # a grandchild the kill does not reach; the real djxl.exe is one
@@ -360,7 +363,7 @@ def test_a_decoder_past_its_time_is_stopped(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("told", [{"fail": True}, {}], ids=["fails", "writes-nothing"])
 def test_a_failing_decoder_is_unreadable(tmp_path, monkeypatch, told):
-    """§ 4.4 step 4: a non-zero exit, or no decoded.png, raises Unreadable."""
+    """§ 4.4 step 4: a non-zero exit, or no decoded.pam, raises Unreadable."""
     own = tmp_path / "own"
     program = standin.installed(monkeypatch, own, standin.png(tmp_path / "p.png"))
     standin.tell(own / jpegxl.FOLDER_NAME, **told)
@@ -402,7 +405,8 @@ def test_decode_passes_no_shell_and_keeps_no_output(tmp_path, monkeypatch):
     original.write_bytes(standin.CODESTREAM)
     with pytest.raises(jpegxl.Unreadable):
         jpegxl.decode(program, original, work)
-    assert seen["argv"] == [str(program), "original.jxl", "decoded.png"]
+    assert seen["argv"] == [str(program), "original.jxl", "decoded.pam",
+                            "--icc_out=decoded.icc"]
     assert seen["cwd"] == work
     assert not seen.get("shell")
     assert seen["timeout"] == jpegxl.DECODE_SECONDS
