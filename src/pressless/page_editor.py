@@ -460,9 +460,15 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
         except store.StoreError as exc:
             broken = face.fail(exc, publishing=False)
     preview, failure = _preview(face, folder, kind, name, shown, show,
-                                marks=sections is not None)
+                                marks=_keeps_marks(kind, name, view))
     return _Opened(view, text, base, waiting, show, held, bool(entries), sections, links,
                    photographs, kept, broken, preview, failure)
+
+
+def _keeps_marks(kind: str, name: str, view: str) -> bool:
+    """Whether the preview keeps the section marks: for the visual view's
+    script to pair, which the menu's view does not (PRESS-0260 § 4.2)."""
+    return view == VISUAL and not is_menu(kind, name)
 
 
 def _remember(folder: Path, kind: str, name: str, request: Request) -> None:
@@ -802,11 +808,13 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
             failure: Exception | None = exc
         else:
             failure = None
+            # Only a page carries the markers the Builder fills from the header
+            # and footer, and the visual view writes inside its main area alone.
             if kind == store.PAGES_FOLDER and not visual and stray_furniture(name, new):
                 notices.append(say("notice.page_editor.stray"))
             preview, preview_failure = _preview(
                 face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")),
-                marks=visual)
+                marks=_keeps_marks(kind, name, VISUAL if visual else CODE))
     if failure is not None:
         return editor.failed(face, notices, failure)
     reply = {"waiting": True, "base": base, "preview": preview, "failure": preview_failure,
@@ -928,9 +936,9 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
                                       gathered, unknown, capture=capture)
         kept = kept_after_binning()
     except Exception as exc:
-        notices.extend(_menu_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
+        notices.extend(_site_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
         raise
-    notices.extend(_menu_said(said, True, False))
+    notices.extend(_site_said(said, True, False))
     if kept:
         notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
     return publishing.Published(result.outcome, kept)
@@ -1040,8 +1048,9 @@ def _edit_menu(folder: Path, changes: _Changes, edit: Callable[[str], str]) -> b
     return usual
 
 
-def _menu_said(said: list[str], published: bool, unknown: bool) -> list[Notice]:
-    """§ 4.3, § 4.4: a press's menu notices, saying what became of the site.
+def _site_said(said: list[str], published: bool, unknown: bool) -> list[Notice]:
+    """§ 4.3, § 4.4: a press's notices about the menu, header and footer,
+    each saying what became of the site.
     An empty list where the press failed and everything was put back."""
     if not (published or unknown):
         return []
@@ -1161,6 +1170,8 @@ def _add(face: Face, folder: Path, lock: threading.Lock, kind: str, name: str,
                                               (store.StoreError,))
     if failure is not None:
         return editor.failed_page(face, notices, failure)
+    # `is False`, not `not`: add_home returns None, and only add_menu's False
+    # means the menu could not be added.
     location = (editor.PAGES_ADDRESS + "?page_hint=menu_empty" if added is False
                 else editor.page_address(kind, name))
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
@@ -1276,10 +1287,10 @@ def reshape(folder: Path, name: str, to: str, *, renaming: bool,
         result = _publish_or_put_back(folder, saved, key, changes, gathered_notices,
                                       transport, gathered, capture=capture)
     except Exception as exc:
-        gathered_notices.extend(_menu_said(said, False,
+        gathered_notices.extend(_site_said(said, False,
                                            isinstance(exc, publisher.OutcomeUnknown)))
         raise
-    gathered_notices.extend(_menu_said(said, True, False))
+    gathered_notices.extend(_site_said(said, True, False))
     return result
 
 
@@ -1843,6 +1854,8 @@ _VISUAL_SCRIPT = r"""
     kind, fields: {...fields}, path, marked, code, parts, parent,
     changed: path === null, rev: 0, start: null, end: null, el: null});
   const model = [];
+  // A load-time index, for `open` alone: a save gives sections new paths, so
+  // anything later looks a path up through `byPathNow()`.
   const byPath = new Map();
   let removed = [];
   let picked = null;
@@ -1992,11 +2005,15 @@ _VISUAL_SCRIPT = r"""
     const order = frameSections.filter((entry) => entry.marked);
     let next = 0, skip = -1;
     marks.forEach((mark, at) => {
+      // `page` and `column` marks wrap lists of sections, not a section, so
+      // the outline has no entry for them.
       if (at <= skip || mark.closing || mark.name === "page" || mark.name === "column") return;
       const closing = partner(at);
       if (closing < 0 || next >= order.length) return;
       const entry = order[next++];
       const item = byPathNow().get(key(entry.path));
+      // The outline lists a section that holds no others as one entry, so
+      // any mark inside it is passed over.
       if (!HOLDERS.includes(entry.kind)) skip = closing;
       if (!item || item.kind !== entry.kind) return;
       item.start = mark.at; item.end = marks[closing].at;
