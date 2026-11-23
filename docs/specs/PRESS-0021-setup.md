@@ -122,8 +122,9 @@ def check(settings: Settings) -> None: ...   # raises SettingsError
 
 `check` holds every shape rule `load` applies to a parsed value. `load`
 builds the `Settings` and then calls `check`. Each refusal sets `key` to the
-top-level name it refuses: `site_folder`, `repository`, `site_name`,
-`site_address`, `untouchable`, `credentials` or `analytics_property_id`.
+top-level name it refuses: `site_folder`, `repository`, `site_address`,
+`untouchable`, `credentials`, `analytics_property_id`, `measurement_id`,
+`votes` or `youtube_channel`.
 Refusals of the file itself — its reading, its JSON, its version, a missing
 or mistyped field — keep `key` as `None`.
 
@@ -262,7 +263,10 @@ through `Face.fail` and ends the request.
    and `final` names that account. A typed key never replaces a sign-in
    another site shares (PRESS-0347).
 5. **Save.** `settings.save(folder, final)`, inside `face.capture()`, where
-   `final` is the candidate with the list and the store filled in.
+   `final` is the candidate with the list and the store filled in. On
+   Settings, every field this save does not hold is first taken from the
+   file as it stands then, so a screen that saved during step 2 keeps what it
+   saved (§ 4.9).
 
 Then the page says setup is done. It names the files it will leave alone. On
 first run it names the store that answered, `Choice.name`, and where that is
@@ -319,7 +323,8 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 - It never runs Import (`docs/design.md` rule 9).
 - It never reads the Store.
 - It never touches `google_account` or `analytics_property_id` in a settings
-  file that loads. PRESS-0122's pages do (PRESS-0122 §4.2).
+  file that loads, nor a field another section holds. PRESS-0122's pages do
+  (PRESS-0122 §4.2).
 
 ## 5. Invariants
 
@@ -381,8 +386,9 @@ the machine's real store, which matters on Windows CI: there
   *Test:* `test_setup_works_on_an_empty_install`. It replaces every public
   function of `pressless.store` with one that raises, runs first run in a
   folder holding nothing, and asserts the saved file loads.
-  *Breaks when:* setup calls into the Store at all, which includes a setup
-  that still requires published writing.
+  *Breaks when:* setup calls into the Store beyond what the test admits
+  (PRESS-0126 § 4.4, PRESS-0213 § 4.6, PRESS-0227 § 4.2, PRESS-0210 § 4.10),
+  which includes a setup that still requires published writing.
 
 - **INV-6** — The key never reaches a page, the log or the console.
   *Test:* `test_the_key_is_never_shown`. It submits a sentinel key through a
@@ -483,7 +489,7 @@ the machine's real store, which matters on Windows CI: there
 | The keyring is locked or broken | `CredentialError`, naming the key | nothing new |
 | The saved key is missing in Settings | `NotStored`, naming the key | the settings file, unchanged |
 | The settings file cannot be written | `SettingsError` | the key stored; first run stays first run |
-| Two submissions at once | each runs the sequence | one wins; `save` is atomic and `write` replaces |
+| Two submissions at once | each runs the sequence | one wins a field both hold; a field only one holds, or another screen's, is kept; `save` is atomic and `write` replaces |
 
 ## 7. Tests
 
@@ -540,6 +546,8 @@ Each test is seen failing against a stub `setup.py` whose functions raise
 | INV-13 | `tests/test_setup.py::test_a_credential_failure_names_the_key` |
 | INV-14 | `tests/test_setup.py::test_setup_sits_behind_the_faces_boundary` |
 | INV-15 | `tests/test_setup.py::test_the_filter_is_the_answer` |
+| § 4.9: a save keeps what another screen or section saved during step 2 | `tests/test_setup.py::test_a_save_keeps_what_another_screen_saved_meanwhile` |
+| § 4.2: a section sends a file refused for its `site_folder` to first run | `tests/test_setup.py::test_a_section_sends_a_carried_file_to_first_run` |
 | The page's words and how he makes a key | **nothing** — the implementer's words; read on the page |
 | That a reachable sentence's next step holds on this page (§ 4.8) | **nothing** — words; read against `root_entries`' failure types |
 | The real keyring prompt on Windows, in the desktop session | **nothing** in CI — the Windows box, by hand (`CLAUDE.md`) |

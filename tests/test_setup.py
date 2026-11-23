@@ -39,6 +39,8 @@ from pressless import (
     sites,
     starter,
     store,
+    takein,
+    undo,
     words,
 )
 from pressless import look as starter_look
@@ -2007,3 +2009,113 @@ def test_every_drawing_wears_its_palettes_colours():
     assert rules, "the Face draws no layout"
     for selector, body in rules:
         assert "#" not in body, selector
+
+
+# ------------------------------------------------------------ PRESS-0447 ----
+
+class _AnotherScreenSaves(_GitHub):
+    """While the save sequence asks GitHub for the root, another screen saves
+    the settings file: Google's sign-in, and the address section in a second
+    tab."""
+
+    def __init__(self, folder: Path) -> None:
+        super().__init__()
+        self.folder = folder
+
+    def request(self, method, url, body, headers):
+        if "/git/trees/abc123" in url:
+            now = settings.load(self.folder)
+            settings.save(self.folder, dataclasses.replace(
+                now, site_address="https://example.org/elsewhere",
+                analytics_property_id="123456789",
+                credentials=dataclasses.replace(now.credentials,
+                                                google_account="google")))
+        return super().request(method, url, body, headers)
+
+
+def test_a_save_keeps_what_another_screen_saved_meanwhile(tmp_path, monkeypatch):
+    """PRESS-0021 § 4.9: a Settings save never touches google_account or
+    analytics_property_id, nor another section's field. Breaks when the save
+    writes back the settings it loaded before GitHub's round trips."""
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("A Journal"))
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _AnotherScreenSaves(tmp_path)) as browser:
+        status, page = browser.post({"daily_prompt_filter": "dailyprompt-*"},
+                                    path="/setup/journal")
+    assert status == 200 and "Saved." in page
+    after = settings.load(tmp_path)
+    assert after.daily_prompt_filter == "dailyprompt-*"
+    assert after.credentials.google_account == "google"
+    assert after.analytics_property_id == "123456789"
+    assert after.site_address == "https://example.org/elsewhere"
+
+    # The one-page form owns the address, and still none of the rest.
+    _saved(tmp_path)
+    with _setup_page(tmp_path, _AnotherScreenSaves(tmp_path)) as browser:
+        status, page = browser.post(_answers(key=""))
+    assert status == 200
+    after = settings.load(tmp_path)
+    assert after.site_address == ADDRESS
+    assert after.credentials.google_account == "google"
+    assert after.analytics_property_id == "123456789"
+
+
+def test_a_section_sends_a_carried_file_to_first_run(tmp_path, monkeypatch):
+    """§ 4.2: a settings file refused for its site_folder came from another
+    machine, and /setup treats it as first run. Breaks when a section shows
+    a failure for it instead."""
+    _saved(tmp_path)
+    raw = json.loads(_settings_file(tmp_path).read_text(encoding="utf-8"))
+    raw["site_folder"] = "not-absolute"
+    _settings_file(tmp_path).write_text(json.dumps(raw), encoding="utf-8")
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        status, _, _page = browser.request("GET", "/setup/journal")
+        first = browser.get()[1]
+    assert status == 303
+    assert _step(first) is not None, "/setup is not first run for a carried file"
+
+
+@pytest.mark.parametrize("raised", [OSError(28, "No space left on device"),
+                                    undo.FetchAreaInUse("held open")],
+                         ids=["os-error", "fetch-area-in-use"])
+@pytest.mark.parametrize("way", ["take_in_commit", "bring_in_commit"])
+def test_a_failed_carry_in_is_the_faces_sentence(tmp_path, monkeypatch, raised, way):
+    """A take-in or bring-in that cannot empty its fetch area fails through
+    Face.fail, as every other failure there does. Breaks when the branch does
+    not catch it, and it escapes as something unexpected."""
+    def refuse(*args, **kwargs):
+        raise raised
+
+    monkeypatch.setattr(takein, "take_in", refuse)
+    monkeypatch.setattr(takein, "bring_folder", refuse)
+    served = face.serve(tmp_path)
+    try:
+        filled = setup._fill(served, tmp_path, _saved(tmp_path), None, SENTINEL_KEY, _GitHub(),
+                             starter_ticked=False, look="", take_over=False,
+                             **{"take_in_commit": "", "bring_in_commit": "", way: "abc123"})
+    finally:
+        served.stop()
+    assert filled.failure is not None
+    assert filled.taken is None and filled.brought is None
+
+
+def test_a_new_site_keeps_the_screens_language(tmp_path, monkeypatch):
+    """PRESS-0241 § 4.4: a site set up while the screens speak another
+    language records it, and the starter is filled in it. Breaks when the
+    language is dropped on the way to the identity or the fill."""
+    _Store(monkeypatch)
+    monkeypatch.setattr(words, "in_use", lambda: "fr")
+    codes: list[str] = []
+    real_fill = starter.fill
+
+    def recording_fill(folder, site_name, look="", *, code="en"):
+        codes.append(code)
+        return real_fill(folder, site_name, look, code=code)
+
+    monkeypatch.setattr(starter, "fill", recording_fill)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _first_run(browser, start="starter")
+    assert codes == ["fr"]
+    assert store.read_identity(tmp_path).language == "fr"

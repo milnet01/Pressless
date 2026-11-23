@@ -12,3 +12,4 @@
 | impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: § 4.7 reads `roots_produced`, and § 4.9 gains `takein.bring_folder`. |
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 2; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.2 and § 4.3: Settings is a list of sections, each saving only its own fields. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0378: § 4.1's surface matches the code; § 4.6 step 4 files a typed key under this site's own name. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0447: § 4.1's refusal keys match `check`; § 4.6 step 5, § 4.9 and § 6 keep fields a save does not hold; INV-5 names the Store calls its test admits. |
