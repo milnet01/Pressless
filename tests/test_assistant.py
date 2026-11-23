@@ -613,7 +613,7 @@ def test_an_ask_with_no_plan_or_press_raises(tmp_path):
         door.plan("nothing", {})
     made = assistant._Ask("id", "nothing", {}, 0.0, {}, "")
     with pytest.raises(ValueError):
-        door._press(made)
+        door._press(made, [])
 
 
 def test_a_request_is_answered_once(tmp_path, monkeypatch):
