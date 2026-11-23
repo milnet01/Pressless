@@ -9298,11 +9298,22 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Assistant.
 
-- 📋 [PRESS-0452] **Second-round review fixes: several sites, site files and backups.**
+- ✅ [PRESS-0452] **Second-round review fixes: several sites, site files and backups.**
   Subject 13. Review types: Codebase, Test.
   Findings: review-code lane-13, review-readability lane-13, and the
   performance and test reviews' findings on these files and their tests.
   Among them: a site file is zipped while a process-wide lock is held.
+  Shipped 2026-11-23, 82a08ec (merged f873278). 30 findings: 30 fixed, 0
+  queued, 0 dismissed. A site save or backup packs photographs and files
+  outside the lock, through hard links where the drive allows, so saving
+  and publishing no longer wait. Backups carry an install mark, so two
+  installs sharing a folder keep each other's; older backups are left
+  alone. A save leaving under 1 GiB free stops and writes nothing; a
+  damaged settings.json is left out; a foreign site file cannot carry a
+  takeover agreement; a stopped open is cleared at the next start; a
+  removed site's number is never reused. PRESS-0224, 0223, 0212 and 0428
+  amended. Full suite 2717 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/13.json.
   **Layman:** Bug fixes and tidy-ups in keeping several sites, saving a site as one file, and backups.
   Kind: review-fix.
   Source: review-2026-11-23.
