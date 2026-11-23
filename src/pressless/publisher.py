@@ -763,8 +763,7 @@ def _fetch(session: _Session, repository: str, commit: str,
     # leaves the bar to run on files.
     sizes = [entry.get("size") for entry in wanted]
     whole = sum(sizes) if all(isinstance(size, int) for size in sizes) else None
-    size = 0
-    progress.count("progress.downloading", 0, len(wanted), size, whole)
+    progress.count("progress.downloading", 0, len(wanted), 0, whole)
 
     def not_written(exc: OSError) -> FetchNotWritten:
         return FetchNotWritten(
@@ -791,12 +790,23 @@ def _fetch(session: _Session, repository: str, commit: str,
         # failure is one of the types above (PRESS-0073).
         raise not_written(exc) from exc
 
+    # Each blob counts once, as its read lands, into this thread's record
+    # from whichever reader read it (PRESS-0435 INV-3, PRESS-0461).
+    report = progress.counter()
+    counting = threading.Lock()
+    read = {"files": 0, "bytes": 0}
+
     def read_blob(entry: dict) -> dict:
         # _blobs_in reads the same field with .get; this site indexed it
         # and raised a bare KeyError on an entry without one, which is
         # neither of §4.1's types (PRESS-0073).
         sha = _required(entry, "sha", f"a sha for {entry['path']!r}")
-        return session.paced_read(_repo_url(repository, f"git/blobs/{_segment(sha)}"))
+        blob = session.paced_read(_repo_url(repository, f"git/blobs/{_segment(sha)}"))
+        with counting:
+            read["files"] += 1
+            read["bytes"] += entry["size"] if isinstance(entry.get("size"), int) else 0
+            report("progress.downloading", read["files"], len(wanted), read["bytes"], whole)
+        return blob
 
     pool = ThreadPoolExecutor(FETCH_WORKERS, thread_name_prefix="fetch")
     try:
@@ -827,8 +837,6 @@ def _fetch(session: _Session, repository: str, commit: str,
                     f"written outside the folder asked for"
                 )
             written.append(path)
-            size += entry["size"] if isinstance(entry.get("size"), int) else 0
-            progress.count("progress.downloading", len(written), len(wanted), size, whole)
 
         try:
             # Every directory first, so the moves that follow are renames
