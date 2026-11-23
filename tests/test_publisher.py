@@ -31,6 +31,7 @@ from _mode_support import _require_symlinks
 
 import pressless.progress as progress_module
 import pressless.publisher as publisher_module
+import pressless.safe_write as safe_write_module
 from pressless import https
 from pressless.publisher import (
     Conflict,
@@ -288,8 +289,9 @@ class _Transport:
 def test_publisher_imports_no_forbidden_sibling():
     """INV-1: publisher.py imports no pressless module other than
     pressless.settings, pressless.https, pressless.os_reason, which
-    imports nothing (PRESS-0401), and pressless.progress, which imports
-    nothing either (PRESS-0435 INV-4).
+    imports nothing (PRESS-0401), pressless.progress, which imports
+    nothing either (PRESS-0435 INV-4), and pressless.safe_write, which
+    imports no pressless module (PRESS-0141).
 
     Walks the module's AST, as test_settings_imports_nothing_forbidden
     does.
@@ -310,7 +312,11 @@ def test_publisher_imports_no_forbidden_sibling():
         f"it must import no part of Pressless (PRESS-0435 INV-4)")
 
     forbidden = pressless_imports - {"pressless.settings", "pressless.https",
-                                     "pressless.os_reason", "pressless.progress"}
+                                     "pressless.os_reason", "pressless.progress",
+                                     "pressless.safe_write"}
+    assert _pressless_imports(safe_write_module) == (set(), []), (
+        "safe_write.py imports a part of Pressless, which the Publisher would "
+        "then reach through it")
     assert not forbidden, (
         f"publisher.py imports {sorted(forbidden)!r}, not just "
         f"pressless.settings -- this is the breach of docs/design.md "

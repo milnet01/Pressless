@@ -2,8 +2,9 @@
 
 The contract is docs/specs/PRESS-0009-publisher.md, an umbrella covering
 PRESS-0009 and PRESS-0010. This module imports no other part of Pressless
-than Settings (§5 INV-1): it is handed the publishing key as an argument and
-never reaches Credentials, which is what keeps docs/design.md rule 10 true.
+than Settings, and only the modules §5 INV-1 names beside it, which import
+none: it is handed the publishing key as an argument and never reaches
+Credentials, which is what keeps docs/design.md rule 10 true.
 
 Its core is three requests: make the repository match this folder, report
 what sits at the repository root, and fetch back an earlier state. Beside
@@ -30,8 +31,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from pressless import https, os_reason, progress
-from pressless.settings import Settings
+from pressless import https, os_reason, progress, safe_write
+from pressless.settings import Settings, root_key
 
 API = "https://api.github.com"
 
@@ -598,9 +599,9 @@ def kept_on_a_branch(untouchable: tuple[str, ...], domain: str | None) -> tuple[
     """What a branch build needs a publish to leave alone. A `CNAME` with no domain behind
     it comes off the list, so a publish removes it, or the build would read it as one."""
     wanted = {NO_JEKYLL, *([CNAME] if domain else [])}
-    held = {name.rstrip("/").casefold() for name in untouchable}
+    held = {root_key(name) for name in untouchable}
     kept = [name for name in untouchable if domain
-            or name.rstrip("/").casefold() != CNAME.casefold()]
+            or root_key(name) != CNAME.casefold()]
     return (*kept, *sorted(name for name in wanted if name.casefold() not in held))
 
 
@@ -807,22 +808,19 @@ def _fetch(session: _Session, repository: str, commit: str,
     return Fetched(commit=commit, paths=tuple(sorted(written)))
 
 
-# On Windows a scanner briefly holding a newly written file refuses its rename
-# with a sharing error, which is no reason to free space. safe_write.patiently
-# answers the same way, and INV-1 forbids importing it.
-_WINDOWS_TRIES = 10
-_WINDOWS_PAUSE = 0.1
-
-
 def _replace_patiently(session: _Session, source: Path, target: Path) -> None:
-    for attempt in range(_WINDOWS_TRIES):
+    """On Windows a scanner briefly holding a newly written file refuses its
+    rename with a sharing error, which is no reason to free space. This is
+    safe_write.patiently on the session's clock, so a test sees each pause
+    (§4.1's `wait`) rather than sleeping."""
+    for attempt in range(safe_write.WINDOWS_TRIES):
         try:
             os.replace(source, target)
             return
         except PermissionError:
-            if not _ON_WINDOWS or attempt == _WINDOWS_TRIES - 1:
+            if not _ON_WINDOWS or attempt == safe_write.WINDOWS_TRIES - 1:
                 raise
-            session.pause(_WINDOWS_PAUSE)
+            session.pause(safe_write.WINDOWS_PAUSE)
 
 
 class _Session:
@@ -1227,7 +1225,8 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     The comparison folds case, and with `str.casefold` rather than
     `str.lower` because §4.4 pins the operation by name: the two differ on
     non-ASCII names, and PRESS-0021's derivation of the list has to agree
-    with this one. GitHub's paths are case-sensitive and the Windows and
+    with this one, so both fold through `settings.root_key`. GitHub's paths
+    are case-sensitive and the Windows and
     macOS local filesystems are not, so a stored entry and a live path can
     differ only in case and still be one address. Compared exactly it
     breaks in both directions and only one of them deletes: an entry the
@@ -1236,20 +1235,14 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     entry the LOCAL path's cannot match uploads a second file claiming the
     same address and removes nothing (PRESS-0078).
     """
-    first = path.split("/", 1)[0].casefold()
-    return any(first == entry.rstrip("/").casefold() for entry in untouchable)
+    first = root_key(path.split("/", 1)[0])
+    return any(first == root_key(entry) for entry in untouchable)
 
 
-# §4.5's Windows check, measured on a Windows 10 box with CreateFileW
-# (PRESS-0164). A device is judged on the part before the first dot with
-# trailing spaces removed, case ignored, so `nul .jpg` reaches one. store.py
-# keeps the same list, and INV-1 forbids importing it: a newly measured
-# device goes into both. The backslash is forbidden here because a fetched
+# §4.5's Windows check. Its device names are the Store's, by
+# safe_write.windows_device. The backslash is forbidden here because a fetched
 # path segment has had no other check.
 _ON_WINDOWS = os.name == "nt"
-_WINDOWS_DEVICES = frozenset(
-    ["con", "prn", "aux", "nul", "conin$", "conout$"]
-    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789¹²³"])
 _WINDOWS_FORBIDDEN = set('<>:"|?*\\') | {chr(n) for n in range(32)}
 # MAX_PATH less the 12 characters Windows keeps for a name inside a folder:
 # with long paths off, a fetched path this long or longer fails as an OSError.
@@ -1284,7 +1277,7 @@ def _refuse_what_windows_cannot_hold(listing: dict, prefixes: tuple[str, ...]) -
 def _windows_can_hold(segment: str) -> bool:
     if not segment or segment[-1] in ". " or _WINDOWS_FORBIDDEN & set(segment):
         return False
-    return segment.split(".")[0].rstrip(" ").casefold() not in _WINDOWS_DEVICES
+    return not safe_write.windows_device(segment)
 
 
 def _within_prefix(path: str, prefix: str) -> bool:

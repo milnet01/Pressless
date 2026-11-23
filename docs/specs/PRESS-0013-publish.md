@@ -87,7 +87,7 @@ class Published:
     outcome: publisher.Outcome
     copy_kept: bool          # § 4.3 step 5 could not bin the working copy
 
-def publish(folder: Path, settings: Settings, key: str, *, entry: str | None,
+def publish(folder: Path, saved: Settings, key: str, *, entry: str | None,
             emptying: bool = False,
             capture: Callable[[], ContextManager[list[str]]] = nothing_captured,
             notices: list[str | face.Notice] | None = None,

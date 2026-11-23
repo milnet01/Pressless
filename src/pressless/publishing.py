@@ -186,7 +186,7 @@ def undone_stamp() -> str:
     return _now().replace(microsecond=0).isoformat(sep=" ")
 
 
-def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str | None,
+def publish(folder: Path, saved: settings.Settings, key: str, *, entry: str | None,
             emptying: bool = False, taking_over: bool = False,
             capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str | Notice] | None = None,
@@ -204,12 +204,12 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     moved = captured(lambda: _move(folder, entry))
 
     def guard_and_build() -> None:
-        _refuse(folder, settings, key, transport, taking_over=taking_over)
+        _refuse(folder, saved, key, transport, taking_over=taking_over)
         if not emptying:
-            _guard(folder, settings, key, transport)
+            _guard(folder, saved, key, transport)
         progress.count("progress.building")
-        builder.build(folder, settings, settings.site_folder)
-        _refuse_kept(folder, settings, settings.site_folder)
+        builder.build(folder, saved, saved.site_folder)
+        _refuse_kept(folder, saved, saved.site_folder)
 
     def bin_the_copy() -> bool:
         """Bin the working copy the move left. True where that failed, so the
@@ -228,7 +228,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         captured(guard_and_build)
         message = MESSAGE.format(slug=moved.published if moved else "site")
         try:
-            outcome = publisher.publish(settings, settings.site_folder, key, message, transport)
+            outcome = publisher.publish(saved, saved.site_folder, key, message, transport)
         except publisher.PublishError:
             raise
         except Exception as exc:  # noqa: BLE001 -- GitHub may have taken it (§ 4.3)
@@ -273,7 +273,7 @@ class _Moved:
     put_back: Callable[[], None]
 
 
-def _refuse(folder: Path, settings: settings.Settings, key: str,
+def _refuse(folder: Path, saved: settings.Settings, key: str,
             transport: publisher.Transport | None, *, taking_over: bool = False) -> None:
     """The refusals a press makes before it builds, which write nothing."""
     if takeover.owed(folder) and not taking_over:    # PRESS-0333 § 4.5
@@ -282,15 +282,15 @@ def _refuse(folder: Path, settings: settings.Settings, key: str,
     # emptying, refuses where the repository holds a site, until the user
     # agrees to replace it. The fold is PRESS-0009 § 4.4's.
     if starter.unpublished(folder) and not starter.replace_agreed(folder) and any(
-            name.rstrip("/").casefold() in A_SITE
-            for name in publisher.root_entries(settings, key, transport)):
+            settings.root_key(name) in A_SITE
+            for name in publisher.root_entries(saved, key, transport)):
         raise WouldReplaceASite("the repository already holds a site")
 
 
-def _refuse_kept(folder: Path, settings: settings.Settings, built: Path) -> None:
+def _refuse_kept(folder: Path, saved: settings.Settings, built: Path) -> None:
     """PRESS-0197 § 4.7: the Publisher leaves a kept folder alone, so a build
     into `built` filling one would be dropped in silence."""
-    kept = {name.rstrip("/").casefold(): name.rstrip("/") for name in settings.untouchable}
+    kept = {settings.root_key(name): name.rstrip("/") for name in saved.untouchable}
     produced = {name.casefold() for name in builder.roots_produced(folder)}
     for child in sorted(built.iterdir()):
         if child.name.casefold() in produced and child.name.casefold() in kept:
@@ -299,7 +299,7 @@ def _refuse_kept(folder: Path, settings: settings.Settings, built: Path) -> None
                                   folder_name)
 
 
-def _guard(folder: Path, settings: settings.Settings, key: str,
+def _guard(folder: Path, saved: settings.Settings, key: str,
            transport: publisher.Transport | None) -> None:
     """Design rule 9: a site whose journal is on, when no published entry
     would remain. It guards a Store that lost its entries, so it passes where
@@ -309,11 +309,11 @@ def _guard(folder: Path, settings: settings.Settings, key: str,
     one holding no entry page passes too: a site started blank (PRESS-0446)."""
     if not store.journal_on(folder) or store.list_slugs(folder, draft=False):
         return
-    if starter.unpublished(folder) or builder.built_without_entries(settings.site_folder):
+    if starter.unpublished(folder) or builder.built_without_entries(saved.site_folder):
         return
-    if not builder.built_into(settings.site_folder) and not any(
+    if not builder.built_into(saved.site_folder) and not any(
             builder.is_entry_page(path)
-            for path in publisher.remote_paths(settings, key, transport)):
+            for path in publisher.remote_paths(saved, key, transport)):
         return
     raise NothingToPublish("no published entry would remain")
 
@@ -326,7 +326,7 @@ class Preview:
     removed: int            # every file it would delete
 
 
-def preview(folder: Path, settings: settings.Settings, key: str, *,
+def preview(folder: Path, saved: settings.Settings, key: str, *,
             entry: str | None = None, page: builder.Html | None = None,
             transport: publisher.Transport | None = None) -> Preview:
     """PRESS-0345 § 4.2: build as if `entry` or `page` were pressed, into a
@@ -336,16 +336,16 @@ def preview(folder: Path, settings: settings.Settings, key: str, *,
     folder = Path(folder)
     if entry is not None and not store.journal_on(folder):   # PRESS-0214 § 4.3
         raise JournalOff("the journal is off")
-    _refuse(folder, settings, key, transport)
+    _refuse(folder, saved, key, transport)
     if entry is None:   # pressing an entry publishes it, so one would remain
-        _guard(folder, settings, key, transport)
+        _guard(folder, saved, key, transport)
     change = _going(folder, entry).published if entry is not None else page
     scratch = Path(tempfile.mkdtemp(prefix="press-plan-", dir=folder))
     try:
         into = scratch / "site"
-        built = builder.build(folder, settings, into, change=change, photographs=False)
-        _refuse_kept(folder, settings, into)
-        planned = publisher.plan(settings, into, key, transport,
+        built = builder.build(folder, saved, into, change=change, photographs=False)
+        _refuse_kept(folder, saved, into)
+        planned = publisher.plan(saved, into, key, transport,
                                  named=frozenset(built.named))
         # The source copy holds HTML too, but no page a reader opens.
         pages = {path: _title(into / path, path) for path in planned.uploaded

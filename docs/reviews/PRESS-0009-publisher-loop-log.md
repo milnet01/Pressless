@@ -29,3 +29,4 @@
 | amend | 2026-11-21 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0435: INV-1 admits `pressless.progress`, which imports nothing. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: § 4.1 gains `remote_paths`. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: INV-11 covers a path too long for Windows; INV-12 and § 6 treat a write answered 301, 302 or 303 as moved. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: INV-1 admits `pressless.safe_write`, which imports no `pressless` module. |
