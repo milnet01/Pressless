@@ -19,7 +19,6 @@ import codecs
 import dataclasses
 import html
 import json
-import lzma
 import os
 import posixpath
 import re
@@ -48,7 +47,15 @@ from pressless import (
 from pressless.words import say
 
 from . import Dropped, ImportStopped, Report, _writing, resolve_slug
-from ._bring import _NOT_EMPTY, IMPORT_FOLDER, _holds_a_site, _page_refused, recover, staged
+from ._bring import (
+    _NOT_EMPTY,
+    _UNREADABLE,
+    IMPORT_FOLDER,
+    _holds_a_site,
+    _page_refused,
+    recover,
+    staged,
+)
 
 # A ZIP holding more is refused, and a site download stops at it (fetch.py,
 # PRESS-0333 § 4.2), so raising it raises both.
@@ -207,10 +214,6 @@ def _one_top_folder(names: list[str]) -> str:
     return ""
 
 
-# What reading a damaged or unsupported ZIP raises; zipfile raises
-# UnicodeDecodeError for a name flagged UTF-8 that is not.
-_UNREADABLE = (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError, EOFError,
-               zlib.error, lzma.LZMAError, UnicodeDecodeError)
 _PIECE = 1 << 20
 
 

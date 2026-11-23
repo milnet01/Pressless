@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 from _face_session import Browser
 from PIL import Image
-from test_importer import _export, _item
+from test_importer import _UNEVEN, _cut_partway, _export, _item
 from test_publishing import KEY, _github, _settings
 
 import pressless_import
@@ -522,6 +522,38 @@ def test_a_media_download_that_cannot_be_written_keeps_what_it_filled(tmp_path, 
     page = page.decode("utf-8")
     assert "could not save" in page and "1 was taken from the ZIP file." in page, page
     assert "That file could not be used" not in page, page
+    left = (folder / "import" / "unfetched.json").read_text(encoding="utf-8")
+    assert "b.jpg" in left and "a.jpg" not in left, left
+
+
+def test_a_media_download_cut_partway_keeps_what_it_filled(tmp_path, monkeypatch):
+    """§ 4.4 (PRESS-0484): where a media download's data stops partway, the
+    gaps step says it is damaged, and the places filled before the damage
+    leave the list of gaps.
+
+    Breaks when the damage reads as a download that filled nothing, and the
+    gaps page still lists files that came across."""
+    def fetch_all(export, media, room, *, progress):
+        return {"2012/05/a.jpg": "the old site answered 404",
+                "2012/05/b.jpg": "the old site answered 404"}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        _next(browser, "export")
+        _fetch_ended(folder)
+        _through_fetching(browser)
+        _status, _headers, page = browser.raw(
+            "POST", f"{importing.ADDRESS}/media",
+            _cut_partway({"2012/05/a.jpg": b"a", "2012/05/b.jpg": _UNEVEN}))
+    finally:
+        served.stop()
+    page = page.decode("utf-8")
+    assert "damaged" in page and "1 was taken from the ZIP file." in page, page
     left = (folder / "import" / "unfetched.json").read_text(encoding="utf-8")
     assert "b.jpg" in left and "a.jpg" not in left, left
 

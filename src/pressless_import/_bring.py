@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import html
 import json
+import lzma
 import os
 import re
 import shutil
 import unicodedata
 import zipfile
+import zlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -389,6 +391,21 @@ class MediaNotWritten(ImportStopped):
         self.filled, self.why = filled, why
 
 
+class MediaDamaged(ImportStopped):
+    """unpack_media found the download's own data damaged partway. `filled`
+    are the places it filled before that, which stay filled."""
+
+    def __init__(self, message: str, filled: tuple[str, ...]) -> None:
+        super().__init__(message)
+        self.filled = filled
+
+
+# What reading a damaged or unsupported ZIP raises; zipfile raises
+# UnicodeDecodeError for a name flagged UTF-8 that is not.
+_UNREADABLE = (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError, EOFError,
+               zlib.error, lzma.LZMAError, UnicodeDecodeError)
+
+
 def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str],
                  room: Callable[[], int]) -> tuple[str, ...]:
     """Fill each missing place from a media download: the first member whose
@@ -397,7 +414,8 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
     taken must fit `room()`; a refused download writes nothing. A place
     `_place_refused` refuses is never filled, nor one a member larger than
     the Builder keeps would fill. Returns the places filled; a write that
-    fails raises MediaNotWritten, naming those filled before it."""
+    fails raises MediaNotWritten, and data damaged partway MediaDamaged,
+    each naming those filled before it."""
     # The places are fetch_all's keys, and one with no usable place is keyed
     # by its raw address, which can be absolute: joined onto `media` it would
     # replace it outright. So each place is checked here, not only the names.
@@ -446,10 +464,14 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
                     raise MediaNotWritten(
                         f"the media download's files could not be written: {why}",
                         tuple(sorted(filled)), why) from None
+                except _UNREADABLE as exc:
+                    raise MediaDamaged(
+                        f"the media download is damaged partway ({type(exc).__name__})",
+                        tuple(sorted(filled))) from None
                 finally:
                     part.unlink(missing_ok=True)
                 filled.append(place)
-    except (zipfile.BadZipFile, OSError) as exc:
+    except _UNREADABLE as exc:
         raise ImportStopped(f"the media download could not be read "
                             f"({type(exc).__name__})") from None
     return tuple(sorted(wanted))
