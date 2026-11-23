@@ -778,7 +778,7 @@ def site_file(page, origin: str, folder: Path) -> None:
     """PRESS-0224 INV-10: Save downloads the open site as one file, and Open
     with that file makes it a new site and restarts."""
     sites_own = folder.parent / "sites-own"
-    shown = sites.open_site(sites_own)
+    shown = sites.current_site(sites_own)
     store.write(shown, tp._entry("saved-and-opened"), draft=True)
     before = len(RESTARTS)
     page.goto(f"{origin}/sites", wait_until="networkidle")
@@ -793,7 +793,7 @@ def site_file(page, origin: str, folder: Path) -> None:
     chooser.value.set_files(str(saved))
     page.wait_for_function("document.body.innerText.includes('Pressless is restarting.')",
                            timeout=10000)
-    opened = sites.open_site(sites_own)
+    opened = sites.current_site(sites_own)
     check("PRESS-0224: Open makes the file a new site and restarts",
           opened != shown and (opened / "drafts" / "saved-and-opened.txt").is_file()
           and _restarted(before + 1) == before + 1, f"opened={opened.name}")

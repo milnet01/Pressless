@@ -39,7 +39,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
     own = Path(own)
     # The site this Face serves until its restart: one opened since then is
     # named in sites.json, and neither may be removed.
-    served = sites.open_site(own)
+    served = sites.current_site(own)
 
     def screen(request: Request) -> str:
         return _screen(own)
@@ -60,7 +60,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         # PRESS-0221: the move wizard saves each site by name; with none, the
         # open one.
         named = request.query.get("site")
-        site = sites.open_site(own)
+        site = sites.current_site(own)
         if named is not None:
             held = {path.name: path for path in sites.all_sites(own)}
             if named not in held:
@@ -90,7 +90,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         form = request.form()
         held = {path.name: path for path in sites.all_sites(own)}
         site = held.get(form.get("site", [""])[0])
-        if site is None or site in (served, sites.open_site(own)):
+        if site is None or site in (served, sites.current_site(own)):
             return _screen(own, say("sites_screen.not_a_site"))
         if form.get("sure", [""])[0] != "yes":
             return _asking(own, site)
@@ -150,10 +150,11 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
-    current = sites.open_site(own)
+    current = sites.current_site(own)
+    names = {site: sitefile.name_of(site) for site in sites.all_sites(own)}
     rows = []
-    for site in sites.all_sites(own):
-        named = html.escape(sitefile.name_of(site))
+    for site, name in names.items():
+        named = html.escape(name)
         if site == current:
             rows.append(f"<li><b>{named}</b> {say('sites_screen.open_now')}</li>")
         else:
@@ -165,13 +166,14 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
     said = (hint if raw else f'<p class="hint" role="alert">{html.escape(hint)}</p>'
             ) if hint else ""
     # PRESS-0225: where the daily backups go, and what went wrong last.
-    chosen = backups.folder_of(own) != own.parent / backups.DEFAULT_FOLDER
+    folder = backups.folder_of(own)
+    chosen = folder != backups.default_folder(own)
     went_wrong = backups.trouble(own)
     trouble = (f'<p class="hint" role="alert">{html.escape(went_wrong)}</p>'
                if went_wrong else "")
     where = say("sites_screen.backups.chosen_folder" if chosen
                 else "sites_screen.backups.default_folder")
-    value = attr(str(backups.folder_of(own))) if chosen else ""
+    value = attr(str(folder)) if chosen else ""
     return (f'<p class="nav"><a href="/">{say("face.your_site")}</a></p>'
             f'<h1>{say("sites_screen.title")}</h1><p>{say("sites_screen.about")}</p>'
             f'{said}<ul class="sites">{"".join(rows)}</ul>'
@@ -188,10 +190,10 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
             f'{say("sites_screen.backups.folder")} <input name="folder" value="{value}" '
             'autocomplete="off"></label> '
             f'<button>{say("sites_screen.backups.use")}</button></form>'
-            + _move_wizard(own))
+            + _move_wizard(names))
 
 
-def _move_wizard(own: Path) -> str:
+def _move_wizard(names: dict[Path, str]) -> str:
     """PRESS-0221: the move to a new computer, as a dialog over this screen
     (the user, 2026-10-05), one step at a time. Each site saves to its own
     file, which the new computer opens on its Sites screen."""
@@ -200,8 +202,8 @@ def _move_wizard(own: Path) -> str:
 
     saves = "".join(
         f'<a href="{ADDRESS}/save?site={attr(site.name)}" download>'
-        f'{html.escape(say("sites_screen.move.save_one", site=sitefile.name_of(site)))}'
-        "</a>" for site in sites.all_sites(own))
+        f'{html.escape(say("sites_screen.move.save_one", site=name))}'
+        "</a>" for site, name in names.items())
     steps = (
         ("sites_screen.move.step_save", f'<p>{say("sites_screen.move.save")}</p>'
                                         f'<p class="nav">{saves}</p>'),

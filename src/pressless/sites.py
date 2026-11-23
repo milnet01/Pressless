@@ -24,8 +24,15 @@ from pressless import json_record
 SITES_FOLDER = "sites"
 OPEN_FILE = "sites.json"
 _MOVING = ".moving"
-_REMOVING = ".removing-"   # a removed site, its copy kept, being deleted
+_REMOVING = ".removing-"   # how an older Pressless named a removed site being deleted
+_OPENING = ".opening"      # how an older Pressless named a file being opened
+# Work a start may delete, under sites/: a dot, a letter for what it holds and
+# four hex digits. No longer than site-1's own name, so no path inside grows
+# past Windows' limit by moving there.
+_THROWAWAY = re.compile(r"\.[lor][0-9a-f]{4}")
+REMOVING, OPENING, LINKED = "r", "o", "l"   # a removed site; a file opened; save's links
 _REPLACED = ".replaced-"   # a site moved aside while an opened file takes its place
+_GONE = ".gone-"           # an empty file per removed site, kept for good: its number
 _NAME = re.compile(r"site-[1-9][0-9]*")
 
 # § 4.2: what belongs to a site, moved into site-1 by move_in. It also
@@ -78,7 +85,7 @@ def _write_open(own: Path, name: str) -> None:
     _write(own, open=name)
 
 
-def open_site(own: Path) -> Path:
+def current_site(own: Path) -> Path:
     """The open site's folder. Where sites.json names no site there is, the
     lowest-numbered one opens, made as site-1 where there is none, and
     sites.json is written to say so. Where sites.json cannot be read now,
@@ -100,12 +107,19 @@ def open_site(own: Path) -> Path:
 
 def new_site(own: Path) -> Path:
     """Make the next site's folder, one past the highest ever made, and
-    return it. sites.json keeps that number, so a removed site's number,
-    and with it its keys and backups, never goes to another (§ 4.1)."""
+    return it. sites.json keeps that number, and remove leaves a `.gone-`
+    file, so a removed site's number, and with it its keys and backups,
+    never goes to another (§ 4.1)."""
     held = all_sites(own)
     made = _record(own).get("made")
+    # A removed site's number survives a sites.json that has been damaged.
+    folder = Path(own) / SITES_FOLDER
+    gone = [int(path.name.rpartition("-")[2]) for path in folder.iterdir()
+            if path.name.startswith(_GONE) and _NAME.fullmatch(path.name[len(_GONE):])
+            ] if folder.is_dir() else []
     highest = max(_number(held[-1]) if held else 0,
-                  made if isinstance(made, int) and not isinstance(made, bool) else 0)
+                  made if isinstance(made, int) and not isinstance(made, bool) else 0,
+                  *gone)
     site = Path(own) / SITES_FOLDER / f"site-{highest + 1}"
     site.mkdir(parents=True)
     _write(own, made=highest + 1)
@@ -113,12 +127,20 @@ def new_site(own: Path) -> Path:
 
 
 def remove(site: Path) -> None:
-    """Remove a site's folder, its copy already kept. It is renamed first, so a site half
-    deleted is never listed; a rename's OSError leaves it whole, and what a delete leaves
-    behind under the new name is no site."""
-    going = site.with_name(f"{_REMOVING}{site.name}-{secrets.token_hex(4)}")
+    """Remove a site's folder, its copy already kept, leaving a `.gone-` file
+    that keeps its number. It is renamed first, so a site half deleted is
+    never listed; a rename's OSError leaves it whole, and what a delete
+    leaves behind under the new name is no site."""
+    (site.parent / f"{_GONE}{site.name}").touch()
+    going = throwaway(site.parent, REMOVING)
     site.rename(going)
     shutil.rmtree(going, ignore_errors=True)
+
+
+def throwaway(folder: Path, kind: str) -> Path:
+    """A fresh name in `folder` for work of `kind` (REMOVING, OPENING or
+    LINKED) that clear_leftovers deletes at the next start."""
+    return Path(folder) / f".{kind}{secrets.token_hex(2)}"
 
 
 def aside(site: Path) -> Path:
@@ -129,14 +151,18 @@ def aside(site: Path) -> Path:
 
 
 def clear_leftovers(own: Path) -> None:
-    """At start, behind the folder's lock: what a stopped remove or open left
-    under sites/. A removed site's copy is already kept, so it goes. A site
-    moved aside comes back where nothing took its place, else it goes."""
+    """At start, behind the folder's lock and before any backup: what a
+    stopped remove, open or save left under sites/. A removed site's copy is
+    already kept, and a half-unpacked file and a save's links are copies, so
+    each goes. A site moved aside comes back where nothing took its place,
+    else it goes. An empty site a stopped open made stays, as a new site
+    nobody has written in yet."""
     held = Path(own) / SITES_FOLDER
     if not held.is_dir():
         return
     for path in held.iterdir():
-        if path.name.startswith(_REMOVING):
+        if _THROWAWAY.fullmatch(path.name) or path.name.startswith(_REMOVING) \
+                or path.name == _OPENING:
             shutil.rmtree(path, ignore_errors=True)
         elif path.name.startswith(_REPLACED):
             name = path.name.removeprefix(_REPLACED).rpartition("-")[0]

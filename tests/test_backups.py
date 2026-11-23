@@ -11,9 +11,10 @@ from pathlib import Path
 import pytest
 from test_publishing import _entry
 
-from pressless import backups, sites, store, words
+from pressless import backups, json_record, sites, store, words
 
 DAY = datetime.date(2026, 10, 16)
+OURS = "a1b2c3"   # this install's mark in its backups' names
 
 
 def _own(tmp_path: Path) -> Path:
@@ -24,6 +25,7 @@ def _own(tmp_path: Path) -> Path:
         store.write_identity(site, store.Identity(name))
         store.write(site, _entry(f"entry-{number}"), draft=True)
     sites.choose(own, "site-1")
+    json_record.write(own / "backups.json", {"install": OURS})
     return own
 
 
@@ -32,18 +34,25 @@ def _made(folder: Path) -> list[str]:
 
 
 def test_each_site_gets_one_backup_a_day(tmp_path: Path) -> None:
-    """Breaks when a site is missed, backed up twice in a day, or its file
-    is not the site's own."""
+    """Breaks when a site is missed, or its file is not the site's own."""
     own = _own(tmp_path)
     assert backups.make_due(own, DAY) is None
     folder = tmp_path / "Pressless-backups"
-    assert _made(folder) == ["Hill Notes (site-2) 2026-10-16.zip",
-                             "Sea Notes (site-1) 2026-10-16.zip"]
-    with zipfile.ZipFile(folder / "Sea Notes (site-1) 2026-10-16.zip") as saved:
+    assert _made(folder) == ["Hill Notes (site-2 a1b2c3) 2026-10-16.zip",
+                             "Sea Notes (site-1 a1b2c3) 2026-10-16.zip"]
+    with zipfile.ZipFile(folder / "Sea Notes (site-1 a1b2c3) 2026-10-16.zip") as saved:
         assert "drafts/entry-1.txt" in saved.namelist()
-    before = {path.name: path.stat().st_mtime_ns for path in folder.iterdir()}
+
+def test_a_site_is_not_backed_up_twice_in_a_day(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when a second round the same day saves a site again."""
+    own = _own(tmp_path)
     assert backups.make_due(own, DAY) is None
-    assert {path.name: path.stat().st_mtime_ns for path in folder.iterdir()} == before
+    saved: list[str] = []
+    monkeypatch.setattr(backups.sitefile, "save_as",
+                        lambda site, target: saved.append(site.name))
+    assert backups.make_due(own, DAY) is None
+    assert saved == []
 
 
 def test_the_last_seven_are_kept_and_nothing_else_is_touched(tmp_path: Path) -> None:
@@ -56,8 +65,8 @@ def test_the_last_seven_are_kept_and_nothing_else_is_touched(tmp_path: Path) -> 
     (folder / "Sea Notes (site-10) 2026-01-01.zip").write_bytes(b"another site's")
     for offset in range(9):
         assert backups.make_due(own, DAY + datetime.timedelta(days=offset)) is None
-    first = sorted(name for name in _made(folder) if "(site-1) " in name)
-    assert first == [f"Sea Notes (site-1) 2026-10-{day}.zip" for day in range(18, 25)]
+    first = sorted(name for name in _made(folder) if "(site-1 a1b2c3) " in name)
+    assert first == [f"Sea Notes (site-1 a1b2c3) 2026-10-{day}.zip" for day in range(18, 25)]
     assert (folder / "his own notes.zip").read_bytes() == b"not ours"
     assert (folder / "Sea Notes (site-10) 2026-01-01.zip").is_file()
 
@@ -72,13 +81,13 @@ def test_a_renamed_site_keeps_counting_its_backups(tmp_path: Path) -> None:
     store.write_identity(own / "sites" / "site-1", store.Identity("Renamed"))
     for offset in range(4, 9):
         backups.make_due(own, DAY + datetime.timedelta(days=offset))
-    assert len([name for name in _made(folder) if "(site-1) " in name]) == 7
+    assert len([name for name in _made(folder) if "(site-1 a1b2c3) " in name]) == 7
 
 
 def test_an_unused_site_is_not_backed_up(tmp_path: Path) -> None:
     """Breaks when a fresh install's empty site fills the folder."""
     own = tmp_path / "Pressless-data"
-    sites.open_site(own)
+    sites.current_site(own)
     assert backups.make_due(own, DAY) is None
     folder = tmp_path / "Pressless-backups"
     assert not folder.exists() or _made(folder) == []
@@ -149,7 +158,7 @@ def test_one_failing_site_never_stops_the_others(
     monkeypatch.setattr(backups.sitefile, "save", fails_first)
     said = backups.make_due(own, DAY)
     assert said is not None and backups.trouble(own) == said
-    assert _made(tmp_path / "Pressless-backups") == ["Hill Notes (site-2) 2026-10-16.zip"]
+    assert _made(tmp_path / "Pressless-backups") == ["Hill Notes (site-2 a1b2c3) 2026-10-16.zip"]
 
 
 def test_an_unreadable_sites_folder_is_said_not_raised(
@@ -178,14 +187,14 @@ def test_the_record_is_the_machines(tmp_path: Path) -> None:
 # ------------------------------------------------------- PRESS-0383 fixes ---
 
 
-def test_a_site_whose_settings_are_no_object_never_stops_the_others(tmp_path: Path) -> None:
-    """Breaks when a TypeError from sitefile.save escapes the round, which
-    ends the backup thread with nothing said."""
+def test_a_site_whose_settings_are_no_object_is_still_backed_up(tmp_path: Path) -> None:
+    """Breaks when a damaged settings file stops a site's backup, or the
+    round, just when something on disk is already wrong."""
     own = _own(tmp_path)
     (own / "sites" / "site-1" / "settings.json").write_text("[]", encoding="utf-8")
-    said = backups.make_due(own, DAY)
-    assert said is not None and backups.trouble(own) == said
-    assert _made(tmp_path / "Pressless-backups") == ["Hill Notes (site-2) 2026-10-16.zip"]
+    assert backups.make_due(own, DAY) is None
+    assert _made(tmp_path / "Pressless-backups") == ["Hill Notes (site-2 a1b2c3) 2026-10-16.zip",
+                                                     "Sea Notes (site-1 a1b2c3) 2026-10-16.zip"]
 
 
 def test_a_failing_round_never_ends_the_backups(
@@ -235,10 +244,10 @@ def test_a_clock_gone_back_keeps_the_backup_it_makes(tmp_path: Path) -> None:
     folder.mkdir()
     for offset in range(1, 8):
         later = DAY + datetime.timedelta(days=offset)
-        (folder / f"Sea Notes (site-1) {later.isoformat()}.zip").write_bytes(b"later")
+        (folder / f"Sea Notes (site-1 a1b2c3) {later.isoformat()}.zip").write_bytes(b"later")
     assert backups.make_due(own, DAY) is None
-    assert (folder / "Sea Notes (site-1) 2026-10-16.zip").is_file()
-    assert len([name for name in _made(folder) if "(site-1) " in name]) == 7
+    assert (folder / "Sea Notes (site-1 a1b2c3) 2026-10-16.zip").is_file()
+    assert len([name for name in _made(folder) if "(site-1 a1b2c3) " in name]) == 7
 
 
 def test_a_folder_inside_pressless_is_refused(tmp_path: Path) -> None:
@@ -299,9 +308,19 @@ def test_a_folder_choice_is_never_lost_to_a_trouble_written_beside_it(
                                kwargs={"trouble": "made up"}, name="trouble")
     trouble.start()
     assert inside.wait(5)
-    choosing = threading.Thread(target=backups.set_folder, args=(own, str(chosen)))
+    write = json_record.write
+    writing = threading.Event()
+
+    def noting(path: Path, fields: dict) -> None:
+        if threading.current_thread().name == "choosing":
+            writing.set()
+        write(path, fields)
+
+    monkeypatch.setattr(backups.json_record, "write", noting)
+    choosing = threading.Thread(target=backups.set_folder, args=(own, str(chosen)),
+                                name="choosing")
     choosing.start()
-    choosing.join(0.3)
+    assert not writing.wait(0.1), "the choice was written inside the trouble's merge"
     go_on.set()
     trouble.join(5)
     choosing.join(5)
@@ -326,3 +345,34 @@ def test_half_made_site_files_are_cleared_at_start(tmp_path: Path) -> None:
     backups.clear_leftovers(own)
     assert not any(path.exists() for path in old)
     assert writing.is_file() and (folder / "his own .saving-notes.zip").is_file()
+
+
+def test_another_pressless_sharing_the_folder_is_left_alone(tmp_path: Path) -> None:
+    """Breaks when another install's backups, whose sites are numbered the
+    same, or a backup older than the install's mark, count as this one's:
+    its own backup is then skipped, or theirs rotated out."""
+    own = _own(tmp_path)
+    folder = tmp_path / "Pressless-backups"
+    folder.mkdir()
+    theirs = [f"Sea Notes (site-1 ffffff) 2026-10-{day:02d}.zip" for day in range(1, 17)]
+    theirs.append("Sea Notes (site-1) 2026-10-01.zip")
+    for name in theirs:
+        (folder / name).write_bytes(b"theirs")
+    for offset in range(9):
+        assert backups.make_due(own, DAY + datetime.timedelta(days=offset)) is None
+    assert all((folder / name).read_bytes() == b"theirs" for name in theirs)
+    ours = [name for name in _made(folder) if f"(site-1 {OURS}) " in name]
+    assert len(ours) == 7
+
+
+def test_an_install_makes_its_mark_once(tmp_path: Path) -> None:
+    """Breaks when the mark changes between rounds, so the install loses
+    track of its own backups and never rotates them."""
+    own = _own(tmp_path)
+    json_record.write(own / "backups.json", {})
+    assert backups.make_due(own, DAY) is None
+    mark = json_record.read(own / "backups.json")["install"]
+    assert backups.make_due(own, DAY + datetime.timedelta(days=1)) is None
+    assert json_record.read(own / "backups.json")["install"] == mark
+    assert len([name for name in _made(tmp_path / "Pressless-backups")
+                if f"(site-1 {mark}) " in name]) == 2

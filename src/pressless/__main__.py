@@ -399,7 +399,7 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
     restart = threading.Event()
     stopping = threading.Event()
     again = False
-    folder = sites.open_site(own)
+    folder = sites.current_site(own)
     handed = last.hand if last.site in (None, folder) else None
     served, handed = _start(own, folder, port, handed)
     last.site, last.hand = folder, served.hand_over()

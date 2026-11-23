@@ -59,20 +59,20 @@ def test_the_open_site(tmp_path: Path) -> None:
     stops the start."""
     own = tmp_path / "own"
     own.mkdir()
-    first = sites.open_site(own)
+    first = sites.current_site(own)
     assert first == own / SITES / "site-1" and first.is_dir()
     assert _opened(own) == "site-1"
 
     (own / SITES / "site-2").mkdir()
     (own / OPEN).write_text(json.dumps({"version": 1, "open": "site-2"}), encoding="utf-8")
-    assert sites.open_site(own) == own / SITES / "site-2"
+    assert sites.current_site(own) == own / SITES / "site-2"
 
     (own / "x").mkdir()
     for written in ('{"version": 1, "open": "../x"}', '{"version": 1, "open": "site-0"}',
                     '{"version": 1, "open": "site-9"}', "not json", '{"open": "site-2"}',
                     '{"version": 1, "open": 2}'):
         (own / OPEN).write_text(written, encoding="utf-8")
-        assert sites.open_site(own) == own / SITES / "site-1", written
+        assert sites.current_site(own) == own / SITES / "site-1", written
         assert _opened(own) == "site-1", written
     assert not (own / SITES / "site-9").exists()
 
@@ -99,7 +99,7 @@ def test_a_removed_sites_number_is_never_given_again(tmp_path: Path) -> None:
     """§ 4.1. Breaks when a new site takes the number of the highest one
     removed, and with it that site's key and its backups."""
     own = tmp_path / "own"
-    sites.open_site(own)
+    sites.current_site(own)
     second = sites.new_site(own)
     assert second.name == "site-2"
     sites.remove(second)
@@ -125,7 +125,7 @@ def test_a_sites_file_that_cannot_be_read_now_is_left_alone(
         return read_text(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", held)
-    assert sites.open_site(own) == own / SITES / "site-1"
+    assert sites.current_site(own) == own / SITES / "site-1"
     monkeypatch.undo()
     assert _opened(own) == "site-2"
 
@@ -226,7 +226,7 @@ def test_a_stopped_move_finishes(tmp_path: Path) -> None:
 def test_a_fresh_folder_moves_nothing_in(tmp_path: Path) -> None:
     """INV-3's empty case: a folder holding no site makes no site-1 by moving.
     Breaks when an empty site-1 is created by the move rather than by
-    open_site."""
+    current_site."""
     own = tmp_path / "own"
     own.mkdir()
     (own / "pressless.log").write_bytes(b"the log")
@@ -331,14 +331,43 @@ def test_a_second_sites_setup_keeps_the_reports_answer_with_the_machine(
 
 
 def test_a_stopped_remove_or_open_is_cleared_at_start(tmp_path: Path) -> None:
-    """Breaks when a site half deleted stays on the disk for good, or when a
-    site moved aside by a stopped open is deleted rather than put back."""
+    """Breaks when a site half deleted, a file half unpacked or a save's
+    links stay on the disk for good, when a site moved aside by a stopped
+    open is deleted rather than put back, or a removed site's number goes."""
     own = tmp_path / "own"
     for name in ("site-1", ".removing-site-2-ab12", ".replaced-site-1-cd34",
-                 ".replaced-site-3-ef56", ".moving"):
+                 ".replaced-site-3-ef56", ".moving", ".opening", ".o1a2b", ".l3c4d", ".r5e6f"):
         (own / SITES / name).mkdir(parents=True)
     (own / SITES / ".replaced-site-3-ef56" / "kept.txt").write_text("words", encoding="utf-8")
+    (own / SITES / ".gone-site-4").touch()
     sites.clear_leftovers(own)
     assert sorted(path.name for path in (own / SITES).iterdir()) == [
-        ".moving", "site-1", "site-3"]
+        ".gone-site-4", ".moving", "site-1", "site-3"]
     assert (own / SITES / "site-3" / "kept.txt").read_text(encoding="utf-8") == "words"
+
+
+def test_a_removed_sites_number_survives_a_damaged_sites_file(tmp_path: Path) -> None:
+    """§ 4.1. Breaks when a sites.json that is no longer JSON loses the
+    highest number made, and a new site takes a removed one's key and
+    backups."""
+    own = tmp_path / "own"
+    sites.current_site(own)
+    second = sites.new_site(own)
+    sites.remove(second)
+    (own / OPEN).write_text("not json {", encoding="utf-8")
+    assert sites.current_site(own) == own / SITES / "site-1"
+    assert sites.new_site(own).name == "site-3"
+
+
+def test_a_site_being_removed_is_no_longer_named_than_a_site(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when the name a removed site is deleted under is longer than
+    its own, so on Windows its deepest files pass the path limit and stay."""
+    own = tmp_path / "own"
+    sites.current_site(own)
+    second = sites.new_site(own)
+    monkeypatch.setattr(sites.shutil, "rmtree", lambda path, ignore_errors=False: None)
+    sites.remove(second)
+    left = [path.name for path in (own / SITES).iterdir()
+            if not path.name.startswith(("site-", ".gone-"))]
+    assert len(left) == 1 and len(left[0]) <= len(second.name)
