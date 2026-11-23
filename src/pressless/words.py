@@ -2363,9 +2363,6 @@ _WORDS: dict[str, str] = {
     # The manual (manual.py); its own words are in manual_files, not here.
     "manual.title": "Pressless manual",
     "manual.search": "Search the manual",
-    # The captions track's label: the name of manual.LANGUAGE, not the word
-    # "captions".
-    "manual.captions": "English",
     "script.manual.found_one": "1 task matches.",
     "script.manual.found": "{count} tasks match.",
     "script.manual.none": "No task matches. Try fewer words.",

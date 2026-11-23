@@ -183,6 +183,17 @@ def test_video_has_default_captions():
                      page)
 
 
+def test_captions_are_labelled_with_their_own_language():
+    """PRESS-0241 § 4.3. Breaks when the label names the screens' language
+    over captions that fell back to English."""
+    words.choose("fr")
+    shown = 'srclang="{}" label="{}"'
+    assert shown.format("en", "English") in manual.render(
+        "== t | T\nvideo clip.webm | Clip\n", lambda stem: "en")
+    assert shown.format("fr", "Français") in manual.render(
+        "== t | T\nvideo clip.webm | Clip\n", lambda stem: "fr")
+
+
 def test_a_malformed_construct_is_a_paragraph():
     page = manual.render("== t | T\npicture p.png\n")
     assert "<img" not in page

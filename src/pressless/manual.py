@@ -58,23 +58,23 @@ def _picture(name: str, alt: str) -> str:
 def _video(stem: str, label: str, captions: str) -> str:
     return (f'<video controls preload="none" src="{MEDIA}{stem}.webm" aria-label="{_e(label)}">'
             f'<track kind="captions" src="{MEDIA}{stem}.{captions}.vtt" srclang="{captions}" '
-            f'label="{_e(say("manual.captions"))}" default></video>')
+            f'label="{_e(words.name(captions))}" default></video>')
 
 
 def render(text: str, captions: Callable[[str], str] = lambda stem: ENGLISH) -> str:
     """The manual's tasks as HTML, from the text of one language's file.
     `captions` names the language of a video's captions, by its stem."""
     out: list[str] = []
-    words: list[str] = []      # the paragraph being gathered
+    paragraph: list[str] = []  # the paragraph being gathered
     steps: list[str] = []      # the run of steps being gathered
     counted = 0                # steps already shown in this task
     in_task = False
 
     def flush() -> None:
         nonlocal counted
-        if words:
-            out.append(f"<p>{_e(' '.join(words))}</p>")
-            words.clear()
+        if paragraph:
+            out.append(f"<p>{_e(' '.join(paragraph))}</p>")
+            paragraph.clear()
         if steps:
             start = f' start="{counted + 1}"' if counted else ""
             out.append(f"<ol{start}>" + "".join(f"<li>{_e(s)}</li>" for s in steps) + "</ol>")
@@ -90,7 +90,7 @@ def render(text: str, captions: Callable[[str], str] = lambda stem: ENGLISH) -> 
                        f"<h2>{_e(task.group(2))}</h2>")
             in_task, counted = True, 0
         elif (step := _STEP.fullmatch(line)):
-            if words:
+            if paragraph:
                 flush()
             steps.append(step.group(1))
         elif (picture := _PICTURE.fullmatch(line)):
@@ -104,7 +104,7 @@ def render(text: str, captions: Callable[[str], str] = lambda stem: ENGLISH) -> 
         else:
             if steps:
                 flush()
-            words.append(line)
+            paragraph.append(line)
     flush()
     return "".join(out) + ("</section>" if in_task else "")
 
@@ -158,13 +158,14 @@ def _captions(folder: Path, stem: str, code: str) -> str:
 
 def _page(folder: Path):
     def page(request: Request) -> str:
+        code = words.in_use()   # read once: a picker change mid-page would mix two
         try:
             # utf-8-sig: a byte-order mark, which older Windows editors write,
             # would otherwise turn a first-line construct into paragraph words.
-            text = _text(folder, words.in_use()).read_text(encoding="utf-8-sig")
+            text = _text(folder, code).read_text(encoding="utf-8-sig")
         except (OSError, UnicodeDecodeError) as exc:
             raise ManualMissing("the manual's text could not be read") from exc
-        body = render(text, lambda stem: _captions(folder, stem, words.in_use()))
+        body = render(text, lambda stem: _captions(folder, stem, code))
         # The search box sits between the opening paragraph and the tasks.
         cut = body.find("<section")
         cut = len(body) if cut < 0 else cut
