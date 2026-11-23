@@ -14,6 +14,7 @@ import signal
 import socket
 import sys
 import threading
+import time
 import urllib.parse
 import webbrowser
 
@@ -67,11 +68,13 @@ class _Opened:
     def __init__(self, monkeypatch):
         self.faces = []
         self.links = []
+        self.ports = []      # the port each Face was asked for
         # A port named in the shell running the suite would pin every launch.
         monkeypatch.delenv("PRESSLESS_PORT", raising=False)
         real_serve = main_module.face.serve
 
         def serve(folder, **kwargs):
+            self.ports.append(kwargs.get("port"))
             served = real_serve(folder, **kwargs)
             self.faces.append(served)
             return served
@@ -90,18 +93,6 @@ class _Opened:
         monkeypatch.setattr(main_module.updating.updater, "check",
                             lambda *args: self.checks.append(args)
                             or main_module.updating.updater.Miss(1))
-
-
-def test_the_double_click_takes_the_same_path(monkeypatch, tmp_path, capsys):
-    """No flag at all is the writer's double-click, and it prints the same
-    report -- so the route that was tested is the writer's route (§ 4.5)."""
-    artefact = _artefact(tmp_path)
-    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
-    _store(monkeypatch, Choice("keyring", "SecretService"))
-    _Opened(monkeypatch)
-
-    assert main_module.main([]) == 0
-    assert capsys.readouterr().out.splitlines()[0] == "pressless: ok"
 
 
 def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
@@ -521,6 +512,16 @@ def _free_port() -> int:
         return probe.getsockname()[1]
 
 
+def _on_a_free_port(attempt) -> None:
+    """Run attempt(port) on a port that was free a moment ago, and again on
+    another where it says something took that one in between, as a parallel
+    suite or another program's server can (review-tests 2026-11-23 lane A)."""
+    for _ in range(3):
+        if attempt(_free_port()):
+            return
+    pytest.fail("no port stayed free for three tries")
+
+
 def _launch(monkeypatch, tmp_path):
     artefact = _artefact(tmp_path)
     _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
@@ -537,24 +538,31 @@ def test_the_port_pressless_port_names_is_served(monkeypatch, tmp_path):
     knows. Breaks when the launcher ignores PRESSLESS_PORT, or a restart
     moves to another port."""
     opened = _launch(monkeypatch, tmp_path)
-    port = _free_port()
-    monkeypatch.setenv("PRESSLESS_PORT", str(port))
-    passes = iter([True, False])
-    monkeypatch.setattr(main_module, "_wait", lambda restart: next(passes))
 
-    assert main_module.main([]) == 0
-    assert [_port_of(face) for face in opened.faces] == [port, port]
+    def attempt(port):
+        monkeypatch.setenv("PRESSLESS_PORT", str(port))
+        passes = iter([True, False])
+        monkeypatch.setattr(main_module, "_wait", lambda restart: next(passes))
+        opened.faces.clear()
+        code = main_module.main([])
+        if code == 1 and not opened.faces:
+            return False     # PortHeld: taken since it was probed
+        assert code == 0
+        assert [_port_of(face) for face in opened.faces] == [port, port]
+        return True
+
+    _on_a_free_port(attempt)
 
 
 def test_a_bare_port_variable_is_not_read(monkeypatch, tmp_path):
     """PRESS-0011 § 8: a PORT some other tool exported must not pin the
     double-click's port."""
     opened = _launch(monkeypatch, tmp_path)
-    port = _free_port()
-    monkeypatch.setenv("PORT", str(port))
+    monkeypatch.setenv("PORT", "8471")
 
     assert main_module.main([]) == 0
-    assert _port_of(opened.faces[0]) != port
+    # Asked for the system's choice, which may hand back any port at all.
+    assert opened.ports == [0], opened.ports
 
 
 def test_a_held_port_is_told_plainly(monkeypatch, tmp_path, capsys):
@@ -900,6 +908,21 @@ def test_a_held_handed_port_starts_afresh(monkeypatch, tmp_path, capsys):
     told = main_module.face.sentence_for(main_module.PortHeld(port), publishing=False)
     assert told.what in capsys.readouterr().out
 
+    # review-tests 2026-11-23 lane A: a named port other than the handed one
+    # serves there, and the session stays behind, since no tab could send it.
+    def elsewhere(named):
+        monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+        monkeypatch.setenv("PRESSLESS_PORT", str(named))
+        opened.faces.clear()
+        if main_module.main([]) == 1 and not opened.faces:
+            return False
+        [served] = opened.faces
+        assert served.port == named != port
+        assert served.hand_over().session != _HANDED
+        return True
+
+    _on_a_free_port(elsewhere)
+
 
 @pytest.mark.parametrize("value, handed", [
     (f"8471:{_HANDED}", (8471, _HANDED)),
@@ -929,7 +952,6 @@ def test_a_returning_tab_means_no_new_tab(monkeypatch, tmp_path):
     never opens one."""
     opened = _launch(monkeypatch, tmp_path)
     real_serve = main_module.face.serve
-    port = _free_port()
 
     def returning(folder, **kwargs):
         served = real_serve(folder, **kwargs)
@@ -938,23 +960,36 @@ def test_a_returning_tab_means_no_new_tab(monkeypatch, tmp_path):
                 served.port, f"pressless-{served.port}={_HANDED}"), daemon=True).start()
         return served
 
-    monkeypatch.setattr(main_module.face, "serve", returning)
-    monkeypatch.setattr(main_module, "RETURN_SECONDS", 5)
-    monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
-    assert main_module.main([]) == 0
-    assert opened.links == [], "a tab opened although the old one came back"
+    def comes_back(port):
+        monkeypatch.setattr(main_module.face, "serve", returning)
+        monkeypatch.setattr(main_module, "RETURN_SECONDS", 5)
+        monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+        opened.links.clear()
+        assert main_module.main([]) == 0
+        if opened.links and opened.faces[-1].port != port:
+            return False     # taken since it was probed: a fresh port, a tab
+        assert opened.links == [], "a tab opened although the old one came back"
+        return True
+
+    _on_a_free_port(comes_back)
 
     # Nobody comes back: the launcher opens the tab once the wait ends.
-    monkeypatch.setattr(main_module.face, "serve", real_serve)
-    opened = _Opened(monkeypatch)
-    monkeypatch.setattr(main_module, "RETURN_SECONDS", 0.1)
-    monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
-    assert main_module.main([]) == 0
-    [served] = opened.faces
-    [link] = opened.links
-    assert (served.port, served.hand_over().session) == (port, _HANDED)
-    assert urllib.parse.parse_qs(urllib.parse.urlsplit(link).query) == \
-        urllib.parse.parse_qs(urllib.parse.urlsplit(served.url).query)
+    def nobody(port):
+        monkeypatch.setattr(main_module.face, "serve", real_serve)
+        opened = _Opened(monkeypatch)
+        monkeypatch.setattr(main_module, "RETURN_SECONDS", 0.1)
+        monkeypatch.setenv("PRESSLESS_RESUME", f"{port}:{_HANDED}")
+        assert main_module.main([]) == 0
+        [served] = opened.faces
+        if served.port != port:
+            return False
+        [link] = opened.links
+        assert served.hand_over().session == _HANDED
+        assert urllib.parse.parse_qs(urllib.parse.urlsplit(link).query) == \
+            urllib.parse.parse_qs(urllib.parse.urlsplit(served.url).query)
+        return True
+
+    _on_a_free_port(nobody)
 
 
 def test_another_site_hands_nothing_over(monkeypatch, tmp_path):
@@ -980,3 +1015,91 @@ def test_another_site_hands_nothing_over(monkeypatch, tmp_path):
     assert first._site != second._site
     assert second.hand_over().session != first.hand_over().session
     assert statuses == [403] and len(opened.links) == 2
+
+
+# ------------------------------------------------- review-code 2026-11-23 ---
+
+
+@pytest.mark.parametrize("outcome", ["installed", "failed"])
+def test_a_restart_waits_for_an_update_under_way(monkeypatch, tmp_path, outcome):
+    """review-code 2026-11-23 lane 11: Update now downloads on the Face's own
+    thread, and nothing stopped a Restart meanwhile. The new Face then ran
+    beside a download that would take editor.LOCK for good, so every save
+    hung; or the main thread waited on that lock for ever. A Restart now
+    waits for the update: a good one opens the new version, and a failed
+    one lets the Restart go ahead.
+
+    Breaks when a Restart serves a new Face while an Update now is under way."""
+    opened = _launch(monkeypatch, tmp_path)
+    states = []
+    real_register = main_module.updating.register
+
+    def register(served, own, **kwargs):
+        states.append(kwargs["state"])
+        return real_register(served, own, **kwargs)
+
+    monkeypatch.setattr(main_module.updating, "register", register)
+    reopened = []
+    monkeypatch.setattr(main_module.installer, "reopen_linux",
+                        lambda *args: reopened.append(args))
+    events = []
+    real_stop = main_module.face.Face.stop
+
+    def stop(served):
+        events.append("a Face stopped")
+        real_stop(served)
+
+    monkeypatch.setattr(main_module.face.Face, "stop", stop)
+
+    def wait(restart):
+        if len(opened.faces) > 1:
+            events.append("a new Face")
+            return False
+        state = states[0]
+        assert state.busy.acquire(blocking=False)    # Update now, downloading
+
+        def update():
+            time.sleep(0.3)
+            if outcome == "installed":
+                main_module.editor.LOCK.acquire()    # kept to the exit
+                state.put_in_place(tmp_path / "new", "9.9.9")
+                events.append("installed")
+            else:
+                events.append("failed")
+                state.busy.release()
+
+        threading.Thread(target=update, daemon=True).start()
+        return True                                  # his Restart, meanwhile
+
+    monkeypatch.setattr(main_module, "_wait", wait)
+    try:
+        code = main_module.main([])
+    finally:
+        if main_module.editor.LOCK.locked():
+            main_module.editor.LOCK.release()
+    if outcome == "installed":
+        assert (code, len(opened.faces)) == (1, 1)
+        assert events == ["installed", "a Face stopped"], events
+        assert len(reopened) == 1
+    else:
+        assert code == 0 and reopened == []
+        assert events == ["failed", "a Face stopped", "a new Face", "a Face stopped"], events
+
+
+@pytest.mark.parametrize("browser", ["none", "raises"])
+def test_no_browser_prints_the_link(monkeypatch, tmp_path, capsys, browser):
+    """PRESS-0013 § 4.5 step 5: where no browser opens, the launch prints the
+    link instead. Breaks when the link is not printed, or a browser that
+    raises stops the launch."""
+    opened = _launch(monkeypatch, tmp_path)
+
+    def no_browser(url):
+        if browser == "raises":
+            raise webbrowser.Error("no runnable browser")
+        return False
+
+    monkeypatch.setattr(webbrowser, "open", no_browser)
+    assert main_module.main([]) == 0
+    [served] = opened.faces
+    link = urllib.parse.urlunsplit(urllib.parse.urlsplit(served.url)._replace(path="/setup"))
+    assert f"Open this link in your browser: {link}" in capsys.readouterr().out

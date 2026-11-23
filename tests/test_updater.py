@@ -11,6 +11,7 @@
 # of the contract.
 from __future__ import annotations
 
+import ast
 import base64
 import errno
 import hashlib
@@ -21,6 +22,7 @@ import shutil
 import ssl
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 from email.message import Message
@@ -353,7 +355,8 @@ def test_redirect_to_http_is_refused():
     """Breaks when the default redirect handler is used."""
     handler = updater._HttpsOnly()
     request = urllib.request.Request("https://api.github.com/x")
-    with pytest.raises(Exception):  # noqa: B017 -- any refusal stops the hop
+    # The handler's own refusal, so a crash on the http branch is no pass.
+    with pytest.raises(urllib.error.URLError, match="left https"):
         handler.redirect_request(request, None, 302, "Found", Message(), "http://evil.example/x")
     passed = handler.redirect_request(request, None, 302, "Found", Message(),
                                       "https://objects.githubusercontent.com/x")
@@ -485,7 +488,8 @@ def test_the_updater_reaches_no_store_settings_or_credentials():
     `safe_write`.
 
     Breaks when updater.py, or a module it imports, gains an import of
-    another part -- `sitefile` reaches the Store, Settings and Credentials."""
+    another part -- `sitefile` reaches the Store, Settings and Credentials --
+    one inside a function body included, which loading alone never sees."""
     allowed = {"pressless", "pressless.updater", "pressless.update_key",
                "pressless.installer", "pressless.safe_write", "pressless.os_reason",
                "pressless.zip_member", "pressless.json_record"}
@@ -497,6 +501,20 @@ def test_the_updater_reaches_no_store_settings_or_credentials():
         env={**os.environ, "PYTHONPATH": str(source)}).stdout.split()
     assert "pressless.updater" in loaded
     assert set(loaded) <= allowed, sorted(set(loaded) - allowed)
+    for name in loaded:
+        if name == "pressless":
+            continue
+        tree = ast.parse((source / (name.replace(".", "/") + ".py")).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                named = {alias.name for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                named = ({node.module} if node.module != "pressless"
+                         else {f"pressless.{alias.name}" for alias in node.names})
+            else:
+                continue
+            parts = {each for each in named if each.split(".")[0] == "pressless"}
+            assert parts <= allowed, (name, node.lineno, sorted(parts - allowed))
 
 
 def test_a_held_file_does_not_undo_the_update(tmp_path, monkeypatch):
@@ -508,9 +526,11 @@ def test_a_held_file_does_not_undo_the_update(tmp_path, monkeypatch):
 
     Breaks when either removal's error escapes."""
     real_unlink = Path.unlink
+    refused: list[str] = []
 
     def held(self, missing_ok=False):
         if self.suffix == ".zip" or self.name.startswith(".pressless-update-"):
+            refused.append(self.suffix or "download")
             raise PermissionError(13, "held by another process")
         return real_unlink(self, missing_ok=missing_ok)
 
@@ -529,6 +549,8 @@ def test_a_held_file_does_not_undo_the_update(tmp_path, monkeypatch):
     offer = _offer(data)
     with pytest.raises(updater.UpdateRejected):
         updater.download(offer, beside, _Net({offer.asset_url: data[:-1] + b"?"}))
+    # Each removal met the held file, or the test held nothing.
+    assert refused == [".zip", ".zip", "download"], refused
 
 
 # ----------------------------------------------------------------- INV-21 ---
@@ -624,12 +646,77 @@ def test_a_failure_names_its_reason_and_never_its_path():
     """§ 4.6, PRESS-0401: a failure's words are the error's reason, or its
     type's name where it has none, never its message, which quotes a path.
 
-    Breaks when `failed` uses str(exc), or drops the type's name."""
+    Breaks when `download_failure` uses str(exc), or drops the type's name."""
     refused = PermissionError(errno.EACCES, "Permission denied", "/home/someone/program/x")
-    assert str(updater.failed(refused, "the download failed")) == (
+    assert str(updater.download_failure(refused, "the download failed")) == (
         "the download failed: Permission denied")
-    assert str(updater.failed(ValueError("/home/someone/x"), "the zip")) == (
+    assert str(updater.download_failure(ValueError("/home/someone/x"), "the zip")) == (
         "the zip: ValueError")
+
+
+@pytest.mark.parametrize("code", [errno.EACCES, errno.EPERM, errno.EROFS])
+def test_a_folder_he_may_not_change_is_told_apart(tmp_path, monkeypatch, code):
+    """review-code 2026-11-23 lane 11: an AppImage in /opt, or a program in a
+    folder that is read-only or not his, refused the download's file. That
+    read as DownloadFailed, "check your internet connection", which fails
+    the same way every time, and the words said "no room".
+
+    Breaks when the refusal is DownloadFailed's, or names a full disk."""
+    from pressless import face, updating
+
+    def refuse(*args, **kwargs):
+        raise OSError(code, os.strerror(code), str(tmp_path / "x"))
+
+    monkeypatch.setattr(updater.os, "open", refuse)
+    data = b"the new program"
+    offer = _offer(data)
+    with pytest.raises(updater.NotWritable) as caught:
+        updater.download(offer, tmp_path, _Net({offer.asset_url: data}))
+    assert "room" not in str(caught.value) and str(tmp_path) not in str(caught.value)
+    told = face.sentence_for(caught.value, publishing=False)
+    assert updating.SENTENCES[updater.NotWritable] is not updating.SENTENCES[
+        updater.DownloadFailed]
+    assert told.what == ("Pressless cannot save the new version, because it may not"
+                         " change the folder it runs from.")
+    assert "internet" not in told.next and "Update now" in told.next
+
+
+@pytest.mark.parametrize("path, long", [
+    ("C:\\Users\\him\\Pressless.new-0a1b", "\\\\?\\C:\\Users\\him\\Pressless.new-0a1b"),
+    ("\\\\server\\share\\Pressless.new-0a1b",
+     "\\\\?\\UNC\\server\\share\\Pressless.new-0a1b"),
+    ("\\\\?\\C:\\x", "\\\\?\\C:\\x"),
+])
+def test_an_unpack_path_takes_the_long_form(path, long):
+    """review-code 2026-11-23 lane 11: the staging folder makes each path
+    deeper than the installed one, so with long paths off a program that
+    runs could not be unpacked. Breaks when a drive, a share or a path
+    already long is given the wrong form."""
+    assert updater._long_form(path) == long
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the 260-character limit is Windows'")
+def test_a_deep_folder_still_unpacks(tmp_path):
+    """The run of the test above, on the Windows box, whose long-paths
+    setting is off: a program folder whose deepest file fits the limit, but
+    not once the staging folder is added, still unpacks.
+
+    Breaks when unpack writes through the plain path."""
+    deep = "Pressless/_internal/" + "d" * 60 + "/" + "f" * 60 + ".txt"
+    room = 259 - 1 - len(deep)     # the longest folder it fits beside
+    if len(str(tmp_path)) > room - 12:
+        pytest.skip("the temporary folder is already too deep for this test")
+    beside = tmp_path
+    while len(str(beside)) < room - 12:
+        beside = beside / ("p" * min(10, room - 12 - len(str(beside))))
+    beside.mkdir(parents=True, exist_ok=True)
+    archive = _zip(beside / "update.zip", {"Pressless/": b"", deep: b"deep"})
+    unpacked = updater.unpack(archive, beside)
+    try:
+        assert len(str(beside)) <= room < len(str(unpacked)), "the test proves nothing"
+        assert (Path(updater._long_form(str(unpacked))) / deep).read_bytes() == b"deep"
+    finally:
+        shutil.rmtree(updater._long_form(str(unpacked)), ignore_errors=True)
 
 
 # ------------------------------------------------- INV-22, INV-23: changes ---

@@ -25,7 +25,7 @@ def install(folder: Path, platform: str, transport: updater.Transport | None = N
     try:
         beside.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        raise updater.failed(exc, "the extras folder could not be made") from exc
+        raise updater.download_failure(exc, "the extras folder could not be made") from exc
     offer = updater.Offer(version=jpegxl.RELEASE,
                           asset_url=jpegxl.download_url(platform),
                           size=pin.size, sha256=pin.sha256)
@@ -37,7 +37,7 @@ def install(folder: Path, platform: str, transport: updater.Transport | None = N
         os.replace(staged, target)
     except OSError as exc:
         staged.unlink(missing_ok=True)
-        raise updater.failed(exc, "the decoder could not be put in place") from exc
+        raise updater.download_failure(exc, "the decoder could not be put in place") from exc
     return target
 
 

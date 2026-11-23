@@ -380,6 +380,14 @@ _WORDS: dict[str, str] = {
     "failure.updater.DiskFull.next": (
         "Free some space on this computer, then click Update now again."
     ),
+    "failure.updater.NotWritable.what": (
+        "Pressless cannot save the new version, because it may not change"
+        " the folder it runs from."
+    ),
+    "failure.updater.NotWritable.next": (
+        "Ask whoever looks after this computer to let you change that folder,"
+        " then click Update now again."
+    ),
     "failure.updater.DownloadEndedEarly.what": "The download stopped before it finished.",
     "failure.updater.DownloadEndedEarly.next": "Click Update now again.",
     "failure.updater.UpdateRejected.what": (
