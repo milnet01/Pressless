@@ -102,6 +102,8 @@ PINS = {
 FOLDER_NAME = "extras"               # in Pressless's own folder; a MACHINE_NAMES entry
 DECODE_SECONDS = 120
 MAX_PIXELS = 2 * 89_478_485          # where Pillow refuses any picture (§ 4.4)
+MEMORY_BASE = 512 * 1024 * 1024      # the decoder's memory (§ 4.4 step 3) ...
+MEMORY_PER_PIXEL = 80                # ... and this much more a pixel
 
 class NotInstalled(Exception): ...   # no decoder, or one whose bytes are not the pin's
 class Unreadable(OSError): ...       # no picture; caught where Pillow's errors are
@@ -170,7 +172,8 @@ installed".** The line in § 4.6 then offers the download again.
    pin for this computer, raises `NotInstalled` and nothing runs.
 2. Reads the width and height the file's own size header claims (ISO/IEC
    18181-1's SizeHeader): at the start of a bare codestream, or inside the
-   container's `jxlc` box or first `jxlp` box. No header, or more than
+   container's `jxlc` box, or its `jxlp` boxes joined in order, as the
+   decoder joins them. No header, or more than
    `MAX_PIXELS`, raises `Unreadable` and nothing runs. The decoder holds the
    whole picture in memory and writes it out in full, so Pillow's limit is
    applied before it runs, not after.
@@ -187,6 +190,18 @@ installed".** The line in § 4.6 then offers the download again.
    stdin, stdout and stderr go to `DEVNULL`. The timeout is
    `DECODE_SECONDS`. On Windows, `creationflags` is `CREATE_NO_WINDOW`, read
    with `getattr(subprocess, ..., 0)`.
+
+   Once started, the process is held to `MEMORY_BASE` plus
+   `MEMORY_PER_PIXEL` bytes for each pixel step 2 read. On Linux that is
+   `RLIMIT_DATA`, with `RLIMIT_CORE` at 0. On Windows it is a job object,
+   closed after the run, which ends whatever still runs in it. A limit that
+   cannot be set stops the process and raises `Unreadable`. `MAX_PIXELS`
+   bounds one frame; an animation keeps every frame and extra channels add
+   to each, so this limit is what bounds them. libjxl v0.12.0's `djxl`
+   needed about 53 bytes a pixel for a 16-bit lossless picture with alpha,
+   the costliest kind measured (2026-11-23). The limit is set just after the
+   process starts, so for that moment it runs unlimited: stated, not
+   defended.
 4. A non-zero exit, a timeout (the process is killed) or no
    `decoded.png` raises `Unreadable`. Nothing from the process's output
    reaches the log.
@@ -368,6 +383,16 @@ published.** The pre-release mark keeps it away from the updater:
   the Windows box before shipping. *Breaks when:* a pin names a build that
   cannot run on that system, or the decoder's output differs from what
   § 4.5 assumes.
+- **INV-10** — The decoder runs held to § 4.4 step 3's memory limit, or
+  not at all. *Test:*
+  `tests/test_jpegxl.py::test_a_decoder_past_its_memory_gives_no_picture`
+  — a stand-in asking a gigabyte past a shortened limit gives no picture,
+  and one asking a megabyte gives one.
+  `test_the_limits_are_set_on_the_decoder` (Linux) and
+  `test_the_decoder_is_held_in_a_job` (Windows) read the limit back, and
+  `test_a_decoder_that_cannot_be_limited_does_not_run_on` refuses the
+  limit. *Breaks when:* the decoder starts with no limit, or runs on where
+  the limit was refused.
 
 ## 6. Failure modes
 
@@ -381,6 +406,7 @@ published.** The pre-release mark keeps it away from the updater:
 | The decoder crashes, fails or runs past `DECODE_SECONDS` | *Could not be read as a picture*, today's sentence |
 | The decoder writes its animation as numbered files, not `decoded.png` | INV-9's animation fixture fails before shipping, and § 4.4 is amended to read the first file, keeping decision 6 |
 | The file's header claims more than `MAX_PIXELS`, or has none | *Could not be read as a picture*; the decoder never runs (§ 4.4 step 2) |
+| The decoder needs more than its memory limit: many frames, or many extra channels | *Could not be read as a picture* (§ 4.4 step 3) |
 | A computer no pin runs on (§ 4.1) | The line says JPEG XL photographs cannot be read here, with no button; nothing is downloaded or run |
 | A site holding `.jxl` photographs is opened on a machine without the decoder | Previews show no picture (404); a publish stops with § 4.5's sentence |
 | An antivirus program blocks the decoder on Windows | *Could not be read as a picture*; the hand check in § 7 looks for it |
@@ -394,8 +420,8 @@ Pressless itself. It is stated, not defended.
 
 The suite uses a **stand-in decoder**: a small program, written by the test,
 that copies a PNG fixture to its second argument. Its hash replaces the pin
-through `monkeypatch`. INV-1, INV-2, INV-3, INV-4, INV-5, INV-6 and INV-7
-run everywhere, the Windows box included. INV-8 runs the script with `gh`
+through `monkeypatch`. INV-1 to INV-7 and INV-10 run everywhere, the
+Windows box included. INV-8 runs the script with `gh`
 replaced.
 
 INV-9 needs the real programs. Before shipping, the maintainer runs it on
@@ -445,6 +471,7 @@ Each test is seen to fail before the code it locks exists.
 | INV-7 | `tests/test_editor.py::test_jpeg_xl_view_copy` |
 | INV-8 | `tests/test_publish_jpeg_xl.py` |
 | INV-9 | Partial: `tests/test_jpegxl_real.py`, which CI skips; a hand run on each system before a release |
+| INV-10 | `tests/test_jpegxl.py::test_a_decoder_past_its_memory_gives_no_picture` and the three tests INV-10 names |
 | The release exists before a Pressless pinning it ships (§ 4.8) | **nothing** — the INV-9 hand run fails without it |
 | The size header is read before the decoder runs (§ 4.4 step 2) | `tests/test_jpegxl.py::test_a_picture_past_the_pixel_limit_never_reaches_the_decoder`, `::test_a_header_that_cannot_be_trusted_never_reaches_the_decoder`, `::test_the_pixel_limit_is_pillows_own` |
 | No pin is used on a computer it cannot run on (§ 4.1) | `tests/test_jpegxl.py::test_only_a_system_a_pin_runs_on_is_given_one`, `::test_a_computer_with_no_pin_runs_nothing`, `::test_a_computer_with_no_pin_says_so_on_the_line` |
@@ -474,7 +501,8 @@ Rows live in `../reviews/PRESS-0275-jpeg-xl-extra-loop-log.md`.
 
 About 5 MB on disk once the decoder is installed. One view copy per JPEG XL
 photograph per site, no larger than the web copy. The decoded PNG in the
-work directory is deleted after each use. No new Python dependency.
+work directory is deleted after each use. While it runs, the decoder may
+use up to `MEMORY_BASE` plus `MEMORY_PER_PIXEL` bytes a pixel (§ 4.4 step 3). No new Python dependency.
 
 ## 14. Open questions
 

@@ -200,6 +200,120 @@ def test_a_header_that_cannot_be_trusted_never_reaches_the_decoder(tmp_path, mon
     assert not marker.exists()
 
 
+def _in_parts(codestream: bytes, cut: int) -> bytes:
+    """`codestream` in a container's two `jxlp` boxes, the first holding its
+    first `cut` bytes."""
+    def part(index: int, held: bytes) -> bytes:
+        return (12 + len(held)).to_bytes(4, "big") + b"jxlp" + index.to_bytes(4, "big") + held
+    return standin.CONTAINER[:32] + part(0, codestream[:cut]) + part(0x80000001, codestream[cut:])
+
+
+@pytest.mark.parametrize("cut", [1, 2, 3, 11])
+def test_a_codestream_in_parts_is_measured_whole(tmp_path, monkeypatch, cut):
+    """§ 4.4 step 2: a codestream split over `jxlp` boxes is joined before its
+    size header is read, as the decoder joins it. Breaks when the header is
+    read past the first part's end: the next box's own header then reads as
+    a small picture, and a huge one reaches the decoder."""
+    own = tmp_path / "own"
+    program = standin.installed(monkeypatch, own, standin.png(tmp_path / "p.png"))
+    marker = tmp_path / "ran"
+    standin.tell(own / jpegxl.FOLDER_NAME, record=str(marker), png=str(tmp_path / "p.png"))
+    work = tmp_path / "work"
+    work.mkdir()
+    huge = tmp_path / "huge.jxl"
+    huge.write_bytes(_in_parts(b"\xff\x0a\x6e" + b"\xff" * 16, cut))
+    with pytest.raises(jpegxl.Unreadable):
+        jpegxl.decode(program, huge, work)
+    assert not marker.exists(), "a huge picture in parts reached the decoder"
+
+    small = tmp_path / "small.jxl"
+    small.write_bytes(_in_parts(standin.CODESTREAM, cut))
+    assert jpegxl.decode(program, small, work).is_file()
+    assert marker.exists()
+
+
+def test_a_decoder_past_its_memory_gives_no_picture(tmp_path, monkeypatch):
+    """§ 4.4 step 3: the decoder is held to MEMORY_BASE plus MEMORY_PER_PIXEL
+    for each pixel the header claims, so an animation of many frames, or a
+    picture of many extra channels, cannot take more. Breaks when the
+    decoder runs with no limit: the stand-in's gigabyte is granted and a
+    picture comes back."""
+    own = tmp_path / "own"
+    program = standin.installed(monkeypatch, own, standin.png(tmp_path / "p.png"))
+    standin.tell(own / jpegxl.FOLDER_NAME, hog=1 << 30, png=str(tmp_path / "p.png"))
+    monkeypatch.setattr(jpegxl, "MEMORY_BASE", 128 << 20)
+    work = tmp_path / "work"
+    work.mkdir()
+    original = tmp_path / "seaside.jxl"
+    original.write_bytes(standin.CODESTREAM)
+    with pytest.raises(jpegxl.Unreadable):
+        jpegxl.decode(program, original, work)
+    assert not (work / "decoded.png").exists()
+
+    standin.tell(own / jpegxl.FOLDER_NAME, hog=1 << 20, png=str(tmp_path / "p.png"))
+    assert jpegxl.decode(program, original, work).is_file()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux's limits; Windows holds a job")
+def test_the_limits_are_set_on_the_decoder(tmp_path):
+    """§ 4.4 step 3 on Linux: the data limit is the one asked for, and no
+    core file is written when the decoder dies at it. Breaks when either
+    limit is left off."""
+    import resource
+    import subprocess
+    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        jpegxl._limit_memory(process, 300 << 20)()
+        assert resource.prlimit(process.pid, resource.RLIMIT_DATA) == (300 << 20, 300 << 20)
+        assert resource.prlimit(process.pid, resource.RLIMIT_CORE) == (0, 0)
+    finally:
+        process.kill()
+        process.wait()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="a Windows job object")
+def test_the_decoder_is_held_in_a_job(tmp_path):
+    """§ 4.4 step 3 on Windows: the decoder runs inside a job holding its
+    memory, and letting it go ends what still runs in the job. Breaks when
+    the process is left outside the job, or the job outlives the decode."""
+    import ctypes
+    import subprocess
+    from ctypes import wintypes
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE,
+                                        ctypes.POINTER(wintypes.BOOL)]
+    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        release = jpegxl._limit_memory(process, 300 << 20)
+        inside = wintypes.BOOL()
+        assert kernel32.IsProcessInJob(int(process._handle), None, ctypes.byref(inside))
+        assert inside.value
+        release()
+        assert process.wait(10) is not None
+    finally:
+        process.kill()
+        process.wait()
+
+
+def test_a_decoder_that_cannot_be_limited_does_not_run_on(tmp_path, monkeypatch):
+    """§ 4.4 step 3: where the limit cannot be set, the decoder is stopped
+    and the file is Unreadable. Breaks when it runs on unlimited."""
+    own = tmp_path / "own"
+    program = standin.installed(monkeypatch, own, standin.png(tmp_path / "p.png"))
+    standin.tell(own / jpegxl.FOLDER_NAME, png=str(tmp_path / "p.png"))
+
+    def refuse(process, limit):
+        raise OSError("no limit here")
+
+    monkeypatch.setattr(jpegxl, "_limit_memory", refuse)
+    work = tmp_path / "work"
+    work.mkdir()
+    original = tmp_path / "seaside.jxl"
+    original.write_bytes(standin.CODESTREAM)
+    with pytest.raises(jpegxl.Unreadable):
+        jpegxl.decode(program, original, work)
+
+
 def test_the_pixel_limit_is_pillows_own():
     """§ 4.4 step 2: the limit is the size past which Pillow refuses any
     other picture, so a JPEG XL is held to what a PNG is."""
@@ -210,12 +324,21 @@ def test_the_pixel_limit_is_pillows_own():
 def test_a_decoder_past_its_time_is_stopped(tmp_path, monkeypatch):
     """INV-3's timeout: a stand-in sleeping past a shortened limit raises
     Unreadable, writes no picture, and (on Linux) leaves no process behind."""
+    import subprocess
     own = tmp_path / "own"
     program = standin.installed(monkeypatch, own, standin.png(tmp_path / "p.png"))
-    pid = tmp_path / "pid"
-    standin.tell(own / jpegxl.FOLDER_NAME, sleep=5, pid=str(pid),
-                 png=str(tmp_path / "p.png"))
+    standin.tell(own / jpegxl.FOLDER_NAME, sleep=5, png=str(tmp_path / "p.png"))
     monkeypatch.setattr(jpegxl, "DECODE_SECONDS", 1)
+    # The process as started, so the check needs nothing from the stand-in,
+    # which a slow start could kill before it wrote anything.
+    spawned = []
+
+    class Seen(subprocess.Popen):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            spawned.append(self.pid)
+
+    monkeypatch.setattr(jpegxl.subprocess, "Popen", Seen)
     work = tmp_path / "work"
     work.mkdir()
     original = tmp_path / "seaside.jxl"
@@ -230,8 +353,8 @@ def test_a_decoder_past_its_time_is_stopped(tmp_path, monkeypatch):
         # On Windows the stand-in is a batch file, so the Python it starts is
         # a grandchild the kill does not reach; the real djxl.exe is one
         # process. That half is checked on Linux only.
-        assert pid.exists()
-        assert not standin.alive(int(pid.read_text(encoding="ascii")))
+        assert len(spawned) == 1
+        assert not standin.alive(spawned[0])
 
 
 @pytest.mark.parametrize("told", [{"fail": True}, {}], ids=["fails", "writes-nothing"])
@@ -253,13 +376,25 @@ def test_decode_passes_no_shell_and_keeps_no_output(tmp_path, monkeypatch):
     every stream."""
     seen = {}
 
-    def run(argv, **options):
-        seen.update(options, argv=argv)
-        raise jpegxl.subprocess.TimeoutExpired(argv, 1)
+    class Started:
+        pid = None
+
+        def __init__(self, argv, **options):
+            seen.update(options, argv=argv)
+
+        def wait(self, timeout=None):
+            if timeout is not None:
+                seen["timeout"] = timeout
+                raise jpegxl.subprocess.TimeoutExpired(seen["argv"], timeout)
+            return -9
+
+        def kill(self):
+            seen["killed"] = True
 
     own = tmp_path / "own"
     program = standin.installed(monkeypatch, own, standin.png(tmp_path / "p.png"))
-    monkeypatch.setattr(jpegxl.subprocess, "run", run)
+    monkeypatch.setattr(jpegxl.subprocess, "Popen", Started)
+    monkeypatch.setattr(jpegxl, "_limit_memory", lambda process, limit: lambda: None)
     work = tmp_path / "work"
     work.mkdir()
     original = tmp_path / "a.jxl"
@@ -270,6 +405,7 @@ def test_decode_passes_no_shell_and_keeps_no_output(tmp_path, monkeypatch):
     assert seen["cwd"] == work
     assert not seen.get("shell")
     assert seen["timeout"] == jpegxl.DECODE_SECONDS
+    assert seen["killed"]
     for stream in ("stdin", "stdout", "stderr"):
         assert seen[stream] == jpegxl.subprocess.DEVNULL
 
