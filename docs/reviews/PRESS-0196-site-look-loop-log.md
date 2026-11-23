@@ -10,3 +10,4 @@
 | amend | 2026-11-17 | none: PRESS-0376 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1: `store.LOOK_FILES` names the look's three files. |
 | amend | 2026-11-17 | none: PRESS-0374 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4 state 2: a rule `look.css` gained since a look was saved may be absent. |
 | amend | 2026-11-17 | none: PRESS-0374 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1: colours in any order, `version` the integer 1, `store.read_look_bytes`. § 4.2: `WIDTHS` is the tuple the code holds. |
+| amend | 2026-11-23 | none: PRESS-0443 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4: a warning's ratio has the decimal mark of the language in use. |

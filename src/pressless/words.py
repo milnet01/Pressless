@@ -873,6 +873,11 @@ _WORDS: dict[str, str] = {
     "notice.pages.other_links": (
         "Your header or footer still links to this page. Remove that link in its code."
     ),
+    # The page editor reached no answer from Pressless, so it stops saving.
+    "script.page.unreachable": (
+        "Pressless did not answer, so this page has stopped saving. "
+        "Check Pressless is still running, then open the page again."
+    ),
     "script.pages.confirm_remove": (
         "Remove this page? It goes to the bin in your Pressless-data folder, with any "
         "changes you have not published. It leaves your site and your menu now."
@@ -3053,6 +3058,13 @@ def number(value: int, code: str | None = None) -> str:
     given = _file(_current[0] if code is None else code).get("thousands")
     mark = given if isinstance(given, str) else ","
     return f"{value:,}".replace(",", mark)
+
+
+def decimal(value: float, places: int, code: str | None = None) -> str:
+    """`value` to `places` decimals, marked as `code` (default: the language
+    in use) marks a decimal: a comma wherever it marks thousands otherwise."""
+    mark = "." if number(1000, code) == "1,000" else ","
+    return f"{value:.{places}f}".replace(".", mark)
 
 
 # A date is anything with day, month and year, and weekday() for a weekday.

@@ -44,6 +44,7 @@ __all__ = [
     "render",
     "sources",
     "to_html",
+    "unix_line_ends",
     "value_text",
     "write",
 ]
@@ -731,6 +732,12 @@ def _quote(row: Mark, lines: list[str]) -> Quote | None:
     return Quote(mark=row.name, paragraphs=paragraphs) if paragraphs else None
 
 
+def unix_line_ends(text: str) -> str:
+    """`text` with each Windows (CRLF) and old Mac (CR) line end written as
+    LF, as a browser's form may post them: the one line end Pressless keeps."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def parse(body: str) -> Document:
     """Text in, structure out (§4.4).
 
@@ -738,7 +745,7 @@ def parse(body: str) -> Document:
     generator does — INV-5 fails on the first entry with a leading newline
     otherwise, and looks like a broken test rather than a wrong rule.
     """
-    body = body.replace("\r\n", "\n").replace("\r", "\n").strip()
+    body = unix_line_ends(body).strip()
     # `sources` walks the text as this does, over offsets: a change to how
     # paragraphs, quotes or block lines are split changes it too.
     blocks: list[Block] = []

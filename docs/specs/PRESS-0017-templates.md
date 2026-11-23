@@ -137,7 +137,7 @@ file's digest is not `base`. Otherwise it writes an `Entry` with slug
 `N`, the posted title and body, the date the file already holds, and
 its `extra`, through `store.write_template`, and answers with the page
 again. Categories and tags are read as `editor.save` reads them, through
-`editor._names_of`, notices included, because a draft picked from the
+`editor.names_of`, notices included, because a draft picked from the
 template carries them to the site unchanged. Line endings in the body
 are normalised as `editor.save` does.
 

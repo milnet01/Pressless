@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from test_editor import _Browser, _entry, _folder
+from test_editor import _Browser, _entry, _folder, _said
 
 from pressless import editor, face, marks, store, templates
 
@@ -136,10 +136,11 @@ def test_a_stale_template_save_writes_nothing(tmp_path):
     path = _template(folder, "poem", body="Old.")
     before = path.read_bytes()
     with _served(folder) as browser:
-        status, _, _ = browser.request("POST", "/template/save", {
+        status, _, page = browser.request("POST", "/template/save", {
             "name": "poem", "base": "stale", "title": "", "categories": "", "tags": "",
             "body": "New."})
     assert status == 200
+    assert _said(editor.ChangedElsewhere) in page
     assert path.read_bytes() == before
 
 
@@ -160,8 +161,9 @@ def test_a_stale_template_bin_moves_nothing(tmp_path):
     folder = _folder(tmp_path)
     _template(folder, "poem")
     with _served(folder) as browser:
-        status, _, _ = browser.request("POST", "/template/bin", {"name": "poem", "base": "x"})
+        status, _, page = browser.request("POST", "/template/bin", {"name": "poem", "base": "x"})
     assert status == 200
+    assert _said(editor.ChangedElsewhere) in page
     assert store.list_templates(folder) == ("poem",)
 
 

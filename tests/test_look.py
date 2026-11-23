@@ -195,7 +195,8 @@ SAVED_BEFORE = {
 }
 # The rules css() has gained since, each written out: removing them gives
 # back what those versions saved.
-ADDED_SINCE = ("footer.site a:focus-visible { outline-color: var(--foot-link); }\n",)
+ADDED_SINCE = ("footer.site a:focus-visible { outline-color: var(--foot-link); }\n",
+               starter_look._BLOCK_RULES)
 
 
 def _made_before(choices: starter_look.Choices, extra: str) -> str:
@@ -243,6 +244,20 @@ def test_rewording_a_note_keeps_a_saved_look_made_here(layout, tmp_path, monkeyp
     assert not starter_look.made_here(tmp_path)
     store.write_style_code(tmp_path, saved.replace("*/\n", "*/\np{}\n", 1))
     assert not starter_look.made_here(tmp_path)
+
+
+@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+def test_columns_sit_side_by_side_and_a_button_looks_like_one(layout):
+    """PRESS-0215 § 4.4: every layout lays a columns section's columns side
+    by side on a wide screen, one above the other on a narrow one, and draws
+    a button section's link as a button. Breaks when the style code leaves
+    them stacked divs and a plain link, as no stylesheet styled them."""
+    made = starter_look.css(starter_look.defaults(layout), "")
+    assert re.search(r"(?m)^\.pressless-columns \{[^}]*display: grid", made), made
+    wide = re.search(r"@media \(min-width: [^)]*\) \{\s*\.pressless-columns \{([^}]*)\}", made)
+    assert wide and "grid-auto-flow: column" in wide.group(1), made
+    assert re.search(r"\.pressless-button a \{[^}]*border: [^}]*display: inline-block|"
+                     r"\.pressless-button a \{[^}]*display: inline-block[^}]*border: ", made), made
 
 
 @pytest.mark.parametrize("layout", starter_look.LAYOUTS)

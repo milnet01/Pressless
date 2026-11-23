@@ -326,6 +326,9 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
         assert reply["waiting"] is True, (name, reply)
         if name == "unknown":
             assert "Your changes were published" not in html.unescape(reply["notices"]), reply
+        # Why it was left is in the log, for Send my log.
+        log = (folder / "pressless.log").read_text(encoding="utf-8")
+        assert "the bin is not writable" in log, name
 
 
 # ----------------------------------------------------------------- INV-12 ---
@@ -1172,19 +1175,25 @@ globalThis.fetch = (address, request) => {
   answer(JSON.parse(process.argv[3]));
   answer = undefined;
   await pause(200);
-  process.stdout.write(JSON.stringify(posts));
+  process.stdout.write(JSON.stringify({posts, failure: element("#failure").innerHTML}));
 })();
 """
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 @pytest.mark.parametrize(("pages", "reply", "saved_as"), [
-    ("rename", {"published": True, "address": "/page?kind=pages&name=new"}, "new"),
+    ("rename", {"published": True, "moved": True, "address": "/page?kind=pages&name=new"},
+     "new"),
     ("rename", {"published": False, "hint": "pages.hint", "address": "/page?kind=pages&name=old"},
      "old"),
     ("remove", {"published": False, "failure": "x", "address": "/page?kind=pages&name=old"},
      "old"),
-    ("remove", {"published": True, "address": "/"}, None),
+    ("remove", {"published": True, "moved": True, "address": "/"}, None),
+    # The outcome unknown: the old file is gone, so nothing saves to it.
+    ("rename", {"published": False, "moved": True, "failure": "unknown",
+                "address": "/page?kind=pages&name=new"}, None),
+    ("remove", {"published": False, "moved": True, "failure": "unknown", "address": "/pages"},
+     None),
 ])
 def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, saved_as,
                                                                   tmp_path):
@@ -1192,14 +1201,21 @@ def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, 
     save beside it, which would write to the page being moved. Once the reply
     comes, the edit is saved where the page now is, before the editor leaves:
     under its new name after a rename, its own where nothing moved. A removed
-    page takes it along, as Remove's question says. Breaks when the button
-    posts without holding saves back."""
+    page takes it along, as Remove's question says. After an outcome
+    unknown nothing more is saved, so its failure stays shown. Breaks
+    when the button posts without holding saves back, or a save after an
+    unknown outcome goes to the binned page and writes over its failure."""
     harness = tmp_path / "reshape.js"
     harness.write_text(_RESHAPE_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
-    answered = {"notices": "", "failure": None, "hint": None, "busy": False, **reply}
+    answered = {"notices": "", "failure": None, "hint": None, "busy": False, "moved": False,
+                **reply}
     run = subprocess.run([_NODE, str(harness), pages, json.dumps(answered)],  # noqa: S603
                          capture_output=True, check=True, timeout=30)
-    posts = json.loads(run.stdout)
+    seen = json.loads(run.stdout)
+    posts = seen["posts"]
+    # A moved page's failure stays shown: no later save writes over it.
+    if answered["moved"]:
+        assert seen["failure"] == (answered["failure"] or "")
     assert [post["address"] for post in posts if post["during"]] == []
     saves = [post for post in posts if post["address"] == "/page/save"]
     if saved_as is None:
@@ -1263,3 +1279,221 @@ def test_a_press_says_publishing_the_instant_it_is_clicked(pages, tmp_path):
                                                 "script.press.published"]))
     # PRESS-0345 INV-6: Press to site asks first; Rename and Remove do not.
     assert ("check" in seen["posted"]) == (pages == "publish")
+
+
+# ------------------------------------------------- PRESS-0260 § 4.3 ---------
+
+# What a holder keeps, under node: the visual view's own rules on a
+# hand-built model, so no frame is needed.
+_HOLDS_HARNESS = """
+const ROWS = ["pictures", "slideshow"];
+const model = [];
+%s
+const holder = (kind, ...lists) => {
+  const made = {kind, parts: lists};
+  lists.forEach((list, column) => list.forEach((item) => {
+    item.parent = made; item.column = column;
+  }));
+  model.push(made);
+  return made;
+};
+const item = (kind) => ({kind, parts: []});
+const lone = item("picture"), first = item("picture"), second = item("picture");
+const row = holder("pictures", [lone]);
+holder("slideshow", [first, second]);
+const onlyWords = item("text"), onlyAnswer = item("text");
+const only = holder("questions", [onlyWords, onlyAnswer]);
+const asked = item("text"), answer = item("text"), more = item("text");
+const other = [item("text"), item("text")];
+holder("questions", [asked, answer, more], other);
+const top = item("text");
+model.push(top);
+const name = (found) => found === null ? null : found === row ? "row" : found === only
+  ? "questions" : found.kind === "questions" || ROWS.includes(found.kind) ? "holder" : "itself";
+process.stdout.write(JSON.stringify({
+  taken: {lone: name(taken(lone)), first: name(taken(first)), onlyWords: name(taken(onlyWords)),
+          words: name(taken(asked)), onlyAnswer: name(taken(onlyAnswer)),
+          answer: name(taken(answer)), top: name(taken(top))},
+  leaves: {lone: leaves(lone), first: leaves(first), words: leaves(asked),
+           onlyAnswer: leaves(onlyAnswer), answer: leaves(answer), top: leaves(top)},
+}));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_no_move_or_remove_leaves_a_holder_the_save_refuses(tmp_path):
+    """PRESS-0260 § 4.3 and blocks' own rules: a row of pictures keeps a
+    picture, and a question its words first and an answer. Remove takes the
+    holder a last picture or an only question's words would empty, and is
+    refused on an answer's last section; a drag leaves nothing it would
+    break. Breaks when Remove or a drag lets a holder go empty, which the
+    save refuses and so stops every later save."""
+    script = page_editor._VISUAL_SCRIPT
+    start = script.index("  const listOf = ")
+    end = script.index("\n  const each = ", start)
+    harness = tmp_path / "holds.js"
+    harness.write_text(_HOLDS_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    seen = json.loads(run.stdout)
+    assert seen["taken"] == {"lone": "row", "first": "itself", "onlyWords": "questions",
+                             "words": "itself", "onlyAnswer": None, "answer": "itself",
+                             "top": "itself"}
+    assert seen["leaves"] == {"lone": False, "first": True, "words": False,
+                              "onlyAnswer": False, "answer": True, "top": True}
+    # Every way a section goes asks the same rules.
+    assert "const gone = taken(picked);" in script
+    assert 'act("remove").disabled = !taken(picked);' in script
+    assert "if (list !== listOf(item) && !leaves(item)) return null;" in script
+    assert "if (words(item) || (words(target) && !after)) return null;" in script
+
+
+# PRESS-0216 § 4.4: the menu view's own rule, on links made by hand.
+_MENU_LINKS_HARNESS = """
+%s
+const kept = {at: 0, words: "Home", href: "{{UP}}index.html", kept: {words: "Home"}};
+const empty = {at: null, words: "", href: "", kept: null};
+const typed = {at: null, words: "About", href: "{{UP}}pages/about.html", kept: null};
+const seen = {};
+links.push(kept);
+seen.alone = lastSent(kept);
+links.push(empty);
+seen.besideEmpty = [lastSent(kept), lastSent(empty)];
+links.push(typed);
+seen.besideTyped = [lastSent(kept), lastSent(typed)];
+process.stdout.write(JSON.stringify(seen));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_menu_view_keeps_a_link_the_save_will_post(tmp_path):
+    """PRESS-0216 § 4.4: menu.arranged refuses a save with no link, so the
+    last link the save would post cannot be removed. Breaks when Remove takes
+    it, which stops every later save in the window."""
+    script = page_editor._MENU_SCRIPT
+    start = script.index("  const links = [];")
+    end = script.index("\n  // PRESS-0285 § 4.5: the links are taken", start)
+    harness = tmp_path / "menu.js"
+    harness.write_text(_MENU_LINKS_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    seen = json.loads(run.stdout)
+    assert seen == {"alone": True, "besideEmpty": [True, False], "besideTyped": [False, False]}
+    assert "if (lastSent(link)) return;" in script
+    assert 'remove.disabled = lastSent(item.link);' in script
+
+
+# Pressless does not answer a Remove or Rename at all.
+_UNANSWERED_HARNESS = _STAND_IN + """
+globalThis.fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+%s
+(async () => {
+  await button.handlers.click();
+  process.stdout.write(JSON.stringify({failure: element("#failure").innerHTML}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize("pages", ["rename", "remove"])
+def test_no_answer_says_why_saving_stopped(pages, tmp_path):
+    """A Remove, Rename or switch that reaches no answer stops saving, and
+    says so. Breaks when the failure box is emptied instead, leaving "Not
+    saved" with no reason."""
+    harness = tmp_path / "unanswered.js"
+    harness.write_text(_UNANSWERED_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), pages], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    assert json.loads(run.stdout)["failure"] == "script.page.unreachable"
+    assert page_editor._PAGE_SCRIPT.count('stop(say("script.page.unreachable"))') == 2
+
+
+def test_what_changes_on_a_choice_sits_below_the_controls(tmp_path):
+    """The user's fixed-layout rule (2026-10-05, 2026-10-16): controls keep
+    their place, and a choice changes only what is below it. #broken changes
+    on a switch of view, so it sits below the press row, Rename and Remove;
+    a picked section's own fields come and go, so they sit below Move and
+    Remove and the panel's status line. Breaks when either sits above."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        page = browser.request("GET", "/page?kind=pages&name=about")[2]
+    broken = page.index('id="broken"')
+    for control in ('data-editor="publish"', "data-undo", 'data-pages="rename"',
+                    'data-pages="remove"'):
+        assert page.index(control) < broken, control
+    assert broken < page.index('id="panel"')
+    panel = page_editor._panel("pages", "about", [], ())
+    fields = panel.index("data-for=")
+    for control in ('data-act="up"', 'data-act="down"', 'data-act="remove"',
+                    'data-act="move-to"', 'id="panel-said"'):
+        assert panel.index(control) < fields, control
+
+
+def test_a_refused_post_is_not_quoted_into_the_log():
+    """What a refused save says goes to Show details and the log, which Send
+    my log sends; it names what was wrong, never the posted words. Breaks
+    when a refusal quotes the post, unbounded."""
+    words = "words typed into the page " * 50
+    for posted, removed in (([words], []), ([{"kind": "text", "fields": words}], []),
+                            ([{"keep": [words]}], [])):
+        with pytest.raises(page_editor.SectionsUnreadable) as refused:
+            page_editor.put_sections("coded", CODED, posted, removed)
+        assert "words typed" not in str(refused.value)
+    for posted in ([words], [{"at": words, "words": "a", "href": "#"}]):
+        with pytest.raises(menu.Refused) as refused:
+            menu.arranged(starter.navigation(), posted)
+        assert "words typed" not in str(refused.value)
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize("closing", ["</script>", "</SCRIPT>"])
+def test_a_scripts_end_is_found_where_it_is(closing, tmp_path):
+    """PRESS-0261: a script ends at its closing tag, in any case, though a
+    letter before it changes length when lower-cased. Breaks when the end is
+    looked for in a lower-cased copy, which puts it a letter late."""
+    pieces = _coloured(f"<script>İ{closing}", tmp_path)
+    assert pieces[2:] == [("İ", ""), (closing[:-1], "tag"), (">", "tag")]
+
+
+# The frame's marks paired in one pass, against the scan it replaced.
+_PARTNERS_HARNESS = """
+%s
+const scan = (marks, from) => {
+  let depth = 0;
+  for (let at = from + 1; at < marks.length; at++) {
+    if (marks[at].name !== marks[from].name) continue;
+    if (!marks[at].closing) depth++;
+    else if (depth === 0) return at;
+    else depth--;
+  }
+  return -1;
+};
+let seed = 7;
+const random = () => (seed = (seed * 1103515245 + 12345) %% 2147483648) / 2147483648;
+const wrong = [];
+for (let run = 0; run < 2000; run++) {
+  const marks = Array.from({length: Math.floor(random() * 12)}, () => ({
+    name: ["text", "columns", "column"][Math.floor(random() * 3)], closing: random() < 0.5}));
+  const found = partners(marks);
+  marks.forEach((mark, at) => {
+    if (!mark.closing && found[at] !== scan(marks, at)) wrong.push(marks);
+  });
+}
+process.stdout.write(JSON.stringify(wrong.slice(0, 3)));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_marks_pair_in_one_pass_as_they_did_by_scanning(tmp_path):
+    """PRESS-0260 § 4.2: each opening mark pairs with its own closing one.
+    The one-pass pairing agrees with a forward scan on random runs of marks,
+    nested, unclosed and stray. Breaks when a stack pairs a mark the scan
+    would not."""
+    script = page_editor._VISUAL_SCRIPT
+    start = script.index("  function partners(marks) {")
+    end = script.index("\n  function pair() {", start)
+    harness = tmp_path / "partners.js"
+    harness.write_text(_PARTNERS_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    assert json.loads(run.stdout) == []

@@ -16,9 +16,9 @@ import html
 import json
 from pathlib import Path
 
-from pressless import builder, editor, look, page_editor, settings, setup, store
+from pressless import builder, editor, look, marks, page_editor, settings, setup, store
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
-from pressless.words import say
+from pressless.words import decimal, say
 
 ADDRESS = "/look"
 SAVED = "saved"      # the query a save sends the screen back with
@@ -114,7 +114,7 @@ def _route(folder: Path, form: dict[str, str]) -> str:
 
 def _extra(form: dict[str, str]) -> str:
     # A browser posts a textarea's line ends as CR LF.
-    return form.get("extra", "").replace("\r\n", "\n").replace("\r", "\n")
+    return marks.unix_line_ends(form.get("extra", ""))
 
 
 def _posted(form: dict[str, str]) -> tuple[look.Choices, str]:
@@ -174,8 +174,9 @@ def _open(face: Face, folder: Path, request: Request) -> str:
             asked = request.query.get("layout", "")
             choices = look.defaults(asked if asked in look.LAYOUTS else look.LAYOUTS[0])
         frame, failure = _frame(face, folder)
-    return render_notices(notices) + _page(choices, extra, base, made, restart, frame, failure,
-                                           SAVED in request.query, route, styled)
+    return render_notices(notices) + _page(
+        choices, extra, base=base, made=made, restart=restart, frame=frame, failure=failure,
+        saved=SAVED in request.query, route=route, styled=styled)
 
 
 def _preview(face: Face, folder: Path, request: Request) -> Reply:
@@ -192,8 +193,9 @@ def _preview(face: Face, folder: Path, request: Request) -> Reply:
             choices, extra = _posted(form)
         except LookRefused as exc:
             return editor.failed(face, notices, exc)
-    return editor.json_reply({"css": look.css(choices, extra), "warnings": look.warnings(choices),
-                              "sheets": []})
+    warned = [[scheme, text, ground, decimal(ratio, 2)]
+              for scheme, text, ground, ratio in look.warnings(choices)]
+    return editor.json_reply({"css": look.css(choices, extra), "warnings": warned, "sheets": []})
 
 
 def save(folder: Path, form: dict[str, str]) -> None:
@@ -234,10 +236,10 @@ def _warning(scheme: str, text: str, ground: str, ratio: float) -> str:
     """One warning in words; the script says the same with the same key."""
     return say("script.look.warning", text=say(_COLOUR_WORDS[text]),
                background=say(_COLOUR_WORDS[ground]), scheme=say(_SCHEME_WORDS[scheme]),
-               ratio=f"{ratio:.2f}")
+               ratio=decimal(ratio, 2))
 
 
-def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: bool,
+def _page(choices: look.Choices, extra: str, *, base: str, made: bool, restart: bool,
           frame: str | None, failure: str | None, saved: bool,
           route: str | None, styled: bool) -> str:
     def attr(value: str) -> str:
@@ -397,7 +399,7 @@ _SCRIPT = r"""
     for (const [scheme, text, ground, ratio] of found) {
       form.querySelector(`[data-warn="${scheme}.${text}"]`).textContent = say(
         "script.look.warning", {text: label(text), background: label(ground),
-                                 scheme: say("script.look." + scheme), ratio: ratio.toFixed(2)});
+                                 scheme: say("script.look." + scheme), ratio});
     }
   }
   async function preview() {
@@ -448,8 +450,8 @@ _SCRIPT = r"""
     for (const name of ["body_font", "heading_font", "text_size", "width"]) {
       form.querySelector(`select[name=${name}]`).value = start[name];
     }
-    form.querySelectorAll('input[name^="effect."]').forEach((box) => {
-      box.checked = start.effects.includes(box.name.slice("effect.".length));
+    form.querySelectorAll('input[name^="effect."]').forEach((effect) => {
+      effect.checked = start.effects.includes(effect.name.slice("effect.".length));
     });
     mark();
   }

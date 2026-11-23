@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=478 -->
+<!-- ants-roadmap-id-high-water: PRESS=482 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9102,12 +9102,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 🚧 [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
+- ✅ [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
   Subject 02. Review types: Codebase, Test.
   Findings: review-code lane-02, review-readability lane-02, and the
   performance and test reviews' findings on these files and their tests.
   Worst: tests/test_editor.py's press test asserts a bare string in its
   go case, so that case checks nothing (review-tests HIGH).
+  Shipped 2026-11-23, ec75e5c..c539ae7 (merged a2bd19b). 31 findings: 25
+  fixed, 3 queued (PRESS-0476 to PRESS-0478), 3 dismissed. The press
+  test's go case now checks what it posts (the review-tests HIGH), red
+  with the path changed. The visual view keeps saving after a removal, an
+  Add on a failed preview, or a marks box saved as several blocks. Files
+  sizes read 1.0 MB at 999,500 bytes, with the language's decimal mark;
+  a half-written photograph is not listed; uploads say what they add.
+  PRESS-0346 § 4.5 amended. Full suite 2630 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/02.json.
   **Layman:** Bug fixes and tidy-ups in the screen where you write an entry, and in the Files screen.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9122,10 +9131,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0443] **Second-round review fixes: blocks, the look and templates.**
+- ✅ [PRESS-0443] **Second-round review fixes: blocks, the look and templates.**
   Subject 04. Review types: Codebase, Test.
   Findings: review-code lane-04, review-readability lane-04, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 3b31ce4..6755eb1 (merged 20fdd04). 18 findings: 15
+  fixed, 2 queued (PRESS-0481, PRESS-0482), 1 dismissed (#look-status
+  keeps its height). Columns sit side by side on a wide screen and a
+  button looks like one, on every layout, once a look is saved again. A
+  countdown in a far or mistyped year saves as typed. Contrast ratios use
+  the language's decimal mark, from one words.decimal. One line-end rule,
+  marks.unix_line_ends, replaces eight copies. PRESS-0215, 0217, 0196,
+  0017 and design.md amended. Full suite 2652 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/04.json.
   **Layman:** Bug fixes and tidy-ups in ready-made sections, the site's look and the entry templates.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9141,12 +9159,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0445] **Second-round review fixes: the Store and Undo.**
+- ✅ [PRESS-0445] **Second-round review fixes: the Store and Undo.**
   Subject 06. Review types: Codebase, Test.
   Findings: review-code lane-06, review-readability lane-06, and the
   performance and test reviews' findings on these files and their tests.
   Among them: copy_to_bin never syncs the bin folder (a gap in
   PRESS-0376's fix).
+  Shipped 2026-11-23, ca00bf0..fd1152e (merged 0db32e7). 26 findings: 19
+  fixed, 0 queued, 7 dismissed (duplicates, a lock PRESS-0023 § 4.11
+  already holds, PRESS-0196 § 4.7's binning, two measured-small scans,
+  one kept test). The bin syncs the folders it creates; a write finishes a
+  cut-short move; Undo marks a demotion first, so a second Undo settles an
+  interrupted one; a kept version drops Replaces; an empty description is
+  allowed. PRESS-0005 and PRESS-0015 amended. Full suite 2638 passed, no
+  warning; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/06.json.
   **Layman:** Bug fixes and tidy-ups in how Pressless keeps your site's files and steps back a publish.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9540,6 +9567,49 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Editor.
+
+- 📋 [PRESS-0479] **The code view recolours only what changed while typing.**
+  Review type: Codebase. Queued by PRESS-0442 from review-code
+  --performance lane-02 (page_editor.py's code view recolours the whole
+  page on each repaint). The colouring step measured 8.6 ms per repaint on
+  a 200 KB page after 842bc89; rebuilding the coloured text needs a
+  browser profiler to measure first.
+  **Layman:** Typing in the code view of a very big page stays smooth.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
+  Review type: Codebase. Surfaced by PRESS-0442's sweep, in subjects
+  already shipped: editor.py's SAVING_SCRIPT clears #failure on every
+  successful save, so a refused Remove or Rename's failure box closes as
+  soon as the held save answers; publishing.py's bin_the_copy drops the
+  reason the copy stayed, the defect fixed at page_editor.py:893.
+  **Layman:** Two messages that vanished too soon now stay until they are read.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0481] **A YouTube video's frame title is in the site's language.**
+  Review type: Codebase. Queued by PRESS-0443 from review-code lane-04
+  (blocks.py: the video frame's title is fixed English). Needs a new
+  frozen video form (PRESS-0215 § 4.5) with a title field the page editor
+  fills in; done once PRESS-0442 has merged.
+  **Layman:** A screen reader announces an embedded video in the site's own language.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0482] **The site's look either keeps a draft until published, or design.md stops saying so.**
+  Review type: Codebase, Document. Queued by PRESS-0443 from review-code
+  lane-04's open question. design.md § Pages says the look has drafts
+  (user, 2026-10-02), but look.save writes the live look files
+  (PRESS-0196), so the next publish of anything ships a saved look. Needs
+  the user's choice: build look drafts, or amend design.md.
+  **Layman:** Saving a new look either waits for Publish, or the design notes stop promising that it does.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
 
 ## 1.3.0 — a home other than GitHub
 

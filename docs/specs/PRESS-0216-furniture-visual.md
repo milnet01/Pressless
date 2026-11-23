@@ -67,7 +67,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 file and `"footer"` for the footer file, and keeps `"main"` for a page.
 Nothing else in `adopt` changes: the area is the first such element's
 content, and a file with none opens in the code view with
-`notice.page_editor.code_only`, as a page does (PRESS-0260 § 4.1).
+`notice.page_editor.furniture_code_only`, as a page does with its own
+notice (PRESS-0260 § 4.1).
 
 The starter's header and footer adopt as they are written today: each
 run of nodes inside `header` or `footer` that is not a plain `p`,

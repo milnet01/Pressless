@@ -295,7 +295,7 @@ _LEFT_OUT = {"categories": "notice.editor.left_out.categories",
              "tags": "notice.editor.left_out.tags"}
 
 
-def _names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
+def names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
     """§ 4.8 step 3: a part the Store takes is kept, any other becomes an
     address, and repeats are dropped. A part that leaves nothing the Store would
     take is left out, and a notice names it. Templates call it too; PRESS-0017
@@ -922,11 +922,11 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
             raise BlocksUnreadable(f"the save of {slug} does not name its blocks") from exc
         body = put_blocks(entry.body, posted, removed)
     else:
-        body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
+        body = marks.unix_line_ends(form.get("body", ""))
     written = store.Entry(
         slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
-        categories=_names_of(folder, form.get("categories", ""), "categories"),
-        tags=_names_of(folder, form.get("tags", ""), "tags"), body=body, extra=extra)
+        categories=names_of(folder, form.get("categories", ""), "categories"),
+        tags=names_of(folder, form.get("tags", ""), "tags"), body=body, extra=extra)
     new_base = digest(store.write(folder, written, draft=True))
     pressing.forget()  # PRESS-0235 decision 6
     return written, new_base
@@ -1030,7 +1030,7 @@ def put_blocks(body: str, posted: object, removed: object) -> str:
         elif isinstance(item, dict) and set(item) == {"marks"}:
             if not isinstance(item["marks"], str):
                 raise BlocksUnreadable(f"{item!r} is not a block")
-            text = item["marks"].replace("\r\n", "\n").replace("\r", "\n").strip()
+            text = marks.unix_line_ends(item["marks"]).strip()
             if text:
                 pieces.append((None, text, marks.parse(text)))
         else:

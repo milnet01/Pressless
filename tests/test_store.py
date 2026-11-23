@@ -6,9 +6,7 @@
 # Why this exists: docs/specs/PRESS-0005-store.md is the contract.
 from __future__ import annotations
 
-import ast
 import dataclasses
-import inspect
 import json
 import os
 import tempfile
@@ -90,59 +88,8 @@ def _snapshot(folder: Path) -> dict[str, bytes | None]:
 
 # --------------------------------------------------------------- INV-1 ----
 
-# Network modules, and nothing else. os, pathlib, tempfile, dataclasses and
-# datetime are all legitimate here -- the Store's whole job is files -- which
-# is the difference from test_marks_is_pure, whose module may touch no disk.
-_FORBIDDEN_TOP_LEVEL_IMPORTS = {
-    "socket", "ssl", "urllib", "http", "requests", "httpx",
-    "ftplib", "smtplib", "poplib", "imaplib", "xmlrpc", "webbrowser",
-}
-
-
-def test_store_imports_nothing_forbidden():
-    """INV-1: store.py imports no network module and does not import
-    pressless.marks.
-
-    Walks the module's AST, as test_marks_is_pure does. The source is read
-    here, by the test, never by store.py itself.
-
-    Breaks when an implementer imports Marks to validate a body, or urllib to
-    check that a slug is a legal address (§4.6).
-
-    This test is weak in a way the spec names (§7): an import list proves what
-    the module imports, never that reading or writing works. It passes against
-    the stub by design."""
-    tree = ast.parse(inspect.getsource(store_module))
-
-    imported: set[str] = set()
-    relative_imports: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imported.add(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                relative_imports.append(node.module or "")
-            elif node.module:
-                imported.add(node.module)
-
-    network = {name for name in imported if name.split(".")[0] in _FORBIDDEN_TOP_LEVEL_IMPORTS}
-    assert not network, (
-        f"store.py imports {sorted(network)!r}, a network module. §4.6: the "
-        f"Store never reaches the network. Expected none of "
-        f"{sorted(_FORBIDDEN_TOP_LEVEL_IMPORTS)!r}"
-    )
-
-    marks = {name for name in imported if name == "pressless.marks" or name.startswith(
-        "pressless.marks.")}
-    assert not marks, (
-        f"store.py imports {sorted(marks)!r}. §4.6: turning marked text into "
-        f"HTML is Marks' job and the Store does not import Marks"
-    )
-    assert "marks" not in relative_imports, (
-        f"store.py has a relative import of {relative_imports!r}, which can "
-        f"only name a sibling pressless module -- 'marks' is forbidden (§4.6)"
-    )
+# INV-1's test is tests/test_store_extras.py::test_store_imports_nothing_forbidden,
+# whose forbidden set holds every network module INV-1 names.
 
 
 # --------------------------------------------------------------- INV-2 ----
@@ -998,7 +945,8 @@ def test_a_file_named_only_the_suffix_is_not_a_slug(tmp_path):
     (published / _SUFFIX).write_text("not an entry\n", encoding="utf-8")
     write(tmp_path, _entry(slug="a-real-entry"), draft=False)
 
-    listed = list_slugs(tmp_path, draft=False)
+    with pytest.warns(StoreNotice):   # the stray name is named; asserted at INV-12
+        listed = list_slugs(tmp_path, draft=False)
 
     assert "" not in listed, (
         f"list_slugs returned an empty slug: {listed!r}. path_for refuses it, "
@@ -2130,3 +2078,118 @@ def test_a_move_syncs_both_folders(tmp_path, monkeypatch):
     publish(tmp_path, "moving")
     for name in (_PUBLISHED, _DRAFTS):
         assert os.stat(tmp_path / name).st_ino in synced, f"{name}/ was never synced"
+
+
+# ------------------------------------------------- 2026-11-23 review fixes ---
+
+
+@pytest.mark.parametrize("binning", ["move_to_bin", "copy_to_bin"])
+def test_binning_syncs_each_folder_it_names_a_file_or_folder_in(tmp_path, monkeypatch,
+                                                                binning):
+    """PRESS-0376: the bin's copy must survive a power loss that keeps the
+    replacement. A file's own fsync covers its blocks, not the folder entry
+    naming it, so the binned file's folder is synced, and so is the folder
+    holding each bin folder this call created: bin/ in the Store's folder,
+    the stamp in bin/, the kind in the stamp.
+
+    Breaks when copy_to_bin syncs only the copy's bytes, or either binning
+    leaves a bin folder it created unsynced."""
+    _require_hard_links(tmp_path)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: False)
+    monkeypatch.setattr(store_module, "_now", lambda: datetime(2026, 11, 23, 10, 0, 0))  # noqa: DTZ001
+    path = write(tmp_path, _entry(slug="binned"), draft=True)
+    synced = []
+    real_sync = safe_write.sync_folder
+    monkeypatch.setattr(safe_write, "sync_folder",
+                        lambda folder: (synced.append(Path(folder)), real_sync(folder)))
+
+    getattr(store_module, binning)(tmp_path, path)
+
+    stamp = tmp_path / "bin" / "2026-11-23-100000"
+    for folder in (stamp / _DRAFTS, stamp, tmp_path / "bin", tmp_path):
+        assert folder in synced, f"{folder.relative_to(tmp_path)} was never synced"
+
+
+def test_a_write_finishes_a_move_cut_short_first(tmp_path):
+    """PRESS-0005 §4.1: a move killed between its link and its unlink leaves one
+    file under both folders. A write to either name then replaces only its own
+    side, and the slug names two different entries -- the next publish
+    refuses with SlugInUse and the stale copy stays. The write finishes the
+    move first, into the folder it writes.
+
+    Breaks when write consults no other folder for the same file."""
+    _require_hard_links(tmp_path)
+    draft = Path(write(tmp_path, _entry(slug="halfway", body="Old.\n"), draft=True))
+    (tmp_path / _PUBLISHED).mkdir(exist_ok=True)
+    os.link(draft, tmp_path / _PUBLISHED / f"halfway{_SUFFIX}")
+
+    write(tmp_path, _entry(slug="halfway", body="New.\n"), draft=True)
+
+    assert not (tmp_path / _PUBLISHED / f"halfway{_SUFFIX}").exists(), (
+        "the published half of the cut-short move was left as a stale copy")
+    assert read(draft).body == "New.\n"
+    publish(tmp_path, "halfway")
+
+
+def test_a_refused_identity_names_its_own_reason(tmp_path):
+    """PRESS-0213 § 4.1: each refused answer says why in its own words. A
+    description may be empty, so its refusal never says it is.
+
+    Breaks when a refusal falls through to another field's sentence."""
+    reasons = {
+        store_module.Identity("two\nlines"): "the name is empty or holds a line break",
+        store_module.Identity("A", "two\nlines"): "the description holds a line break",
+        store_module.Identity("A", icon=".hidden.jpg"): "the icon is not a photograph's name",
+        store_module.Identity("A", picture=".hidden.jpg"):
+            "the picture is not a photograph's name",
+        store_module.Identity("A", language="English"):
+            "the language is not a language's code",
+    }
+    assert {store_module.identity_problem(each) for each in reasons} == {
+        field.name for field in dataclasses.fields(store_module.Identity)}
+    for identity, reason in reasons.items():
+        with pytest.raises(StoreError) as raised:
+            store_module.write_identity(tmp_path, identity)
+        assert str(raised.value) == f"identity.json: {reason}"
+
+
+def test_every_identity_field_survives_a_write_and_a_read(tmp_path):
+    """PRESS-0213 § 4.1, PRESS-0227 § 4.1, PRESS-0241 § 4.4: each field goes to
+    the file under its own name and comes back in its own place.
+
+    Breaks when a field is read by position into the wrong slot, or a field is
+    left out of the write."""
+    pictures = tmp_path / "photographs"
+    pictures.mkdir()
+    full = store_module.Identity("A", "One line.", icon="icon.jpg",
+                                 picture="share.jpg", language="fr")
+    store_module.write_identity(tmp_path, full)
+    held = json.loads(store_module.identity_path_for(tmp_path).read_text(encoding="utf-8"))
+    assert held == {field.name: getattr(full, field.name)
+                    for field in dataclasses.fields(store_module.Identity)}
+    assert store_module.read_identity(tmp_path) == full
+
+
+def test_the_mark_changes_with_any_file_a_press_reads(tmp_path):
+    """PRESS-0337 § 4.6: equal marks mean nothing a press reads has changed,
+    photographs in their own subfolders and the settings file included.
+
+    Breaks when the mark misses a nested file, or differs with nothing changed."""
+    write(tmp_path, _entry(slug="seaside"), draft=False)
+    nested = tmp_path / "photographs" / "originals" / "beach.jpg"
+    nested.parent.mkdir(parents=True)
+    nested.write_bytes(b"one")
+    settings_file = tmp_path / "settings.json"
+    settings_file.write_text("{}", encoding="utf-8")
+
+    first = store_module.mark(tmp_path, settings_file)
+    assert store_module.mark(tmp_path, settings_file) == first
+
+    nested.write_bytes(b"three")
+    changed = store_module.mark(tmp_path, settings_file)
+    assert changed != first, "a photograph in a subfolder changed and the mark did not"
+    (nested.parent / "more.jpg").write_bytes(b"x")
+    assert store_module.mark(tmp_path, settings_file) != changed
+    grown = store_module.mark(tmp_path, settings_file)
+    settings_file.write_text('{"a": 1}', encoding="utf-8")
+    assert store_module.mark(tmp_path, settings_file) != grown
