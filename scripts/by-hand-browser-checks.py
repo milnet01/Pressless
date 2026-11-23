@@ -108,6 +108,18 @@ RELAY = _Relay()          # PRESS-0436: the log relay, recording what it was sen
 OPTIONS = argparse.Namespace()
 
 
+def _work_folder() -> str | None:
+    """Where the checks' throwaway folders go (PRESS-0486). On Linux, the
+    gitignored scratch/ beside the code, a real disk: the system temporary
+    folder may be memory there. On Windows, the system's own, which is a
+    disk and keeps paths short on a box with long paths off."""
+    if sys.platform == "win32":
+        return None
+    folder = ROOT / "scratch" / "browser-checks"
+    folder.mkdir(parents=True, exist_ok=True)
+    return str(folder)
+
+
 def check(name: str, ok: bool, detail: str = "") -> None:
     RESULTS.append((name, ok, detail))
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f" -- {detail}" if detail else ""))
@@ -146,8 +158,9 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=0, help="the Face's port")
     parser.add_argument("--site-port", type=int, default=0, help="the built site's port")
     parser.parse_args(namespace=OPTIONS)
-    # PRESS-0271: removed on the way out, failure included; /tmp is RAM here.
-    with tempfile.TemporaryDirectory(prefix="pressless-browser-check-") as tmp:
+    # PRESS-0271: removed on the way out, failure included.
+    with tempfile.TemporaryDirectory(prefix="pressless-browser-check-",
+                                     dir=_work_folder()) as tmp:
         folder = tp._folder(Path(tmp))
         store.write(folder, tp._entry("seaside", body="Words."), draft=True)
         credentials.read = lambda kind, folder, account: tp.KEY
@@ -833,7 +846,8 @@ def same_tab_after_restart(page) -> None:
     if OPTIONS.cdp:
         print("  [SKIP] PRESS-0428 INV-8: --cdp forwards two ports; this row needs a third")
         return
-    with tempfile.TemporaryDirectory(prefix="pressless-restart-check-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="pressless-restart-check-",
+                                     dir=_work_folder()) as tmp:
         own = Path(tmp)
         faces = [face.serve(own)]
         stopped: list[face.Face] = []
