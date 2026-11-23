@@ -248,11 +248,12 @@ preview builds it — the same `sandbox="allow-same-origin"` frame without
 
 **Live preview.** Every change posts the form to `/look/preview`, which
 answers `{"css": look.css(...), "warnings": look.warnings(...)}` without
-writing anything. The screen's script, scripting into the frame's document
+writing anything, each warning's ratio written by `words.decimal(ratio, 2)`. The screen's script, scripting into the frame's document
 as `page_editor`'s `pair()` already does, disables each `<link>` whose
 address ends `look/style.css` and puts the answer in a
 `<style id="pressless-look-draft">`. Each warning is shown beside its colour
-in words, naming the pair, the scheme and the ratio against 4.5:1.
+in words, naming the pair, the scheme and the ratio against 4.5:1, the
+ratio with the decimal mark of the language in use (PRESS-0241).
 
 **Save** posts to `/look/save` with the `look.digest` the screen was drawn
 from. Under `editor.LOCK`, a digest that no longer matches raises

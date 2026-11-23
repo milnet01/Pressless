@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
-from pressless.marks import MARKS
+from pressless.marks import MARKS, unix_line_ends
 
 Lookup = Callable[[str], str | None]
 
@@ -87,7 +87,7 @@ def autop(body: str) -> str:
     except inside <pre>, beside a block-level tag, or inside a tag or a
     comment. A paragraph holding a block-level tag is laid out by it, so it
     takes no <p>."""
-    text = body.replace("\r\n", "\n").replace("\r", "\n")
+    text = unix_line_ends(body)
     parts, position = [], 0
     for found in _PRE.finditer(text):
         parts.append(_paragraphs(text[position:found.start()]))

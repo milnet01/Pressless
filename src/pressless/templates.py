@@ -13,7 +13,7 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, cheatsheet, editor, languages, photographs, store
+from pressless import builder, cheatsheet, editor, languages, marks, photographs, store
 from pressless.face import Face, Reply, Request, render_notices
 from pressless.words import say, say_in
 
@@ -150,11 +150,11 @@ def _save(face: Face, folder: Path, request: Request) -> str:
 
     def write() -> tuple[store.Entry, str]:
         path, template = _checked(folder, name, form.get("base", ""))
-        body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
+        body = marks.unix_line_ends(form.get("body", ""))
         written = store.Entry(
             slug=name, title=form.get("title", "").strip(), date=template.date,
-            categories=editor._names_of(folder, form.get("categories", ""), "categories"),
-            tags=editor._names_of(folder, form.get("tags", ""), "tags"),
+            categories=editor.names_of(folder, form.get("categories", ""), "categories"),
+            tags=editor.names_of(folder, form.get("tags", ""), "tags"),
             body=body, extra=template.extra)
         store.write_template(folder, written)
         return written, editor.digest(path)

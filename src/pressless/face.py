@@ -354,9 +354,8 @@ def details_for(failure: BaseException) -> str:
 
 def said_decimal(value: float) -> str:
     """`value` to one decimal, marked as the language in use marks a
-    decimal: a comma wherever it marks thousands otherwise."""
-    decimal = "." if words.number(1000) == "1,000" else ","
-    return f"{value:.1f}".replace(".", decimal)
+    decimal (`words.decimal`)."""
+    return words.decimal(value, 1)
 
 
 def _said_bytes(count: int) -> str:

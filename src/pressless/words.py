@@ -3055,6 +3055,13 @@ def number(value: int, code: str | None = None) -> str:
     return f"{value:,}".replace(",", mark)
 
 
+def decimal(value: float, places: int, code: str | None = None) -> str:
+    """`value` to `places` decimals, marked as `code` (default: the language
+    in use) marks a decimal: a comma wherever it marks thousands otherwise."""
+    mark = "." if number(1000, code) == "1,000" else ","
+    return f"{value:.{places}f}".replace(".", mark)
+
+
 # A date is anything with day, month and year, and weekday() for a weekday.
 def _sayer(code: str | None) -> Callable[..., str]:
     return say if code is None else (lambda key, **slots: say_in(code, key, **slots))

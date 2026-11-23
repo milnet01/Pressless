@@ -316,6 +316,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     "look.py": {"_SUNRISE": _CSS, "_MEADOW": _CSS, "_HARBOUR": _CSS, "_JOURNAL_RULES": _CSS,
                 "_LINK_RULES": _CSS, "_HEADER_LINK_RULES": _CSS, "_NAV_LINK_RULES": _CSS,
                 "_PICTURE_RULE": _CSS, "_NO_EMPTY_DESCRIPTION": _CSS, "_FOOT_FOCUS": _CSS,
+                "_BLOCK_RULES": _CSS,
                 **dict.fromkeys(("_COLUMN_BODY", "_NAME_LEFT_MENU_RIGHT", "_MAIN_COLUMN",
                                  "_FOOT_RULES", "_STUDIO", "_MARKET", "_STAGE", "_COMMONS",
                                  "_LETTER"), _CSS),

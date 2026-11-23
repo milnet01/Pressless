@@ -1596,7 +1596,7 @@ def _comment_item(comment: store.Comment, anonymous: str) -> str:
 def _comment_html(body: str) -> str:
     """§4.3: split at blank lines into Paragraphs and at newlines into Lines of
     one Text each, then Marks writes it."""
-    text = body.replace("\r\n", "\n").replace("\r", "\n").strip()
+    text = marks.unix_line_ends(body).strip()
     parts = (part.strip() for part in re.split(r"\n\s*\n", text))
     paragraphs = tuple(
         marks.Paragraph(tuple(marks.Line((marks.Text(line),)) for line in part.split("\n")))
