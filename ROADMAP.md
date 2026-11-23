@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=466 -->
+<!-- ants-roadmap-id-high-water: PRESS=470 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -121,7 +121,7 @@ while the stakes are zero. Holds S2, S3, S4.
   messages that carry a path or an account. That is PRESS-0068 item 4 and
   PRESS-0087, both still open, and folding them in here would have left
   both ids pointing at nothing.
-  **Layman:** A plain diary of what the app did, kept beside the settings, with nothing secret in it.
+  **Layman:** A plain diary of what the app did, kept in Pressless's own folder, with nothing secret in it.
   Kind: implement.
   Source: design-2026-08-24 § Logging.
   Lanes: Settings, Face.
@@ -9243,13 +9243,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 🚧 [PRESS-0456] **Second-round review fixes: screen words, the manual and languages.**
+- ✅ [PRESS-0456] **Second-round review fixes: screen words, the manual and languages.**
   Subject 17. Review types: Codebase, Test.
   Findings: review-code lane-17, review-readability lane-17, and the
   performance and test reviews' findings on these files and their tests.
   Worst: French shows "1 brouillon" for no drafts, because the English
   one-forms hard-code 1 and French uses the one form for 0 (review-code
   and readability HIGH, confirmed by running say_count).
+  Shipped 2026-11-23, 3ec60a6..986b660 (merged bb732a2). 18 findings: 15
+  fixed, 1 queued (PRESS-0467), 2 dismissed (a measured 0.08 ms call; use()
+  switching no language is by design). Every counted one form carries its
+  count, so French says "0 brouillon"; a test refuses a one form without
+  {count}. Captions fall back with their own language's label; LANGUAGE's
+  whole list is walked; the code and its table change in one step.
+  PRESS-0241 §§ 4.2 and 4.3 amended. Full suite 2559 passed, 28 skipped.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/17.json.
   **Layman:** Bug fixes and tidy-ups in the screens' words, the manual and the other languages.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9366,6 +9374,45 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Tests.
+
+- 📋 [PRESS-0467] **The word table moves out of words.py into its own module.**
+  Review type: Codebase. Queued by PRESS-0456 from review-readability
+  (words.py's table). Done after the subjects merge, because every
+  subject edits words.py. PRESS-0242 names words.py as the table's home,
+  so the spec is amended in the same change.
+  **Layman:** The list of every word the screens show gets its own file, so the code around it is easier to follow.
+  Kind: refactor.
+  Source: review-2026-11-23.
+  Lanes: Words.
+
+- 📋 [PRESS-0468] **The Face's stylesheet and page scripts move out of face.py.**
+  Review type: Codebase. Queued by PRESS-0440 from review-readability
+  (face.py's stylesheet and scripts change for different reasons than its
+  request handling). Done after the subjects merge. PRESS-0428 names
+  face._SCRIPT, so the spec is amended in the same change.
+  **Layman:** The look and the browser scripts of Pressless's screens get their own files.
+  Kind: refactor.
+  Source: review-2026-11-23.
+  Lanes: Face.
+
+- 📋 [PRESS-0469] **The screens' language is read once per request.**
+  Review type: Codebase. Queued by PRESS-0440 from review-code
+  (face.py: words.choose switches the process-wide language while other
+  threads render). The fix is in words.py, and PRESS-0241 says choose
+  covers every thread, so the spec is amended first.
+  **Layman:** Two people's screens can no longer briefly swap languages.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Words.
+
+- 📋 [PRESS-0470] **A large page-editor save is measured, then its files go through uploads.**
+  Review type: Codebase. Queued by PRESS-0440 from review-code
+  --performance (face.py holds a large form body as bytes, text and parsed
+  copies at once). Measure peak memory first; change only if it shows.
+  **Layman:** Saving a page holding big files uses less memory.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Face.
 
 ## 1.3.0 — a home other than GitHub
 
