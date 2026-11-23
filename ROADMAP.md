@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=480 -->
+<!-- ants-roadmap-id-high-water: PRESS=482 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9580,6 +9580,27 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Editor.
+
+- 📋 [PRESS-0481] **A YouTube video's frame title is in the site's language.**
+  Review type: Codebase. Queued by PRESS-0443 from review-code lane-04
+  (blocks.py: the video frame's title is fixed English). Needs a new
+  frozen video form (PRESS-0215 § 4.5) with a title field the page editor
+  fills in; done once PRESS-0442 has merged.
+  **Layman:** A screen reader announces an embedded video in the site's own language.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0482] **The site's look either keeps a draft until published, or design.md stops saying so.**
+  Review type: Codebase, Document. Queued by PRESS-0443 from review-code
+  lane-04's open question. design.md § Pages says the look has drafts
+  (user, 2026-10-02), but look.save writes the live look files
+  (PRESS-0196), so the next publish of anything ships a saved look. Needs
+  the user's choice: build look drafts, or amend design.md.
+  **Layman:** Saving a new look either waits for Publish, or the design notes stop promising that it does.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
 
 ## 1.3.0 — a home other than GitHub
 
