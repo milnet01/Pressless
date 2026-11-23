@@ -84,11 +84,18 @@ grep -E -f "$patterns" </dev/null || status=$?
 # Every surface arrives as `where<TAB>text` lines that already match. A line
 # that only quotes the pattern is dropped, and the rest fail the gate. Only
 # WHERE is printed: GitHub's log is public, and the text is the leak itself.
+# A WHERE can match too, a ref or a path named after the writer, so on GitHub
+# (CI set) one that does is withheld.
 scan() {
-    local what=$1 hits
+    local what=$1 hits where
     hits=$(grep -avF -- "$SELF" | cut -f1 || true)
     [[ -z $hits ]] || {
-        printf '%s\n' "$hits" >&2
+        while IFS= read -r where; do
+            if [[ -n ${CI-} ]] && grep -qiE -f "$patterns" <<<"$where"; then
+                where="(a place whose own name matches; run the gate locally to see it)"
+            fi
+            printf '%s\n' "$where" >&2
+        done <<<"$hits"
         fail "$what names the writer"
     }
     printf 'clean: %s\n' "$what"
@@ -123,7 +130,9 @@ if ((${#SWEEP[@]})); then
 fi
 { git grep -n --null -iE -f "$patterns" -- . || (($? == 1)) || fail "git grep could not search the tree"; } \
     | from_git_grep | scan "tree"
-git log --all --name-only --format='%x01%H%n%an <%ae>%n%cn <%ce>%n%B' \
+# A merge lists no paths unless asked: first-parent names what it brings in,
+# a file added while resolving it among them.
+git log --all --name-only --diff-merges=first-parent --format='%x01%H%n%an <%ae>%n%cn <%ce>%n%B' \
     | tagged | matching | scan "commits: messages, authors and paths"
 # An annotated tag carries a message and a tagger, which no commit log shows.
 git for-each-ref --format='%01%(refname)%0a%(taggername) %(taggeremail)%0a%(contents)' \
