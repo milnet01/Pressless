@@ -95,9 +95,11 @@ takes the same rule as a page.
 2. Where `blocks.read(name, text)` finds no area, take
    `blocks.adopt(text, builder.furniture_spans(name, text))` **in
    memory**. Nothing is written at opening.
-3. Where `adopt` returns `None`, or `furniture_spans` raises
-   `BuildStopped`, the page opens in the code view, and a notice says
-   why (`notice.page_editor.code_only`).
+3. Where `adopt` returns `None`, the page opens in the code view, and a
+   notice says why (`notice.page_editor.code_only`; a header's or
+   footer's is `notice.page_editor.furniture_code_only`). Where
+   `furniture_spans` raises `BuildStopped`, it opens in the code view
+   with that failure in `#broken`, as PRESS-0014 § 4.5 has it.
 4. Build the preview from the text of step 1 or step 2, with marks
    (§ 4.2).
 
@@ -166,6 +168,10 @@ frame, at a fixed place and size. It shows:
 - **Move up, Move down, Remove.** A section moves within the list it
   sits in: the page's, a column's, or a row of pictures'. At an end of
   its list, the button it cannot use is shown disabled, never hidden.
+  No Remove, drag or Backspace leaves a holder Blocks refuses: a row's
+  last picture goes with its row, a question's words take the question
+  (the only question takes the section), and an answer's last section
+  cannot go.
 
 *Amended by PRESS-0217:* the Add list and this table gain its six kinds
 (PRESS-0217 § 4.1, § 4.2), and PRESS-0273's `style` kind (PRESS-0217 § 14).

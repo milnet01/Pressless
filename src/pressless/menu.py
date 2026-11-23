@@ -15,7 +15,11 @@ import re
 from pressless import blocks, builder
 
 _LINK = re.compile(r"<a\b[^>]*>(.*?)</a\s*>", re.IGNORECASE | re.DOTALL)
-_HREF = re.compile(r"""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
+# One attribute of a start tag: its name, then a value quoted either way,
+# unquoted, or none. Read one after another, so neither data-href nor an
+# href= inside another attribute's value is taken for the href.
+_ATTRIBUTE = re.compile(
+    r"""\s+([^\s"'=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?""")
 _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _TAG = re.compile(r"</?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>")
 _PAGES = "{{UP}}pages/"
@@ -26,7 +30,9 @@ class Unusual(Exception):
     """The menu is laid out in a way Pressless does not edit (§ 4.2)."""
 
 
-def _address(name: str) -> str:
+def _under_pages(name: str) -> str:
+    """The address of the fixed page `name` under pages/: never Home's,
+    which `address` gives."""
     return f"{_PAGES}{name}.html"
 
 
@@ -58,17 +64,31 @@ def _links(text: str) -> list[re.Match]:
     return list(_LINK.finditer(masked))
 
 
+def _href_in(text: str, start: int, end: int) -> re.Match | None:
+    """The quoted href attribute of the start tag text[start:end], read past
+    the tag's name attribute by attribute; None where it has none."""
+    at = re.match(r"<[a-zA-Z][^\s/>]*", text[start:end])
+    at = start + (at.end() if at else 0)
+    while (found := _ATTRIBUTE.match(text, at, end)) is not None:
+        if found.group(1).lower() == "href":
+            return found if found.group(2) is not None or found.group(3) is not None else None
+        at = found.end()
+    return None
+
+
+def _quoted(found: re.Match) -> int:
+    """Which group of an `_ATTRIBUTE` match holds its quoted value."""
+    return 2 if found.group(2) is not None else 3
+
+
 def _href(link: re.Match) -> re.Match | None:
     """The href in the link's start tag, not in its words."""
-    found = _HREF.search(link.string, link.start(), link.start(1))
-    return found
+    return _href_in(link.string, link.start(), link.start(1))
 
 
 def _href_value(link: re.Match) -> str | None:
     found = _href(link)
-    if found is None:
-        return None
-    return found.group(1) if found.group(1) is not None else found.group(2)
+    return None if found is None else found.group(_quoted(found))
 
 
 def _before(text: str, at: int) -> int:
@@ -81,15 +101,14 @@ def _before(text: str, at: int) -> int:
 def links_to(text: str, name: str) -> tuple[tuple[int, int], ...]:
     """The offsets of each link whose href is exactly {{UP}}pages/<name>.html."""
     return tuple((link.start(), link.end()) for link in _links(text)
-                 if _href_value(link) == _address(name))
+                 if _href_value(link) == _under_pages(name))
 
 
 def _plain(text: str) -> list[re.Match]:
     """The links of a plain menu: one <nav> holding links and nothing else but
     comments and text. Raises Unusual on any other menu."""
     links = _links(text)
-    rest = _COMMENT.sub("", _LINK.sub("", _COMMENT.sub(
-        lambda found: " " * len(found.group(0)), text)))
+    rest = _LINK.sub("", _COMMENT.sub(lambda found: " " * len(found.group(0)), text))
     tags = [(found.group(0).startswith("</"), found.group(1).lower())
             for found in _TAG.finditer(rest)]
     if not links or tags != [(False, "nav"), (True, "nav")]:
@@ -113,7 +132,7 @@ def add(text: str, name: str, words: str) -> str:
     pages = [link for link in links if (_href_value(link) or "").startswith(_PAGES)]
     after = (pages or links)[-1]
     space = text[_before(text, after.start()):after.start()]
-    link = (f'<a href="{_address(name)}" data-nav="{html.escape(name)}">'
+    link = (f'<a href="{_under_pages(name)}" data-nav="{html.escape(name)}">'
             f"{_written(words)}</a>")
     return text[:after.end()] + space + link + text[after.end():]
 
@@ -132,13 +151,13 @@ def rename(text: str, old: str, new: str, old_words: tuple[str, ...],
     visible words are one of `old_words`. Any menu: only an attribute and a
     link's words move."""
     for link in reversed([link for link in _links(text)
-                          if _href_value(link) == _address(old)]):
+                          if _href_value(link) == _under_pages(old)]):
         if _words(text, link) in old_words:
             text = (text[:link.start(1)] + _reworded(text, link, new_words)
                     + text[link.end(1):])
         found = _href(link)
-        value = 1 if found.group(1) is not None else 2
-        text = text[:found.start(value)] + _address(new) + text[found.end(value):]
+        value = _quoted(found)
+        text = text[:found.start(value)] + _under_pages(new) + text[found.end(value):]
     return text
 
 
@@ -152,7 +171,7 @@ _NAV = re.compile(r"""\s+data-nav\s*=\s*(?:"[^"]*"|'[^']*')""", re.IGNORECASE)
 def address(page: str) -> str:
     """The address a menu link to the fixed page `page` holds: the homepage's
     at the site's root, any other under pages/. `_nav` reads it back."""
-    return _HOME if page == "index" else _address(page)
+    return _HOME if page == "index" else _under_pages(page)
 
 
 class Refused(ValueError):
@@ -188,10 +207,10 @@ def _changed(text: str, link: re.Match, words: str, address: str) -> str:
     if address != html.unescape(_href_value(link) or ""):
         tag_end = link.start(1) - at
         start_tag = own[:tag_end]
-        found = _HREF.search(start_tag)
+        found = _href_in(start_tag, 0, len(start_tag))
         if found is None:
             raise Refused("a menu link with no address cannot be given one")
-        value = 1 if found.group(1) is not None else 2
+        value = _quoted(found)
         start_tag = (start_tag[:found.start(value)] + html.escape(address)
                      + start_tag[found.end(value):])
         start_tag = _NAV.sub("", start_tag)
@@ -219,14 +238,14 @@ def arranged(text: str, posted: object) -> str:
     pieces, seen = [], set()
     for entry in posted:
         if not isinstance(entry, dict):
-            raise Refused(f"{entry!r} is not a menu link")
+            raise Refused(f"a posted {type(entry).__name__} is not a menu link")
         at, words, address = entry.get("at"), entry.get("words"), entry.get("href")
         if not isinstance(words, str) or not isinstance(address, str):
             raise Refused("a menu link needs words and an address")
         words = words.strip()
         if at is not None and (not isinstance(at, int) or isinstance(at, bool)
                                or not 0 <= at < len(held) or at in seen):
-            raise Refused(f"the menu save names link {at!r} wrongly")
+            raise Refused("the menu save names a link wrongly")
         # Only what the save changes is checked: a kept link, such as a logo
         # with no words, passes as it was given.
         given = read[at] if at is not None else None

@@ -9131,10 +9131,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0443] **Second-round review fixes: blocks, the look and templates.**
+- ✅ [PRESS-0443] **Second-round review fixes: blocks, the look and templates.**
   Subject 04. Review types: Codebase, Test.
   Findings: review-code lane-04, review-readability lane-04, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 3b31ce4..6755eb1 (merged 20fdd04). 18 findings: 15
+  fixed, 2 queued (PRESS-0481, PRESS-0482), 1 dismissed (#look-status
+  keeps its height). Columns sit side by side on a wide screen and a
+  button looks like one, on every layout, once a look is saved again. A
+  countdown in a far or mistyped year saves as typed. Contrast ratios use
+  the language's decimal mark, from one words.decimal. One line-end rule,
+  marks.unix_line_ends, replaces eight copies. PRESS-0215, 0217, 0196,
+  0017 and design.md amended. Full suite 2652 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/04.json.
   **Layman:** Bug fixes and tidy-ups in ready-made sections, the site's look and the entry templates.
   Kind: review-fix.
   Source: review-2026-11-23.

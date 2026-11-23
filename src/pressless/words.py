@@ -873,6 +873,11 @@ _WORDS: dict[str, str] = {
     "notice.pages.other_links": (
         "Your header or footer still links to this page. Remove that link in its code."
     ),
+    # The page editor reached no answer from Pressless, so it stops saving.
+    "script.page.unreachable": (
+        "Pressless did not answer, so this page has stopped saving. "
+        "Check Pressless is still running, then open the page again."
+    ),
     "script.pages.confirm_remove": (
         "Remove this page? It goes to the bin in your Pressless-data folder, with any "
         "changes you have not published. It leaves your site and your menu now."
