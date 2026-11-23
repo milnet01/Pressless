@@ -411,11 +411,12 @@ def test_the_site_step_shows_the_state_the_pages_step_read(tmp_path, monkeypatch
     github, _ = _published(tmp_path)
     folder = _empty_store(tmp_path, "setup")
     _Store(monkeypatch)
+    published = len(github.calls)       # the fixture's own publish reads the tree too
     with _setup(folder, github) as browser:
         page = _walk_to(browser, "site")
         assert "A Journal" in page
         assert "A Journal" in browser.get()[1]
-    listings = [url for _method, url, _key in github.calls
+    listings = [url for _method, url, _key in github.calls[published:]
                 if "/git/trees/" in url and "recursive=1" in url]
     assert len(listings) == 1, listings
 
