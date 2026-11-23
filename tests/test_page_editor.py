@@ -19,6 +19,7 @@ import json
 import re
 import shutil
 import subprocess
+import threading
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -1633,3 +1634,55 @@ def test_a_new_sections_published_words_are_in_the_sites_language(tmp_path, monk
     assert '{label: SITE_WORDS.top_label || say("script.visual.top_label")}' in script
     assert "{youtube: YOUTUBE.exec(address)[1], title: VIDEO_TITLE}" in script
     assert "{youtube: id[1], title: picked.fields.title || VIDEO_TITLE}" in script
+
+
+# ------------------------------------------------------------- PRESS-0492 ---
+# Opening a page scans each text of it once, though its sections area, its
+# outline and its preview each read it.
+
+
+def _scans(monkeypatch) -> list[str]:
+    scanned: list[str] = []
+    real = blocks._scan
+
+    def counted(text):
+        scanned.append(text)
+        return real(text)
+
+    monkeypatch.setattr(blocks, "_scan", counted)
+    return scanned
+
+
+@pytest.mark.parametrize("route", ["/page", "/page/view"])
+@pytest.mark.parametrize(("text", "view"), [
+    (UNMARKED, "visual"),              # adopted in memory: two texts
+    (CODED, "visual"),                 # an area already: one text
+    (ABOUT, "code"),
+])
+def test_an_opening_scans_each_text_of_the_page_once(tmp_path, monkeypatch, text, view, route):
+    """PRESS-0492: opening and switching (PRESS-0285) alike. Breaks when a
+    reader scans again a page another reader of the same opening has
+    scanned, or when a scan is kept after it."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "about", text)
+    with _pages(folder) as browser:
+        scanned = _scans(monkeypatch)
+        status, _, page = browser.request("GET", f"{route}?kind=pages&name=about&view={view}")
+        assert status == 200 and view in page
+    of_the_page = [t for t in scanned if "<html>" in t]
+    assert of_the_page and len(of_the_page) == len(set(of_the_page)), of_the_page
+
+
+def test_a_scan_is_kept_only_inside_the_block_and_its_thread(monkeypatch):
+    """PRESS-0492: a build or a save reads the page anew each time, and so
+    does another thread during an opening."""
+    scanned = _scans(monkeypatch)
+    blocks.read("about", CODED)
+    with blocks.kept_scans():
+        blocks.read("about", CODED)
+        blocks.read("about", CODED)
+        other = threading.Thread(target=blocks.read, args=("about", CODED))
+        other.start()
+        other.join()
+    blocks.read("about", CODED)
+    assert scanned.count(CODED) == 4

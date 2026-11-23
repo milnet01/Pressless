@@ -16,8 +16,10 @@ references below are to it. The ready-made pieces and the script section are
 """
 from __future__ import annotations
 
+import contextlib
 import html as _html
 import re
+import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -158,6 +160,35 @@ class _Scanner(HTMLParser):
 
 def _scan(text: str) -> tuple[_Event, ...]:
     return _Scanner(text).events
+
+
+class _Kept(threading.local):
+    scans: dict[str, tuple[_Event, ...]] | None = None
+
+
+_kept = _Kept()
+
+
+@contextlib.contextmanager
+def kept_scans():
+    """PRESS-0492: inside this block, on this thread, `read`, `adopt` and
+    `unmarked` scan each page once, however many of them read it. The scans
+    are let go when the block ends, so none outlives it."""
+    was = _kept.scans
+    _kept.scans = {}
+    try:
+        yield
+    finally:
+        _kept.scans = was
+
+
+def _page_scan(html: str) -> tuple[_Event, ...]:
+    """`_scan` of a whole page, kept inside kept_scans()."""
+    if _kept.scans is None:
+        return _scan(html)
+    if html not in _kept.scans:
+        _kept.scans[html] = _scan(html)
+    return _kept.scans[html]
 
 
 def _marks(text: str, events: tuple[_Event, ...]) -> list[_Mark]:
@@ -689,7 +720,7 @@ def read(name: str, html: str) -> Page | None:
     """The page's sections area as sections, or None where it has none
     (§4.2). `name`, the page's, is not read: PRESS-0215 § 4.1's signature
     keeps it."""
-    return _read(html, _scan(html))
+    return _read(html, _page_scan(html))
 
 
 def _read(html: str, events: tuple[_Event, ...]) -> Page | None:
@@ -765,7 +796,7 @@ def adopt(html: str, furniture: tuple[tuple[int, int], ...], element: str = "mai
     `builder.furniture_spans(name, html)`. `element` names another element to
     make the area in: `header` or `footer` for the furniture files
     (PRESS-0216 § 4.1)."""
-    events = _scan(html)        # once, for the check and the adopting
+    events = _page_scan(html)   # once, for the check and the adopting
     if _read(html, events) is not None:
         return html
 
@@ -826,7 +857,7 @@ def unmarked(name: str, html: str) -> str:
     its line takes the line with it. `name`, the page's, is not read:
     PRESS-0215 § 4.1's signature keeps it."""
     cuts = []
-    for mark in _marks(html, _scan(html)):
+    for mark in _marks(html, _page_scan(html)):
         line_start = html.rfind("\n", 0, mark.start) + 1
         line_end = html.find("\n", mark.end)
         line_end = len(html) if line_end < 0 else line_end + 1

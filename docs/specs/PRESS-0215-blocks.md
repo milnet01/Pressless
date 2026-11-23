@@ -109,6 +109,9 @@ def inline(markup: str) -> str | None: ...   # amended by PRESS-0260 § 4.5
 
 *Amended by PRESS-0217:* six more kinds join `KINDS` (PRESS-0217 § 4.1).
 *Amended by PRESS-0273:* so does `style` (PRESS-0217 § 14).
+*Amended by PRESS-0492:* `kept_scans()`, a context manager. Inside it, on
+its thread, `read`, `adopt` and `unmarked` scan each page once, and the
+scans go when it ends. The page editor opens a page inside one.
 
 `read` returns `None` for a file with no sections area. `adopt` returns
 `None` where § 4.6 finds no area to make. `Section.fields` is a frozen
