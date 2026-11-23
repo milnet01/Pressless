@@ -354,10 +354,12 @@ def _register_folder(face: Face, folder: Path, empty: Callable[[], bool],
         return pressless_import.read_folder_left(held)
 
     def check_folder(answers: wizard.Answers):
-        found = pressless_import.read_folder(unpacked) if unpacked.is_dir() else None
-        if found is None or not found.pages:
+        # The glance, not read_folder: the found step's page reads it whole next.
+        pages, built = (pressless_import.glance_folder(unpacked) if unpacked.is_dir()
+                        else ((), False))
+        if not pages:
             return wizard.Hint("", say("import.folder.none"))
-        if found.built_by_a_tool:
+        if built:
             return wizard.Hint("", say("import.folder.built"))
         return answers
 
@@ -394,7 +396,7 @@ def _register_folder(face: Face, folder: Path, empty: Callable[[], bool],
         except pressless_import.ImportStopped:
             return shown_again(message_box("import-hint", say("import.folder.refused")))
         takein.forget_record(folder)
-        if not pressless_import.read_folder(unpacked).pages:
+        if not pressless_import.glance_folder(unpacked)[0]:
             shutil.rmtree(unpacked, ignore_errors=True)
             return shown_again(message_box("import-hint", say("import.folder.no_page")))
         pressless_import.write_folder_left(held, left)
