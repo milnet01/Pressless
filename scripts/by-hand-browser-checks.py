@@ -1679,7 +1679,7 @@ def progress_note(page, origin: str) -> None:
 def _manual_folder(tmp: Path) -> Path:
     folder = tmp / "manual"
     (folder / "media").mkdir(parents=True)
-    (folder / f"{manual.ENGLISH}.txt").write_text(_MANUAL, encoding="utf-8")
+    (folder / f"{manual.FALLBACK}.txt").write_text(_MANUAL, encoding="utf-8")
     return folder
 
 

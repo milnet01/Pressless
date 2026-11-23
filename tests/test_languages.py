@@ -153,13 +153,17 @@ def test_stale_or_missing_shows_english(tmp_path, monkeypatch) -> None:
     ({"LANGUAGE": "af:en", "LANG": "en_GB.UTF-8"}, "af"),
     ({"LC_ALL": "de_DE.UTF-8", "LANG": "fr_FR.UTF-8"}, "de"),
     ({"LC_MESSAGES": "fr_FR", "LANG": "en_GB"}, "fr"),
+    ({"LANGUAGE": "pt_BR:fr", "LANG": "en_GB.UTF-8"}, "fr"),     # the first Pressless has
+    ({"LANGUAGE": "pt_BR", "LANG": "en_GB.UTF-8"}, "pt"),        # none it has: the first
+    ({"LANGUAGE": ":fr", "LANG": "en_GB.UTF-8"}, "fr"),
+    ({"LANGUAGE": "C", "LANG": "de_DE.UTF-8"}, None),            # set, and says nothing
     ({"LANG": "C.UTF-8"}, None),
     ({"LANG": "POSIX"}, None),
     ({}, None),
 ])
 def test_the_computers_language_is_read(monkeypatch, environment, found) -> None:
-    """INV-5, Linux. Breaks when LC_ALL loses to LANG, or C.UTF-8 reads as a
-    language."""
+    """INV-5, Linux. Breaks when LC_ALL loses to LANG, C.UTF-8 reads as a
+    language, or LANGUAGE's later entries are ignored."""
     monkeypatch.setattr(sys, "platform", "linux")
     for name in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         monkeypatch.delenv(name, raising=False)
@@ -236,6 +240,17 @@ def test_a_language_file_that_will_not_load_gives_english(tmp_path, monkeypatch)
     (tmp_path / "xx.json").write_text("{not json", encoding="utf-8")
     assert words.say_in("xx", "site.older") == words.ENGLISH["site.older"]
     assert "xx" in words.unreadable()
+
+
+def test_a_sites_language_is_its_identitys_else_the_screens(tmp_path) -> None:
+    """§ 4.4. Breaks when a site with no identity yet takes English under
+    other screens, or an identity with no language takes the screens'."""
+    words.choose("fr")
+    assert languages.of_site(tmp_path) == "fr"       # the wizard will record it
+    store.write_identity(tmp_path, store.Identity("zz"))
+    assert languages.of_site(tmp_path) == "en"       # decision 7
+    store.write_identity(tmp_path, store.Identity("zz", language="af"))
+    assert languages.of_site(tmp_path) == "af"
 
 
 def test_an_identity_keeps_todays_bytes_without_a_language(tmp_path) -> None:

@@ -1443,8 +1443,8 @@
    "{count} personnes"
   ],
   "dashboard.people.one": [
-   "de545d07",
-   "1 personne"
+   "7af98524",
+   "{count} personne"
   ],
   "dashboard.region": [
    "7db4aedb",
@@ -3163,64 +3163,64 @@
    "{count} commentaires"
   ],
   "import.count.comments.one": [
-   "3fd2c20e",
-   "1 commentaire"
+   "e9791dd3",
+   "{count} commentaire"
   ],
   "import.count.drafts.many": [
    "edbc8a6d",
    "{count} brouillons"
   ],
   "import.count.drafts.one": [
-   "19cc4a50",
-   "1 brouillon"
+   "c18593b2",
+   "{count} brouillon"
   ],
   "import.count.files.many": [
    "63352fdc",
    "{count} fichiers"
   ],
   "import.count.files.one": [
-   "41d899a9",
-   "1 fichier"
+   "0358ab76",
+   "{count} fichier"
   ],
   "import.count.held.many": [
    "085f5ad3",
    "{count} photos et fichiers"
   ],
   "import.count.held.one": [
-   "a01507e6",
-   "1 photo ou fichier"
+   "af2d7ecf",
+   "{count} photo ou fichier"
   ],
   "import.count.pages.many": [
    "d46e57d6",
    "{count} pages"
   ],
   "import.count.pages.one": [
-   "0d8a4426",
-   "1 page"
+   "49bd2f7a",
+   "{count} page"
   ],
   "import.count.photographs.many": [
    "f2b1e954",
    "{count} photos"
   ],
   "import.count.photographs.one": [
-   "e78e4450",
-   "1 photo"
+   "ddd8b519",
+   "{count} photo"
   ],
   "import.count.posts.many": [
    "c778d9da",
    "{count} articles"
   ],
   "import.count.posts.one": [
-   "709f0967",
-   "1 article"
+   "dccc847f",
+   "{count} article"
   ],
   "import.count.published.many": [
    "9afb20e3",
    "{count} entrées publiées"
   ],
   "import.count.published.one": [
-   "f6a9d019",
-   "1 entrée publiée"
+   "4f879548",
+   "{count} entrée publiée"
   ],
   "import.export.1": [
    "90374d51",
@@ -3463,8 +3463,8 @@
    "{count} ont été pris dans le fichier ZIP."
   ],
   "import.gaps.filled.one": [
-   "36a5608f",
-   "1 a été pris dans le fichier ZIP."
+   "34ef5956",
+   "{count} a été pris dans le fichier ZIP."
   ],
   "import.gaps.how": [
    "dc8a1199",
@@ -3475,8 +3475,8 @@
    "Ces {count} n'ont pas pu être copiés depuis votre ancien site :"
   ],
   "import.gaps.list.one": [
-   "e3589494",
-   "Celui-ci n'a pas pu être copié depuis votre ancien site :"
+   "0c1288f4",
+   "{count} n'a pas pu être copié depuis votre ancien site :"
   ],
   "import.gaps.none": [
    "c0d48da8",
@@ -3563,8 +3563,8 @@
    "{count} éléments de type {kind} n'ont pas été importés."
   ],
   "import.report.other_type.one": [
-   "2ca18199",
-   "1 élément de type {kind} n'a pas été importé."
+   "0f26d13c",
+   "{count} élément de type {kind} n'a pas été importé."
   ],
   "import.report.pages": [
    "d36f7d8d",
@@ -4006,10 +4006,6 @@
    "c37fe663",
    "Pressless est en cours d'exécution. Gardez cette fenêtre ouverte pendant que vous l'utilisez, et fermez-la pour arrêter Pressless."
   ],
-  "manual.captions": [
-   "ba118bf7",
-   "Français"
-  ],
   "manual.search": [
    "34259ab4",
    "Rechercher dans le manuel"
@@ -4187,16 +4183,16 @@
    "{count} brouillons"
   ],
   "overview.drafts.one": [
-   "19cc4a50",
-   "1 brouillon"
+   "c18593b2",
+   "{count} brouillon"
   ],
   "overview.files.many": [
    "3a8e322e",
    "{count} fichiers."
   ],
   "overview.files.one": [
-   "a16fdca5",
-   "1 fichier."
+   "b8f4c600",
+   "{count} fichier."
   ],
   "overview.journal.figures": [
    "231f47fc",
@@ -4239,12 +4235,12 @@
    "Publier"
   ],
   "overview.publish.nothing.many": [
-   "ba49d50e",
-   "Rien ne changerait sur votre site. Pas encore sur votre site : {kinds}. Chacun part depuis son propre Envoyer sur le site, pas depuis Publier."
+   "de5c4903",
+   "Rien ne changerait sur votre site. {count} modifications n'y sont pas encore : {kinds}. Chacune part depuis son propre Envoyer sur le site, pas depuis Publier."
   ],
   "overview.publish.nothing.one": [
-   "cfa12edb",
-   "Rien ne changerait sur votre site. Pas encore sur votre site : {kinds}. Cela part depuis son propre Envoyer sur le site, pas depuis Publier."
+   "4d4075d7",
+   "Rien ne changerait sur votre site. {count} modification n'y est pas encore : {kinds}. Elle part depuis son propre Envoyer sur le site, pas depuis Publier."
   ],
   "overview.visitors.none_yet": [
    "8f22773e",
@@ -4263,32 +4259,32 @@
    "{count} entrées du journal"
   ],
   "overview.waiting.entries.one": [
-   "0d3f726c",
-   "1 entrée du journal"
+   "fdb3e667",
+   "{count} entrée du journal"
   ],
   "overview.waiting.many": [
    "20f7e292",
    "{count} modifications ne sont pas encore sur votre site : {kinds}. Chacune part depuis son propre Envoyer sur le site."
   ],
   "overview.waiting.one": [
-   "29b2a9df",
-   "1 modification n'est pas encore sur votre site : {kinds}. Elle part depuis son propre Envoyer sur le site."
+   "0c5488d8",
+   "{count} modification n'est pas encore sur votre site : {kinds}. Elle part depuis son propre Envoyer sur le site."
   ],
   "overview.waiting.pages.many": [
    "d46e57d6",
    "{count} pages"
   ],
   "overview.waiting.pages.one": [
-   "0d8a4426",
-   "1 page"
+   "49bd2f7a",
+   "{count} page"
   ],
   "overview.waiting.parts.many": [
    "1e920871",
    "{count} éléments de chaque page"
   ],
   "overview.waiting.parts.one": [
-   "71efbc01",
-   "1 élément de chaque page"
+   "0af6f024",
+   "{count} élément de chaque page"
   ],
   "page_editor.drag": [
    "442e96ec",
@@ -4631,8 +4627,8 @@
    "{count} ont été supprimés"
   ],
   "publishing.takeover.done.removed.one": [
-   "98fb4de8",
-   "1 a été supprimé"
+   "83be9a5a",
+   "{count} a été supprimé"
   ],
   "publishing.takeover.done.stale": [
    "610ee8cf",
@@ -4643,8 +4639,8 @@
    "{count} fichiers ont été envoyés ou modifiés"
   ],
   "publishing.takeover.done.uploaded.one": [
-   "7703628b",
-   "1 fichier a été envoyé ou modifié"
+   "b3b2f3e4",
+   "{count} fichier a été envoyé ou modifié"
   ],
   "publishing.takeover.done.wait": [
    "d27310c9",
@@ -6607,12 +6603,12 @@
    "votre propre version de {count} conservée comme brouillon"
   ],
   "undo.one_entry": [
-   "17a2552e",
-   "1 entrée"
+   "c2448afb",
+   "{count} entrée"
   ],
   "undo.one_page": [
-   "0d8a4426",
-   "1 page"
+   "49bd2f7a",
+   "{count} page"
   ],
   "undo.pages": [
    "d46e57d6",

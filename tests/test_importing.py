@@ -441,7 +441,7 @@ def test_one_gap_and_one_filled_take_the_singular(tmp_path, monkeypatch):
             "POST", f"{importing.ADDRESS}/media", _zipped({"2012/05/a.jpg": b"x"}))
     finally:
         served.stop()
-    assert "This one could not be copied from your old site:" in gaps, gaps
+    assert "1 could not be copied from your old site:" in gaps, gaps
     assert "1 was taken from the ZIP file." in filled.decode("utf-8"), filled
 
 

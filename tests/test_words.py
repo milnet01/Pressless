@@ -192,6 +192,29 @@ def _asked() -> dict[str, str]:
     return asked
 
 
+def _repeated_keys(source: str) -> list[str]:
+    """Each key written twice in one dict literal of `source`, where the
+    later silently replaces the earlier."""
+    repeated = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Dict):
+            seen: set[str] = set()
+            for key in node.keys:
+                if isinstance(key, ast.Constant):
+                    if key.value in seen:
+                        repeated.append(key.value)
+                    seen.add(key.value)
+    return repeated
+
+
+def test_no_key_is_written_twice() -> None:
+    """§ 4.1. A screen's keys sit in several places in the table, so a key
+    added in one place can replace another's English unseen. The planted
+    source shows the check can fail."""
+    assert _repeated_keys('t = {"a.b": "x", "c": "y", "a.b": "z"}') == ["a.b"]
+    assert _repeated_keys((SOURCE / "words.py").read_text(encoding="utf-8")) == []
+
+
 def test_every_key_is_in_the_table() -> None:
     """INV-4. Breaks when a key is misspelled."""
     missing = {key: where for key, where in _asked().items() if key not in words.ENGLISH}
@@ -646,6 +669,46 @@ def test_say_count_follows_the_language(entry, tmp_path, monkeypatch) -> None:
     assert words.say_count(1234, "test.one", "test.many", code="fr") == "1 234 things"
     assert words.say_count(1234, "test.one", "test.many", code="de",
                            count="1234") == "1234 things"     # the Builder's own digits
+
+
+_ONE = re.compile(r"(^|[._])one([._]|$)")
+
+
+def _counted_pairs() -> dict[tuple[str, str], str]:
+    """Every (one, many) pair of keys the source hands to a count, with
+    where: the two keys of a `say_count` call, and two adjacent keys, the
+    first named as a one form, in any other call or tuple, which is how
+    `import_report.counted` and the Overview's list pass theirs."""
+    pairs: dict[tuple[str, str], str] = {}
+    for path in sorted((*SOURCE.glob("*.py"), *SOURCE.parent.glob("pressless_import/*.py"))):
+        for node in ast.walk(_parsed(path)):
+            direct = (isinstance(node, ast.Call)
+                      and getattr(node.func, "id", getattr(node.func, "attr", "")) == "say_count")
+            if direct:
+                run = node.args[1:3]
+            elif isinstance(node, (ast.Call, ast.Tuple)):
+                run = node.args if isinstance(node, ast.Call) else node.elts
+            else:
+                continue
+            for first, second in zip(run, run[1:], strict=False):
+                keys = [part.value for part in (first, second)
+                        if isinstance(part, ast.Constant) and part.value in words.ENGLISH]
+                if len(keys) == 2 and (direct or _ONE.search(keys[0])):
+                    pairs.setdefault((keys[0], keys[1]), f"{path.name}:{node.lineno}")
+    return pairs
+
+
+def test_every_counted_one_form_carries_its_count() -> None:
+    """PRESS-0241 INV-8. A language's one form may cover amounts other than
+    1 (French's covers 0), so a one form that writes "1" shows "1 brouillon"
+    for no drafts. Breaks when a counted one form drops `{count}`."""
+    pairs = _counted_pairs()
+    assert ("overview.drafts.one", "overview.drafts.many") in pairs     # the finder finds
+    assert ("import.count.files.one", "import.count.files.many") in pairs
+    assert ("overview.waiting.pages.one", "overview.waiting.pages.many") in pairs
+    bare = {one: where for (one, _), where in pairs.items()
+            if "{count}" not in words.ENGLISH[one]}
+    assert not bare, bare
 
 
 def test_dates_are_written_from_the_table(entry) -> None:

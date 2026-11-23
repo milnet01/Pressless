@@ -205,7 +205,7 @@ def test_publish_says_where_waiting_changes_go(tmp_path: Path) -> None:
         page = browser.get("/")
     template = page.split('<template id="publish-nothing">', 1)[1].split("</template>", 1)[0]
     assert template == (
-        "<p>Nothing on your site would change. Not on your site yet: "
+        "<p>Nothing on your site would change. 1 change is not on it yet: "
         f'<a href="{editor.PAGES_ADDRESS}">1 page</a>. '
         "It goes out from its own Press to site, not from Publish.</p>")
     assert 'getElementById("publish-nothing")' in page and "{nothing})" in page
