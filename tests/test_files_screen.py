@@ -12,7 +12,6 @@ import html
 import json
 import os
 import urllib.parse
-import warnings
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -22,6 +21,7 @@ from test_face import FILES_POLICY_WORDS
 from test_photographs import _post
 
 from pressless import builder, editor, face, files, files_screen, store, words
+from pressless.notices import notify
 
 PDF = b"%PDF- made up"   # thirteen bytes
 SONG = b"ID3 a made-up song"
@@ -113,8 +113,8 @@ def test_a_refusal_shows_its_notices(tmp_path, monkeypatch):
     _keep(folder, "used.pdf", PDF)
 
     def noisy(_folder: Path) -> dict[str, tuple[builder.FileUser, ...]]:
-        warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
-                                        mode="644"), stacklevel=2)
+        notify(store.StoreNotice("notice.store.not_private", file="notes.txt",
+                                 mode="644"), stacklevel=2)
         return {"used.pdf": (builder.FileUser(store.PAGES_FOLDER, "gigs"),)}
 
     monkeypatch.setattr(builder, "files_named", noisy)

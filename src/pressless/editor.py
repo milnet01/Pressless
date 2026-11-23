@@ -19,7 +19,6 @@ import re
 import threading
 import unicodedata
 import urllib.parse
-import warnings
 from collections.abc import Callable, Collection
 from datetime import datetime
 from pathlib import Path
@@ -49,6 +48,7 @@ from pressless.face import (
     true_colours,
     within,
 )
+from pressless.notices import notify
 from pressless.words import medium_date, say
 
 PREVIEW_FOLDER = "preview"          # inside Pressless's own folder; the Face's alone
@@ -308,7 +308,7 @@ def names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
         name = typed if _usable(folder, typed) else name_address(typed)
         usable = bool(name) and _usable(folder, name)
         if not usable:
-            warnings.warn(LeftOut(_LEFT_OUT[box], name=typed), stacklevel=2)
+            notify(LeftOut(_LEFT_OUT[box], name=typed), stacklevel=2)
         elif name not in names:
             names.append(name)
     return tuple(names)

@@ -32,11 +32,29 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import BinaryIO
 
-from pressless import (
+from pressless import bridge
+
+
+def _assistant(argv: list[str]) -> int | None:
+    """`--assistant`'s bridge, run with the bridge's own code (PRESS-0337
+    § 4.4); None where `argv` is not that route. A source run's may name the
+    folder its Face uses; a packaged one finds its own, so a settings file
+    cannot send its calls to another door."""
+    told_folder = len(argv) == 2 and not getattr(sys, "frozen", False)
+    if argv[:1] != ["--assistant"] or not (len(argv) == 1 or told_folder):
+        return None
+    return bridge.main(Path(argv[1]) if told_folder else None)
+
+
+# The bridge needs no other part, so it starts before they load: an AI app
+# starts one each time it opens (PRESS-0463).
+if __name__ == "__main__" and (_routed := _assistant(sys.argv[1:])) is not None:
+    raise SystemExit(_routed)
+
+from pressless import (  # noqa: E402 -- after the bridge's route, above
     about,
     assistant,
     backups,
-    bridge,
     cheatsheet,
     credentials,
     dashboard,
@@ -75,7 +93,7 @@ from pressless import (
     words,
     youtube_screen,
 )
-from pressless.words import say
+from pressless.words import say  # noqa: E402
 
 # Not `--assistant <folder>`: only a source run takes it (main's docstring),
 # and a packaged one refuses it.
@@ -102,14 +120,13 @@ def main(argv: list[str]) -> int:
     # PRESS-0428 § 4.3: out of the environment before anything starts a
     # program, so no browser, opener or helper inherits the session.
     resume = face.HandOver.read(os.environ.pop(installer.RESUME_VARIABLE, None))
-    told_folder = (len(argv) == 2 and argv[0] == "--assistant"
-                   and not getattr(sys, "frozen", False))
-    if argv not in ([], ["--self-check"], ["--assistant"]) and not told_folder:
+    # PRESS-0337 § 4.4: before the report, since stdout is the protocol's.
+    routed = _assistant(argv)
+    if routed is not None:
+        return routed
+    if argv not in ([], ["--self-check"]):
         print(_USAGE, file=sys.stderr)
         raise SystemExit(2)
-    if argv[:1] == ["--assistant"]:
-        # PRESS-0337 § 4.4: before the report, since stdout is the protocol's.
-        return bridge.main(Path(argv[1]) if told_folder else None)
 
     _unbundle_environment()
     print("pressless: ok")

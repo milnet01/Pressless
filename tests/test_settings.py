@@ -23,7 +23,7 @@ from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.settings as settings_module
-from pressless import _flag_data, marks, os_reason, safe_write, words
+from pressless import _flag_data, marks, notices, os_reason, safe_write, words
 from pressless.settings import (
     Credentials,
     NotSetUp,
@@ -162,7 +162,8 @@ def test_settings_imports_nothing_forbidden():
     top = {name.split(".")[0] for name in imported}
     ours = {name for name in imported if name.split(".")[0] == "pressless"}
     assert not top & _FORBIDDEN_TOP_LEVEL_IMPORTS, top & _FORBIDDEN_TOP_LEVEL_IMPORTS
-    allowed = {"pressless.safe_write", "pressless.words", "pressless.os_reason"}
+    allowed = {"pressless.safe_write", "pressless.words", "pressless.os_reason",
+               "pressless.notices"}
     assert ours <= allowed, (
         f"settings.py imports {ours - allowed!r}. Its row in docs/design.md § The "
         f"parts is 'depends on nothing': no other part but the words table, which "
@@ -172,7 +173,7 @@ def test_settings_imports_nothing_forbidden():
         f"settings.py has relative import(s) {[n.module for n in relative]!r}, "
         f"which can only name a sibling pressless module"
     )
-    for leaf in (safe_write, os_reason):
+    for leaf in (safe_write, os_reason, notices):
         helper, helper_relative = _imports(leaf)
         helper_top = {name.split(".")[0] for name in helper}
         assert not helper_top & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"}), helper_top

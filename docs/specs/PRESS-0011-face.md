@@ -233,17 +233,17 @@ trustworthy. Source: https://www.w3.org/TR/secure-contexts/#is-origin-trustworth
 
 ### 4.4 Notices
 
-**`Face.capture()` records every `StoreNotice` and `SettingsNotice` raised
-inside it**, with `warnings.catch_warnings(record=True)` and
-`simplefilter("always")`. The default filter would show a repeat once, and
-PRESS-0005 § 4.1 leaves suppressing repeats to the caller. Any other warning
-raised inside it is dropped: nobody here wrote its words, and they may name a
-path.
+**`Face.capture()` records every `StoreNotice` and `SettingsNotice` its own
+thread raises inside it**, repeats included (PRESS-0005 § 4.1 leaves
+suppressing repeats to the caller). The Store and Settings raise each through
+`notices.notify`, which adds it to the thread's innermost open
+`notices.gathered` list, and warns only on a thread with none open.
 
-**`capture` holds one lock for its whole extent.** `catch_warnings` swaps
-process-wide state, so two captures overlapping on the server's threads would
-restore each other's filters.
-Source: https://docs.python.org/3/library/warnings.html#warnings.catch_warnings
+**`capture` holds no lock** (PRESS-0463). Each thread gathers its own, so a
+capture held through a publish's build holds no other request's, and no
+request's notice lands on another's list.
+`tests/test_face.py::test_captures_on_two_threads_overlap_and_keep_their_own`
+holds both.
 
 **Each captured notice is shown through `render_notices` and noted in the
 log.** It is shown in the three parts `docs/design.md` § Errors requires: its
@@ -259,13 +259,11 @@ notice is not a failure: the call it came from completes.
 
 **Every call the Face makes into the Store or Settings runs inside
 `capture`.** Outside one, a notice is printed to the console prefixed with the
-path of the file that called it — measured — and while another request holds a
-capture, it lands on that request's list.
+path of the file that called it — measured.
 
 **Two reads raise no notice, so they run outside `capture`:** `site_name`'s
 `store.read_identity` and `live_address`'s `settings.load`. Every page makes
-them, and `capture`'s lock is held through a publish's build, so wrapping them
-would hold every page behind a publish (PRESS-0397).
+them (PRESS-0397).
 `tests/test_face.py::test_the_top_bar_reads_raise_no_notice` fails if either
 starts raising one; it then moves inside `capture`.
 

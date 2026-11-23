@@ -19,7 +19,6 @@ import json
 import re
 import shutil
 import subprocess
-import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -42,6 +41,7 @@ from pressless import (
     store,
     words,
 )
+from pressless.notices import notify
 
 PAGES_WAITING = "pages-waiting"
 FURNITURE_WAITING = "furniture-waiting"
@@ -415,8 +415,8 @@ def test_throwing_away_page_changes(tmp_path):
 
 def _noisy(failure: Exception):
     def call(*_args, **_kwargs):
-        warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
-                                        mode="644"), stacklevel=2)
+        notify(store.StoreNotice("notice.store.not_private", file="notes.txt",
+                                 mode="644"), stacklevel=2)
         raise failure
     return call
 

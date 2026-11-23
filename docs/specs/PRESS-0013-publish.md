@@ -107,9 +107,8 @@ PRESS-0128's delete and PRESS-0015's undo. The guard then does not run
 (`docs/design.md` rule 9: those publishes are what was asked for).
 
 **`capture` wraps every step of § 4.3 but the upload** — the move, the guard,
-the build, the put-back and the finish. The route passes `face.capture`. A
-capture holds a process-wide lock for as long as it runs (PRESS-0011 § 4.4), so
-one around a minutes-long upload would stall setup's page too. **Every list a
+the build, the put-back and the finish. The route passes `face.capture`. The
+upload emits no Store notice. **Every list a
 capture yields is added to `notices` when that capture ends**, on success and on
 a raise alike, so the caller shows them. `face.nothing_captured` yields an empty
 list.

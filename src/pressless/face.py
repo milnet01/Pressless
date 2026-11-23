@@ -29,7 +29,6 @@ import subprocess
 import sys
 import threading
 import urllib.parse
-import warnings
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -60,6 +59,7 @@ from pressless import (
     usage,
     words,
 )
+from pressless.notices import gathered
 from pressless.words import say
 
 
@@ -1457,11 +1457,6 @@ def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
     )
 
 
-# catch_warnings swaps process-wide state, so every capture in the process
-# shares one lock (§ 4.4). Re-entrant so a capture nested on one thread works.
-_CAPTURE_LOCK = threading.RLock()
-
-
 class _Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
     face: Face
@@ -1861,7 +1856,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send_download(face, body)
             return
         if request.method == "GET":
-            usage.report("screen", screen=request.path)   # the registered path, no query
+            # The registered path, no query. Reported once the page is sent,
+            # so no screen waits for the list's write (PRESS-0262 § 4.5).
+            screen = request.path
+            face.after_reply(lambda: usage.report("screen", screen=screen))
         self._send_page(face, 200, body)
 
     def _take_upload(self, face: Face, upload: _Upload, path: str,
@@ -2266,16 +2264,15 @@ class Face:
         with the path of the file that called it.
         """
         notices: list[str] = []
-        with _CAPTURE_LOCK, warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
+        # Gathered on this thread alone, so a capture holds no other request
+        # (PRESS-0463).
+        with gathered() as caught:
             try:
                 yield notices
             finally:
-                for warning in caught:
-                    if issubclass(warning.category, (store.StoreNotice, settings.SettingsNotice)):
-                        notice = warning.message
-                        notices.append(say(notice.key, **notice.slots))
-                        self._log.note(f"notice: {notice}")  # the log stays English
+                for notice in caught:
+                    notices.append(say(notice.key, **notice.slots))
+                    self._log.note(f"notice: {notice}")  # the log stays English
 
     def fail(self, failure: BaseException, *, publishing: bool, secret: str | None = None) -> str:
         """Note the failure's details in the log and return its fragment."""

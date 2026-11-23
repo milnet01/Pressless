@@ -22,7 +22,6 @@ import json
 import os
 import re
 import stat
-import warnings
 from dataclasses import dataclass, fields
 from datetime import datetime
 from pathlib import Path
@@ -30,6 +29,7 @@ from typing import NoReturn
 
 import pressless.os_reason as os_reason
 import pressless.safe_write as safe_write
+from pressless.notices import notify
 from pressless.safe_write import patiently, write_whole
 from pressless.words import ENGLISH
 
@@ -565,8 +565,8 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
     for path in folder.iterdir():
         if path.name != target.name and _folded(path.name) == _folded(target.name):
             # report -> _move -> publish or unpublish -> their caller.
-            warnings.warn(StoreNotice("notice.store.twin", twin=path.name,
-                                      target=target.name), stacklevel=4)
+            notify(StoreNotice("notice.store.twin", twin=path.name,
+                               target=target.name), stacklevel=4)
 
 
 def _move_without_overwriting(source: Path, target: Path) -> None:
@@ -1730,9 +1730,9 @@ def _only_usable(
         try:
             compose(name)
         except StoreError as exc:
-            warnings.warn(StoreNotice("notice.store.passed_over",
-                                      file=f"{subfolder.name}/{file_name}", reason=str(exc)),
-                          stacklevel=3)
+            notify(StoreNotice("notice.store.passed_over",
+                               file=f"{subfolder.name}/{file_name}", reason=str(exc)),
+                   stacklevel=3)
             continue
         usable.setdefault(name)
     return tuple(usable)
@@ -1813,8 +1813,8 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
         return
     granted = safe_write.wider_than_owner(handle)
     if granted:
-        warnings.warn(StoreNotice("notice.store.not_private", file=target.name,
-                                  mode=f"{granted:03o}"), stacklevel=2)
+        notify(StoreNotice("notice.store.not_private", file=target.name,
+                           mode=f"{granted:03o}"), stacklevel=2)
 
 
 def _write_atomically(

@@ -22,6 +22,7 @@ import socket
 import stat
 import subprocess
 import sys
+import threading
 import urllib.parse
 import warnings
 from pathlib import Path
@@ -500,11 +501,58 @@ def test_a_notice_is_shown_and_the_call_completes(tmp_path: Path) -> None:
     assert NOTICE_NEXT_WORDS in updated
 
 
+def test_captures_on_two_threads_overlap_and_keep_their_own(tmp_path: Path) -> None:
+    """INV-8, PRESS-0463: a capture held through a long job holds no other
+    request's, and each lists only the notices its own thread raised.
+    Breaks when captures share one lock, as `catch_warnings` needed, or one
+    list."""
+    shelves = []
+    for name in ("one", "two"):
+        shelf = tmp_path / name
+        (shelf / "published").mkdir(parents=True)
+        (shelf / "published" / ".txt").write_text("hand-dropped", encoding="utf-8")
+        shelves.append(shelf)
+    home = tmp_path / "data"
+    home.mkdir()
+    served = face.serve(home)
+    held, go, raised, other_done = (threading.Event() for _ in range(4))
+    seen: dict[str, list[str]] = {}
+
+    def long_job() -> None:
+        with served.capture() as notices:
+            held.set()
+            go.wait(5)
+            store.list_slugs(shelves[0], draft=False)   # while the other is open
+            raised.set()
+            other_done.wait(5)
+        seen["long"] = notices
+
+    job = threading.Thread(target=long_job)
+    try:
+        job.start()
+        assert held.wait(5)
+        with served.capture() as notices:
+            go.set()
+            raised.wait(5)
+            store.list_slugs(shelves[1], draft=False)
+        seen["other"] = notices
+        finished_first = not job.is_alive()
+        other_done.set()
+        job.join(10)
+    finally:
+        go.set()
+        other_done.set()
+        served.stop()
+
+    assert not finished_first           # the other capture did not wait for it
+    assert len(seen["long"]) == 1, seen
+    assert len(seen["other"]) == 1, seen
+
+
 def test_the_top_bar_reads_raise_no_notice(tmp_path: Path) -> None:
     """PRESS-0397: § 4.4 exempts the two reads every page makes outside
     `capture` -- `site_name` and `live_address` -- because they raise no
-    notice. Taking the capture lock there would hold every page behind a
-    publish. Breaks when either read raises a Store or Settings notice in
+    notice. Breaks when either read raises a Store or Settings notice in
     any state the site folder can be in: not set up, unreadable, set up, a
     file readable by others, an identity present or broken."""
     served = face.serve(tmp_path)

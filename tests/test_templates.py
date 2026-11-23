@@ -8,7 +8,6 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import re
-import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +16,7 @@ import pytest
 from test_editor import _Browser, _entry, _folder, _said
 
 from pressless import editor, face, marks, store, templates
+from pressless.notices import notify
 
 TEMPLATES = "templates"
 
@@ -168,8 +168,8 @@ def test_a_stale_template_bin_moves_nothing(tmp_path):
 
 
 def _noisy_refusal(*_args, **_kwargs):
-    warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt", mode="644"),
-                  stacklevel=2)
+    notify(store.StoreNotice("notice.store.not_private", file="notes.txt", mode="644"),
+           stacklevel=2)
     raise store.StoreError("made-up refusal")
 
 

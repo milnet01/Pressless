@@ -112,8 +112,8 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
             transport: publisher.Transport | None = None) -> TakenIn:
     """§ 4.3: refuse a Store holding a site, fetch `commit`, and write it.
 
-    `capture` wraps the Store reads and writes and never the fetch, which is
-    minutes long while a capture holds a process-wide lock, as undo's does.
+    `capture` wraps the Store reads and writes and never the fetch, which
+    raises no Store notice, as undo's does.
     """
     folder = Path(folder)
     gathered = notices if notices is not None else []

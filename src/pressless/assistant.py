@@ -357,11 +357,13 @@ class _Door:
             return self.status(arguments["request"])
         handler = getattr(self, "_" + tool)
         if assistant_tools.BY_NAME[tool].kind == assistant_tools.ASK:
-            # An ask's plan may build and ask GitHub, so it holds no capture:
-            # a capture's lock is the whole process's (face.capture).
+            # An ask captures its own plan (`_planned`) and its press.
             with editor.LOCK:
                 return handler(**arguments)
-        with editor.LOCK, self.face.capture() as notices:
+        # Insights' screen takes no editor.LOCK, and its read may wait on
+        # Google, so the writer's saves never wait for it (PRESS-0463).
+        lock = contextlib.nullcontext() if tool == "read_insights" else editor.LOCK
+        with lock, self.face.capture() as notices:
             result = handler(**arguments)
         if notices:
             result["notices"] = notices
@@ -597,10 +599,7 @@ class _Door:
         return self._ask("remove_file", arguments)
 
     def _planned(self, tool: str, arguments: dict) -> tuple[dict, list[str]]:
-        """`plan`, and the Store's notices it raised. Captured for every ask
-        but a publish, whose plan builds and so holds no capture (see `run`)."""
-        if tool == "publish":
-            return self.plan(tool, arguments), []
+        """`plan`, and the Store's notices it raised."""
         with self.face.capture() as notices:
             plan = self.plan(tool, arguments)
         return plan, notices
@@ -610,10 +609,8 @@ class _Door:
 
     # An ask lives in five places, each kept by hand: its Tool in
     # assistant_tools, its `_<name>` method above, a branch in `plan` and in
-    # `_press`, and an entry in _PRESSES where it publishes or undoes. A sixth
-    # where its plan builds, as publish's does: `_planned`, which must then
-    # hold no capture. A tool missing from `plan` or `_press` raises rather
-    # than doing nothing.
+    # `_press`, and an entry in _PRESSES where it publishes or undoes. A tool
+    # missing from `plan` or `_press` raises rather than doing nothing.
 
     def plan(self, tool: str, arguments: dict) -> dict:
         """§ 4.6's plan: what the box lists. Checks the ask can run now, so a

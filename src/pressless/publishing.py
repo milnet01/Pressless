@@ -16,7 +16,6 @@ import re
 import shutil
 import tempfile
 import urllib.parse
-import warnings
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -49,6 +48,7 @@ from pressless.face import (
     nothing_captured,
     render_notices,
 )
+from pressless.notices import notify
 from pressless.words import say, say_count
 
 MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's address
@@ -257,14 +257,14 @@ def publish(folder: Path, saved: settings.Settings, key: str, *, entry: str | No
         try:
             starter.mark_published(folder)
         except OSError:
-            warnings.warn(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
+            notify(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
 
     def forget_the_import() -> None:
         # PRESS-0422: and so is a site an import brought in.
         try:
             (Path(folder) / IMPORTED).unlink(missing_ok=True)
         except OSError:
-            warnings.warn(store.StoreNotice("notice.publishing.import_kept"), stacklevel=2)
+            notify(store.StoreNotice("notice.publishing.import_kept"), stacklevel=2)
 
     captured(forget_the_starter)
     captured(forget_the_import)
@@ -847,7 +847,7 @@ def _forget_the_takeover(folder: Path) -> None:
     try:
         takeover.unmark(folder)
     except OSError:
-        warnings.warn(store.StoreNotice("notice.publishing.takeover_kept"), stacklevel=2)
+        notify(store.StoreNotice("notice.publishing.takeover_kept"), stacklevel=2)
 
 
 def _already_key(shown: publisher.Pages) -> str:
