@@ -32,6 +32,7 @@ from pressless import (
     files,
     github_setup,
     languages,
+    marks,
     menu,
     pressing,
     publisher,
@@ -235,7 +236,7 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
 def put_code(html_text: str, text: str) -> str:
     """The posted text as the file to write, each untouched line keeping its own
     line ending (§ 4.3)."""
-    posted = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    posted = marks.unix_line_ends(text).split("\n")
     last_ends = posted[-1] == ""
     if last_ends:
         posted.pop()

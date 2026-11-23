@@ -1156,3 +1156,9 @@ def test_a_body_joins_back_from_its_sources():
     assert tuple(parse(text)[0] for text in texts) == parse(body)
     assert all(len(parse(text)) == 1 for text in texts)
     assert sources("") == (("",), ())
+
+
+def test_every_kind_of_line_end_is_kept_as_lf():
+    """The one line-end rule every posted text goes through. Breaks when a
+    Windows (CRLF) end becomes two, or an old Mac (CR) end survives."""
+    assert marks_module.unix_line_ends("a\r\nb\rc\nd\r\n\r") == "a\nb\nc\nd\n\n"

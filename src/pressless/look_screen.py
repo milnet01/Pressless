@@ -16,7 +16,7 @@ import html
 import json
 from pathlib import Path
 
-from pressless import builder, editor, look, page_editor, settings, setup, store
+from pressless import builder, editor, look, marks, page_editor, settings, setup, store
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
 from pressless.words import decimal, say
 
@@ -114,7 +114,7 @@ def _route(folder: Path, form: dict[str, str]) -> str:
 
 def _extra(form: dict[str, str]) -> str:
     # A browser posts a textarea's line ends as CR LF.
-    return form.get("extra", "").replace("\r\n", "\n").replace("\r", "\n")
+    return marks.unix_line_ends(form.get("extra", ""))
 
 
 def _posted(form: dict[str, str]) -> tuple[look.Choices, str]:
