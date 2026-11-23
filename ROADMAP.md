@@ -9693,10 +9693,17 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0475] **The Windows gate clears run folders an interrupted run left on the box.**
+- ✅ [PRESS-0475] **The Windows gate clears run folders an interrupted run left on the box.**
   Review type: Codebase. Queued by PRESS-0457 from review-code lane-18
   (windows-gate.sh). The clean-up is PowerShell that runs only on the box,
   and a mistake there fails every gated push, so it is tried on the box.
+  Shipped 2026-11-23, 400480d (merged 3a84675). Each Windows gate run first
+  sweeps run folders and files at least a day old, in its own try/catch,
+  so a failed sweep never fails the gate. Tried on the box against a
+  planted sandbox: old leftovers went, fresh and near-miss names stayed,
+  an open file was left and the run carried on. Two real leftovers on the
+  box go at the next gated push.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0475.json.
   **Layman:** The Windows check before a push tidies up after a run that was cut short.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9742,7 +9749,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
+- ✅ [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
   Review type: Codebase. Surfaced by PRESS-0442's sweep, in subjects
   already shipped: editor.py's SAVING_SCRIPT clears #failure on every
   successful save, so a refused Remove or Rename's failure box closes as
@@ -9757,6 +9764,13 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   run as documented here: system python3 has Playwright but no pytest, so
   its import of test_publisher fails, and .venv has no Playwright. Make the
   documented way run, and say it in docs/working-here.md.
+  Shipped 2026-11-23, 6726c05..65a21d8 (merged 3a84675). All five fixed: a
+  clean save leaves a press's failure on screen; the log says why a
+  published entry's copy stayed; the Settings failure says read or save;
+  the Transport docstring names its real callers; the by-hand browser
+  checks run as documented from a gitignored .venv-browsers (190 passed
+  headless). Full suite 2865 passed; ruff clean. Sweep found PRESS-0488.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0480.json.
   **Layman:** Two messages that vanished too soon now stay until they are read.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9831,7 +9845,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0486] **Signing checks each release file came from the release run.**
+- ✅ [PRESS-0486] **Signing checks each release file came from the release run.**
   Review type: Codebase. Queued by PRESS-0458 from review-code lane-19
   (scripts/sign-release.py; release-integrity class). Chosen 2026-11-23,
   on the fix helper's recommendation: release.yml records each file's
@@ -9839,6 +9853,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   bytes to the run. Changes PRESS-0023 § 4.8 step 2 and release.yml; tried
   for real at the next release. Also: by-hand-browser-checks.py keeps its
   work folders in /tmp on Linux, against the project's scratch rule.
+  Shipped 2026-11-23, 29d0223 and 09a3d05 (merged 90bfaaa). release.yml
+  records each file's SHA-256 as the run's fingerprints artifact, kept with
+  the run rather than on the draft, so swapping a draft's files cannot
+  rewrite it. sign-release.py fetches that run's record and refuses, in
+  words, a mismatch, an unrecorded file, or a missing or unreadable
+  record. PRESS-0023 § 4.8 (step 3) and INV-19, PRESS-0022 and
+  working-here.md § Releasing amended. The artifact round trip is proven
+  only at the next real release. The by-hand checks keep Linux work off
+  /tmp. Full suite 2865 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0486.json.
   **Layman:** A release is signed only when every file in it is the one the release build made.
   Kind: security.
   Source: review-2026-11-23.
