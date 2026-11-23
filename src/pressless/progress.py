@@ -1,7 +1,8 @@
 """How far a long job has got, for the note every page shows (PRESS-0435).
 
 The Face holds a record for each POST while it runs (`job`); the loops that
-download, send and pack report into the record their thread holds (`count`);
+download, send and pack report into the record their thread holds (`count`),
+or a job's helper threads into the job's (`counter`);
 GET /progress reads the one updated last (`now`). The contract is
 docs/specs/PRESS-0435-long-job-progress.md.
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 import contextlib
 import itertools
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 
 
@@ -56,7 +57,22 @@ def count(key: str, done: int = 0, total: int | None = None,
           bytes_done: int = 0, bytes_total: int | None = None) -> None:
     """The calling thread's record now says `key` with these numbers. Nothing
     happens on a thread holding no record."""
+    _count(threading.get_ident(), key, done, total, bytes_done, bytes_total)
+
+
+def counter() -> Callable[..., None]:
+    """`count` into the calling thread's record, callable from any thread, so
+    a job's helper threads report into the job's record (PRESS-0461)."""
     me = threading.get_ident()
+
+    def counted(key: str, done: int = 0, total: int | None = None,
+                bytes_done: int = 0, bytes_total: int | None = None) -> None:
+        _count(me, key, done, total, bytes_done, bytes_total)
+    return counted
+
+
+def _count(me: int, key: str, done: int, total: int | None,
+           bytes_done: int, bytes_total: int | None) -> None:
     with _LOCK:
         if me in _held:
             _held[me] = (next(_ticks), Counted(key, done, total, bytes_done, bytes_total))

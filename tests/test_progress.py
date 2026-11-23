@@ -109,12 +109,25 @@ def test_fetch_and_publish_count_every_blob(tmp_path):
         {"path": "about.html", "type": "blob", "sha": "b", "size": 300},
         {"path": "pictures", "type": "tree", "sha": "c"},
         {"path": "outside.txt", "type": "blob", "sha": "d", "size": 999}]}).encode()
+    # A fetch reads its blobs four at a time (PRESS-0461), so what the record
+    # says when a read starts depends on which reader got there first. Every
+    # report the record takes is watched instead, from whichever thread.
+    reports: list[progress.Counted] = []
+    counted = progress.Counted
+
+    def watched(*args, **kwargs):
+        reports.append(counted(*args, **kwargs))
+        return reports[-1]
+
     fetching = _Watching(reads=_reads(listing, blob=b"words"))
-    with progress.job():
+    with pytest.MonkeyPatch.context() as patch, progress.job():
+        patch.setattr(progress, "Counted", watched)
         publisher.fetch_state(_settings(), "a key", tmp_path / "fetched",
                               ("index.html", "about.html"), "base-commit-sha", fetching)
         fetched = progress.now()
-    assert [(c.done, c.total, c.bytes_total) for c in fetching.seen] == [(0, 2, 400), (1, 2, 400)]
+    assert [(c.done, c.total, c.bytes_total) for c in reports] == [
+        (0, 2, 400), (1, 2, 400), (2, 2, 400)]
+    assert fetching.seen[0] == reports[0], "0 of 2 before the first blob"
     assert fetched.key == "progress.downloading"
     assert (fetched.done, fetched.total,
             fetched.bytes_done, fetched.bytes_total) == (2, 2, 400, 400)

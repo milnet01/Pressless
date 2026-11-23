@@ -67,6 +67,10 @@ def count(key: str, done: int, total: int | None = None,
     """The calling thread's record now says `key` with these numbers.
     Does nothing on a thread holding no record."""
 
+def counter() -> Callable[..., None]:
+    """`count` into the calling thread's record, from any thread: a job's
+    helper threads report into its record (PRESS-0461)."""
+
 def waiting(seconds_left: int | None, key: str) -> None:
     """The calling thread's record keeps its words and numbers and says how
     long is left of a wait; None ends it. A record with no report says `key`."""
@@ -81,7 +85,9 @@ class Counted:
 ```
 
 Records are kept per thread under one lock, held only to read or change
-them. `Face._dispatch` wraps each POST in `progress.job()`.
+them. `Face._dispatch` wraps each POST in `progress.job()`. `publisher._fetch`
+reads blobs on four threads (PRESS-0009 § 4.5), which count each read as it
+lands through `counter()`.
 
 ### 4.2 Where counts come from
 
