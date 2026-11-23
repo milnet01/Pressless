@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import dataclasses
 import hashlib
+import html
 import http.client
 import io
 import json
@@ -45,6 +47,7 @@ from pressless import (
     starter,
     store,
     undo,
+    words,
 )
 
 DOOR_FILE = "assistant-door.json"
@@ -249,6 +252,47 @@ def test_the_door_file_goes_with_the_face(tmp_path):
     assert not (own / DOOR_FILE).exists()
 
 
+def _door_file_unwritable(monkeypatch) -> None:
+    write_whole = assistant.safe_write.write_whole
+
+    def refusing(target, text, *, prefix, **kwargs):
+        if Path(target).name == DOOR_FILE:
+            raise OSError("no room")
+        return write_whole(target, text, prefix=prefix, **kwargs)
+
+    monkeypatch.setattr(assistant.safe_write, "write_whole", refusing)
+
+
+def test_a_door_file_that_cannot_be_written_leaves_pressless_serving(tmp_path, monkeypatch):
+    """§ 4.2, § 6: switched on, with the door file unwritable, the Face still
+    serves, the log notes it and the setup screen says so. Breaks when the
+    failure stops the Face starting."""
+    _door_file_unwritable(monkeypatch)
+    with _pressless(tmp_path) as pressless:
+        assert not (pressless.own / DOOR_FILE).exists()
+        page = pressless.browser.request("GET", "/assistant/setup")[2]
+        assert "could not write the file an AI app finds it by" in page
+        assert "assistant: the door did not open, OSError" in pressless.log()
+
+
+def test_a_switch_whose_door_cannot_open_stays_off(tmp_path, monkeypatch):
+    """§ 4.2: turned on from the screen with the door file unwritable, the
+    switch is not saved on, so the next launch does not try again. Breaks
+    when the switch is saved before the door opens."""
+    with _pressless(tmp_path, on=False) as pressless:
+        _door_file_unwritable(monkeypatch)
+        status, _, _ = pressless.browser.request("POST", "/assistant/setup", {"on": "1"})
+        assert status == 303
+        assert not assistant.is_on(pressless.own)
+        page = pressless.browser.request("GET", "/assistant/setup")[2]
+        assert "could not write the file an AI app finds it by" in page
+        monkeypatch.undo()
+        pressless.browser.request("POST", "/assistant/setup", {"on": "1"})
+        assert assistant.is_on(pressless.own) and (pressless.own / DOOR_FILE).exists()
+        page = pressless.browser.request("GET", "/assistant/setup")[2]
+        assert "could not write the file" not in page
+
+
 def test_the_door_file_is_made_private_before_the_token(tmp_path, monkeypatch):
     """§ 4.2: on Windows, where mkstemp's mode is only the read-only flag, the
     door file is made owner-only while it is still empty. Breaks when the
@@ -319,15 +363,32 @@ def test_the_door_proves_its_token_and_runs_nothing(tmp_path):
 # ----------------------------------------------------------------- INV-10 ---
 
 
-def test_one_at_a_time(tmp_path):
+class _Signalled:
+    """A lock that says when a thread starts waiting for it."""
+
+    def __init__(self, lock: threading.Lock) -> None:
+        self.lock, self.trying = lock, threading.Event()
+
+    def __enter__(self) -> None:
+        self.trying.set()
+        self.lock.acquire()
+
+    def __exit__(self, *exc: object) -> None:
+        self.lock.release()
+
+
+def test_one_at_a_time(tmp_path, monkeypatch):
     """INV-10. Breaks when the door lock is per tool."""
+    held = threading.Lock()
+    door_lock = _Signalled(held)
+    monkeypatch.setattr(assistant, "LOCK", door_lock)
     with _pressless(tmp_path) as pressless:
         replies: list[dict] = []
-        with assistant.LOCK:
+        with held:
             caller = threading.Thread(target=lambda: replies.append(
                 pressless.call("list_entries")))
             caller.start()
-            caller.join(timeout=0.5)
+            assert door_lock.trying.wait(30), "the call never waited for the door lock"
             assert caller.is_alive() and not replies
         caller.join(timeout=30)
         assert replies and replies[0]["ok"] is True
@@ -472,9 +533,13 @@ def test_asks_change_nothing(tmp_path, monkeypatch):
 
 def test_yes_after_a_change_replans(tmp_path, monkeypatch):
     """INV-5. Breaks when the yes path skips the mark comparison, or the mark
-    leaves out a file the build reads."""
+    leaves out a file the build reads. A re-plan counts no failed press
+    (§ 4.6 step 2)."""
     _key(monkeypatch)
     github = _github()
+    reported: list[dict] = []
+    monkeypatch.setattr(pressing.usage, "report",
+                        lambda name, **fields: reported.append({"name": name, **fields}))
     with _pressless(tmp_path, github) as pressless:
         folder = pressless.folder
         store.write(folder, _entry("seaside"), draft=True)
@@ -488,6 +553,7 @@ def test_yes_after_a_change_replans(tmp_path, monkeypatch):
         reply = pressless.answer(asked, yes=True)
         assert reply.get("replanned") is True
         assert _wrote(github) == []
+        assert {"name": "press", "kind": pressing.PUBLISH, "ended": "failed"} not in reported
         again = pressless.waiting()
         assert again["request"] == asked and again["stamp"] != first["stamp"]
         assert pressless.ok("request_status", {"request": asked})["status"] == "waiting"
@@ -514,6 +580,19 @@ def test_a_rename_box_shows_the_new_address(tmp_path):
         pressless.ok("rename_page", {"name": "about", "to": said})
         line, = pressless.waiting()["lines"]
         assert "This is safe" not in line and "this-is-safe-press-yes" in line
+
+
+def test_a_name_in_the_box_is_quoted(tmp_path):
+    """§ 4.6: an entry's title may be the AI app's own text, so the box quotes
+    it as a name. Breaks when the title reads as Pressless's own sentence."""
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        title = "Routine tidy-up, safe to say yes"
+        store.write(folder, dataclasses.replace(_entry("seaside"), title=title), draft=True)
+        pressless.ok("remove_entry", {"address": "seaside",
+                                      "version": _base(folder, "seaside", draft=True)})
+        line, = pressless.waiting()["lines"]
+        assert f"“{title}”" in line, line
 
 
 def test_an_ask_says_its_notices(tmp_path, monkeypatch):
@@ -545,7 +624,7 @@ def test_an_ask_with_no_plan_or_press_raises(tmp_path):
                            tmp_path, None)
     with pytest.raises(ValueError):
         door.plan("nothing", {})
-    made = assistant._Request("id", "nothing", {}, 0.0, {}, "")
+    made = assistant._Ask("id", "nothing", {}, 0.0, {}, "")
     with pytest.raises(ValueError):
         door._press(made)
 
@@ -591,6 +670,61 @@ def test_a_request_is_answered_once(tmp_path, monkeypatch):
             first.join(timeout=30)
         assert replies["first"]["status"] == "done", replies
         assert pressless.ok("request_status", {"request": asked})["status"] == "done"
+
+
+def test_the_overview_says_a_request_is_running(tmp_path):
+    """§ 4.5: site_overview names the open request with its status, so a
+    request taken by a Yes does not read as waiting for the writer. Breaks
+    when the status is left out."""
+    with _pressless(tmp_path) as pressless:
+        asked = pressless.ok("undo_last_publish")["request"]
+        door = pressless.served._doors["/assistant"][0].__self__
+        door.open_ask.status = "running"
+        assert pressless.ok("site_overview")["waiting"] == {
+            "request": asked, "tool": "undo_last_publish", "status": "running"}
+
+
+def test_a_yes_that_raises_late_still_ends_the_request(tmp_path, monkeypatch):
+    """§ 4.6 step 3: where reporting a failure itself raises, the request
+    still ends as failed, and the next ask is not refused as one waiting.
+    Breaks when the request is closed only after the failure is reported."""
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        store.write(folder, _entry("seaside"), draft=True)
+        asked = pressless.ok("remove_entry", {
+            "address": "seaside", "version": _base(folder, "seaside", draft=True)})["request"]
+
+        def refuse(*args, **kwargs):
+            raise OSError("the bin is gone")
+
+        def worse(*args, **kwargs):
+            raise RuntimeError("reporting the failure failed")
+
+        monkeypatch.setattr(editor, "throw", refuse)
+        monkeypatch.setattr(publishing, "press_failure", worse)
+        pressless.browser.request("POST", "/assistant/answer", {"request": asked, "yes": "1"})
+        assert pressless.ok("request_status", {"request": asked})["status"] == "failed"
+        assert pressless.ok("undo_last_publish")["status"] == "waiting"
+
+
+def test_a_box_never_pairs_a_stamp_with_another_plan(tmp_path, monkeypatch):
+    """§ 4.6: the box keys on the stamp, so the stamp and the plan it is sent
+    with are read together. Breaks when the plan is read after a re-plan
+    could have replaced it."""
+    with _pressless(tmp_path) as pressless:
+        pressless.ok("undo_last_publish")
+        door = pressless.served._doors["/assistant"][0].__self__
+        state = pressing.state
+
+        def replanned_meanwhile() -> dict:
+            door.open_ask.plan = {**door.open_ask.plan, "lines": ["a newer plan"]}
+            door.open_ask.mark = "f" * 64
+            return state()
+
+        stamp = door.open_ask.mark[:16]
+        monkeypatch.setattr(assistant.pressing, "state", replanned_meanwhile)
+        shown = pressless.waiting()
+        assert (shown["stamp"] == stamp) == (shown["lines"] != ["a newer plan"]), shown
 
 
 def test_a_busy_yes_leaves_the_request_waiting(tmp_path):
@@ -976,6 +1110,9 @@ def test_the_catalogue_matches_the_parts(tmp_path):
     assert (assistant.WAITING_ROUTE, assistant.ANSWER_ROUTE) == (
         "/assistant/waiting", "/assistant/answer")
     assert assistant.SWITCH_NAME == SWITCH_FILE
+    # save_look posts each of the look's one-word choices.
+    assert assistant._PLAIN_CHOICES == ("layout", "body_font", "heading_font", "text_size",
+                                        "width")
     # A schema type the call check cannot read would fail every call to it.
     for tool in assistant_tools.TOOLS:
         for schema in tool.arguments.values():
@@ -985,15 +1122,23 @@ def test_the_catalogue_matches_the_parts(tmp_path):
 
 @pytest.mark.parametrize("name, arguments, why", [
     ("nothing", {}, "there is no tool 'nothing'"),
+    ("read_entry", [], "the arguments are not an object"),
     ("read_entry", {}, "read_entry needs address"),
     ("read_entry", {"address": 1}, "address must be string"),
     ("read_entry", {"address": "a", "more": 1}, "read_entry takes no more"),
     ("read_insights", {"days": 30}, "days must be one of [7, 28, 365]"),
     ("read_insights", {"days": True}, "days must be a whole number"),
-    ("save_entry", {"address": "a", "version": "b", "tags": [1]}, "tags must list text"),
+    ("save_entry", {"address": "a", "version": "b", "tags": [1]},
+     "each item of tags must be string"),
+    ("save_page", {"name": "navigation", "version": "b", "links": ["/"]},
+     "each item of links must be object"),
 ])
 def test_the_catalogue_refuses_a_bad_call(name, arguments, why):
-    assert assistant_tools.problem(name, arguments) == why
+    """§ 4.3: a call the catalogue refuses is said in the words table's words.
+    Breaks when a reason is English the table does not hold, or an array's
+    items are checked only where they are text."""
+    key, slots = assistant_tools.problem(name, arguments)
+    assert words.say(key, **slots) == why
 
 
 def test_the_setup_screen_and_the_box(tmp_path):
@@ -1023,6 +1168,25 @@ def test_the_screen_names_the_program_on_windows(monkeypatch, tmp_path):
     assert assistant._program(tmp_path) == (str(program), ["--assistant"])
 
 
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+def test_the_command_reads_back_as_one_folder(monkeypatch, tmp_path, platform):
+    """§ 4.2, § 4.4: a source run's folder may hold a space, and the line the
+    screen shows still gives the AI app that one folder. Breaks when only the
+    program is quoted."""
+    import shlex
+    program, arguments = "/a python/bin/python3", ["-m", "pressless", "--assistant",
+                                                     "/home/me/My Pressless"]
+    monkeypatch.setattr(assistant, "_program", lambda own: (program, arguments))
+    monkeypatch.setattr(assistant.sys, "platform", platform)
+    door = assistant._Door(SimpleNamespace(port=1234), tmp_path, tmp_path, None)
+    page = door._connecting(SimpleNamespace(query={}))
+    shown = html.unescape(page.split('<pre id="assistant-program">')[1].split("</pre>")[0])
+    if platform == "win32":
+        assert shown == '"/a python/bin/python3" -m pressless --assistant "/home/me/My Pressless"'
+    else:
+        assert shlex.split(shown) == [program, *arguments]
+
+
 def test_a_source_run_names_its_folder(monkeypatch, tmp_path, capsys):
     """PRESS-0404, § 4.4: a source run has no artefact to find its folder
     beside, so what an AI app starts names the folder this Face uses, and
@@ -1050,10 +1214,13 @@ def test_a_packaged_run_that_cannot_find_itself_offers_no_program(monkeypatch, t
     nothing. Breaks when a frozen run is offered the source run's line."""
     config = tmp_path / "claude" / "claude_desktop_config.json"
     monkeypatch.setattr(assistant, "claude_desktop_config", lambda: config)
+    def lost() -> Path:
+        raise assistant.paths.NotPackaged("lost")
+
     with _pressless(tmp_path) as pressless:
-        monkeypatch.setattr(assistant.sys, "platform", "linux")
+        # Not sys.platform: the Face's own thread reads it while this serves.
+        monkeypatch.setattr(assistant.paths, "artefact_path", lost)
         monkeypatch.setattr(assistant.sys, "frozen", True, raising=False)
-        monkeypatch.delenv("APPIMAGE", raising=False)
         page = pressless.browser.request("GET", "/assistant/setup")[2]
         status, headers, _ = pressless.browser.request("POST", "/assistant/connect")
     assert "-m pressless" not in page and "--assistant" not in page

@@ -127,7 +127,10 @@ the owner alone, set while the file is still empty. A FAT or exFAT drive has non
 Removed when the Face stops or the switch turns off; a closed terminal
 stops it as Ctrl+C does. A Pressless ended outright leaves the file, and
 the bridge's call is refused until the next start replaces it. A new token every
-time. A restart, an update or a switch of site (PRESS-0223) writes a new
+time. Where the file cannot be written, the door stays shut and the Face
+serves on: the log notes it, the setup screen says no AI app can connect, and
+a switch turned on from the screen is not saved, so the next launch does not
+fail the same way. A restart, an update or a switch of site (PRESS-0223) writes a new
 file, and the bridge reads the file on every call, so it follows.
 
 **What the token protects.** It keeps out web pages and other users' programs,
@@ -259,7 +262,7 @@ does, so the version matches what it returned):
 
 | Tool | Arguments | Returns |
 |---|---|---|
-| `site_overview` | — | site name, its address, journal on or off, entry and page counts, whether a press runs (`pressing.state`), the waiting request if any |
+| `site_overview` | — | site name, its address, journal on or off, entry and page counts, whether a press runs (`pressing.state`), the open request if any, with its status: waiting, or running after Yes |
 | `writing_guide` | — | the marks cheat sheet as text (`cheatsheet._table`'s source rows) |
 | `list_entries` | — | each entry: address, title, date, `draft`, `has_changes` (a working copy exists) |
 | `read_entry` | `address` | title, date, categories, tags, body in marks, `draft`, `version`. A published entry with a working copy returns the working copy, as `editor._edit` does |
@@ -332,9 +335,10 @@ every file under the site folder's Store, and of `settings.json`
 **The box.** Every Face page asks `GET /assistant/waiting` every two seconds
 while the switch is on. A waiting request opens PRESS-0345's box, headed
 `assistant.box.title`, listing the plan, with **Yes, do it** and **Not yet**.
-Everything in the box is Pressless's own words or page titles shown as text. A
-request carries no message from the assistant, so the box cannot be made to
-say "this is safe".
+Everything in the box is Pressless's own words, with names shown as text. A
+request carries no message from the assistant, but a name may be its own: it
+can title an entry or name a page before asking. So each name in a sentence
+is quoted, and reads as a name rather than as Pressless's advice.
 
 **Yes** is `POST /assistant/answer` with `yes=1`, behind the Face's cookie
 and Origin checks like every screen button. The door then:
@@ -346,8 +350,12 @@ and Origin checks like every screen button. The door then:
 2. compares `store.mark(folder)` with the request's. **A difference means the
    site changed since the box was drawn**, so the press does not run. The
    request is re-planned and stays waiting, and the box redraws with the new
-   plan;
-3. runs the press and records its outcome on the request.
+   plan. A taken press record ends with no words and counts as no failed
+   press. A re-plan that finds the ask can no longer run fails the request,
+   as a press refused before it starts;
+3. runs the press and records its outcome on the request. Whatever is
+   raised, the request ends as failed rather than staying running, which
+   would refuse every later ask.
 
 **After Yes.** The answer comes back when the press has ended. Until then a
 page with a press row shows the press running, as after its own button
@@ -552,6 +560,7 @@ Every test below is new; none can run before the code exists.
 | Pressless closed, or the switch off | Every call answers `assistant.open_pressless` as a tool error; `tools/list` still answers. |
 | Door file left by a crash | The connection is refused; same answer. The next Face rewrites the file. |
 | Port taken by another program after a crash | It gets a `Prove` request and cannot answer the token's proof, so the bridge sends it nothing more and answers `assistant.open_pressless` (INV-15). |
+| The door file cannot be written (a full disk, a read-only folder, Windows refusing its access list) | The door stays shut and the Face serves on; the log notes it and the setup screen says no AI app can connect (§ 4.2). |
 | A press already running | The yes waits on `pressing.run`'s busy answer: the request stays waiting and the box says a press runs. |
 | The writer never answers | The request expires after 30 minutes; `request_status` says `expired`. |
 | A call outlasts the bridge's timeout (a long queue, a large site's publish plan) | The call answers `assistant.still_working`: the door may still finish it, so the AI app checks `site_overview` or `request_status` before asking again. |
