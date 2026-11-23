@@ -1442,8 +1442,8 @@
    "{count} personas"
   ],
   "dashboard.people.one": [
-   "de545d07",
-   "1 persona"
+   "7af98524",
+   "{count} persona"
   ],
   "dashboard.region": [
    "7db4aedb",
@@ -3162,64 +3162,64 @@
    "{count} comentarios"
   ],
   "import.count.comments.one": [
-   "3fd2c20e",
-   "1 comentario"
+   "e9791dd3",
+   "{count} comentario"
   ],
   "import.count.drafts.many": [
    "edbc8a6d",
    "{count} borradores"
   ],
   "import.count.drafts.one": [
-   "19cc4a50",
-   "1 borrador"
+   "c18593b2",
+   "{count} borrador"
   ],
   "import.count.files.many": [
    "63352fdc",
    "{count} archivos"
   ],
   "import.count.files.one": [
-   "41d899a9",
-   "1 archivo"
+   "0358ab76",
+   "{count} archivo"
   ],
   "import.count.held.many": [
    "085f5ad3",
    "{count} fotografías y archivos"
   ],
   "import.count.held.one": [
-   "a01507e6",
-   "1 fotografía o archivo"
+   "af2d7ecf",
+   "{count} fotografía o archivo"
   ],
   "import.count.pages.many": [
    "d46e57d6",
    "{count} páginas"
   ],
   "import.count.pages.one": [
-   "0d8a4426",
-   "1 página"
+   "49bd2f7a",
+   "{count} página"
   ],
   "import.count.photographs.many": [
    "f2b1e954",
    "{count} fotografías"
   ],
   "import.count.photographs.one": [
-   "e78e4450",
-   "1 fotografía"
+   "ddd8b519",
+   "{count} fotografía"
   ],
   "import.count.posts.many": [
    "c778d9da",
    "{count} entradas"
   ],
   "import.count.posts.one": [
-   "709f0967",
-   "1 entrada"
+   "dccc847f",
+   "{count} entrada"
   ],
   "import.count.published.many": [
    "9afb20e3",
    "{count} entradas publicadas"
   ],
   "import.count.published.one": [
-   "f6a9d019",
-   "1 entrada publicada"
+   "4f879548",
+   "{count} entrada publicada"
   ],
   "import.export.1": [
    "90374d51",
@@ -3462,8 +3462,8 @@
    "{count} se tomaron del archivo ZIP."
   ],
   "import.gaps.filled.one": [
-   "36a5608f",
-   "1 se tomó del archivo ZIP."
+   "34ef5956",
+   "{count} se tomó del archivo ZIP."
   ],
   "import.gaps.how": [
    "dc8a1199",
@@ -3474,8 +3474,8 @@
    "Estos {count} no se pudieron copiar de tu sitio antiguo:"
   ],
   "import.gaps.list.one": [
-   "e3589494",
-   "Este no se pudo copiar de tu sitio antiguo:"
+   "0c1288f4",
+   "{count} no se pudo copiar de tu sitio antiguo:"
   ],
   "import.gaps.none": [
    "c0d48da8",
@@ -3562,8 +3562,8 @@
    "{count} elementos del tipo {kind} no se trajeron."
   ],
   "import.report.other_type.one": [
-   "2ca18199",
-   "1 elemento del tipo {kind} no se trajo."
+   "0f26d13c",
+   "{count} elemento del tipo {kind} no se trajo."
   ],
   "import.report.pages": [
    "d36f7d8d",
@@ -4186,16 +4186,16 @@
    "{count} borradores"
   ],
   "overview.drafts.one": [
-   "19cc4a50",
-   "1 borrador"
+   "c18593b2",
+   "{count} borrador"
   ],
   "overview.files.many": [
    "3a8e322e",
    "{count} archivos."
   ],
   "overview.files.one": [
-   "a16fdca5",
-   "1 archivo."
+   "b8f4c600",
+   "{count} archivo."
   ],
   "overview.journal.figures": [
    "231f47fc",
@@ -4238,12 +4238,12 @@
    "Publicar"
   ],
   "overview.publish.nothing.many": [
-   "ba49d50e",
-   "Nada de tu sitio cambiaría. Todavía no están en tu sitio: {kinds}. Cada uno sale desde su propio Enviar al sitio, no desde Publicar."
+   "de5c4903",
+   "Nada de tu sitio cambiaría. {count} cambios todavía no están en él: {kinds}. Cada uno sale desde su propio Enviar al sitio, no desde Publicar."
   ],
   "overview.publish.nothing.one": [
-   "cfa12edb",
-   "Nada de tu sitio cambiaría. Todavía no está en tu sitio: {kinds}. Sale desde su propio Enviar al sitio, no desde Publicar."
+   "4d4075d7",
+   "Nada de tu sitio cambiaría. {count} cambio todavía no está en él: {kinds}. Sale desde su propio Enviar al sitio, no desde Publicar."
   ],
   "overview.visitors.none_yet": [
    "8f22773e",
@@ -4262,32 +4262,32 @@
    "{count} entradas del diario"
   ],
   "overview.waiting.entries.one": [
-   "0d3f726c",
-   "1 entrada del diario"
+   "fdb3e667",
+   "{count} entrada del diario"
   ],
   "overview.waiting.many": [
    "20f7e292",
    "{count} cambios todavía no están en tu sitio: {kinds}. Cada uno sale desde su propio Enviar al sitio."
   ],
   "overview.waiting.one": [
-   "29b2a9df",
-   "1 cambio todavía no está en tu sitio: {kinds}. Sale desde su propio Enviar al sitio."
+   "0c5488d8",
+   "{count} cambio todavía no está en tu sitio: {kinds}. Sale desde su propio Enviar al sitio."
   ],
   "overview.waiting.pages.many": [
    "d46e57d6",
    "{count} páginas"
   ],
   "overview.waiting.pages.one": [
-   "0d8a4426",
-   "1 página"
+   "49bd2f7a",
+   "{count} página"
   ],
   "overview.waiting.parts.many": [
    "1e920871",
    "{count} partes de todas las páginas"
   ],
   "overview.waiting.parts.one": [
-   "71efbc01",
-   "1 parte de todas las páginas"
+   "0af6f024",
+   "{count} parte de todas las páginas"
   ],
   "page_editor.drag": [
    "442e96ec",
@@ -4630,8 +4630,8 @@
    "{count} se quitaron"
   ],
   "publishing.takeover.done.removed.one": [
-   "98fb4de8",
-   "1 se quitó"
+   "83be9a5a",
+   "{count} se quitó"
   ],
   "publishing.takeover.done.stale": [
    "610ee8cf",
@@ -4642,8 +4642,8 @@
    "{count} archivos se subieron o cambiaron"
   ],
   "publishing.takeover.done.uploaded.one": [
-   "7703628b",
-   "1 archivo se subió o cambió"
+   "b3b2f3e4",
+   "{count} archivo se subió o cambió"
   ],
   "publishing.takeover.done.wait": [
    "d27310c9",
@@ -6606,12 +6606,12 @@
    "tu propia versión de {count} se guardó como borrador"
   ],
   "undo.one_entry": [
-   "17a2552e",
-   "1 entrada"
+   "c2448afb",
+   "{count} entrada"
   ],
   "undo.one_page": [
-   "0d8a4426",
-   "1 página"
+   "49bd2f7a",
+   "{count} página"
   ],
   "undo.pages": [
    "d46e57d6",

@@ -130,7 +130,8 @@ def number(value: int, code: str | None = None) -> str: ...
 - **`say_count` takes `code` as `number` does**, and that language's
   `one`. Its `count` gap is `number(...)` in that language unless the
   caller passes its own. Every `:,` thousands format under `src/pressless` becomes
-  `number(...)`.
+  `number(...)`. A one form writes `{count}`, never "1", because French's
+  one covers 0.
 - **The Builder's counts keep today's unmarked digits** in every language,
   passing their own `count`.
 - **`words.use` stays the tests' seam.** `choose` is what startup and the
@@ -282,8 +283,10 @@ The gate is green after every commit.
   writes them.
   *Test:* `tests/test_words.py::test_say_count_follows_the_language` —
   French takes *one* for 0 and 1, English for 1 only; `number(1234,
-  "de")` is `1.234`.
-  *Breaks when:* `say_count` keeps `number == 1`.
+  "de")` is `1.234`; and
+  `tests/test_words.py::test_every_counted_one_form_carries_its_count` —
+  every one form the source counts with holds `{count}`.
+  *Breaks when:* `say_count` keeps `number == 1`, or a one form writes "1".
 
 - **INV-9** — Every language in `words.LANGUAGES` but English has a file
   that loads, with a name.

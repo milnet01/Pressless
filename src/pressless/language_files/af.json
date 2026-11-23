@@ -1442,8 +1442,8 @@
    "{count} mense"
   ],
   "dashboard.people.one": [
-   "de545d07",
-   "1 persoon"
+   "7af98524",
+   "{count} persoon"
   ],
   "dashboard.region": [
    "7db4aedb",
@@ -3162,64 +3162,64 @@
    "{count} kommentare"
   ],
   "import.count.comments.one": [
-   "3fd2c20e",
-   "1 kommentaar"
+   "e9791dd3",
+   "{count} kommentaar"
   ],
   "import.count.drafts.many": [
    "edbc8a6d",
    "{count} konsepte"
   ],
   "import.count.drafts.one": [
-   "19cc4a50",
-   "1 konsep"
+   "c18593b2",
+   "{count} konsep"
   ],
   "import.count.files.many": [
    "63352fdc",
    "{count} lêers"
   ],
   "import.count.files.one": [
-   "41d899a9",
-   "1 lêer"
+   "0358ab76",
+   "{count} lêer"
   ],
   "import.count.held.many": [
    "085f5ad3",
    "{count} foto's en lêers"
   ],
   "import.count.held.one": [
-   "a01507e6",
-   "1 foto of lêer"
+   "af2d7ecf",
+   "{count} foto of lêer"
   ],
   "import.count.pages.many": [
    "d46e57d6",
    "{count} bladsye"
   ],
   "import.count.pages.one": [
-   "0d8a4426",
-   "1 bladsy"
+   "49bd2f7a",
+   "{count} bladsy"
   ],
   "import.count.photographs.many": [
    "f2b1e954",
    "{count} foto's"
   ],
   "import.count.photographs.one": [
-   "e78e4450",
-   "1 foto"
+   "ddd8b519",
+   "{count} foto"
   ],
   "import.count.posts.many": [
    "c778d9da",
    "{count} plasings"
   ],
   "import.count.posts.one": [
-   "709f0967",
-   "1 plasing"
+   "dccc847f",
+   "{count} plasing"
   ],
   "import.count.published.many": [
    "9afb20e3",
    "{count} gepubliseerde inskrywings"
   ],
   "import.count.published.one": [
-   "f6a9d019",
-   "1 gepubliseerde inskrywing"
+   "4f879548",
+   "{count} gepubliseerde inskrywing"
   ],
   "import.export.1": [
    "90374d51",
@@ -3462,8 +3462,8 @@
    "{count} is uit die ZIP-lêer geneem."
   ],
   "import.gaps.filled.one": [
-   "36a5608f",
-   "1 is uit die ZIP-lêer geneem."
+   "34ef5956",
+   "{count} is uit die ZIP-lêer geneem."
   ],
   "import.gaps.how": [
    "dc8a1199",
@@ -3474,8 +3474,8 @@
    "Hierdie {count} kon nie van jou ou werf af gekopieer word nie:"
   ],
   "import.gaps.list.one": [
-   "e3589494",
-   "Hierdie een kon nie van jou ou werf af gekopieer word nie:"
+   "0c1288f4",
+   "{count} kon nie van jou ou werf af gekopieer word nie:"
   ],
   "import.gaps.none": [
    "c0d48da8",
@@ -3562,8 +3562,8 @@
    "{count} items van die soort {kind} is nie ingebring nie."
   ],
   "import.report.other_type.one": [
-   "2ca18199",
-   "1 item van die soort {kind} is nie ingebring nie."
+   "0f26d13c",
+   "{count} item van die soort {kind} is nie ingebring nie."
   ],
   "import.report.pages": [
    "d36f7d8d",
@@ -4186,16 +4186,16 @@
    "{count} konsepte"
   ],
   "overview.drafts.one": [
-   "19cc4a50",
-   "1 konsep"
+   "c18593b2",
+   "{count} konsep"
   ],
   "overview.files.many": [
    "3a8e322e",
    "{count} lêers."
   ],
   "overview.files.one": [
-   "a16fdca5",
-   "1 lêer."
+   "b8f4c600",
+   "{count} lêer."
   ],
   "overview.journal.figures": [
    "231f47fc",
@@ -4238,12 +4238,12 @@
    "Publiseer"
   ],
   "overview.publish.nothing.many": [
-   "ba49d50e",
-   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Elkeen gaan uit met sy eie Pers na werf, nie met Publiseer nie."
+   "de5c4903",
+   "Niks op jou werf sal verander nie. {count} veranderings is nog nie daarop nie: {kinds}. Elkeen gaan uit met sy eie Pers na werf, nie met Publiseer nie."
   ],
   "overview.publish.nothing.one": [
-   "cfa12edb",
-   "Niks op jou werf sal verander nie. Nog nie op jou werf nie: {kinds}. Dit gaan uit met sy eie Pers na werf, nie met Publiseer nie."
+   "4d4075d7",
+   "Niks op jou werf sal verander nie. {count} verandering is nog nie daarop nie: {kinds}. Dit gaan uit met sy eie Pers na werf, nie met Publiseer nie."
   ],
   "overview.visitors.none_yet": [
    "8f22773e",
@@ -4262,32 +4262,32 @@
    "{count} joernaalinskrywings"
   ],
   "overview.waiting.entries.one": [
-   "0d3f726c",
-   "1 joernaalinskrywing"
+   "fdb3e667",
+   "{count} joernaalinskrywing"
   ],
   "overview.waiting.many": [
    "20f7e292",
    "{count} veranderings is nog nie op jou werf nie: {kinds}. Elkeen gaan uit met sy eie Pers na werf."
   ],
   "overview.waiting.one": [
-   "29b2a9df",
-   "1 verandering is nog nie op jou werf nie: {kinds}. Dit gaan uit met sy eie Pers na werf."
+   "0c5488d8",
+   "{count} verandering is nog nie op jou werf nie: {kinds}. Dit gaan uit met sy eie Pers na werf."
   ],
   "overview.waiting.pages.many": [
    "d46e57d6",
    "{count} bladsye"
   ],
   "overview.waiting.pages.one": [
-   "0d8a4426",
-   "1 bladsy"
+   "49bd2f7a",
+   "{count} bladsy"
   ],
   "overview.waiting.parts.many": [
    "1e920871",
    "{count} dele van elke bladsy"
   ],
   "overview.waiting.parts.one": [
-   "71efbc01",
-   "1 deel van elke bladsy"
+   "0af6f024",
+   "{count} deel van elke bladsy"
   ],
   "page_editor.drag": [
    "442e96ec",
@@ -4630,8 +4630,8 @@
    "{count} is verwyder"
   ],
   "publishing.takeover.done.removed.one": [
-   "98fb4de8",
-   "1 is verwyder"
+   "83be9a5a",
+   "{count} is verwyder"
   ],
   "publishing.takeover.done.stale": [
    "610ee8cf",
@@ -4642,8 +4642,8 @@
    "{count} lêers is opgelaai of verander"
   ],
   "publishing.takeover.done.uploaded.one": [
-   "7703628b",
-   "1 lêer is opgelaai of verander"
+   "b3b2f3e4",
+   "{count} lêer is opgelaai of verander"
   ],
   "publishing.takeover.done.wait": [
    "d27310c9",
@@ -6606,12 +6606,12 @@
    "jou eie weergawe van {count} as 'n konsep gehou"
   ],
   "undo.one_entry": [
-   "17a2552e",
-   "1 inskrywing"
+   "c2448afb",
+   "{count} inskrywing"
   ],
   "undo.one_page": [
-   "0d8a4426",
-   "1 bladsy"
+   "49bd2f7a",
+   "{count} bladsy"
   ],
   "undo.pages": [
    "d46e57d6",

@@ -1442,8 +1442,8 @@
    "{count} Menschen"
   ],
   "dashboard.people.one": [
-   "de545d07",
-   "1 Person"
+   "7af98524",
+   "{count} Person"
   ],
   "dashboard.region": [
    "7db4aedb",
@@ -3162,64 +3162,64 @@
    "{count} Kommentare"
   ],
   "import.count.comments.one": [
-   "3fd2c20e",
-   "1 Kommentar"
+   "e9791dd3",
+   "{count} Kommentar"
   ],
   "import.count.drafts.many": [
    "edbc8a6d",
    "{count} Entwürfe"
   ],
   "import.count.drafts.one": [
-   "19cc4a50",
-   "1 Entwurf"
+   "c18593b2",
+   "{count} Entwurf"
   ],
   "import.count.files.many": [
    "63352fdc",
    "{count} Dateien"
   ],
   "import.count.files.one": [
-   "41d899a9",
-   "1 Datei"
+   "0358ab76",
+   "{count} Datei"
   ],
   "import.count.held.many": [
    "085f5ad3",
    "{count} Fotos und Dateien"
   ],
   "import.count.held.one": [
-   "a01507e6",
-   "1 Foto oder Datei"
+   "af2d7ecf",
+   "{count} Foto oder Datei"
   ],
   "import.count.pages.many": [
    "d46e57d6",
    "{count} Seiten"
   ],
   "import.count.pages.one": [
-   "0d8a4426",
-   "1 Seite"
+   "49bd2f7a",
+   "{count} Seite"
   ],
   "import.count.photographs.many": [
    "f2b1e954",
    "{count} Fotos"
   ],
   "import.count.photographs.one": [
-   "e78e4450",
-   "1 Foto"
+   "ddd8b519",
+   "{count} Foto"
   ],
   "import.count.posts.many": [
    "c778d9da",
    "{count} Beiträge"
   ],
   "import.count.posts.one": [
-   "709f0967",
-   "1 Beitrag"
+   "dccc847f",
+   "{count} Beitrag"
   ],
   "import.count.published.many": [
    "9afb20e3",
    "{count} veröffentlichte Einträge"
   ],
   "import.count.published.one": [
-   "f6a9d019",
-   "1 veröffentlichter Eintrag"
+   "4f879548",
+   "{count} veröffentlichter Eintrag"
   ],
   "import.export.1": [
    "90374d51",
@@ -3462,8 +3462,8 @@
    "{count} wurden aus der ZIP-Datei genommen."
   ],
   "import.gaps.filled.one": [
-   "36a5608f",
-   "1 wurde aus der ZIP-Datei genommen."
+   "34ef5956",
+   "{count} wurde aus der ZIP-Datei genommen."
   ],
   "import.gaps.how": [
    "dc8a1199",
@@ -3474,8 +3474,8 @@
    "Diese {count} konnten nicht von deiner alten Website kopiert werden:"
   ],
   "import.gaps.list.one": [
-   "e3589494",
-   "Diese konnte nicht von deiner alten Website kopiert werden:"
+   "0c1288f4",
+   "{count} konnte nicht von deiner alten Website kopiert werden:"
   ],
   "import.gaps.none": [
    "c0d48da8",
@@ -3562,8 +3562,8 @@
    "{count} Elemente der Art {kind} wurden nicht übernommen."
   ],
   "import.report.other_type.one": [
-   "2ca18199",
-   "1 Element der Art {kind} wurde nicht übernommen."
+   "0f26d13c",
+   "{count} Element der Art {kind} wurde nicht übernommen."
   ],
   "import.report.pages": [
    "d36f7d8d",
@@ -4186,16 +4186,16 @@
    "{count} Entwürfe"
   ],
   "overview.drafts.one": [
-   "19cc4a50",
-   "1 Entwurf"
+   "c18593b2",
+   "{count} Entwurf"
   ],
   "overview.files.many": [
    "3a8e322e",
    "{count} Dateien."
   ],
   "overview.files.one": [
-   "a16fdca5",
-   "1 Datei."
+   "b8f4c600",
+   "{count} Datei."
   ],
   "overview.journal.figures": [
    "231f47fc",
@@ -4238,12 +4238,12 @@
    "Veröffentlichen"
   ],
   "overview.publish.nothing.many": [
-   "ba49d50e",
-   "Auf deiner Website würde sich nichts ändern. Noch nicht auf deiner Website: {kinds}. Jedes geht über sein eigenes Auf die Website stellen hinaus, nicht über Veröffentlichen."
+   "de5c4903",
+   "Auf deiner Website würde sich nichts ändern. {count} Änderungen sind noch nicht darauf: {kinds}. Jede geht über ihr eigenes Auf die Website stellen hinaus, nicht über Veröffentlichen."
   ],
   "overview.publish.nothing.one": [
-   "cfa12edb",
-   "Auf deiner Website würde sich nichts ändern. Noch nicht auf deiner Website: {kinds}. Es geht über sein eigenes Auf die Website stellen hinaus, nicht über Veröffentlichen."
+   "4d4075d7",
+   "Auf deiner Website würde sich nichts ändern. {count} Änderung ist noch nicht darauf: {kinds}. Sie geht über ihr eigenes Auf die Website stellen hinaus, nicht über Veröffentlichen."
   ],
   "overview.visitors.none_yet": [
    "8f22773e",
@@ -4262,32 +4262,32 @@
    "{count} Journaleinträge"
   ],
   "overview.waiting.entries.one": [
-   "0d3f726c",
-   "1 Journaleintrag"
+   "fdb3e667",
+   "{count} Journaleintrag"
   ],
   "overview.waiting.many": [
    "20f7e292",
    "{count} Änderungen sind noch nicht auf deiner Website: {kinds}. Jede geht über ihr eigenes Auf die Website stellen hinaus."
   ],
   "overview.waiting.one": [
-   "29b2a9df",
-   "1 Änderung ist noch nicht auf deiner Website: {kinds}. Sie geht über ihr eigenes Auf die Website stellen hinaus."
+   "0c5488d8",
+   "{count} Änderung ist noch nicht auf deiner Website: {kinds}. Sie geht über ihr eigenes Auf die Website stellen hinaus."
   ],
   "overview.waiting.pages.many": [
    "d46e57d6",
    "{count} Seiten"
   ],
   "overview.waiting.pages.one": [
-   "0d8a4426",
-   "1 Seite"
+   "49bd2f7a",
+   "{count} Seite"
   ],
   "overview.waiting.parts.many": [
    "1e920871",
    "{count} Teile jeder Seite"
   ],
   "overview.waiting.parts.one": [
-   "71efbc01",
-   "1 Teil jeder Seite"
+   "0af6f024",
+   "{count} Teil jeder Seite"
   ],
   "page_editor.drag": [
    "442e96ec",
@@ -4630,8 +4630,8 @@
    "{count} wurden entfernt"
   ],
   "publishing.takeover.done.removed.one": [
-   "98fb4de8",
-   "1 wurde entfernt"
+   "83be9a5a",
+   "{count} wurde entfernt"
   ],
   "publishing.takeover.done.stale": [
    "610ee8cf",
@@ -4642,8 +4642,8 @@
    "{count} Dateien wurden hochgeladen oder geändert"
   ],
   "publishing.takeover.done.uploaded.one": [
-   "7703628b",
-   "1 Datei wurde hochgeladen oder geändert"
+   "b3b2f3e4",
+   "{count} Datei wurde hochgeladen oder geändert"
   ],
   "publishing.takeover.done.wait": [
    "d27310c9",
@@ -6606,12 +6606,12 @@
    "deine eigene Version von {count} als Entwurf behalten"
   ],
   "undo.one_entry": [
-   "17a2552e",
-   "1 Eintrag"
+   "c2448afb",
+   "{count} Eintrag"
   ],
   "undo.one_page": [
-   "0d8a4426",
-   "1 Seite"
+   "49bd2f7a",
+   "{count} Seite"
   ],
   "undo.pages": [
    "d46e57d6",

@@ -563,16 +563,16 @@ _WORDS: dict[str, str] = {
     "overview.open_files": "Open your files",
     "overview.open_visitors": "See who is reading",
     "overview.journal.figures": "{published} on your site, {drafts}.",
-    "overview.drafts.one": "1 draft",
+    "overview.drafts.one": "{count} draft",
     "overview.drafts.many": "{count} drafts",
     "overview.journal.off": "Off.",
-    "overview.files.one": "1 file.",
+    "overview.files.one": "{count} file.",
     "overview.files.many": "{count} files.",
     "overview.visitors.not_set_up": "Not set up yet.",
     "overview.visitors.none_yet": "No figures yet.",
     "overview.visitors.read": "{people} read your site in {window}.",
     "overview.waiting.one": (
-        "1 change is not on your site yet: {kinds}. It goes out from its own Press to site."
+        "{count} change is not on your site yet: {kinds}. It goes out from its own Press to site."
     ),
     "overview.waiting.many": (
         "{count} changes are not on your site yet: {kinds}. Each goes out from its own "
@@ -580,18 +580,18 @@ _WORDS: dict[str, str] = {
     ),
     # PRESS-0366: Publish's answer where it would change nothing but changes wait.
     "overview.publish.nothing.one": (
-        "Nothing on your site would change. Not on your site yet: {kinds}. It goes out "
-        "from its own Press to site, not from Publish."
+        "Nothing on your site would change. {count} change is not on it yet: {kinds}. "
+        "It goes out from its own Press to site, not from Publish."
     ),
     "overview.publish.nothing.many": (
-        "Nothing on your site would change. Not on your site yet: {kinds}. Each goes out "
-        "from its own Press to site, not from Publish."
+        "Nothing on your site would change. {count} changes are not on it yet: {kinds}. "
+        "Each goes out from its own Press to site, not from Publish."
     ),
-    "overview.waiting.pages.one": "1 page",
+    "overview.waiting.pages.one": "{count} page",
     "overview.waiting.pages.many": "{count} pages",
-    "overview.waiting.parts.one": "1 part of every page",
+    "overview.waiting.parts.one": "{count} part of every page",
     "overview.waiting.parts.many": "{count} parts of every page",
-    "overview.waiting.entries.one": "1 journal entry",
+    "overview.waiting.entries.one": "{count} journal entry",
     "overview.waiting.entries.many": "{count} journal entries",
     # The editor's site line and lists (editor.py).
     "editor.site_line.unnamed": "Your site",
@@ -884,10 +884,10 @@ _WORDS: dict[str, str] = {
     "undo.demoted_many": "{count} turned back into drafts",
     "undo.kept_one": "your own version of {count} kept as a draft",
     "undo.kept_many": "your own versions of {count} kept as drafts",
-    "undo.one_entry": "1 entry",
+    "undo.one_entry": "{count} entry",
     "undo.entries": "{count} entries",
     "undo.waiting": "{count} taken off your site and kept waiting",
-    "undo.one_page": "1 page",
+    "undo.one_page": "{count} page",
     "undo.pages": "{count} pages",
     # Replacing a site already on GitHub (publishing.py, PRESS-0126 § 4.5).
     "publishing.replace": "Replace the site on GitHub",
@@ -954,9 +954,9 @@ _WORDS: dict[str, str] = {
     "publishing.takeover.done.counts": (
         "{uploaded}, and {removed}. All of it stays in the repository's history."
     ),
-    "publishing.takeover.done.uploaded.one": "1 file was uploaded or changed",
+    "publishing.takeover.done.uploaded.one": "{count} file was uploaded or changed",
     "publishing.takeover.done.uploaded.many": "{count} files were uploaded or changed",
-    "publishing.takeover.done.removed.one": "1 was removed",
+    "publishing.takeover.done.removed.one": "{count} was removed",
     "publishing.takeover.done.removed.many": "{count} were removed",
     "publishing.takeover.done.earlier": "An earlier press already published the site.",
     "publishing.takeover.done.wait": (
@@ -1744,21 +1744,21 @@ _WORDS: dict[str, str] = {
         "That file is larger than any WordPress export Pressless reads, so it was not kept."
     ),
     "import.media.counts": "Your export holds {posts}, {pages} and {files}.",
-    "import.count.posts.one": "1 post",
+    "import.count.posts.one": "{count} post",
     "import.count.posts.many": "{count} posts",
-    "import.count.pages.one": "1 page",
+    "import.count.pages.one": "{count} page",
     "import.count.pages.many": "{count} pages",
-    "import.count.held.one": "1 photograph or file",
+    "import.count.held.one": "{count} photograph or file",
     "import.count.held.many": "{count} photographs and files",
-    "import.count.published.one": "1 published entry",
+    "import.count.published.one": "{count} published entry",
     "import.count.published.many": "{count} published entries",
-    "import.count.drafts.one": "1 draft",
+    "import.count.drafts.one": "{count} draft",
     "import.count.drafts.many": "{count} drafts",
-    "import.count.comments.one": "1 comment",
+    "import.count.comments.one": "{count} comment",
     "import.count.comments.many": "{count} comments",
-    "import.count.photographs.one": "1 photograph",
+    "import.count.photographs.one": "{count} photograph",
     "import.count.photographs.many": "{count} photographs",
-    "import.count.files.one": "1 file",
+    "import.count.files.one": "{count} file",
     "import.count.files.many": "{count} files",
     "import.media.fetching": (
         "Pressless is copying them from your old site: {done} of {total} so far. Keep this "
@@ -1771,7 +1771,7 @@ _WORDS: dict[str, str] = {
     "import.media.wait": "Pressless is still copying. Wait until it says it has finished.",
     "import.media.retry": "Press Next to try copying them again.",
     "import.gaps.none": "Nothing is missing. Press Next.",
-    "import.gaps.list.one": "This one could not be copied from your old site:",
+    "import.gaps.list.one": "{count} could not be copied from your old site:",
     "import.gaps.list.many": "These {count} could not be copied from your old site:",
     "import.gaps.how": (
         "If you can, download the folder <b>wp-content/uploads</b> from your web host as "
@@ -1780,7 +1780,7 @@ _WORDS: dict[str, str] = {
         "Next to go on without them; each is listed at the end."
     ),
     "import.gaps.choose": "Choose the ZIP file",
-    "import.gaps.filled.one": "1 was taken from the ZIP file.",
+    "import.gaps.filled.one": "{count} was taken from the ZIP file.",
     "import.gaps.filled.many": "{count} were taken from the ZIP file.",
     "import.gaps.refused": (
         "That file could not be used. Choose a ZIP file of the uploads folder."
@@ -1808,7 +1808,7 @@ _WORDS: dict[str, str] = {
     "import.report.unfetched": "{place} did not come across: {why}.",
     "import.report.renamed": "{wanted} was already taken, so it is now {given}.",
     "import.report.renamed_file": "{place} shared its name, so it is now {name}.",
-    "import.report.other_type.one": "1 item of the kind {kind} was not brought in.",
+    "import.report.other_type.one": "{count} item of the kind {kind} was not brought in.",
     "import.report.other_type.many": "{count} items of the kind {kind} were not brought in.",
     "import.report.dropped": "{where}: {what}.",
     "import.report.counts.folder": "{photographs} and {files}.",
@@ -1976,7 +1976,7 @@ _WORDS: dict[str, str] = {
     "dashboard.time_on_page": "Time on page",
     "dashboard.minutes": "{minutes}m {seconds}s",
     "dashboard.seconds": "{seconds}s",
-    "dashboard.people.one": "1 person",
+    "dashboard.people.one": "{count} person",
     "dashboard.people.many": "{count} people",
     "dashboard.when": "{date} at {clock}",
     # PRESS-0337: the AI helper. The AI app reads the assistant. sentences
@@ -2910,7 +2910,10 @@ def say_count(amount: int, one: str, many: str, *, code: str | None = None,
     """`say` for `amount` of something: key `one` where `code`'s language
     (default: the one in use) takes its one form for `amount`, `many`
     otherwise. The `count` gap is `number(amount, code)` unless the caller
-    passes its own."""
+    passes its own.
+
+    A one form writes `{count}`, never "1": a language's one form may cover
+    other amounts, as French's covers 0 (PRESS-0241 INV-8)."""
     language = _chosen if code is None else code
     slots.setdefault("count", number(amount, language))
     key = one if amount in _ones(language) else many
