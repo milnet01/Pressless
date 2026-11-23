@@ -782,6 +782,8 @@ _WORDS: dict[str, str] = {
     "page_editor.panel.level": "Heading size, 1 the largest",
     "page_editor.panel.photograph": "A photograph you have, or an address",
     "page_editor.panel.address": "Address",
+    # PRESS-0481: a YouTube video's frame title, in the site's language.
+    "page_editor.video_title": "YouTube video",
     "page_editor.panel.add_file": "Upload a file",
     "page_editor.panel.alt": "Words that describe it",
     "page_editor.panel.caption": "Caption, if any",

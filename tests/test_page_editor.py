@@ -24,6 +24,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
+import _marked_language
 import pytest
 from test_editor import _Browser
 from test_publisher import _listing, _reads, _Transport, _writes
@@ -1497,3 +1498,23 @@ def test_marks_pair_in_one_pass_as_they_did_by_scanning(tmp_path):
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
                          timeout=30)
     assert json.loads(run.stdout) == []
+
+
+def test_a_new_sections_published_words_are_in_the_sites_language(tmp_path, monkeypatch):
+    """PRESS-0481: the editor carries the title a new YouTube video's frame
+    and a new back-to-top link get in the site's language, not the screens',
+    and its script fills them. Breaks when either is the screens' words or
+    the script drops it."""
+    _marked_language.offered(tmp_path / "languages", monkeypatch)
+    folder = _folder(tmp_path)
+    store.write_identity(folder, store.Identity("A site", language=_marked_language.CODE))
+    with _pages(folder) as browser:
+        page = browser.request("GET", "/page?kind=pages&name=about&view=visual")[2]
+    found = re.search(r'<form id="editor"[^>]*\sdata-site-words="([^"]*)"', page)
+    assert found, "the editor carries no site words"
+    assert json.loads(html.unescape(found.group(1))) == {
+        "video_title": "⟦YouTube video⟧", "top_label": "⟦Back to top⟧"}
+    script = page_editor._VISUAL_SCRIPT
+    assert '{label: SITE_WORDS.top_label || say("script.visual.top_label")}' in script
+    assert "{youtube: YOUTUBE.exec(address)[1], title: VIDEO_TITLE}" in script
+    assert "{youtube: id[1], title: picked.fields.title || VIDEO_TITLE}" in script
