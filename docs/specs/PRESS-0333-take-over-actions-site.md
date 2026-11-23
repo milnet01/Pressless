@@ -164,7 +164,8 @@ A `resolve` or `connect` left `None` is read from the module when called, so
 **What it follows.** `fetch_site` starts at `address`. An `address` it cannot read
 ends the crawl with nothing kept. Otherwise it takes addresses first found first:
 
-- from a page: what `_folder._spots` finds, an `<a href>` included;
+- from a page: what `_folder._spots` finds, an `<a href>` included, read against
+  the page's first `<base href>` where it has one;
 - from a stylesheet, or a `style` element or attribute: each `url(...)` and `@import`;
 - from `sitemap.xml` at the site's root, where it answers: each `<loc>`.
 
@@ -185,8 +186,8 @@ ending `/`, or empty, gains `index.html`. An answer of type `text/html` to a pat
 with no suffix gains `.html`. A redirect's final address names the file. A path
 holding a `..` segment once decoded, which `urljoin` leaves only where it was encoded, or
 failing `_why_not_kept`, is `left`. So is a path once
-`MEMBERS_MOST` files are held, with the reason saying the site is too large to
-bring in whole, and each answer over `builder.FILE_LARGEST`, or that fails. A second
+`MEMBERS_MOST` files are held, or `_ASKED_MOST` addresses asked, failures
+included, with the reason saying the site is too large to bring in whole, and each answer over `builder.FILE_LARGEST`, or that fails. A second
 address landing at a path already held, as `/index.html` beside `/`, is that file.
 
 **Absolute addresses.** Static site tools commonly write the site's own address in
@@ -196,7 +197,8 @@ page or stylesheet that is the site's, by the test above, becomes `/` and the pa
 lands at, its query and fragment kept. § 4.5 of PRESS-0210 then reads it as any other.
 So does a relative one landing elsewhere than it says. One with no host that is not
 the site's, such as `/other/` or `../other/` beside a project site, becomes a full
-address, which § 4.5 leaves as written.
+address, which § 4.5 leaves as written. A file this computer cannot rewrite is
+`left` and removed, never half-written.
 
 **What a crawl cannot see** is said on the screen (§ 4.4): a page no link reaches,
 and a page a script builds in the browser, which arrives as the script's shell.

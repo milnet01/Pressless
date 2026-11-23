@@ -3437,10 +3437,6 @@
    "475aeb5d",
    "ein Ordner in ihrem Pfad hat denselben Namen wie ein anderer, bis auf die Großbuchstaben"
   ],
-  "import.folder.why.undecodable": [
-   "ab8b29c9",
-   "Pressless konnte ihre Worte nicht lesen"
-  ],
   "import.folder.why.unwritable": [
    "174f1c23",
    "dieser Computer konnte sie dort nicht schreiben ({why})"

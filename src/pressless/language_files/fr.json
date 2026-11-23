@@ -3438,10 +3438,6 @@
    "475aeb5d",
    "un dossier de son chemin a le même nom qu'un autre, aux majuscules près"
   ],
-  "import.folder.why.undecodable": [
-   "ab8b29c9",
-   "Pressless n'a pas pu lire son texte"
-  ],
   "import.folder.why.unwritable": [
    "174f1c23",
    "cet ordinateur n'a pas pu l'écrire à cet endroit ({why})"

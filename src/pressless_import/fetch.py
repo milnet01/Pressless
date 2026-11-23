@@ -18,6 +18,7 @@ import posixpath
 import re
 import socket
 import ssl
+import threading
 import time
 from collections import deque
 from collections.abc import Callable
@@ -27,7 +28,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
 import certifi
 
-from pressless import __version__, builder, os_reason
+from pressless import __version__, blocks, builder, os_reason
 from pressless.progress import count as count_progress
 from pressless.words import say
 
@@ -35,6 +36,7 @@ from . import Export, ImportStopped, _field, _place
 from ._folder import (
     _CSS,
     _CSS_TOKEN,
+    _PAGE_SUFFIXES,
     _SCHEME,
     _SCRIPT,
     _SHEET,
@@ -60,17 +62,21 @@ _REDIRECTS = 5
 _PIECE = 64 * 1024
 _MOVED = frozenset({301, 302, 303, 307, 308})
 _URL_SAFE = "/%:@!$&'()*+,;=~"
-NO_ROOM = "there was no room left on this drive"
-TOO_SLOW = f"it was still arriving after {LONGEST // 60} minutes"
-_NOT_FOUND = "the old site's name could not be found"
-_NOT_WEB = "its address is not a web address"
-_OUT_OF_THE_SITE = "it redirected out of the site"
-_PARENT = "its address climbs out of the site"
-_TOO_MANY = "the site holds too many files to bring in whole"
+# Why a file was not fetched: words keys, said where the reason is made.
+NO_ROOM = "import.fetch.why.no_room"
+TOO_SLOW = "import.fetch.why.too_slow"
+_NOT_FOUND = "import.fetch.why.not_found"
+_NOT_WEB = "import.fetch.why.not_web"
+_OUT_OF_THE_SITE = "import.fetch.why.out_of_the_site"
+_PARENT = "import.fetch.why.parent"
+_TOO_MANY = "import.fetch.why.too_many"
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 _LOC = re.compile(r"<loc>\s*([^<]+?)\s*</loc>", re.I)
 _SITEMAP = "sitemap.xml"
 _CRAWL_PART = ".crawl-part"
+# Addresses a crawl asks for at most, those that fail included, so a site of
+# broken links cannot keep it fetching without end.
+_ASKED_MOST = 2 * MEMBERS_MOST
 
 Resolve = Callable[[str, int], list[str]]
 Connect = Callable[[str, str, int, bool], http.client.HTTPConnection]
@@ -95,9 +101,12 @@ class _Checked(http.client.HTTPSConnection):
         self._name = host
 
     def connect(self) -> None:
+        # Held as `sock` before the handshake, so _Deadline can cut a server
+        # that drips the handshake too.
         self.sock = self._verifying.wrap_socket(
             socket.create_connection((self.host, self.port), timeout=SECONDS),
-            server_hostname=self._name)
+            server_hostname=self._name, do_handshake_on_connect=False)
+        self.sock.do_handshake()
 
 
 def _connect(address: str, host: str, port: int, secure: bool) -> http.client.HTTPConnection:
@@ -126,14 +135,41 @@ def _global(address: str) -> bool:
     return all(one.is_global for one in carried if one is not None)
 
 
+class _Deadline:
+    """Cuts a connection once its fetch has run LONGEST in all (§ 4.4). A
+    socket's timeout counts only a silence, so a server sending a byte now and
+    then, headers or handshake included, would otherwise hold a fetch for days."""
+
+    def __init__(self, connection: http.client.HTTPConnection, ends: float) -> None:
+        self.cut = False
+        self._connection = connection
+        self._timer = threading.Timer(max(0.0, ends - _clock()), self._cut)
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _cut(self) -> None:
+        self.cut = True
+        sock = getattr(self._connection, "sock", None)
+        if sock is not None:
+            try:
+                # The plain socket's own shutdown, which wakes a read blocked
+                # in another thread; an SSL socket's would unwrap it first.
+                socket.socket.shutdown(sock, socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+    def stop(self) -> None:
+        self._timer.cancel()
+
+
 def _not_written(exc: OSError) -> str | None:
     """Why a write on this computer failed, or None where `exc` came from
     the network: a file's own error names the file, and a full drive says
     ENOSPC on every system."""
     if exc.errno == errno.ENOSPC:
-        return NO_ROOM
+        return say(NO_ROOM)
     if exc.filename is not None:
-        return f"it could not be written here ({os_reason.of(exc)})"
+        return say("import.folder.why.unwritable", why=os_reason.of(exc))
     return None
 
 
@@ -143,7 +179,11 @@ def _not_made(exc: OSError | ValueError) -> str:
     asking the system (PRESS-0385)."""
     if isinstance(exc, ValueError):
         return say("import.folder.why.too_long")
-    return _not_written(exc) or f"it could not be written here ({type(exc).__name__})"
+    return _not_written(exc) or say("import.folder.why.unwritable", why=os_reason.of(exc))
+
+
+def _failed(exc: Exception) -> str:
+    return say("import.fetch.why.connection", what=type(exc).__name__)
 
 
 def fetch(address: str, target: Path, room: Callable[[], int], *,
@@ -157,31 +197,36 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
     can stand in for the network."""
     resolve, connect = resolve or addresses, connect or _connect
     if room() < 0:
-        return NO_ROOM
+        return say(NO_ROOM)
+    ends = _clock() + LONGEST       # for every hop together
     for _hop in range(_REDIRECTS + 1):
         if within is not None and not within(address):
-            return _OUT_OF_THE_SITE
+            return say(_OUT_OF_THE_SITE)
         try:
             parts = urlsplit(address)
         except ValueError:      # an address no parser can read, as `http://[x/`
-            return _NOT_WEB
+            return say(_NOT_WEB)
         try:
             port = parts.port or (443 if parts.scheme == "https" else 80)
         except ValueError:
-            return "its address names no port Pressless can use"
+            return say("import.fetch.why.port")
         if parts.scheme not in ("http", "https") or not parts.hostname:
-            return _NOT_WEB
+            return say(_NOT_WEB)
         try:
             found = resolve(parts.hostname, port)
         except (OSError, UnicodeError):
             # getaddrinfo raises UnicodeError for an empty or over-long label
-            return _NOT_FOUND
+            return say(_NOT_FOUND)
         if not found:
-            return _NOT_FOUND
+            return say(_NOT_FOUND)
         if not all(_global(one) for one in found):
-            return "its address leads inside this computer or its network"
-        connection = connect(found[0], parts.hostname, port, parts.scheme == "https")
+            return say("import.fetch.why.inside")
+        connection = deadline = None
         try:
+            # Inside the try: making the TLS context reads the certificate
+            # bundle, and its failure is this file's, never the whole fetch's.
+            connection = connect(found[0], parts.hostname, port, parts.scheme == "https")
+            deadline = _Deadline(connection, ends)
             host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
             # http.client sends the request line as ASCII, and an export's
             # attachment_url can carry raw Unicode; quoting leaves an
@@ -196,45 +241,61 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
             if answer.status in _MOVED:
                 moved = answer.getheader("Location")
                 if not moved:
-                    return f"the old site answered {answer.status} and named no address"
+                    return say("import.fetch.why.moved_nowhere", status=str(answer.status))
                 address = urljoin(address, moved)
                 continue
             if answer.status != 200:
-                return f"the old site answered {answer.status}"
+                return say("import.fetch.why.answered", status=str(answer.status))
             if answered is not None:
                 answered.append((address, answer.getheader("Content-Type") or ""))
-            return _keep(answer, target, room)
-        except TimeoutError:
-            return f"the old site sent nothing for {SECONDS} seconds"
-        except OSError as exc:
-            return _not_written(exc) or f"the connection failed ({type(exc).__name__})"
-        except (http.client.HTTPException, ValueError) as exc:
-            return f"the connection failed ({type(exc).__name__})"
+            return _keep(answer, target, room, ends, deadline)
+        except (OSError, http.client.HTTPException, ValueError) as exc:
+            if deadline is not None and deadline.cut:
+                return _too_slow()
+            if isinstance(exc, TimeoutError):
+                return say("import.fetch.why.silent", seconds=str(SECONDS))
+            return (isinstance(exc, OSError) and _not_written(exc)) or _failed(exc)
         finally:
-            connection.close()
-    return f"the old site redirected it more than {_REDIRECTS} times"
+            if deadline is not None:
+                deadline.stop()
+            if connection is not None:
+                connection.close()
+    return say("import.fetch.why.redirects", most=str(_REDIRECTS))
 
 
-def _keep(answer, target: Path, room: Callable[[], int]) -> str | None:
+def _too_slow() -> str:
+    return say(TOO_SLOW, minutes=str(LONGEST // 60))
+
+
+def _keep(answer, target: Path, room: Callable[[], int], ends: float,
+          deadline: _Deadline) -> str | None:
     """The answer's body into `target`, by a part-file renamed once whole."""
     largest = builder.FILE_LARGEST
     part = target.with_name(f".{target.name}.part")
     written, why = 0, None
-    ends = _clock() + LONGEST
     try:
-        with open(part, "wb") as out:
+        out = open(part, "wb")  # noqa: SIM115 -- closed below
+    except ValueError as exc:   # past Windows's whole-path limit (PRESS-0385)
+        return _not_made(exc)
+    try:
+        with out:
             while piece := answer.read(_PIECE):
                 written += len(piece)
                 if written > largest:
-                    why = f"it is larger than the {largest // (1024 * 1024)} MB Pressless keeps"
+                    why = say("import.folder.why.large", **builder.largest_slots())
                     break
                 if room() < 0:
-                    why = NO_ROOM
+                    why = say(NO_ROOM)
                     break
                 if _clock() > ends:
-                    why = TOO_SLOW
+                    why = _too_slow()
                     break
                 out.write(piece)
+        if why is None and deadline.cut:
+            why = _too_slow()
+        elif why is None and getattr(answer, "length", None):
+            # http.client ends a body cut short by the server as if it were whole.
+            why = say("import.fetch.why.cut_short")
         if why is None:
             part.replace(target)
     finally:
@@ -261,8 +322,8 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
         except ImportStopped as exc:
             missing[address] = str(exc)
         except ValueError:      # an address no parser can read, as `http://[x]/`
-            missing[address] = _NOT_WEB
-    full = False
+            missing[address] = say(_NOT_WEB)
+    full, no_room = False, say(NO_ROOM)
     for done, (address, place) in enumerate(wanted, start=1):
         target = media / place
         if not target.is_file():
@@ -271,9 +332,9 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
             except (OSError, ValueError) as exc:
                 why = _not_made(exc)
             else:
-                why = NO_ROOM if full else fetch(address, target, room, resolve=resolve,
+                why = no_room if full else fetch(address, target, room, resolve=resolve,
                                                  connect=connect)
-            full = full or why == NO_ROOM
+            full = full or why == no_room
             if why is not None:
                 missing[place] = why
         if progress is not None:
@@ -348,6 +409,24 @@ def _landing(path: str, kind: str) -> str:
     return path
 
 
+def _base(text: str, address: str) -> str:
+    """The address a page's own addresses are read against: its first `<base
+    href>`, read against `address`, as the HTML standard says, else `address`."""
+    for event in blocks._scan(text):
+        if event.tag == "base" and event.kind in ("start", "startend"):
+            href = dict(event.attrs).get("href")
+            if href is not None:
+                try:
+                    return urljoin(address, href.strip())
+                except ValueError:
+                    return address
+    return address
+
+
+def _is_page(landing: str) -> bool:
+    return landing.casefold().endswith(_PAGE_SUFFIXES)
+
+
 def _css_through(css: str, write: Callable[[str, bool], str | None]) -> str:
     """Each url() and @import in `css` through `write`, a None leaving it."""
     def token(found: re.Match) -> str:
@@ -394,6 +473,7 @@ class _Crawl:
         self.taken = _Paths()
         self.left: list[tuple[str, str]] = []
         self.size = 0                       # bytes landed, for PRESS-0435's count
+        self.asked = 0                      # fetches made, _ASKED_MOST at most
 
     def note(self, address: str, base: str) -> None:
         """`address`, read on the page at `base`, waits its turn if it is the site's."""
@@ -424,11 +504,12 @@ class _Crawl:
         could not be read."""
         path = self.site.path(asked)
         if ".." in path.split("/"):
-            self.left.append((path, _PARENT))
+            self.left.append((path, say(_PARENT)))
             return False
-        if len(self.urls) >= MEMBERS_MOST:
-            self.left.append((path, _TOO_MANY))
+        if len(self.urls) >= MEMBERS_MOST or self.asked >= _ASKED_MOST:
+            self.left.append((path, say(_TOO_MANY)))
             return False
+        self.asked += 1
         why, final, kind = self.get(asked)
         if why is not None:
             self.left.append((path, why))
@@ -456,6 +537,7 @@ class _Crawl:
             self.left.append((landing, _not_made(exc)))
             self.part.unlink(missing_ok=True)
             return False
+        self.taken.take(landing)
         self.landed[asked] = self.landed[final] = landing
         self.urls[landing] = final
         self.size += size
@@ -467,16 +549,13 @@ class _Crawl:
         return True
 
     def _read(self, landing: str, final: str, target: Path) -> None:
-        def noted(address: str, _image: bool) -> None:
-            self.note(address, final)
-        if landing.lower().endswith((".html", ".htm")):
-            read = _page_text(target.read_bytes())
-            if read is not None:
-                _page_through(read[0], noted)
-        elif landing.lower().endswith(".css"):
-            read = _decoded(target.read_bytes())
-            if read is not None:
-                _css_through(read[0], noted)
+        if _is_page(landing):
+            text = _page_text(target.read_bytes())[0]
+            base = _base(text, final)
+            _page_through(text, lambda address, _image: self.note(address, base))
+        elif landing.casefold().endswith(".css"):
+            text = _decoded(target.read_bytes())[0]
+            _css_through(text, lambda address, _image: self.note(address, final))
 
     def sitemap(self) -> None:
         """The pages `sitemap.xml` names, where it answers. It is not kept."""
@@ -515,24 +594,36 @@ class _Crawl:
         return f"/{quote(place)}{tail}"
 
     def rewrite(self) -> None:
-        """When the crawl ends, as only then is it known where an address lands."""
+        """When the crawl ends, as only then is it known where an address lands.
+        A file this computer cannot rewrite is `left`, never half-written."""
         for landing, url in self.urls.items():
             target = self.into / landing
-            def write(address: str, _image: bool, url: str = url) -> str | None:
-                return self.written(address, url)
-            if landing.lower().endswith((".html", ".htm")):
-                read = _page_text(target.read_bytes())
-                if read is not None:
-                    new = _page_through(read[0], write)
-                    if new != read[0]:
-                        target.write_text(_declares_utf8(new) if read[1] else new,
-                                          encoding="utf-8", newline="")
-            elif landing.lower().endswith(".css"):
-                read = _decoded(target.read_bytes())
-                new = _css_through(read[0], write) if read is not None else None
-                if new is not None and new != read[0]:
-                    # As UTF-8, which reading it as a folder tries first.
-                    target.write_text(new, encoding="utf-8", newline="")
+            try:
+                new = self._rewritten(landing, url, target.read_bytes())
+                if new is not None:
+                    part = target.with_name(f".{target.name}.rewrite")
+                    try:
+                        part.write_text(new, encoding="utf-8", newline="")
+                        part.replace(target)
+                    finally:
+                        part.unlink(missing_ok=True)
+            except (OSError, ValueError) as exc:
+                self.left.append((landing, _not_made(exc)))
+                target.unlink(missing_ok=True)
+
+    def _rewritten(self, landing: str, url: str, data: bytes) -> str | None:
+        """The file's text with § 4.2's addresses rewritten, as UTF-8, which
+        reading it as a folder tries first; None where nothing changes."""
+        if _is_page(landing):
+            read = _page_text(data)
+            base = _base(read[0], url)
+            new = _page_through(read[0], lambda address, _image: self.written(address, base))
+            return None if new == read[0] else _declares_utf8(new) if read[1] else new
+        if landing.casefold().endswith(".css"):
+            read = _decoded(data)
+            new = _css_through(read[0], lambda address, _image: self.written(address, url))
+            return None if new == read[0] else new
+        return None
 
 
 def fetch_site(address: str, into: Path, room: Callable[[], int], *,
@@ -542,6 +633,7 @@ def fetch_site(address: str, into: Path, room: Callable[[], int], *,
     hop, so a host resolving inside the network is never reached."""
     into.mkdir(parents=True, exist_ok=True)
     crawl = _Crawl(address, into, room, resolve, connect)
+    count_progress("progress.downloading", 0, None, 0)     # PRESS-0435 § 4.2
     try:
         first = crawl.site.asked(address)
         crawl.seen.add(first)

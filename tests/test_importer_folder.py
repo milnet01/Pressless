@@ -245,6 +245,14 @@ def test_a_folder_twin_by_capitals_is_left(tmp_path):
     assert list(left) == ["a/b.html"] and (into / "A/c.html").is_file()
 
 
+def test_a_folder_read_whole_also_leaves_a_twin_by_capitals(tmp_path):
+    """§ 4.3 makes § 4.1's tests again for a folder already laid out, as a
+    repository's is: each path kept is taken, so its twin is left."""
+    folder = _laid_out(tmp_path, {"index.html": _page("<p>H</p>"),
+                                  "A/c.html": _page("<p>C</p>"), "a/b.html": _page("<p>B</p>")})
+    assert dict(pressless_import.read_folder(folder).left).keys() == {"a/b.html"}
+
+
 def test_a_member_name_that_is_not_its_flagged_utf8_is_refused(tmp_path):
     """§ 6: a ZIP that cannot be read says so, and leaves nothing behind."""
     source = _zip(tmp_path, {"good.html": "<p>Good</p>", "ab.html": "<p>Bad</p>"})
@@ -269,9 +277,30 @@ def test_a_damaged_lzma_member_is_refused(tmp_path):
         data[at] ^= 0x5A
     source.write_bytes(bytes(data))
     into = tmp_path / "folder"
-    with pytest.raises(ImportStopped, match="could not be read"):
+    # LZMAError by name: a damaged CRC alone would pass through BadZipFile instead.
+    with pytest.raises(ImportStopped, match=r"could not be read \(LZMAError\)"):
         pressless_import.unpack_folder(source, into, lambda: 10**9)
     assert not into.with_name(".folder.part").exists()
+
+
+def test_a_member_the_zip_cannot_open_leaves_no_file_open(tmp_path, monkeypatch):
+    """§ 4.1: what an unpack wrote is removed when it stops. A file left open
+    when the ZIP refuses to open a member, as an encrypted one, cannot be
+    removed on Windows; here Python warns as it is collected."""
+    import gc
+    import warnings
+
+    def refuses(*args, **kwargs):
+        raise NotImplementedError("That compression method is not supported")
+
+    source = _zip(tmp_path, {"index.html": "<p>H</p>"})
+    monkeypatch.setattr(zipfile.ZipFile, "open", refuses)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with pytest.raises(ImportStopped, match="could not be read"):
+            pressless_import.unpack_folder(source, tmp_path / "folder", lambda: 10**9)
+        gc.collect()
+    assert not [one for one in caught if issubclass(one.category, ResourceWarning)], caught
 
 
 def test_a_zip_this_computer_cannot_write_is_not_called_unreadable(tmp_path, monkeypatch):
@@ -659,10 +688,43 @@ def test_a_long_chain_of_linked_sheets_importing_each_other_is_joined(tmp_path):
     links = "".join(f'<link rel="stylesheet" href="s{n}.css">' for n in range(400))
     chain = {f"s{n}.css": f'@import "s{n + 1}.css";\n.s{n} {{ color: red; }}\n'
              for n in range(400)}
-    into, _b = _brought(tmp_path, {
+    into, brought = _brought(tmp_path, {
         "index.html": _page("<p>Home</p>", head=f"{links}<title>H</title>"), **chain})
     code = store.read_style_code(into)
-    assert all(f".s{n} {{" in code for n in range(400))
+    assert all(code.count(f".s{n} {{") == 1 for n in range(400))
+    # A sheet the code holds, reached too deep one way, is never imported as a
+    # file that does not exist, nor called too deep: only s400.css, which the
+    # folder lacks, is.
+    assert re.findall(r'@import "([^"]+)"', code) == ["../s400.css"], code
+    assert not [path for path, _why in brought.report.unfetched], brought.report.unfetched
+
+
+def test_an_import_s_media_joins_a_list_query_by_query(tmp_path):
+    """§ 4.7: an @import hoisted out of a sheet linked for `screen, print`
+    holds where both conditions do. Joined with one " and ", the list's comma
+    would bind looser, and the import would reach print at any width."""
+    into, _b = _brought(tmp_path, {
+        "index.html": _page("<p>Home</p>", head='<link rel="stylesheet" href="a.css" '
+                            'media="screen, print"><title>H</title>'),
+        "a.css": '@import "https://fonts.example.org/x.css" (min-width: 600px);\n'
+                 "p { color: red; }\n"})
+    code = store.read_style_code(into)
+    assert ('@import "https://fonts.example.org/x.css" screen and (min-width: 600px), '
+            "print and (min-width: 600px);") in code, code
+
+
+def test_a_name_joined_from_deep_folders_is_cut_to_fit(tmp_path):
+    """§ 4.4: a page's name joins its folders, as does a renamed file's. Each
+    folder's name fits, but the whole may not, which stopped the bring."""
+    deep = "/".join([f"folder-{n}-" + "x" * 50 for n in range(6)])
+    into, brought = _brought(tmp_path, {
+        "index.html": _page("<p>Home</p>"), f"{deep}/page.html": _page("<p>Deep</p>"),
+        "pic.png": _png(), f"{deep}/pic.png": _png()})
+    longest = pressless_import._folder._JOINED_LONGEST
+    assert all(len(name) <= longest for name in brought.report.pages if name != "index")
+    (_path, renamed), = brought.report.renamed_photographs
+    assert len(renamed.removesuffix(".png")) <= longest
+    assert store.photograph_path_for(into, renamed).is_file()
 
 
 def test_a_site_with_no_stylesheet_has_empty_style_code(tmp_path):
@@ -996,11 +1058,45 @@ def test_a_backslash_in_an_address_is_a_slash_as_a_browser_reads_it(tmp_path):
     assert "%5C" not in (site / "index.html").read_text(encoding="utf-8")
 
 
-def test_a_file_nothing_decodes_is_left(tmp_path):
-    """§ 4.9: cp1252 has bytes it does not define."""
-    folder = _laid_out(tmp_path, {"index.html": _page("<p>Home</p>"),
-                                  "two.html": b"<p>\x81\xff</p>"})
-    assert "two.html" in dict(pressless_import.read_folder(folder).left)
+def test_every_byte_decodes_as_a_browser_reads_it(tmp_path):
+    """§ 4.9: the standard's windows-1252 reads the five bytes Python's cp1252
+    leaves undefined as C1 controls, so a page a browser shows comes across.
+    Breaks when a page holding one is `left`."""
+    into, _b = _brought(tmp_path, {"index.html": _page("<p>Home</p>"),
+                                   "two.html": b"<p>\x81\xff</p>"})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "two").read_bytes().decode("utf-8")
+    assert "\x81\xff" in text
+
+
+def test_a_page_saying_utf_8_stays_utf_8_past_a_wrong_byte(tmp_path):
+    """§ 4.9: a `utf-8` label names UTF-8, so one wrong byte is shown as a
+    browser shows it, and the rest stays as written. Breaks when the page
+    is read as windows-1252, turning each é into Ã©."""
+    page = ('<html><head><meta charset="utf-8"><title>T</title></head>'
+            "<body><p>caf\u00e9 \u0141\u00f3d\u017a</p></body></html>").encode("utf-8")
+    into, _b = _brought(tmp_path, {"index.html": page.replace(b"</p>", b"\xff</p>")})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "index").read_bytes().decode("utf-8")
+    assert "caf\u00e9 \u0141\u00f3d\u017a\ufffd" in text
+
+
+@pytest.mark.parametrize("bom", ["utf-16-le", "utf-16-be"])
+def test_a_utf_16_page_is_known_by_its_byte_order_mark(tmp_path, bom):
+    """§ 4.9: the standard reads a page's byte-order mark before anything else."""
+    page = _page("<p>caf\u00e9</p>")
+    marked = ("\ufeff" + page).encode(bom)
+    into, _b = _brought(tmp_path, {"index.html": marked})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "index").read_bytes().decode("utf-8")
+    assert "<p>caf\u00e9</p>" in text
+
+
+def test_a_utf_16_label_in_a_page_means_utf_8(tmp_path):
+    """§ 4.9: the standard reads a page's own `utf-16` label as UTF-8, as no
+    UTF-16 page could be read far enough to find it."""
+    page = ('<html><head><meta charset="utf-16"><title>T</title></head>'
+            "<body><p>caf\u00e9</p></body></html>").encode("utf-8").replace(b"</p>", b"\xff</p>")
+    into, _b = _brought(tmp_path, {"index.html": page})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "index").read_bytes().decode("utf-8")
+    assert "caf\u00e9\ufffd" in text
 
 
 def test_a_byte_order_mark_is_dropped(tmp_path):

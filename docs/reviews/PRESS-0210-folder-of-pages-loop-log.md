@@ -13,3 +13,4 @@
 | fix | 2026-11-17 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0375 amended § 4.10 to match its fix: no forward at a dot-led segment or inside a folder the build fills from the Store, and `address_forwards` takes `pages` alone. |
 | amend | 2026-11-17 | none: PRESS-0396; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.6 and 4.11: a file carried and also linked is carried, and the link is listed and named before Finish. |
 | amend | 2026-11-17 | none: PRESS-0409; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.1: `stays_inside` moved to `zip_member`. |
+| amend | 2026-11-23 | none: PRESS-0454; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.4, 4.7 and 4.9: a joined name is cut with a hash; a code sheet reached too deep one way is joined once; an @import's media joins query by query; pages decode as a browser does, so none is left undecodable. |
