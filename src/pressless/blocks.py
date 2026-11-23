@@ -30,7 +30,8 @@ __all__ = [
     "MUSIC", "PICTURE", "PICTURES", "PIECES", "PIECES_SCRIPT", "QUESTIONS", "SCRIPT",
     "SLIDESHOW", "STYLE", "TEXT", "TOP", "VIDEO",
     "Page", "Section", "SectionRefused",
-    "adopt", "inline", "read", "section_html", "unmarked", "write",
+    "address_allowed", "adopt", "inline", "read", "section_html", "unmarked",
+    "with_offset", "write",
 ]
 
 TEXT, HEADING, PICTURE, PICTURES, BUTTON = "text", "heading", "picture", "pictures", "button"
@@ -43,6 +44,11 @@ SCRIPT = "script"
 # PRESS-0273: the writer's own CSS, for the whole page it sits on.
 STYLE = "style"
 PIECES = (SLIDESHOW, QUESTIONS, ENLARGE, TOP, COUNTDOWN)
+# A kind added here needs an entry in _FIELDS (VIDEO's fields are _check's),
+# _WRITERS and _READERS: a kind missing from _READERS fails only when a page
+# holding it is read. A piece also needs its behaviour in PIECES_SCRIPT. A
+# kind holding other sections needs _HOLDERS, _HOLDER_CLASS,
+# _Reading.candidate's `allowed` table and _check_parts instead of a reader.
 KINDS = (TEXT, HEADING, PICTURE, PICTURES, BUTTON, VIDEO, MUSIC, DOWNLOAD, COLUMNS,
          *PIECES, SCRIPT, STYLE)
 CODE = "code"
@@ -295,7 +301,10 @@ def with_offset(to: str) -> str:
     judge."""
     if not _is_when(to) or to.endswith("Z") or re.search(r"[+-]\d{2}:\d{2}$", to):
         return to
-    offset = datetime.fromisoformat(to).astimezone().utcoffset()
+    try:
+        offset = datetime.fromisoformat(to).astimezone().utcoffset()
+    except (ValueError, OverflowError, OSError):    # a year with no offset known here
+        return to
     minutes = round(offset.total_seconds() / 60)
     sign = "-" if minutes < 0 else "+"
     return f"{to}{sign}{abs(minutes) // 60:02d}:{abs(minutes) % 60:02d}"
@@ -550,10 +559,10 @@ def _spelled_alike(written: str, source: str) -> bool:
     references (`&#8217;` for `’`). Each construct HTMLParser reports is
     compared with its references read, so a quote, a space or an attribute's
     place still counts."""
-    def read(text: str):
+    def constructs(text: str):
         return [(event.kind, event.tag, event.attrs, event.text,
                  _html.unescape(text[event.start:event.end])) for event in _scan(text)]
-    return read(written) == read(source)
+    return constructs(written) == constructs(source)
 
 
 class _Reading:

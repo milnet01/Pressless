@@ -4,6 +4,7 @@ from __future__ import annotations
 import html
 import re
 import time
+from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -484,10 +485,41 @@ def test_a_countdown_set_in_the_editor_ends_in_the_writers_zone(in_london):
     text = _page(_form("top"))
     posted = [{"keep": [0]}] + [
         {"kind": "countdown", "fields": {"to": to, "label": "Gig"}}
-        for to in ("2026-12-01T18:00", "2026-07-01T18:00:30", "2026-12-01T18:00-05:00")]
+        for to in ("2026-12-01T18:00", "2026-07-01T18:00:30", "2026-12-01T18:00-05:00",
+                   "2026-12-01T18:00Z")]
     page = blocks.read("page", page_editor.put_sections("page", text, posted, []))
     assert [section.fields["to"] for section in page.sections[1:]] == [
-        "2026-12-01T18:00+00:00", "2026-07-01T18:00:30+01:00", "2026-12-01T18:00-05:00"]
+        "2026-12-01T18:00+00:00", "2026-07-01T18:00:30+01:00", "2026-12-01T18:00-05:00",
+        "2026-12-01T18:00Z"]
+
+
+def _no_offset_that_year(raised: Exception) -> type:
+    """A datetime whose astimezone raises as a platform's can for a year it
+    has no offset for: Windows' OSError before 1970 and after 3000, and the
+    OverflowError a far year can give."""
+    class NoOffset(datetime):
+        def astimezone(self, tz=None):
+            raise raised
+    return NoOffset
+
+
+@pytest.mark.parametrize(("to", "raised"), [
+    ("0001-01-01T00:00", None), ("9999-12-31T23:59", None),
+    ("3026-12-01T18:00", OSError(22, "Invalid argument")),
+    ("0002-01-01T00:00", OverflowError("date value out of range"))])
+def test_a_countdown_whose_year_has_no_known_offset_saves_as_typed(to, raised, in_london,
+                                                                    monkeypatch):
+    """A countdown's end in a year this computer cannot give an offset for is
+    kept as typed, for _check to judge. Breaks when with_offset lets the
+    ValueError (year 1 or 9999 here), OSError or OverflowError out, so the
+    save fails as unexpected."""
+    if raised is not None:
+        monkeypatch.setattr(blocks, "datetime", _no_offset_that_year(raised))
+    assert blocks.with_offset(to) == to
+    text = _page(_form("top"))
+    posted = [{"keep": [0]}, {"kind": "countdown", "fields": {"to": to, "label": "Gig"}}]
+    page = blocks.read("page", page_editor.put_sections("page", text, posted, []))
+    assert page.sections[1].fields["to"] == to
 
 
 def test_each_piece_has_a_fallback():
