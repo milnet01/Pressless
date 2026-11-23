@@ -800,6 +800,10 @@ EXTRA_CSS_NAME = "extra.css"         # PRESS-0196: their own CSS, added last
 # PRESS-0196: the look's files, in the order look.digest reads them. Every
 # reader of the set reads this, so a fourth file is added here once.
 LOOK_FILES = (LOOK_CHOICES_NAME, EXTRA_CSS_NAME, STYLE_CODE_NAME)
+# PRESS-0196 § 4.1: where a saved look waits, the same files under the same
+# names, until the look itself is published. Not one of WAITING_FOLDERS, which
+# the Builder's HTML kinds key, nor of _SITE_FOLDERS: a look is no site alone.
+LOOK_WAITING_FOLDER = "look-waiting"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
@@ -815,6 +819,7 @@ _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
     TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, OPTIONS_FOLDER,
     IDENTITY_FOLDER, LOOK_FOLDER, FILES_FOLDER, *WAITING_FOLDERS.values(),
+    LOOK_WAITING_FOLDER,
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -1291,45 +1296,53 @@ def write_identity(folder: Path, identity: Identity) -> Path:
     return target
 
 
-def style_code_path(folder: Path) -> Path:
-    """Where the site's style code sits (PRESS-0126 § 4.2)."""
-    return Path(folder) / LOOK_FOLDER / STYLE_CODE_NAME
+def style_code_path(folder: Path, *, waiting: bool = False) -> Path:
+    """Where the site's style code sits (PRESS-0126 § 4.2); with `waiting`,
+    the waiting look's (PRESS-0196 § 4.1)."""
+    return look_path_for(folder, STYLE_CODE_NAME, waiting=waiting)
 
 
-def look_path_for(folder: Path, name: str) -> Path:
-    """Where one of LOOK_FILES sits (PRESS-0196 § 4.1)."""
+def look_path_for(folder: Path, name: str, *, waiting: bool = False) -> Path:
+    """Where one of LOOK_FILES sits (PRESS-0196 § 4.1): the live look's, or
+    with `waiting` the saved look waiting to be published."""
     if name not in LOOK_FILES:
         raise StoreError(f"{name!r} is not one of the look's files")
-    return Path(folder) / LOOK_FOLDER / name
+    return Path(folder) / (LOOK_WAITING_FOLDER if waiting else LOOK_FOLDER) / name
 
 
-def read_style_code(folder: Path) -> str | None:
+def look_waits(folder: Path) -> bool:
+    """Whether a saved look waits to be published: any of LOOK_FILES in the
+    waiting folder (PRESS-0196 § 4.1)."""
+    return any(look_path_for(folder, name, waiting=True).is_file() for name in LOOK_FILES)
+
+
+def read_style_code(folder: Path, *, waiting: bool = False) -> str | None:
     """The style code, decoded and otherwise untouched, as read_html reads a
     page; None where the Store holds none (PRESS-0126 § 4.2)."""
-    return read_look_file(folder, STYLE_CODE_NAME)
+    return read_look_file(folder, STYLE_CODE_NAME, waiting=waiting)
 
 
-def read_look_file(folder: Path, name: str) -> str | None:
+def read_look_file(folder: Path, name: str, *, waiting: bool = False) -> str | None:
     """One of the look's files, decoded and otherwise untouched; None where
     the Store holds none (PRESS-0196 § 4.1)."""
-    return _read_text(look_path_for(folder, name))
+    return _read_text(look_path_for(folder, name, waiting=waiting))
 
 
-def read_look_bytes(folder: Path, name: str) -> bytes | None:
+def read_look_bytes(folder: Path, name: str, *, waiting: bool = False) -> bytes | None:
     """One of the look's files, undecoded; None where the Store holds none."""
-    return _read_bytes(look_path_for(folder, name))
+    return _read_bytes(look_path_for(folder, name, waiting=waiting))
 
 
-def write_style_code(folder: Path, css: str) -> Path:
+def write_style_code(folder: Path, css: str, *, waiting: bool = False) -> Path:
     """Write the style code whole or not at all, its bytes as given, as
     write_html writes a page (PRESS-0126 § 4.2)."""
-    return write_look_file(folder, STYLE_CODE_NAME, css)
+    return write_look_file(folder, STYLE_CODE_NAME, css, waiting=waiting)
 
 
-def write_look_file(folder: Path, name: str, text: str) -> Path:
+def write_look_file(folder: Path, name: str, text: str, *, waiting: bool = False) -> Path:
     """Write one of the look's files whole or not at all, its bytes as given
     (PRESS-0196 § 4.2)."""
-    target = look_path_for(folder, name)
+    target = look_path_for(folder, name, waiting=waiting)
     _write_atomically(folder, target, text, prefix=".look-", newline="")
     return target
 

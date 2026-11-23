@@ -156,6 +156,11 @@ git config --add ants.pressless.signingKey <path to the key>
 key file and never prints it. It also publishes, so it runs last, after
 the by-hand checks; `.claude/bump.json` lists it as the final step.
 
+**Sign before the release run's artifacts expire** (the repository's
+Actions settings set how long they are kept). The script signs only files
+matching the SHA-256s that run kept as an artifact, and refuses once GitHub
+has deleted it.
+
 **A new libjxl version runs `scripts/publish-jpeg-xl.py` first**, before
 the Pressless release that pins it (PRESS-0275 § 4.8). It publishes the
 decoder's own pre-release, so a session warns the user before running it.
@@ -281,10 +286,24 @@ file, and delete the task afterwards.
 pipe.** Check the packaged program from a console, or with
 `--self-check`, which prints and exits.
 
-**A browser check runs through Playwright.** The Claude-in-Chrome
-extension is not connected on this machine; the `playwright` Python
-package is installed and drives `/usr/bin/google-chrome` headless, or
-its own Firefox build with `--browser firefox`.
+**A browser check runs through Playwright, from a venv of its own.** The
+Claude-in-Chrome extension is not connected on this machine. The by-hand
+scripts import the test modules, so they need the dev tools beside
+Playwright. `.venv` stays what a fresh install resolves, so it holds no
+Playwright. Make the gitignored `.venv-browsers` once, with the machine's
+own Playwright version so its downloaded Firefox matches, as the Windows
+gate does on the box:
+
+```bash
+python3 -m venv .venv-browsers
+.venv-browsers/bin/python -m pip install -e '.[dev]' \
+    "playwright==$(python3 -c 'import importlib.metadata as m; print(m.version("playwright"))')"
+.venv-browsers/bin/python scripts/by-hand-browser-checks.py
+```
+
+It drives `/usr/bin/google-chrome` headless, or Playwright's own Firefox
+build with `--browser firefox`. `scripts/by-hand-editor-races.py` runs
+the same way.
 
 **On the Windows box the same checks run unattended** (PRESS-0292):
 

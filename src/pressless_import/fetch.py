@@ -22,6 +22,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
@@ -59,6 +60,11 @@ from ._folder import (
 SECONDS = 30                    # without data, a fetch stops (§ 4.4)
 LONGEST = 30 * 60               # a fetch still sending after this stops too
 _REDIRECTS = 5
+# Files fetched at once (PRESS-0461). Each is its own fetch, checked hop by hop
+# on its own connection as one alone is. Four is what a browser's six per host
+# stays well under, so an old site's host is not asked for more than a reader
+# would ask; a fetch streams to disk, so each costs one piece of memory.
+FETCHES_AT_ONCE = 4
 _PIECE = 64 * 1024
 _MOVED = frozenset({301, 302, 303, 307, 308})
 _URL_SAFE = "/%:@!$&'()*+,;=~"
@@ -323,22 +329,42 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
             missing[address] = str(exc)
         except ValueError:      # an address no parser can read, as `http://[x]/`
             missing[address] = say(_NOT_WEB)
-    full, no_room = False, say(NO_ROOM)
-    for done, (address, place) in enumerate(wanted, start=1):
+    no_room = say(NO_ROOM)
+    full = threading.Event()
+
+    def get(address: str, place: str) -> str | None:
         target = media / place
-        if not target.is_file():
-            try:
-                target.parent.mkdir(parents=True, exist_ok=True)
-            except (OSError, ValueError) as exc:
-                why = _not_made(exc)
-            else:
-                why = no_room if full else fetch(address, target, room, resolve=resolve,
-                                                 connect=connect)
-            full = full or why == no_room
-            if why is not None:
-                missing[place] = why
-        if progress is not None:
-            progress(done, len(wanted))
+        if target.is_file():
+            return None
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+        except (OSError, ValueError) as exc:
+            return _not_made(exc)
+        why = no_room if full.is_set() else fetch(address, target, room, resolve=resolve,
+                                                  connect=connect)
+        if why == no_room:
+            full.set()
+        return why
+
+    def get_each(items: list[tuple[str, str]]) -> list[tuple[str, str | None]]:
+        # One place's addresses in turn, as one at a time took them: a later
+        # one is fetched only where an earlier one left no file.
+        return [(place, get(address, place)) for address, place in items]
+
+    # Places one name apart only in case are one file on Windows, so they go
+    # to the same fetcher and never write one part file from two.
+    by_place: dict[str, list[tuple[str, str]]] = {}
+    for address, place in wanted:
+        by_place.setdefault(place.casefold(), []).append((address, place))
+    done = 0
+    with ThreadPoolExecutor(FETCHES_AT_ONCE, thread_name_prefix="import-fetch") as pool:
+        for answers in pool.map(get_each, by_place.values()):
+            for place, why in answers:
+                if why is not None:
+                    missing[place] = why
+                done += 1
+                if progress is not None:
+                    progress(done, len(wanted))
     return missing
 
 
@@ -464,6 +490,9 @@ class _Crawl:
         self.site, self.start = _Site(address), address
         self.into, self.room, self.resolve, self.connect = into, room, resolve, connect
         self.part = into.parent / _CRAWL_PART
+        # One part file for each fetch at once (PRESS-0461).
+        self.parts = [self.part.with_name(f"{_CRAWL_PART}-{each}")
+                      for each in range(FETCHES_AT_ONCE)]
         self.waiting: deque[str] = deque()
         self.seen: set[str] = set()
         self.landed: dict[str, str] = {}     # the asked address -> the path it landed at
@@ -491,26 +520,54 @@ class _Crawl:
             self.seen.add(asked)
             self.waiting.append(asked)
 
-    def get(self, asked: str) -> tuple[str | None, str, str]:
-        """Fetch `asked` to the part file: why not, what answered, and its type."""
+    def get(self, asked: str, part: Path | None = None) -> tuple[str | None, str, str]:
+        """Fetch `asked` to a part file: why not, what answered, and its type."""
         answered: list[tuple[str, str]] = []
-        why = fetch(asked, self.part, self.room, resolve=self.resolve, connect=self.connect,
-                    within=self.site.holds, answered=answered)
+        why = fetch(asked, part or self.part, self.room, resolve=self.resolve,
+                    connect=self.connect, within=self.site.holds, answered=answered)
         final, kind = answered[0] if answered else (asked, "")
         return why, final, kind
+
+    def _climbs(self, asked: str) -> bool:
+        return ".." in self.site.path(asked).split("/")
 
     def take(self, asked: str) -> bool:
         """One address: fetch it, land it, and note what it names. False where it
         could not be read."""
         path = self.site.path(asked)
-        if ".." in path.split("/"):
+        if self._climbs(asked):
             self.left.append((path, say(_PARENT)))
             return False
         if len(self.urls) >= MEMBERS_MOST or self.asked >= _ASKED_MOST:
             self.left.append((path, say(_TOO_MANY)))
             return False
         self.asked += 1
-        why, final, kind = self.get(asked)
+        return self._land(asked, *self.get(asked), self.part)
+
+    def take_some(self, pool: ThreadPoolExecutor) -> None:
+        """The next waiting addresses, up to FETCHES_AT_ONCE, fetched together and
+        landed in turn, so what lands, what is left and the order of both are as
+        `take` one at a time gives. Near either limit, one at a time."""
+        some = min(FETCHES_AT_ONCE, len(self.waiting))
+        if (some == 1 or len(self.urls) + some >= MEMBERS_MOST
+                or self.asked + some >= _ASKED_MOST):
+            self.take(self.waiting.popleft())
+            return
+        batch = [self.waiting.popleft() for _ in range(some)]
+        fetched = [asked for asked in batch if not self._climbs(asked)]
+        self.asked += len(fetched)
+        parts = dict(zip(fetched, self.parts, strict=False))
+        got = dict(zip(fetched, pool.map(lambda asked: self.get(asked, parts[asked]),
+                                         fetched), strict=True))
+        for asked in batch:
+            if asked in got:
+                self._land(asked, *got[asked], parts[asked])
+            else:
+                self.left.append((self.site.path(asked), say(_PARENT)))
+
+    def _land(self, asked: str, why: str | None, final: str, kind: str, part: Path) -> bool:
+        """What `get` brought to `part`, landed, and what it names noted."""
+        path = self.site.path(asked)
         if why is not None:
             self.left.append((path, why))
             return False
@@ -520,22 +577,22 @@ class _Crawl:
         if final in self.landed or landing in self.urls:
             # A second address for one file, as `/` and `/index.html`.
             self.landed[asked] = self.landed.get(final, landing)
-            self.part.unlink(missing_ok=True)
+            part.unlink(missing_ok=True)
             return True
-        size = self.part.stat().st_size
+        size = part.stat().st_size
         why = _why_not_kept(landing, size, self.taken)
         if why is not None:
             self.left.append((landing, why))
-            self.part.unlink(missing_ok=True)
+            part.unlink(missing_ok=True)
             return False
         target = self.into / landing
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-            self.part.replace(target)
+            part.replace(target)
         except (OSError, ValueError) as exc:
             # A whole path longer than the system holds, as Windows' 260 characters.
             self.left.append((landing, _not_made(exc)))
-            self.part.unlink(missing_ok=True)
+            part.unlink(missing_ok=True)
             return False
         self.taken.take(landing)
         self.landed[asked] = self.landed[final] = landing
@@ -640,9 +697,11 @@ def fetch_site(address: str, into: Path, room: Callable[[], int], *,
         if not crawl.take(first):
             return Crawled(tuple(crawl.left))
         crawl.sitemap()
-        while crawl.waiting:
-            crawl.take(crawl.waiting.popleft())
+        with ThreadPoolExecutor(FETCHES_AT_ONCE, thread_name_prefix="crawl") as pool:
+            while crawl.waiting:
+                crawl.take_some(pool)
         crawl.rewrite()
     finally:
-        crawl.part.unlink(missing_ok=True)
+        for part in (crawl.part, *crawl.parts):
+            part.unlink(missing_ok=True)
     return Crawled(tuple(crawl.left))

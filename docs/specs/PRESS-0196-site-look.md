@@ -16,16 +16,18 @@ own CSS).
 Layman: a Look screen lets them change their website's colours (for light
 and dark), fonts, text size, page width and header layout, and switch on a
 few gentle effects, watching the homepage change as they go. Anyone who
-knows CSS can add their own styling at the bottom. It reaches the website the
-next time they publish.
+knows CSS can add their own styling at the bottom. Saved, it waits until they
+press the look itself to the site.
 
 ## 1. Goal
 
 A site with a Pressless look is restyled from a Look screen in the Face,
 without editing a stylesheet. Each choice shows at once in a preview of the
 homepage, a readability warning appears beside any text colour that is hard
-to read, and Save keeps the choices for the next publish. Undo brings back an
-earlier look along with the rest of the site.
+to read, and Save keeps the choices waiting until the look itself is pressed
+to the site; publishing an entry or a page never sends it (PRESS-0482, the
+user 2026-11-23; `design.md` § Pages has the look's drafts). Undo brings back
+an earlier look along with the rest of the site.
 
 ## 2. Problem
 
@@ -123,8 +125,15 @@ set reads it.
 `read_look_file` and `write_look_file` read and write any of them, and
 `read_look_bytes` reads one undecoded for `look.digest`;
 `read_style_code` and `write_style_code` stay as their style-code cases.
-`LOOK_FOLDER` joins `_BINNABLE`, because a save over an unmanaged
+`LOOK_FOLDER` joins `_BINNABLE`, because a press over an unmanaged
 stylesheet (§ 4.4) and an undo (§ 4.7) each bin the version they replace.
+
+**The waiting look** (PRESS-0482) is the same files under the same names in
+`LOOK_WAITING_FOLDER`, `look-waiting`, which joins `_BINNABLE` and not
+`_SITE_FOLDERS`. Each look function above takes `waiting=False`, and
+`style_code_path` does too; `look_waits(folder)` is whether any of
+`LOOK_FILES` is there. The waiting look is the whole look a press leaves
+live: a file it lacks is binned from the live look at the press.
 `copy_to_bin` is `move_to_bin` that leaves the file in place, so § 4.4's
 state 2 keeps `style.css` present while it is replaced.
 
@@ -147,14 +156,14 @@ TEXT_PAIRS: tuple[tuple[str, str], ...]   # (text colour, its background)
 class Choices: ...             # the fields of § 4.1
 
 def defaults(layout: str) -> Choices       # what the starter look sets today
-def read(folder: Path) -> Choices | None   # None where choices.json is absent
+def read(folder: Path, *, waiting=False) -> Choices | None   # None where absent
 def css(choices: Choices, extra: str) -> str
-def save(folder: Path, choices: Choices, extra: str) -> None
+def save(folder: Path, choices: Choices, extra: str, *, waiting=False) -> None
 def warnings(choices: Choices) -> list[tuple[str, str, str, float]]
     # (scheme, text, background, ratio) for each TEXT_PAIRS pair under 4.5
 def digest(folder: Path) -> str
     # SHA-256 over choices.json, extra.css and style.css in that order,
-    # an absent file counting as a fixed marker
+    # live then waiting, an absent file counting as a fixed marker
 class LookUnreadable(store.StoreError): ...
 ```
 
@@ -218,10 +227,12 @@ None hides content before it animates in a browser that lacks the feature.
 *Moved by PRESS-0353 § 4.2: Look follows Journal and precedes Files in the bar.*
 
 `look_screen.py`, registered in `__main__` with the other screens, adds
-`GET /look`, `POST /look/preview` and `POST /look/save`, and the Face's bar
-gains a "Look" link beside Settings (`face._page`).
+`GET /look`, `POST /look/preview`, `POST /look/save`, and (PRESS-0482)
+`POST /look/publish` and `POST /look/discard`, and the Face's bar gains a
+"Look" link beside Settings (`face._page`).
 
-`GET /look` shows one of three states:
+`GET /look` shows the waiting look where one waits, else the live one, in
+one of three states:
 
 1. **The site has `choices.json`** — the panel, filled from `look.read`.
 2. **The site has style code that its choices did not make** — no
@@ -235,9 +246,10 @@ gains a "Look" link beside Settings (`face._page`).
    The panel opens on the choices where they are readable, else on a layout
    picker (default `sunrise`) showing `look.defaults` of the layout picked.
    It says above Save that the current stylesheet will be replaced and a
-   copy kept in the bin. Save writes that copy into the bin first, leaving
-   `look/style.css` in place, then calls `look.save`, which replaces it
-   last.
+   copy kept in the bin. *Amended by PRESS-0482:* the press, not Save,
+   writes that copy into the bin first, leaving `look/style.css` in place,
+   then replaces it last. "Its choices" and the stylesheet here are the
+   live look's.
 3. **The site has no style code** — the imported case (§ 4.5).
 
 The panel: the layout; for each colour name a colour input in a light and a
@@ -258,8 +270,25 @@ ratio with the decimal mark of the language in use (PRESS-0241).
 **Save** posts to `/look/save` with the `look.digest` the screen was drawn
 from. Under `editor.LOCK`, a digest that no longer matches raises
 `editor.ChangedElsewhere` and writes nothing, as `templates._save` does;
-otherwise `look.save` runs and the screen says the look reaches the website
-at the next publish. Warnings never stop a save (§ 3 decision 4).
+otherwise `look.save(..., waiting=True)` runs and the screen says the site
+keeps its look until this one is pressed. Save never writes the live look.
+PRESS-0276's own route writes the waiting `extra.css`, copies the live
+`choices.json` in where nothing waits yet, and leaves the waiting look no
+`style.css`. Warnings never stop a save (§ 3 decision 4).
+
+**Press to site** (PRESS-0482) is on while a look waits and the panel is
+unchanged since it was drawn, so what is pressed is what Save kept. It asks
+PRESS-0345's box first (`/publish/plan` with `look`, built with
+`builder.WAITING_LOOK`), then posts `/look/publish` with the digest, run as a
+press (PRESS-0235). Under the lock, a stale digest or nothing waiting raises
+`ChangedElsewhere`; else each live look file becomes its waiting one, in
+`LOOK_FILES` order, a live file the waiting look lacks goes to the bin, and
+the site is published, as PRESS-0014 § 4.7 publishes a page: a failure puts
+the live look back and keeps the waiting one; a success or an unknown
+outcome bins the waiting look. **Bin this look** posts `/look/discard` with
+the digest and bins the waiting files, never the live ones. A line under
+the panel says whether the look shown is waiting or live; the buttons keep
+their place, off where they do not apply.
 
 **The Look screen links none of the site's stylesheets into its own
 document.** The site's CSS reaches only the frame, so no extra CSS, however
@@ -341,7 +370,7 @@ files. Reconciling treats them as one unit:
   extra CSS is placed before the layout.
 
 - **INV-5** — `look.save` leaves `style.css` equal to
-  `look.css(read(folder), extra)`.
+  `look.css(read(folder), extra)`, live or waiting.
   *Test:* `tests/test_look.py` saves, then reads the three files back and
   compares.
   *Breaks when:* `style.css` is written from different choices than
@@ -353,20 +382,22 @@ files. Reconciling treats them as one unit:
   expects that pair in both schemes' warnings, then saves and reads it back.
   *Breaks when:* the warning list omits a pair or the save refuses.
 
-- **INV-7** — Saving over a style code its choices did not make keeps a
+- **INV-7** — Pressing over a style code its choices did not make keeps a
   copy of the old `style.css` in the bin, and `style.css` is never absent
-  during the save.
-  *Test:* `tests/test_look_screen.py` writes a hand-made `style.css`, saves a
-  layout and finds the hand-made text in the bin.
+  during the press.
+  *Test:* `tests/test_look_screen.py::test_pressing_over_hand_made_style_code_keeps_a_copy`
+  writes a hand-made `style.css`, saves and presses a layout, and finds the
+  hand-made text in the bin.
   *Breaks when:* the old stylesheet is overwritten without a copy, or
   moved away before the new one is written.
 
-- **INV-8** — A save whose `look.digest` no longer matches writes nothing
-  and reports the change made elsewhere, whichever of the three files
-  changed.
+- **INV-8** — A save, press or bin whose `look.digest` no longer matches
+  writes nothing and reports the change made elsewhere, whichever of the
+  six files, live or waiting, changed.
   *Test:* `tests/test_look_screen.py` changes only `extra.css` after drawing
   the screen, saves with the old digest, and finds all three files
-  unchanged.
+  unchanged; `test_a_stale_press_or_bin_writes_nothing` changes only the
+  waiting `extra.css` and presses and bins.
   *Breaks when:* the save skips the digest check.
 
 - **INV-9** — *Withdrawn by PRESS-0276 (2026-11-08); its INV-5 replaces it.*
@@ -395,15 +426,31 @@ files. Reconciling treats them as one unit:
   *Test:* `tests/test_starter.py` fills each layout and compares.
   *Breaks when:* fill writes a stylesheet with no choices behind it.
 
+- **INV-13** (PRESS-0482) — Save writes the waiting look alone, and a build
+  for anything but the look's press reads the live look.
+  *Test:* `tests/test_look_screen.py::test_a_saved_look_waits_and_no_other_publish_sends_it`.
+  *Breaks when:* Save writes a live file, or a build reads the waiting look
+  without `builder.WAITING_LOOK`.
+
+- **INV-14** (PRESS-0482) — A press that publishes, or whose outcome is
+  unknown, leaves the waiting look live and none waiting; a failed one
+  leaves both as they were.
+  *Test:* `tests/test_look_screen.py::test_pressing_the_look_publishes_it_and_a_failure_keeps_it_waiting`.
+  *Breaks when:* the press publishes the live look, leaves the waiting one
+  after a publish, or loses either after a failure.
+
 ## 6. Failure modes
 
 - **`choices.json` unreadable** (hand-edited, or from a newer Pressless) —
   `GET /look` says the look's settings cannot be read and shows no panel;
   nothing is written, and the published stylesheet is untouched.
-- **A save interrupted between files** — `style.css` is written last and
-  never moved away first (§ 4.4 state 2), so the published stylesheet is the
-  previous one, intact. The panel then shows the
-  newer choices; the next save writes a matching stylesheet.
+- **A save interrupted between files** — it writes the waiting look alone,
+  so the live look is untouched. The panel then shows the newer choices; the
+  next save writes a matching stylesheet.
+- **A press interrupted between files** — `style.css` is written last and
+  never moved away first (§ 4.4 state 2), so the live stylesheet is the
+  previous one or the new one, whole; the waiting look is still there to
+  press again.
 - **Extra CSS that breaks the site's look** — it reaches only the frame and
   the published site, never the Look screen itself (INV-10), so it can be
   fixed there; undo also brings back the earlier look once published.
@@ -460,6 +507,8 @@ fail before the code it locks exists.
 | INV-10 | `tests/test_look_screen.py` |
 | INV-11 | `tests/test_builder.py`, `tests/test_undo.py` |
 | INV-12 | `tests/test_starter.py` |
+| INV-13 | `tests/test_look_screen.py` |
+| INV-14 | `tests/test_look_screen.py` |
 
 ## 11. Cross-doc impact
 
@@ -479,5 +528,8 @@ Rows live in `../reviews/PRESS-0196-site-look-loop-log.md`.
 
 A site filled before this item has `look/style.css` and no `choices.json`:
 state 2 of § 4.4 handles it, keeping a copy of the old stylesheet in the bin
-on the first save. A site with neither is state 3. Older published states carry no look files in
+on the first press. A site with neither is state 3. An existing site has no
+`look-waiting/`, so its live look is its published look, and a new site's
+starter look is written live by `starter.fill`, so it goes out with the
+first publish (PRESS-0482). Older published states carry no look files in
 `content/`, and undo keeps the Store's look for them (§ 4.7).

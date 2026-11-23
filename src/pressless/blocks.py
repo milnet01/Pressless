@@ -226,7 +226,7 @@ def inline(markup: str) -> str | None:
 
 
 # Each kind's (required, optional) fields. VIDEO is not here: it takes
-# `youtube` or `src`, one or the other, which _check holds.
+# `youtube` with its frame's `title`, or `src`, which _check holds.
 _FIELDS = {
     TEXT: ({"html"}, set()),
     HEADING: ({"level", "html"}, set()),
@@ -256,7 +256,7 @@ def _check(section: Section) -> None:
     """Raise SectionRefused for anything §4.4 says `section_html` refuses."""
     kind, fields = section.kind, section.fields
     if kind == VIDEO:
-        wanted, optional = ({"youtube"} if "youtube" in fields else {"src"}), set()
+        wanted, optional = ({"youtube", "title"} if "youtube" in fields else {"src"}), set()
     elif kind in _FIELDS:
         wanted, optional = _FIELDS[kind]
     else:
@@ -379,9 +379,9 @@ def _write_questions(section: Section) -> str:
 
 
 def _write_video(fields) -> str:
-    if "youtube" in fields:
+    if "youtube" in fields:     # PRESS-0215 § 4.4: the title in the site's language
         return (f'<iframe src="https://www.youtube-nocookie.com/embed/{fields["youtube"]}"'
-                ' title="YouTube video" allowfullscreen loading="lazy"></iframe>')
+                f' title="{_attr(fields["title"])}" allowfullscreen loading="lazy"></iframe>')
     return f'<video controls preload="metadata" src="{_attr(fields["src"])}"></video>'
 
 
@@ -495,9 +495,11 @@ def _read_media(tag: str):
 
 
 def _read_video(inner: str):
+    """The first form's fixed title="YouTube video" (§ 4.5) reads as that title."""
     found = re.fullmatch(r'<iframe src="https://www\.youtube-nocookie\.com/embed/([^"]*)"'
-                         r' title="YouTube video" allowfullscreen loading="lazy"></iframe>', inner)
-    return {"youtube": found.group(1)} if found else _read_media("video")(inner)
+                         r' title="([^"]*)" allowfullscreen loading="lazy"></iframe>', inner)
+    return ({"youtube": found.group(1), "title": _html.unescape(found.group(2))} if found
+            else _read_media("video")(inner))
 
 
 _READERS: dict[str, Callable[[str], dict[str, str] | None]] = {
@@ -687,7 +689,12 @@ def read(name: str, html: str) -> Page | None:
     """The page's sections area as sections, or None where it has none
     (§4.2). `name`, the page's, is not read: PRESS-0215 § 4.1's signature
     keeps it."""
-    marks = _marks(html, _scan(html))
+    return _read(html, _scan(html))
+
+
+def _read(html: str, events: tuple[_Event, ...]) -> Page | None:
+    """`read`, given `html` already scanned (PRESS-0462)."""
+    marks = _marks(html, events)
     opening = next((mark for mark in marks if not mark.closing and mark.name == _PAGE), None)
     if opening is None:
         return None
@@ -758,9 +765,9 @@ def adopt(html: str, furniture: tuple[tuple[int, int], ...], element: str = "mai
     `builder.furniture_spans(name, html)`. `element` names another element to
     make the area in: `header` or `footer` for the furniture files
     (PRESS-0216 § 4.1)."""
-    if read("", html) is not None:
+    events = _scan(html)        # once, for the check and the adopting
+    if _read(html, events) is not None:
         return html
-    events = _scan(html)
 
     def in_furniture(at: int) -> bool:
         return any(start <= at < end for start, end in furniture)

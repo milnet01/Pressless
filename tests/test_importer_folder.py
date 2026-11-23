@@ -23,7 +23,7 @@ from PIL import Image
 from test_builder import _settings
 
 import pressless_import
-from pressless import builder, face, look, look_screen, menu, store
+from pressless import blocks, builder, face, look, look_screen, menu, store
 from pressless.words import say
 from pressless_import import ImportStopped
 
@@ -516,6 +516,29 @@ def test_shared_furniture_is_parted_out(tmp_path):
     assert re.search(r'data-nav="sub-about"[^>]*aria-current="page"', about)
     assert _unresolved(site, "index.html") == []
     assert _unresolved(site, "pages/sub-about.html") == []
+
+
+def test_a_bring_scans_no_page_more_than_twice(tmp_path, monkeypatch):
+    """PRESS-0462: each step that asks two things of a page scans it once for
+    both, holding that one page's scan alone. The page as found is scanned by
+    the survey and by the writing of its addresses, and the front page once
+    more for the site's name; each later version of a page once.
+    Measured 2026-11-23: a 300-page bring scanned each page about ten times."""
+    scanned: dict[str, int] = {}
+    real = blocks._scan
+
+    def counted(text):
+        if "<body" in text:
+            scanned[text] = scanned.get(text, 0) + 1
+        return real(text)
+
+    monkeypatch.setattr(blocks, "_scan", counted)
+    shared = '<header class="site"><nav><a href="index.html">Home</a></nav></header>'
+    front = _page(f"{shared}\n<p>Home words</p>\n<footer>Mine</footer>")
+    about = _page(f"{shared}\n<p>About words</p>\n<footer>Mine</footer>")
+    _brought(tmp_path, {"index.html": front, "about.html": about})
+    assert (scanned.pop(front), scanned.pop(about)) == (3, 2)
+    assert scanned and set(scanned.values()) == {1}, sorted(scanned.values())
 
 
 def test_a_menu_beside_the_header_joins_its_marker_pair(tmp_path):

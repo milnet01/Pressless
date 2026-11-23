@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=487 -->
+<!-- ants-roadmap-id-high-water: PRESS=489 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9500,19 +9500,30 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0461] **Network work runs in parallel over reused connections.**
+- ✅ [PRESS-0461] **Network work runs in parallel over reused connections.**
   Review type: Codebase. From review-code --performance, theme 5.
   One GitHub blob per request in series (publisher.py, setup step 5,
   where PRESS-0435 records a user giving up); import attachments fetched
   one by one on new connections (fetch.py); take-in downloads the same
   commit three times (takein.py); https.py and youtube.py the same shape.
   Measure each before and after.
+  Shipped 2026-11-23, 419e19c..15b47e0 (merged c494060, 0e80261). Reads go
+  over kept connections (https.KeptOpen; writes and proxies never reuse);
+  setup's blob reads run four readers within GitHub's documented limits;
+  import attachments and a site crawl fetch four at a time, each checking
+  every address is global on every hop; take-in answers a repeat look from
+  memory. Measured 2026-11-23 against a stand-in: setup reads 26.9 s to 4.2
+  s, take-in 80.5 s to 12.7 s, attachments 26.2 s to 6.6 s. Uploads, the
+  pause and the one-commit guarantee are unchanged; each blob counts as its
+  read lands. PRESS-0009, 0125, 0218, 0333 and 0435 amended. Full suite
+  2890 passed. PRESS-0489 queued.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0461.json.
   **Layman:** Publishing, taking a site in and importing take less waiting.
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0462] **The same data is read once per request or job.**
+- ✅ [PRESS-0462] **The same data is read once per request or job.**
   Review type: Codebase. From review-code --performance, themes 2 and 3.
   The header, footer and menu preview reads every published entry to
   find the newest; an autosave parses the body about six times; a build
@@ -9522,6 +9533,14 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   _folder.py): a folder bring scans each page about ten times; measured
   2026-11-23 on a 300-page bring, 21,901 page scans, 53% of profiled time.
   Passing scans through costs memory in proportion to the folder.
+  Shipped 2026-11-23, f0def73 and 5763b86 (merged 30c9ad5). A build parses
+  each entry twice, not eight times (measured 12.5 s to 3.3 s on 300
+  entries); the folder import reads the whole folder only at the found step
+  and the bring, with glance_folder elsewhere (18 ms against 1,077 ms);
+  the bring scans each page fewer times, holding one page's scan at a
+  time. Six instances measured small and closed with their numbers.
+  PRESS-0210 amended. Full suite 2890 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0462.json.
   **Layman:** Screens and saves answer a little faster.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9693,10 +9712,17 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0475] **The Windows gate clears run folders an interrupted run left on the box.**
+- ✅ [PRESS-0475] **The Windows gate clears run folders an interrupted run left on the box.**
   Review type: Codebase. Queued by PRESS-0457 from review-code lane-18
   (windows-gate.sh). The clean-up is PowerShell that runs only on the box,
   and a mistake there fails every gated push, so it is tried on the box.
+  Shipped 2026-11-23, 400480d (merged 3a84675). Each Windows gate run first
+  sweeps run folders and files at least a day old, in its own try/catch,
+  so a failed sweep never fails the gate. Tried on the box against a
+  planted sandbox: old leftovers went, fresh and near-miss names stayed,
+  an open file was left and the run carried on. Two real leftovers on the
+  box go at the next gated push.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0475.json.
   **Layman:** The Windows check before a push tidies up after a run that was cut short.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9742,7 +9768,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
+- ✅ [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
   Review type: Codebase. Surfaced by PRESS-0442's sweep, in subjects
   already shipped: editor.py's SAVING_SCRIPT clears #failure on every
   successful save, so a refused Remove or Rename's failure box closes as
@@ -9757,22 +9783,34 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   run as documented here: system python3 has Playwright but no pytest, so
   its import of test_publisher fails, and .venv has no Playwright. Make the
   documented way run, and say it in docs/working-here.md.
+  Shipped 2026-11-23, 6726c05..65a21d8 (merged 3a84675). All five fixed: a
+  clean save leaves a press's failure on screen; the log says why a
+  published entry's copy stayed; the Settings failure says read or save;
+  the Transport docstring names its real callers; the by-hand browser
+  checks run as documented from a gitignored .venv-browsers (190 passed
+  headless). Full suite 2865 passed; ruff clean. Sweep found PRESS-0488.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0480.json.
   **Layman:** Two messages that vanished too soon now stay until they are read.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0481] **A YouTube video's frame title is in the site's language.**
+- ✅ [PRESS-0481] **A YouTube video's frame title is in the site's language.**
   Review type: Codebase. Queued by PRESS-0443 from review-code lane-04
   (blocks.py: the video frame's title is fixed English). Needs a new
   frozen video form (PRESS-0215 § 4.5) with a title field the page editor
   fills in; done once PRESS-0442 has merged.
+  Shipped 2026-11-23, 3311355 (merged 65b57a0). A YouTube video's frame
+  title, and a new back-to-top label, are written in the site's language
+  through a new frozen video form with a title the page editor fills in;
+  existing pages keep their bytes. PRESS-0215 amended. Full suite 2874
+  passed. Ledger: local-archive/reviews/2026-11-23/close-findings/0481.json.
   **Layman:** A screen reader announces an embedded video in the site's own language.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0482] **The site's look either keeps a draft until published, or design.md stops saying so.**
+- ✅ [PRESS-0482] **The site's look either keeps a draft until published, or design.md stops saying so.**
   Review type: Codebase, Document. Queued by PRESS-0443 from review-code
   lane-04's open question. design.md § Pages says the look has drafts
   (user, 2026-10-02), but look.save writes the live look files
@@ -9781,6 +9819,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   User decision 2026-11-23: the look waits for Publish. Build look drafts,
   so a saved look stays a draft until the look itself is published and an
   entry's publish never ships it. design.md § Pages stands.
+  Shipped 2026-11-23, e3172e6 and 03e44c4 (merged 65b57a0), as the user
+  decided. A saved look waits in look-waiting/ until the Look screen's
+  Press to site, which shows the change box first; an entry or page press
+  never ships it. Bin this look throws a saved look away; a line says
+  whether the look shown is waiting or live; the overview counts a waiting
+  look. An existing site's live look is its published look. A double-bin
+  of hand-made style code on the own route is fixed. PRESS-0196 amended
+  (new INV-13, INV-14), with PRESS-0345 and the English manual. Full suite
+  2874 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0482.json.
   **Layman:** Saving a new look either waits for Publish, or the design notes stop promising that it does.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9797,10 +9845,17 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0484] **A media ZIP that turns out corrupt partway keeps the places it already filled.**
+- ✅ [PRESS-0484] **A media ZIP that turns out corrupt partway keeps the places it already filled.**
   Review type: Codebase. Surfaced by PRESS-0453's sweep: unpack_media
   keeps its filled places after a failed write on this computer, but
   still loses them when the ZIP proves corrupt partway through.
+  Shipped 2026-11-23, 4298211 (merged 8c280ea). A media ZIP cut short or
+  damaged partway raises MediaDamaged carrying the places it filled; the
+  gaps step keeps them, says the ZIP is damaged, and rewrites
+  unfetched.json. Before, the places were forgotten, or an uncaught zlib
+  error broke the page. The ZIP read errors are one list, in _bring.py.
+  PRESS-0125 amended. Full suite 2858 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0484.json.
   **Layman:** A damaged media ZIP no longer makes Pressless forget the files it already saved.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9824,7 +9879,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0486] **Signing checks each release file came from the release run.**
+- ✅ [PRESS-0486] **Signing checks each release file came from the release run.**
   Review type: Codebase. Queued by PRESS-0458 from review-code lane-19
   (scripts/sign-release.py; release-integrity class). Chosen 2026-11-23,
   on the fix helper's recommendation: release.yml records each file's
@@ -9832,6 +9887,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   bytes to the run. Changes PRESS-0023 § 4.8 step 2 and release.yml; tried
   for real at the next release. Also: by-hand-browser-checks.py keeps its
   work folders in /tmp on Linux, against the project's scratch rule.
+  Shipped 2026-11-23, 29d0223 and 09a3d05 (merged 90bfaaa). release.yml
+  records each file's SHA-256 as the run's fingerprints artifact, kept with
+  the run rather than on the draft, so swapping a draft's files cannot
+  rewrite it. sign-release.py fetches that run's record and refuses, in
+  words, a mismatch, an unrecorded file, or a missing or unreadable
+  record. PRESS-0023 § 4.8 (step 3) and INV-19, PRESS-0022 and
+  working-here.md § Releasing amended. The artifact round trip is proven
+  only at the next real release. The by-hand checks keep Linux work off
+  /tmp. Full suite 2865 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0486.json.
   **Layman:** A release is signed only when every file in it is the one the release build made.
   Kind: security.
   Source: review-2026-11-23.
@@ -9848,6 +9913,35 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: investigate.
   Source: review-2026-11-23.
   Lanes: Publisher.
+
+- ✅ [PRESS-0488] **The AI helper says when a publish left a copy behind.**
+  Review type: Codebase. Surfaced by PRESS-0480's sweep: assistant._press
+  discards Published.copy_kept, so a publish the AI helper runs never says
+  a copy stayed. Needs new screen words and a place in the helper's answer
+  or the waiting-request box (PRESS-0337 § 4.6).
+  Shipped 2026-11-23, 98376a5..de25574 (merged 1dec258). After an AI app
+  publishes a site, an entry or a page, its answer says when a working copy
+  was kept, or may have been kept after an unknown outcome, in the Publish
+  button's own words (no new screen words). Each path's wiring and both of
+  _yes's appends were removed once, and a test went red each time.
+  PRESS-0337 § 4.6 amended. Full suite 2896 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0488.json.
+  **Layman:** After an AI app publishes, you are told when an entry's working copy was kept, as the Publish button already tells you.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Assistant.
+
+- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
+  Review type: Codebase. Queued by PRESS-0461 from review-code
+  --performance lane-05 (takein.py). Keeping the files on disk until
+  Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
+  copy, its cleanup, Windows holding files open), so the spec changes
+  first. The re-fetch now costs one parallel fetch: measured 4.23 s per 40
+  files against a stand-in, 2026-11-23.
+  **Layman:** Finishing taking a site in no longer downloads it once more.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Setup.
 
 ## 1.3.0 — a home other than GitHub
 

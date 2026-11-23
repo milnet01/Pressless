@@ -43,6 +43,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    details_for,
     gatherer,
     message_box,
     nothing_captured,
@@ -191,9 +192,11 @@ def publish(folder: Path, saved: settings.Settings, key: str, *, entry: str | No
             emptying: bool = False, taking_over: bool = False,
             capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str | Notice] | None = None,
-            transport: publisher.Transport | None = None) -> Published:
+            transport: publisher.Transport | None = None,
+            noted: Callable[[str], None] = lambda _line: None) -> Published:
     """§ 4.3: move the entry, guard, build, upload, finish. `capture` wraps every
-    step but the upload, and what each capture gathers is added to `notices`."""
+    step but the upload, and what each capture gathers is added to `notices`.
+    Why a working copy could not be binned goes to `noted`, the Face's log."""
     folder = Path(folder)
     gathered = notices if notices is not None else []
 
@@ -220,7 +223,8 @@ def publish(folder: Path, saved: settings.Settings, key: str, *, entry: str | No
         try:
             for path in moved.copy:
                 captured(lambda target=path: store.move_to_bin(folder, target))
-        except Exception:  # noqa: BLE001 -- never replaces the publish's result (§ 4.3 step 5)
+        except Exception as exc:  # noqa: BLE001 -- never replaces the publish's result (§ 4.3 step 5)
+            noted(details_for(exc))
             return True
         return False
 
@@ -328,9 +332,11 @@ class Preview:
 
 
 def preview(folder: Path, saved: settings.Settings, key: str, *,
-            entry: str | None = None, page: builder.Html | None = None,
+            entry: str | None = None,
+            page: builder.Html | builder.WaitingLook | None = None,
             transport: publisher.Transport | None = None) -> Preview:
-    """PRESS-0345 § 4.2: build as if `entry` or `page` were pressed, into a
+    """PRESS-0345 § 4.2: build as if `entry` or `page` were pressed, the
+    waiting look among pages (PRESS-0196 § 4.4), into a
     scratch folder with photographs named rather than resized, and plan the
     publish of that. Nothing in the Store or the site folder changes, and the
     scratch folder goes whatever happens. Raises as the press would."""
@@ -475,16 +481,19 @@ def settings_and_key(folder: Path, gathered: Callable) -> tuple[settings.Setting
 
 
 def press_preview(folder: Path, *, entry: str | None = None,
-                  page: tuple[str, str] | None = None,
+                  page: tuple[str, str] | None = None, look: bool = False,
                   transport: publisher.Transport | None = None) -> Preview:
     """PRESS-0345 § 4.3: the preview of pressing the entry `entry`, or the page
-    or part `page` (kind, name) as its waiting copy holds it, or the site as it
-    stands. Writes nothing."""
+    or part `page` (kind, name) as its waiting copy holds it, or the waiting
+    look where `look` (PRESS-0196 § 4.4), or the site as it stands. Writes
+    nothing."""
     saved, key = settings_and_key(folder, lambda step: step())
     if entry is not None:
         return preview(folder, saved, key, entry=entry, transport=transport)
-    held = None
-    if page is not None:
+    held: builder.Html | builder.WaitingLook | None = None
+    if look and store.look_waits(folder):
+        held = builder.WAITING_LOOK
+    elif page is not None:
         waiting = store.html_path_for(folder, *page, waiting=True)
         if waiting.is_file():
             held = builder.Html(*page, store.read_html(waiting))
@@ -494,8 +503,9 @@ def press_preview(folder: Path, *, entry: str | None = None,
 def _plan(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
     """PRESS-0345 § 4.3: `press_preview` for the entry `slug`, or the page or part
-    `kind` and `name`, or the site where the form names neither (PRESS-0353
-    § 4.3). The editor saves first, so the Store holds what would be pressed.
+    `kind` and `name`, or the waiting look where it names `look` (PRESS-0196
+    § 4.4), or the site where the form names none (PRESS-0353 § 4.3). The
+    editor saves first, so the Store holds what would be pressed.
     It builds under editor.LOCK, as a press does (PRESS-0013 § 4.1)."""
     form = {name: values[0]
             for name, values in request.form(blanks=True, strict=True).items()}
@@ -503,6 +513,8 @@ def _plan(face: Face, folder: Path, request: Request,
         with editor.LOCK:
             if "slug" in form:
                 shown = press_preview(folder, entry=form["slug"], transport=transport)
+            elif "look" in form:     # PRESS-0196 § 4.4
+                shown = press_preview(folder, look=True, transport=transport)
             elif "kind" in form or "name" in form:
                 shown = press_preview(folder, page=(form.get("kind", ""), form.get("name", "")),
                              transport=transport)
@@ -567,7 +579,8 @@ def _publish_site(face: Face, folder: Path,
 def press_entry(folder: Path, form: dict[str, str], *,
                 capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
                 notices: list[str | Notice] | None = None,
-                transport: publisher.Transport | None = None
+                transport: publisher.Transport | None = None,
+                noted: Callable[[str], None] = lambda _line: None
                 ) -> tuple[store.Entry, Published]:
     """§ 4.2's press: save the form, then publish the entry it wrote. Raises
     editor.SAVE_FAILURES from the save, or what `publish` raises. The caller
@@ -575,17 +588,18 @@ def press_entry(folder: Path, form: dict[str, str], *,
     gathered = notices if notices is not None else []
     written, _ = gatherer(capture, gathered)(lambda: editor.save(folder, form))
     return written, _press_written(folder, written, capture=capture, notices=gathered,
-                                   transport=transport)
+                                   transport=transport, noted=noted)
 
 
 def _press_written(folder: Path, written: store.Entry, *,
                    capture: Callable[[], AbstractContextManager[list[str]]],
-                   notices: list, transport: publisher.Transport | None) -> Published:
+                   notices: list, transport: publisher.Transport | None,
+                   noted: Callable[[str], None] = lambda _line: None) -> Published:
     """`press_entry` after its save, which the screen's press splits from the
     save to answer each failure differently."""
     saved, key = settings_and_key(folder, gatherer(capture, notices))
     return publish(folder, saved, key, entry=written.slug, capture=capture,
-                   notices=notices, transport=transport)
+                   notices=notices, transport=transport, noted=noted)
 
 
 def press_site(folder: Path, *,
@@ -618,7 +632,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
 
         try:
             result = _press_written(folder, written, capture=face.capture, notices=notices,
-                                    transport=transport)
+                                    transport=transport, noted=face.note)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = press_failure(face, exc)
             published = False

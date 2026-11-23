@@ -149,3 +149,33 @@ def test_a_file_deleted_here_is_absent_on_the_box(tmp_path: Path):
     assert (box / "moved.txt").is_file()
     assert not (box / "removed.txt").exists()
     assert not (box / "kept.txt").exists()
+
+
+def test_each_run_first_clears_what_runs_cut_short_left(tmp_path: Path):
+    """PRESS-0475: a run whose connection dropped never reaches its own
+    finally, so the next run clears its folder and files once a day old. The
+    sweep runs before the clone, in its own try, so its failure cannot fail
+    the gate; and it matches the names a run takes and nothing near them.
+    Breaks when the sweep goes, moves inside the run's try, ages nothing, or
+    its patterns drift from the run's own names.
+
+    The box's steps are PowerShell; their .NET patterns are read the same way
+    by Python's re here. A run on the box against planted folders checked the
+    rest."""
+    ran, _, kept = _gate(tmp_path)
+    assert ran.returncode == 0, ran.stderr
+    script = next(kept.glob("*.ps1")).read_text(encoding="utf-8")
+    sweep = script.index("$stale = (Get-Date).AddDays(-1)")
+    sweep_try, run_try = script.rfind("try {", 0, sweep), script.index("try {", sweep)
+    assert sweep_try < sweep < script.index("} catch {", sweep) < run_try
+    assert run_try < script.index("git clone")
+    assert script.count("-lt $stale") == 2
+    folders, files = re.findall(r"-match '([^']+)'", script)
+    run = next(kept.glob("*.ps1")).stem
+    assert re.search(folders, run)
+    for name in (f"{run}.zip", f"{run}.bundle", f"{run}.ps1"):
+        assert re.search(files, name), name
+    for near in ("python", "run-notes", f"{run}.txt", f"{run}.zip.bak", f"x{run}", "run-1-x"):
+        assert not re.search(folders, near) and not re.search(files, near), near
+    assert re.search(r"-LiteralPath \$gate -Directory", script)
+    assert re.search(r"-LiteralPath \$userHome -File", script)

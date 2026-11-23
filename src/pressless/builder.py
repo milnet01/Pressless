@@ -81,6 +81,15 @@ class Html:
     html: str
 
 
+@dataclass(frozen=True)
+class WaitingLook:
+    """A change that is the look waiting to be published: the build reads its
+    files in place of the live look's (PRESS-0196 § 4.4)."""
+
+
+WAITING_LOOK = WaitingLook()
+
+
 class BuildStopped(Exception):
     """The Store holds something that cannot be built; `into` is unchanged."""
 
@@ -173,21 +182,22 @@ def _has_piece(text: str) -> bool:
     return page is not None and found(page.sections)
 
 
-def stylesheets(folder: Path) -> tuple[str, ...]:
+def stylesheets(folder: Path, *, waiting: bool = False) -> tuple[str, ...]:
     """The stylesheets a page links, from the root (PRESS-0126 § 4.6): the
     Store's style code where it holds one, else the live site's assets/ pair,
-    and after it the CSS on top where there is any (PRESS-0276 § 4.1)."""
-    if store.style_code_path(folder).is_file():
+    and after it the CSS on top where there is any (PRESS-0276 § 4.1). With
+    `waiting`, as the look waiting to be published has them."""
+    if store.style_code_path(folder, waiting=waiting).is_file():
         return (STYLE_CODE,)
-    return STYLESHEETS + ((EXTRA_CSS,) if _extra_css(folder) else ())
+    return STYLESHEETS + ((EXTRA_CSS,) if _extra_css(folder, waiting=waiting) else ())
 
 
-def _extra_css(folder: Path) -> str | None:
+def _extra_css(folder: Path, *, waiting: bool = False) -> str | None:
     """The CSS on top of a site's own stylesheets: look/extra.css where the
     Store holds no style code and it holds more than white space."""
-    if store.style_code_path(folder).is_file():
+    if store.style_code_path(folder, waiting=waiting).is_file():
         return None
-    text = store.read_look_file(folder, store.EXTRA_CSS_NAME)
+    text = store.read_look_file(folder, store.EXTRA_CSS_NAME, waiting=waiting)
     return text if text and text.strip() else None
 
 
@@ -452,7 +462,7 @@ def file_allowed(name: str, data: bytes) -> bool:
 
 def build(folder: Path, settings: Settings, into: Path, *,
           photo_src: marks.PhotoSrc | None = None,
-          change: store.Entry | Html | None = None,
+          change: store.Entry | Html | WaitingLook | None = None,
           today: date | None = None, photographs: bool = True) -> Built:
     """§4.8, in order: settle what an interrupted build left, refuse a folder
     the Builder did not make, build everything into `<into>.pressless-new`, and
@@ -907,7 +917,8 @@ class FileUser:
 def files_named(folder: Path) -> dict[str, tuple[FileUser, ...]]:
     """Each kept file a page names, and what names it (PRESS-0197 § 4.6): the
     header, the footer, the menu, every fixed page, published and waiting, so
-    a page still being edited keeps its files, and the look."""
+    a page still being edited keeps its files, and the look, live and
+    waiting."""
     folder = Path(folder)
     named: dict[str, list[FileUser]] = {}
     texts: list[tuple[FileUser, str, str]] = []
@@ -922,12 +933,13 @@ def files_named(folder: Path) -> dict[str, tuple[FileUser, ...]]:
             texts.append((FileUser(store.PAGES_FOLDER, name), page_file(name),
                           store.read_html(path)))
     look = FileUser(store.LOOK_FOLDER, store.LOOK_FOLDER)
-    style_code = store.read_style_code(folder)
-    if style_code is not None:
-        texts.append((look, STYLE_CODE, style_code))    # PRESS-0210 § 4.13
-    extra = _extra_css(folder)
-    if extra is not None:
-        texts.append((look, EXTRA_CSS, extra))          # PRESS-0276 § 4.2
+    for waiting in (False, True):
+        style_code = store.read_style_code(folder, waiting=waiting)
+        if style_code is not None:
+            texts.append((look, STYLE_CODE, style_code))    # PRESS-0210 § 4.13
+        extra = _extra_css(folder, waiting=waiting)
+        if extra is not None:
+            texts.append((look, EXTRA_CSS, extra))          # PRESS-0276 § 4.2
     for user, relative, text in texts:
         for held in _held_files(folder, relative, text):
             users = named.setdefault(held, [])
@@ -938,8 +950,8 @@ def files_named(folder: Path) -> dict[str, tuple[FileUser, ...]]:
 
 class _Build:
     def __init__(self, folder: Path, settings: Settings, root: Path,
-                 photo_src: marks.PhotoSrc | None, change: store.Entry | Html | None,
-                 today: date):
+                 photo_src: marks.PhotoSrc | None,
+                 change: store.Entry | Html | WaitingLook | None, today: date):
         self._listed_photographs: frozenset[str] | None = None
         self._listed_files: frozenset[str] | None = None
         self.folder = folder
@@ -947,6 +959,7 @@ class _Build:
         self.root = root
         self.photo_src = photo_src
         self.change = change
+        self.look_waiting = isinstance(change, WaitingLook)   # PRESS-0196 § 4.4
         self.today = today
         self.writes_photographs = True   # False: named, not written (PRESS-0345)
         self.named: list[str] = []
@@ -959,6 +972,9 @@ class _Build:
         self.marked = ""  # the furniture file whose marks stay, for its preview alone
         self.furniture_pieces = False  # whether the header or footer holds a piece
         self.pieces_linked = False     # whether any page written links pieces.js
+        # PRESS-0462: each body's plain text, worked out by its page and read
+        # again by its cards. One string per entry, held for this build alone.
+        self.texts: dict[str, str] = {}
         # Set by read_furniture or read_html, before any page is written.
         self.furniture: _Furniture
 
@@ -1125,12 +1141,12 @@ class _Build:
         self.page_forwards(pages)
         self.content()
         self.sitemap(sorted(pages), shown, journal)
-        style_code = store.read_style_code(self.folder)
+        style_code = store.read_style_code(self.folder, waiting=self.look_waiting)
         if style_code is not None:
             if self.publishing:
                 self.copy_what_is_named(STYLE_CODE, style_code)
             self.write_bytes(STYLE_CODE, style_code.encode("utf-8"))
-        extra = _extra_css(self.folder)
+        extra = _extra_css(self.folder, waiting=self.look_waiting)
         if extra is not None:     # PRESS-0276 § 4.2
             if self.publishing:
                 self.copy_what_is_named(EXTRA_CSS, extra)
@@ -1158,8 +1174,8 @@ class _Build:
         if self.publishing:
             self.copy_what_is_named(relative, text)
         shown = _relinked(text if keep_marks else blocks.unmarked(name, text), depth,
-                          store.style_code_path(self.folder).is_file(),
-                          _extra_css(self.folder) is not None)
+                          store.style_code_path(self.folder, waiting=self.look_waiting).is_file(),
+                          _extra_css(self.folder, waiting=self.look_waiting) is not None)
         filled = _fill_fixed_page(name, shown, depth, self.furniture)
         self.write_text(relative, self.counted(self.identified(self.enhanced(
             filled, depth, self.furniture_pieces or _has_piece(text)), depth)))
@@ -1197,7 +1213,7 @@ class _Build:
         """`code` is what only an entry page may carry (PRESS-0211 § 4.3)."""
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
-                          for sheet in stylesheets(self.folder))
+                          for sheet in stylesheets(self.folder, waiting=self.look_waiting))
         shell = self.enhanced(
             f"""<!doctype html>
 <html lang="{self.language}">
@@ -1312,7 +1328,7 @@ class _Build:
     </article>
 {comments}
     <p class="back"><a href="{up}blog/index.html">{self.say("site.all_entries")}</a></p>"""
-        description = _excerpt(_entry_text(doc, self.today), 150) or heading
+        description = _excerpt(self.entry_text(entry.body, doc), 150) or heading
         self.page(relative, depth, heading, description, body, code=code)
 
     def comments(self, entry: store.Entry) -> str:
@@ -1412,17 +1428,25 @@ class _Build:
         self.write_bytes(f"{store.FILES_FOLDER}/{name}", data)
         self.copied_files.add(name)
 
+    def entry_text(self, body: str, doc: marks.Document | None = None) -> str:
+        """`_entry_text` of `body`, parsed only where this build has not yet
+        worked it out (PRESS-0462). `doc` is the body already parsed."""
+        if body not in self.texts:
+            self.texts[body] = _entry_text(doc if doc is not None else marks.parse(body),
+                                           self.today)
+        return self.texts[body]
+
     # -- listings --
 
     def card(self, entry: store.Entry, depth: int) -> str:
         up = "../" * depth
         if entry.title:
             heading = html.escape(entry.title)
-            excerpt = _excerpt(_entry_text(marks.parse(entry.body), self.today), 180)
+            excerpt = _excerpt(self.entry_text(entry.body), 180)
             excerpt_row = f'\n        <p class="post-excerpt">{_as_text_html(excerpt)}</p>'
             untitled = ""
         else:
-            teaser = _excerpt(_entry_text(marks.parse(entry.body), self.today), 48) \
+            teaser = _excerpt(self.entry_text(entry.body), 48) \
                 or words.long_date(entry.date, self.language)
             heading, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">

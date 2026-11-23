@@ -102,7 +102,7 @@ _WORDS: dict[str, str] = {
     ),
     "failure.settings.NotSetUp.what": "Pressless is not set up yet.",
     "failure.settings.NotSetUp.next": "Go through setup first.",
-    "failure.settings.SettingsError.what": "Pressless could not read its settings.",
+    "failure.settings.SettingsError.what": "Pressless could not read or save its settings.",
     "failure.settings.SettingsError.next": (
         "Pressless changed nothing in them. Send the details below to whoever helps you."
     ),
@@ -480,6 +480,13 @@ _WORDS: dict[str, str] = {
         "Pressless cannot tell whether your changes were published, and their waiting copy "
         "was left in place. You can throw it away."
     ),
+    "notice.look_screen.kept": (
+        "Your look was published, but its waiting copy was left in place. You can bin it."
+    ),
+    "notice.look_screen.kept_unknown": (
+        "Pressless cannot tell whether your look was published, and its waiting copy was "
+        "left in place. You can bin it."
+    ),
     "site.unchanged": "Your site has not changed.",
     "site.unknown": "Pressless cannot tell whether your site changed.",
     "site.updated": "Your site has been updated.",
@@ -606,6 +613,7 @@ _WORDS: dict[str, str] = {
     "overview.waiting.parts.many": "{count} parts of every page",
     "overview.waiting.entries.one": "{count} journal entry",
     "overview.waiting.entries.many": "{count} journal entries",
+    "overview.waiting.look": "the look",
     # The editor's site line and lists (editor.py).
     "editor.site_line.unnamed": "Your site",
     "editor.site_line": "Editing <b>{name}</b> at {address}",
@@ -774,6 +782,8 @@ _WORDS: dict[str, str] = {
     "page_editor.panel.level": "Heading size, 1 the largest",
     "page_editor.panel.photograph": "A photograph you have, or an address",
     "page_editor.panel.address": "Address",
+    # PRESS-0481: a YouTube video's frame title, in the site's language.
+    "page_editor.video_title": "YouTube video",
     "page_editor.panel.add_file": "Upload a file",
     "page_editor.panel.alt": "Words that describe it",
     "page_editor.panel.caption": "Caption, if any",
@@ -2756,23 +2766,31 @@ _WORDS: dict[str, str] = {
     # The Look screen (look_screen.py).
     "look_screen.title": "Your site's look",
     "look_screen.about": (
-        "Change a choice and the preview beside it shows it at once. Save keeps it, and your"
-        " website shows it after you next publish."
+        "Change a choice and the preview beside it shows it at once. Save keeps it here, and"
+        " your website shows it once you press the look to your site."
     ),
     "look_screen.route": "How your site is styled",
     "look_screen.route.own": "Keep its own stylesheets, and add CSS on top",
     "look_screen.route.pressless": "Use a Pressless design",
     "look_screen.back": (
-        "Saving puts your site's own stylesheets back. Pressless keeps a copy of the current"
-        " style code in the bin."
+        "Pressing this to your site puts its own stylesheets back. Pressless keeps a copy of"
+        " the current style code in the bin."
     ),
     "look_screen.extra.own_about": (
         "For anyone who knows CSS: it is added after your site's own stylesheets."
     ),
-    "look_screen.saved": "Saved. Your website shows this look after you next publish.",
+    "look_screen.saved": (
+        "Saved. Your website keeps its current look until you press this one to your site."
+    ),
+    "look_screen.waiting": "This look is not on your site yet.",
+    "look_screen.live": (
+        "This is your site's look. Your changes stay on this computer until you press the"
+        " look to your site."
+    ),
+    "look_screen.bin": "Bin this look",
     "look_screen.replaces": (
-        "Saving replaces your site's current style code with one made from these choices."
-        " Pressless keeps a copy of the current one in the bin."
+        "Pressing this to your site replaces its current style code with one made from these"
+        " choices. Pressless keeps a copy of the current one in the bin."
     ),
     "look_screen.restart": "Choosing a layout here starts again from its own colours and fonts.",
     "look_screen.layout": "Layout",

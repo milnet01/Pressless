@@ -501,7 +501,15 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     _remember(folder, kind, name, request)
     return render_notices(notices) + _page(
         kind, name, opened, builder.stylesheets(folder), face.view_site(),
-        starter.unpublished(folder), remembered.true_colours)
+        starter.unpublished(folder), remembered.true_colours,
+        site_words=_site_words(languages.of_site(folder)))
+
+
+def _site_words(code: str) -> str:
+    """The words a new section is given that its page publishes, in the
+    site's language `code`, for the visual view's script (PRESS-0481)."""
+    return json.dumps({"video_title": say_in(code, "page_editor.video_title"),
+                       "top_label": say_in(code, "script.visual.top_label")})
 
 
 def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -540,7 +548,7 @@ def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) ->
 
 
 def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit: str,
-          off_site: bool, undimmed: bool = False) -> str:
+          off_site: bool, undimmed: bool = False, *, site_words: str = "{}") -> str:
     """The editor, carrying both views; the one not shown is hidden
     (PRESS-0285 § 4.3)."""
     view, show, waiting, base, held = (opened.view, opened.show, opened.waiting,
@@ -612,7 +620,8 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
 <p id="save-hint"></p>
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
  data-show="{attr(shown)}" data-waiting="{'1' if waiting else '0'}" data-base="{attr(base)}"
- data-off-site="{'1' if off_site else '0'}" onsubmit="return false">
+ data-off-site="{'1' if off_site else '0'}" data-site-words="{attr(site_words)}"
+ onsubmit="return false">
 <p><button type="button" data-editor="publish">{say("editor.press")}</button>
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
@@ -868,14 +877,16 @@ def _publish(face: Face, folder: Path, request: Request,
 def press_page(folder: Path, form: dict[str, str], *,
                capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
                notices: list | None = None,
-               transport: publisher.Transport | None = None) -> publishing.Published:
+               transport: publisher.Transport | None = None,
+               noted: Callable[[str], None] = lambda _line: None) -> publishing.Published:
     """§ 4.7's press: write the form's waiting copy, then publish it. Raises
     what `write_copy` refuses with, or what the publish raises. The caller holds
-    editor.LOCK (PRESS-0337 § 4.7)."""
+    editor.LOCK (PRESS-0337 § 4.7). Why a copy stayed goes to `noted`."""
     gathered = notices if notices is not None else []
     new, _ = gatherer(capture, gathered)(lambda: write_copy(folder, form))
     return _press_written(folder, form.get("kind", ""), form.get("name", ""), new,
-                          capture=capture, notices=gathered, transport=transport)
+                          capture=capture, notices=gathered, transport=transport,
+                          noted=noted)
 
 
 def _press_written(folder: Path, kind: str, name: str, new: str, *,
@@ -929,7 +940,7 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
                 notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
                                       Site.UNKNOWN))
 
-        result = _publish_or_put_back(folder, saved, key, changes, notices, transport,
+        result = publish_or_put_back(folder, saved, key, changes, notices, transport,
                                       gathered, unknown, capture=capture)
         kept = kept_after_binning()
     except Exception as exc:
@@ -1281,7 +1292,7 @@ def reshape(folder: Path, name: str, to: str, *, renaming: bool,
             # Nothing is published yet: a half-made change is undone.
             gathered(changes.put_back)
             raise
-        result = _publish_or_put_back(folder, saved, key, changes, gathered_notices,
+        result = publish_or_put_back(folder, saved, key, changes, gathered_notices,
                                       transport, gathered, capture=capture)
     except Exception as exc:
         gathered_notices.extend(_site_said(said, False,
@@ -1323,7 +1334,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                   "notices": render_notices(notices), "busy": False, "address": address})
 
 
-def _publish_or_put_back(folder: Path, saved: settings.Settings, key: str,
+def publish_or_put_back(folder: Path, saved: settings.Settings, key: str,
                          changes: _Changes, notices: list,
                          transport: publisher.Transport | None,
                          gathered: Callable, unknown: Callable[[], None] = lambda: None, *,
@@ -1890,6 +1901,9 @@ _VISUAL_SCRIPT = r"""
   const YOUTUBE = new RegExp("^\\s*(?:https?:)?//(?:(?:www\\.|m\\.)?youtube(?:-nocookie)?\\.com/"
                              + "(?:watch\\?(?:.*&)?v=|embed/|shorts/)|youtu\\.be/)"
                              + "([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])", "i");
+  // PRESS-0481: words a new section publishes, in the site's language.
+  const SITE_WORDS = JSON.parse(document.getElementById("editor").dataset.siteWords || "{}");
+  const VIDEO_TITLE = SITE_WORDS.video_title || "";
   const key = (path) => JSON.stringify(path);
 
   // ---- the model -------------------------------------------------------
@@ -2242,7 +2256,8 @@ _VISUAL_SCRIPT = r"""
       else delete picked.fields.caption;
     } else if (name === "src" && picked.kind === "video") {
       const id = YOUTUBE.exec(value);
-      picked.fields = id ? {youtube: id[1]} : {src: value};
+      picked.fields = id ? {youtube: id[1], title: picked.fields.title || VIDEO_TITLE}
+        : {src: value};
     } else {
       picked.fields[name] = value;
     }
@@ -2282,11 +2297,12 @@ _VISUAL_SCRIPT = r"""
     const fields = kind === "text" ? {html: ""} : kind === "heading" ? {level: "2", html: ""}
       : kind === "picture" ? {src: address, alt: ""}
       : kind === "button" || kind === "download" ? {href: address, label: address}
-      : kind === "video" ? (YOUTUBE.exec(address) ? {youtube: YOUTUBE.exec(address)[1]}
+      : kind === "video" ? (YOUTUBE.exec(address)
+                            ? {youtube: YOUTUBE.exec(address)[1], title: VIDEO_TITLE}
                             : {src: address})
       : kind === "music" ? {src: address}
       : kind === "enlarge" ? {src: address, alt: ""}
-      : kind === "top" ? {label: say("script.visual.top_label")}
+      : kind === "top" ? {label: SITE_WORDS.top_label || say("script.visual.top_label")}
       : kind === "countdown" ? {to: weekAhead(), label: ""}
       : kind === "script" || kind === "style" ? {code: ""} : {};
     const parts = kind === "columns" ? [[], []]

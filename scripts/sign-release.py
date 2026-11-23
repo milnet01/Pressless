@@ -12,9 +12,10 @@ repository's secrets, and anyone who can change the workflow could sign
 2. Refuses unless the release is a draft holding both artefacts and nothing
    but this release's files, and the release workflow run that built it was
    for the tag's own commit (FIBR-0318).
-3. Downloads the two artefacts, writes the signed list (§ 4.3) and the
-   changes file (§ 4.12, from CHANGELOG.md at the tag), and signs each with
-   each key.
+3. Downloads the two artefacts and refuses unless each one's SHA-256 is the
+   one that run recorded (PRESS-0486). Then writes the signed list (§ 4.3)
+   and the changes file (§ 4.12, from CHANGELOG.md at the tag), and signs
+   each with each key.
 4. Verifies every signature against update_key.TRUSTED as committed at the
    tag -- never against the key it just signed with -- and attaches nothing
    if one fails.
@@ -54,6 +55,12 @@ from _refusing import Refused  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 REPOSITORY = os.environ.get("PRESSLESS_UPDATE_REPOSITORY") or "milnet01/Pressless"
 WORKFLOW = "release.yml"
+# What release.yml's publish job names the record of each file's SHA-256 it
+# keeps with the run, and the one file inside it. Kept with the run, not the
+# draft, so whoever can swap a draft's files cannot rewrite it.
+RECORD = "fingerprints"
+RECORD_FILE = "fingerprints.txt"
+_RECORDED = re.compile(r"([0-9a-f]{64}) [ *](.+)", re.ASCII)
 _TAG = re.compile(r"v([0-9]+\.[0-9]+\.[0-9]+)", re.ASCII)
 # What an installed copy will read of a changes file: updater.CHANGES_LIMIT.
 # Written out, because this script reads nothing of Pressless's but at the tag.
@@ -86,6 +93,34 @@ def _verifies(key: Ed25519PublicKey, signature: bytes, text: bytes) -> bool:
     except InvalidSignature:
         return False
     return True
+
+
+def require_recorded(record: str, files: dict[str, bytes]) -> None:
+    """Each file is byte for byte the one the release run built: its SHA-256
+    is the one `sha256sum` wrote for it in that run (PRESS-0486)."""
+    recorded: dict[str, str] = {}
+    for line in record.splitlines():
+        found = _RECORDED.fullmatch(line)
+        if found is None:
+            raise Refused("the release run's record of fingerprints cannot be read")
+        recorded[found.group(2)] = found.group(1)
+    for name, data in files.items():
+        if name not in recorded:
+            raise Refused(f"the release run recorded no fingerprint for {name}")
+        if hashlib.sha256(data).hexdigest() != recorded[name]:
+            raise Refused(f"{name} is not the file the release run built: "
+                          "its SHA-256 is not the one that run recorded")
+
+
+def _record(run: str, folder: Path) -> str:
+    """The record of fingerprints the release run `run` kept with it."""
+    try:
+        _run("gh", "run", "download", run, "--repo", REPOSITORY,
+             "--name", RECORD, "--dir", str(folder))
+        return (folder / RECORD_FILE).read_text(encoding="ascii")
+    except (Refused, OSError, UnicodeDecodeError) as exc:
+        raise Refused("the release run left no record of its files' fingerprints, "
+                      f"so nothing shows these are the files it built ({exc})") from None
 
 
 def require_built_from(tag_commit: str, run_commit: str) -> None:
@@ -228,11 +263,11 @@ def sign(tag: str) -> None:
     # Filtered by gh before the limit, so failed reruns cannot hide the success.
     runs = json.loads(_run("gh", "run", "list", "--repo", REPOSITORY, "--workflow", WORKFLOW,
                            "--branch", tag, "--status", "success",
-                           "--json", "headSha,conclusion", "--limit", "1"))
-    built = [run["headSha"] for run in runs if run.get("conclusion") == "success"]
+                           "--json", "databaseId,headSha,conclusion", "--limit", "1"))
+    built = [run for run in runs if run.get("conclusion") == "success"]
     if not built:
         raise Refused("no successful release workflow run is recorded for the tag")
-    require_built_from(tag_commit, built[0])
+    require_built_from(tag_commit, built[0]["headSha"])
 
     trusted = _trusted_at(tag)
     # Beside the repository, never the system temporary folder: two artefacts
@@ -241,6 +276,10 @@ def sign(tag: str) -> None:
     try:
         _run("gh", "release", "download", tag, "--repo", REPOSITORY, "--dir", str(work),
              *(word for name in artefacts(version).values() for word in ("--pattern", name)))
+        # Before anything is signed: the bytes are the ones that run built.
+        require_recorded(_record(str(built[0]["databaseId"]), work / RECORD),
+                         {name: (work / name).read_bytes()
+                          for name in artefacts(version).values()})
         changes = changes_text(version, _run("git", "-C", str(ROOT), "show",
                                              f"{tag}:CHANGELOG.md"))
         # Both are signed and proved before either is attached.

@@ -16,6 +16,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import shutil
+import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -32,6 +33,11 @@ from pressless_import import fetch
 PREFIXES = (undo.CONTENT, f"{store.PHOTOGRAPHS_FOLDER}/", f"{store.FILES_FOLDER}/",
             builder.SITE_ICON)
 _FOLDER_RECORD = "folder.json"   # in the import folder: the commit import/folder/ holds
+# The last state `look` read, by site folder, repository and commit. A commit
+# names one state, so the site step shows what the pages step read without
+# downloading it again (PRESS-0461).
+_LOOKED: dict[tuple[str, str, str], Found] = {}
+_LOOKED_LOCK = threading.Lock()
 
 
 class TakeInStopped(Exception):
@@ -85,9 +91,19 @@ class _Read:
 def look(folder: Path, settings: Settings, key: str, commit: str = "",
          transport: publisher.Transport | None = None) -> Found:
     """§ 4.2: what the state at `commit`, or the branch's current one, holds.
-    Writes nothing to the Store; the fetch area is emptied before and after."""
+    Writes nothing to the Store; the fetch area is emptied before and after.
+    A commit the last look read is answered from it."""
+    where = str(Path(folder).resolve())
+    with _LOOKED_LOCK:
+        known = _LOOKED.get((where, settings.repository, commit)) if commit else None
+    if known is not None:
+        return known
     with undo.fetch_area(folder) as fetch_area:
-        return _fetch_and_read(fetch_area, settings, key, commit, transport).found
+        found = _fetch_and_read(fetch_area, settings, key, commit, transport).found
+    with _LOOKED_LOCK:
+        _LOOKED.clear()
+        _LOOKED[(where, settings.repository, found.commit)] = found
+    return found
 
 
 def take_in(folder: Path, settings: Settings, key: str, commit: str, *,

@@ -1253,6 +1253,32 @@ def test_a_value_mark_is_worked_out_once_per_build(tmp_path):
     assert "Going for 1 years." in shown and "&copy; 2001" in shown, shown
 
 
+def test_an_entry_body_is_parsed_twice_per_build(tmp_path, monkeypatch):
+    """PRESS-0462: an entry's page parses its body once for its photographs
+    and description, and `marks.render` once more; its cards on the journal,
+    category and tag lists reuse that page's text rather than parsing again."""
+    folder = _store(tmp_path)
+    for slug in ("one", "two"):
+        store.write(folder, _entry(slug, title=slug.title(), body=f"Words of {slug}.",
+                                   categories=("music", "life"), tags=("sea", "road")),
+                    draft=False)
+    store.write(folder, _entry("untitled", body="No title here.", categories=("music",),
+                               tags=("sea",)), draft=False)
+    parsed: list[str] = []
+    real = marks.parse
+
+    def counted(body):
+        parsed.append(body)
+        return real(body)
+
+    monkeypatch.setattr(marks, "parse", counted)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert sorted(parsed) == sorted(2 * ["Words of one.", "Words of two.", "No title here."])
+    card = (into / "blog" / "tag" / "sea" / "index.html").read_text(encoding="utf-8")
+    assert "Words of one." in card and "No title here." in card, card
+
+
 def test_a_value_mark_outside_an_entry_is_left_alone(tmp_path):
     """PRESS-0123 INV-5: a value mark in a fixed page or a furniture file
     stays as written."""
@@ -2137,6 +2163,19 @@ def test_a_build_publishes_what_any_address_names(tmp_path):
         f"{name}.png" for name in names[:-1]}
     assert {p.name for p in (into / "files").iterdir()} == {"in-href.pdf", "in-nav.pdf"}
     assert set(builder.files_named(folder)) == {"in-href.pdf", "in-nav.pdf"}
+
+
+def test_a_file_the_waiting_look_names_stays_named(tmp_path):
+    """PRESS-0196 § 4.4 (PRESS-0482): a file only the saved look waiting to be
+    published names is still in use, so it is not offered for removal. Breaks
+    when files_named reads the live look alone."""
+    folder = _store(tmp_path, pages={})
+    store.write_style_code(folder, "body{background:url(../files/waiting.pdf)}", waiting=True)
+    target = store.file_path_for(folder, "waiting.pdf")
+    target.parent.mkdir(exist_ok=True)
+    target.write_bytes(b"%PDF-1.4\n")
+    assert builder.files_named(folder) == {
+        "waiting.pdf": (builder.FileUser(store.LOOK_FOLDER, store.LOOK_FOLDER),)}
 
 
 @pytest.mark.parametrize(("suffix", "opening"), [

@@ -140,7 +140,11 @@ holds a process-wide lock.
 
 `look` empties the fetch area (`undo.FETCH_FOLDER`), calls `fetch_state`
 with `PREFIXES` and `commit`, reads what landed, empties the fetch area
-again and returns `Found`. It writes nothing to the Store.
+again and returns `Found`. It writes nothing to the Store. A commit names
+one state, so a `look` at the commit the last one read, for the same folder
+and repository, answers from it without downloading (PRESS-0461). The *site*
+step then shows the *pages* step's state however often it is drawn
+(`tests/test_takein.py::test_the_site_step_shows_the_state_the_pages_step_read`).
 
 **`made_here` is the one test of a Pressless site.** It is true where
 `store.read_identity` over the fetched `content/` returns an identity, or

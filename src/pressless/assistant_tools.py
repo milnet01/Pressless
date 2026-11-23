@@ -130,8 +130,9 @@ TOOLS: tuple[Tool, ...] = (
          {"filename": _TEXT, "data": {"type": "string", "description": "The file, base64."}},
          ("filename", "data")),
     Tool("save_look", WRITE,
-         "Change the site's look, given as read_look gives it. It goes live at the "
-         "next publish.",
+         "Change the site's look, given as read_look gives it. It waits until the "
+         "person presses the look to the site from the Look screen; publishing an "
+         "entry or a page never sends it.",
          {"version": _VERSION, "choices": {"type": "object"}}, ("version", "choices")),
     # ------------------------------------------------------------- asks ---
     Tool("publish", ASK,

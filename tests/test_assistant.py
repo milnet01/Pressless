@@ -421,7 +421,7 @@ def test_stale_version_refused(tmp_path):
         assert reply["ok"] is False and look.digest(folder) == before
         # The right version saves.
         assert pressless.ok("save_look", {"version": shown["version"], "choices": changed})
-        assert look.read(folder).width == changed["width"]
+        assert look.read(folder, waiting=True).width == changed["width"]
 
 
 # ------------------------------------------------------------------ INV-6 ---
@@ -613,7 +613,7 @@ def test_an_ask_with_no_plan_or_press_raises(tmp_path):
         door.plan("nothing", {})
     made = assistant._Ask("id", "nothing", {}, 0.0, {}, "")
     with pytest.raises(ValueError):
-        door._press(made)
+        door._press(made, [])
 
 
 def test_a_request_is_answered_once(tmp_path, monkeypatch):
@@ -771,6 +771,74 @@ def test_a_failed_publish_reads_as_on_the_writers_screen(tmp_path, monkeypatch, 
         row = pressing.state()["failure"]
         assert words in said and not_words not in said, said
         assert words in row and not_words not in row, row
+
+
+_PUBLISHED = publishing.Published(None, True)
+
+
+@pytest.mark.parametrize("target, ask, patched, press, key, outcome", [
+    ("site", {}, "press_site", lambda: (_PUBLISHED, None), "notice.publishing.kept_copy",
+     "done"),
+    ("entry", {"entry": "seaside"}, "press_entry", lambda: (_PUBLISHED, None),
+     "notice.publishing.kept_copy", "done"),
+    ("page", {"page": "about"}, "press_page", lambda: (_PUBLISHED, None),
+     "notice.page_editor.kept_copy", "done"),
+    ("site", {}, "press_site", lambda: (None, publisher.OutcomeUnknown("stopped")),
+     "notice.publishing.kept_copy_unknown", "failed"),
+    ("page", {"page": "about"}, "press_page",
+     lambda: (None, publisher.OutcomeUnknown("stopped")),
+     "notice.page_editor.kept_copy_unknown", "failed"),
+])
+def test_a_publish_that_kept_a_copy_says_so_to_the_ai_app(tmp_path, monkeypatch, target, ask,
+                                                          patched, press, key, outcome):
+    """PRESS-0488, PRESS-0013 § 4.3 step 5: the AI app is told, in the writer's
+    words, that a publish left (or may have left) a working copy, as the Publish
+    button tells the writer, for a site, an entry and a page, and after an
+    unknown outcome. Breaks when any of those answers drops it."""
+    _key(monkeypatch)
+    returns, raises = press()
+    with _pressless(tmp_path) as pressless:
+        folder = pressless.folder
+        store.write(folder, _entry("seaside"), draft=(target == "entry"))
+        if target == "page":
+            _page_with_code(folder)
+            live = store.html_path_for(folder, store.PAGES_FOLDER, "about")
+            waiting = store.html_path_for(folder, store.PAGES_FOLDER, "about", waiting=True)
+            waiting.parent.mkdir(parents=True, exist_ok=True)
+            waiting.write_bytes(live.read_bytes())
+        asked = pressless.ok("publish", ask)["request"]
+        stand_in = _kept_press_for(key, raises, returns, patched)
+        monkeypatch.setattr(publishing if patched != "press_page" else page_editor,
+                            patched, stand_in)
+        assert pressless.answer(asked, yes=True)["status"] == outcome
+        said = pressless.ok("request_status", {"request": asked})["said"]
+        assert words.say(key) in said, said
+
+
+def _kept_press_for(key, raises, returns, patched):
+    def press(*args, notices, **kwargs):
+        # The real publish adds the unknown-outcome notice before it raises, and
+        # press_page its kept-copy one; an entry's or site's kept copy is the
+        # caller's to say, from `copy_kept` (PRESS-0488).
+        if raises is not None or patched == "press_page":
+            notices.append(face.Notice(words.say(key), face.Site.UPDATED))
+        if raises is not None:
+            raise raises
+        return (None, returns) if patched == "press_entry" else returns
+    return press
+
+
+def test_a_publish_that_kept_no_copy_says_nothing_of_one(tmp_path, monkeypatch):
+    """PRESS-0488: a clean publish's answer is only the status."""
+    _key(monkeypatch)
+    with _pressless(tmp_path) as pressless:
+        store.write(pressless.folder, _entry("seaside"), draft=False)
+        asked = pressless.ok("publish")["request"]
+        monkeypatch.setattr(publishing, "press_site",
+                            lambda *args, **kwargs: publishing.Published(None, False))
+        assert pressless.answer(asked, yes=True)["status"] == "done"
+        said = pressless.ok("request_status", {"request": asked})["said"]
+        assert said == words.say("assistant.status.done")
 
 
 def test_only_a_failure_no_press_row_shows_goes_to_the_box(tmp_path, monkeypatch):

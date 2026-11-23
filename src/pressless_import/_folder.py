@@ -543,9 +543,10 @@ def _closing(events, first: int) -> int | None:
     return None
 
 
-def _spots(text: str) -> list[_Spot]:
-    """§ 4.5's places, stylesheet links and script files included, in order."""
-    events = blocks._scan(text)
+def _spots(text: str, events: tuple | None = None) -> list[_Spot]:
+    """§ 4.5's places, stylesheet links and script files included, in order.
+    `events` is `text` already scanned, where the caller has it."""
+    events = blocks._scan(text) if events is None else events
     found: list[_Spot] = []
     for number, event in enumerate(events):
         if event.kind not in ("start", "startend"):
@@ -753,6 +754,24 @@ def read_folder(folder: Path) -> Found:
         built_by_a_tool=held.built_by_a_tool, left_links=tuple(held.left_links))
 
 
+def glance_folder(folder: Path) -> tuple[tuple[str, ...], bool]:
+    """`read_folder`'s `pages` and `built_by_a_tool`, without its survey of
+    what each page uses: all a step asking whether there is a page to bring
+    needs (PRESS-0462). Reads, and writes nothing."""
+    root = Path(folder)
+    names = _names(root)
+    pages = _sort_files(root, names)[0]
+    return tuple(pages), _built_by_a_tool(names, _Folder(names), pages)
+
+
+def _built_by_a_tool(names: list[str], folder: _Folder,
+                     pages: dict[str, tuple[str, bool]]) -> bool:
+    """§ 4.3's `built_by_a_tool`."""
+    return ".nojekyll" not in names and (
+        "_config.yml" in names or "_layouts" in folder.folders
+        or any(_opens_with_a_rule(text) for text, _older in pages.values()))
+
+
 @dataclass
 class _Uses:
     """What every page's addresses reach."""
@@ -774,7 +793,8 @@ def _survey(root: Path, folder: _Folder, pages: dict[str, tuple[str, bool]],
         return target is not None and target in rest and target.casefold().endswith(suffix)
 
     for path, (text, _older) in pages.items():
-        if _holds_base(text):
+        events = blocks._scan(text)       # once per page (PRESS-0462)
+        if _holds_base(events):
             # Its addresses resolve against the `<base>`, so they stay as
             # written and carry nothing (§ 4.5).
             continue
@@ -786,7 +806,7 @@ def _survey(root: Path, folder: _Folder, pages: dict[str, tuple[str, bool]],
                 if image and is_kind(target, ".svg"):
                     uses.pictures.add(target)
 
-        for spot in _spots(text):
+        for spot in _spots(text, events):
             target = folder.target(spot.value, path)
             if spot.kind == _SHEET and is_kind(target, ".css"):
                 uses.links.setdefault(target, spot.media)
@@ -826,11 +846,8 @@ def _read_folder(root: Path) -> _Read:
         (own, target) for own, target, image in uses.all
         if target in left or (target in carried and not (
             image and target.casefold().endswith(".svg")))))
-    built = ".nojekyll" not in names and (
-        "_config.yml" in names or "_layouts" in folder.folders
-        or any(_opens_with_a_rule(text) for text, _older in pages.values()))
     return _Read(folder, root, pages, photographs, files, carried, style, uses.links,
-                 uses.sheet_pages, left, left_links, built)
+                 uses.sheet_pages, left, left_links, _built_by_a_tool(names, folder, pages))
 
 
 def _why_left(path: str) -> str:
@@ -839,9 +856,10 @@ def _why_left(path: str) -> str:
             "svg": "import.folder.why.svg"}.get(suffix, "import.folder.why.kind")
 
 
-def _holds_base(text: str) -> bool:
+def _holds_base(events) -> bool:
+    """Whether a page, given scanned, holds a `<base>`."""
     return any(event.tag == "base" and event.kind in ("start", "startend")
-               for event in blocks._scan(text))
+               for event in events)
 
 
 _URL_GROUPS = ("u1", "u2", "u3")
@@ -1048,10 +1066,10 @@ class _Writer:
         trailing = "/" if path.endswith("/") and place else ""
         return up + quote(place, safe="/") + trailing + tail
 
-    def page(self, text: str, own: str) -> tuple[str, list[str], list[str]]:
+    def page(self, text: str, own: str, events: tuple) -> tuple[str, list[str], list[str]]:
         """The page's addresses written with `{{UP}}`, its stylesheet links
         down to one, and its scripts inside it; each `defer` script returned,
-        to go at the body's end; and what to list."""
+        to go at the body's end; and what to list. `events` is `text` scanned."""
         listed: list[str] = []
         edits: list[tuple[int, int, str]] = []
         deferred: list[str] = []
@@ -1063,7 +1081,7 @@ class _Writer:
         def in_style_code(address: str) -> bool:
             return self.held.folder.target(address, own) in self.held.style
 
-        for spot in _spots(text):
+        for spot in _spots(text, events):
             if spot.kind == _SHEET:
                 if in_style_code(spot.value):
                     edits.append((spot.element, spot.remove_to, "" if linked else _STYLE_LINK))
@@ -1270,8 +1288,7 @@ def _block(text: str, events, first: int) -> _Block | None:
     return _Block(start, end, normal, marked)
 
 
-def _furniture_blocks(text: str) -> _Blocks:
-    events = blocks._scan(text)
+def _furniture_blocks(text: str, events: tuple) -> _Blocks:
     header, footer, nav = None, None, None
     depth = 0
     for number, event in enumerate(events):
@@ -1449,12 +1466,12 @@ def _parting(header: str, footer: str, navigation: str, listed: list[Dropped]) -
     return _Parting(f"{header.rstrip()}\n", f"{footer.rstrip()}\n", navigation, listed)
 
 
-def _part_out(texts: dict[str, str], names: dict[str, str]
+def _part_out(texts: dict[str, str], found: dict[str, _Blocks], names: dict[str, str]
               ) -> tuple[dict[str, str], _Parting]:
     """Each page with its shared blocks replaced by the Builder's marker pairs.
     A page's addresses are written with {{UP}}, so depth does not differ, but
-    for one holding a `<base>`, whose addresses stay as written."""
-    found = {path: _furniture_blocks(text) for path, text in texts.items()}
+    for one holding a `<base>`, whose addresses stay as written. `found` is
+    each page's own blocks."""
     shared = _shared(texts, found)
     pages: dict[str, str] = {}
     listed: list[Dropped] = []
@@ -1489,8 +1506,9 @@ def _title_of(text: str, fallback: str) -> str:
     return fallback
 
 
-def _has_body(text: str) -> bool:
-    return any(event.tag == "body" and event.kind == "start" for event in blocks._scan(text))
+def _has_body(events) -> bool:
+    """Whether a page, given scanned, opens a `<body>`."""
+    return any(event.tag == "body" and event.kind == "start" for event in events)
 
 
 def _balanced(events) -> bool:
@@ -1519,11 +1537,11 @@ def _body_edges(text: str, events) -> tuple[int, int] | None:
     return start, min(closes) if closes else len(text)
 
 
-def _with_main(text: str) -> tuple[str, bool]:
+def _with_main(text: str, events: tuple) -> tuple[str, bool]:
     """§ 4.9: where a page has no `<main>`, what lies between its header and its
     footer wrapped in one, shared or its own. False where a `<main>` there would
-    cross another element's edges, as a page's whole must then stay as it is."""
-    events = blocks._scan(text)
+    cross another element's edges, as a page's whole must then stay as it is.
+    `events` is `text` scanned."""
     if any(event.kind == "start" and event.tag == "main" for event in events):
         return text, True
     edges = _body_edges(text, events)
@@ -1536,7 +1554,7 @@ def _with_main(text: str) -> tuple[str, bool]:
     for found in re.finditer(r"<!--\s*FOOTER:START[^>]*?-->", text):
         if start <= found.start() < end:
             end = found.start()
-    own = _furniture_blocks(text)
+    own = _furniture_blocks(text, events)
     if own.header and own.header.end <= end:
         start = max(start, own.header.end)
     if own.footer and start <= own.footer.start:
@@ -1563,12 +1581,13 @@ def _shaped(text: str, name: str, deferred: list[str], where: str, listed: list[
     """The page as it is written: {{UP}} filled, an area made where it can be."""
     front = name == _FRONT
     up = "../" * _page_place(name).count("/")
-    if not _has_body(text):
+    events = blocks._scan(text)           # once for both (PRESS-0462)
+    if not _has_body(events):
         title = _title_of(text, name)
         text = starter.new_page(_nav_name(name), title, (builder.STYLE_CODE,),
                                 main=text + "".join(deferred), root=front)
         return _adopted(text.replace(_UP, up), name)
-    text, made = _with_main(text)
+    text, made = _with_main(text, events)
     if not made:
         listed.append(Dropped(where, say("import.folder.no_main")))
     text = _deferred_placed(text, deferred)
@@ -1642,11 +1661,12 @@ def _pages_written(held: _Read, writer: _Writer, names: dict[str, str],
         if older:
             text = _declares_utf8(text)
             listed.append(Dropped(where, say("import.folder.older")))
-        if _holds_base(text):
+        events = blocks._scan(text)       # once for both (PRESS-0462)
+        if _holds_base(events):
             listed.append(Dropped(where, say("import.folder.base")))
             texts[path], deferred[path] = text, []
         else:
-            written, deferred[path], said = writer.page(text, path)
+            written, deferred[path], said = writer.page(text, path, events)
             texts[path] = written
             listed += [Dropped(where, what) for what in dict.fromkeys(said)]
     return texts, deferred
@@ -1656,8 +1676,14 @@ def _furnished(texts: dict[str, str], deferred: dict[str, list[str]], names: dic
                listed: list[Dropped]) -> tuple[dict[str, str], dict[str, str]]:
     """§ 4.8: each page by its name, its shared blocks parted out and shaped,
     and the three furniture files. Only now is a page's own {{UP}} put back."""
-    able = {path: text for path, text in texts.items() if _has_body(text)}
-    parted, parting = _part_out(able, names) if able else ({}, _parting(
+    # Each page scanned once for both questions; only its blocks are kept.
+    able: dict[str, str] = {}
+    found: dict[str, _Blocks] = {}
+    for path, text in texts.items():
+        events = blocks._scan(text)
+        if _has_body(events):
+            able[path], found[path] = text, _furniture_blocks(text, events)
+    parted, parting = _part_out(able, found, names) if able else ({}, _parting(
         starter.header(), starter.footer(), starter.navigation(), []))
     listed += parting.listed
     texts = {**texts, **parted}

@@ -88,6 +88,7 @@ SVG_LARGEST = 256 * 1024             # § 4.6
 def unpack_folder(source: Path, into: Path,
                   room: Callable[[], int]) -> tuple[tuple[str, str], ...]: ...
 def read_folder(folder: Path) -> Found: ...
+def glance_folder(folder: Path) -> tuple[tuple[str, ...], bool]: ...  # pages, built_by_a_tool
 def bring_in_folder(folder: Path, into: Path, *,
                     left: tuple[tuple[str, str], ...] = (),
                     commit: str = "") -> Brought: ...
@@ -137,7 +138,7 @@ The two offers PRESS-0125 § 4.1 shows gain a second link to it.
 
 | Step | Shows | Check before Next |
 |------|-------|-------------------|
-| `folder` | A folder chooser and a ZIP file box, both posting a ZIP to `/import/folder/zip`; how to make a ZIP on Windows and on Linux, folded | a folder is held, and `read_folder` found a page and not `built_by_a_tool` |
+| `folder` | A folder chooser and a ZIP file box, both posting a ZIP to `/import/folder/zip`; how to make a ZIP on Windows and on Linux, folded | a folder is held, and `glance_folder` found a page and not `built_by_a_tool` |
 | `found` | § 4.3's counts; every path in `left` and in `import/folder-left.json`; that the site keeps its own look | none |
 | `bring` | What Next does, then the Report (§ 4.12) | `bring_in_folder` has written |
 
@@ -154,7 +155,9 @@ answer is kept in `import/folder-left.json` and passed to `bring_in_folder` as
 
 ### 4.3 Reading the folder
 
-`read_folder` reads and writes nothing else. Each file is one of:
+`read_folder` reads and writes nothing else. `glance_folder` answers its
+`pages` and `built_by_a_tool` without reading what each page uses, for the
+upload's check and the `folder` step's. Each file is one of:
 
 | A file that is | Becomes |
 |---|---|
