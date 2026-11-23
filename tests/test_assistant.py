@@ -28,6 +28,7 @@ from types import SimpleNamespace
 
 import pytest
 from _face_session import Browser
+from _signalled import Signalled
 from test_publisher import _listing, _reads, _Transport, _writes
 from test_publishing import KEY, _base, _entry, _folder, _key
 
@@ -363,24 +364,10 @@ def test_the_door_proves_its_token_and_runs_nothing(tmp_path):
 # ----------------------------------------------------------------- INV-10 ---
 
 
-class _Signalled:
-    """A lock that says when a thread starts waiting for it."""
-
-    def __init__(self, lock: threading.Lock) -> None:
-        self.lock, self.trying = lock, threading.Event()
-
-    def __enter__(self) -> None:
-        self.trying.set()
-        self.lock.acquire()
-
-    def __exit__(self, *exc: object) -> None:
-        self.lock.release()
-
-
 def test_one_at_a_time(tmp_path, monkeypatch):
     """INV-10. Breaks when the door lock is per tool."""
     held = threading.Lock()
-    door_lock = _Signalled(held)
+    door_lock = Signalled(held)
     monkeypatch.setattr(assistant, "LOCK", door_lock)
     with _pressless(tmp_path) as pressless:
         replies: list[dict] = []

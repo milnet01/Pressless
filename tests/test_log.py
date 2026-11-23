@@ -112,16 +112,18 @@ def test_log_imports_nothing_identifying():
 # --- INV-2 -----------------------------------------------------------------
 
 
-def test_rolls_by_size_keeping_one_old_copy(tmp_path):
+def test_rolls_by_size_keeping_one_old_copy(tmp_path, monkeypatch):
     """INV-2: past the size the log rolls, and exactly one old copy is kept.
 
     Asserts the EXACT file set. A test asserting merely that the old copy
     exists passes just as well with a `.2` beside it, which is the unbounded
     case wearing the bounded case's clothes (spec §5 INV-2).
     """
+    # A small size rolls the same way, several times over, in less writing.
+    monkeypatch.setattr(log_module, "MAX_BYTES", 4096)
     handle = log_module.open_log(tmp_path)
     line = "x" * 200
-    for _ in range(40_000):
+    for _ in range(200):
         handle.note(line)
     handle.close()
 

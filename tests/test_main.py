@@ -83,6 +83,9 @@ class _Opened:
         monkeypatch.setattr(webbrowser, "open",
                             lambda url: self.links.append(url) or True)
         monkeypatch.setattr(main_module, "_wait", lambda restart: False)
+        # No old tab comes back here, so a restart's wait for one ends soon;
+        # a test of the return sets its own.
+        monkeypatch.setattr(main_module, "RETURN_SECONDS", 0.1)
         # PRESS-0183: the launch refreshes his shortcuts. Recorded, never run,
         # so no test reaches the shortcuts in the real home folder.
         self.refreshed = []

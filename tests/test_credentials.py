@@ -26,6 +26,7 @@ import pytest
 from _durability_watch import _assert_synced_before_replace, _watch_durability
 from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
+from _signalled import Signalled
 
 import pressless.credentials as credentials_module
 from pressless import os_reason, safe_write
@@ -572,7 +573,8 @@ def test_two_writes_at_once_keep_both(tmp_path, monkeypatch):
     write can meet.
 
     The first call's read is held open while a second thread writes another
-    account; the second is given time to finish before the first goes on.
+    account; the first goes on once the second waits at the lock, or, where
+    it takes none, has finished.
 
     Breaks when the file's read, change and replace run unlocked, in write()
     or in delete(): the first call replaces the file with what it read, and
@@ -590,20 +592,30 @@ def test_two_writes_at_once_keep_both(tmp_path, monkeypatch):
         folder.mkdir()
         write("file", folder, "publishing-key", "the-github-one")
         others: list[threading.Thread] = []
+        lock = Signalled()
 
-        def read_while_another_writes(target, folder=folder, others=others, name=name):
+        def read_while_another_writes(target, folder=folder, others=others, name=name,
+                                      lock=lock):
             # Held here, or the second write's timing alone decides the result.
             assert credentials_module._FILE_LOCK.locked(), f"{name} read the file unlocked"
             found = real(target)
             if not others:
-                other = threading.Thread(target=write, daemon=True, args=(
-                    "file", folder, "analytics", "the-google-one"))
+                lock.trying.clear()     # the first call's own take is over
+
+                def second() -> None:
+                    try:
+                        write("file", folder, "analytics", "the-google-one")
+                    finally:
+                        lock.trying.set()
+
+                other = threading.Thread(target=second, daemon=True)
                 others.append(other)
                 other.start()
-                other.join(timeout=0.5)
+                assert lock.trying.wait(5), "the second write neither waited nor ended"
             return found
 
         with monkeypatch.context() as patched:
+            patched.setattr(credentials_module, "_FILE_LOCK", lock)
             patched.setattr(credentials_module, "_read_mapping", read_while_another_writes)
             first_call(folder)
             others[0].join(timeout=5)
