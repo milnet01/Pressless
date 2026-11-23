@@ -493,7 +493,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         else:
             failure = None
     if failure is not None:
-        return render_notices(notices) + face.fail(failure, publishing=False)
+        return editor.failed_page(face, notices, failure)
     _remember(folder, kind, name, request)
     return render_notices(notices) + _page(
         kind, name, opened, builder.stylesheets(folder), face.view_site(),

@@ -150,6 +150,23 @@ def test_a_published_entry_is_untouched_by_its_edits(tmp_path):
         assert headers["Location"] == f"/edit?slug={reply['slug']}"
 
 
+def test_a_store_failure_drawing_the_editor_is_shown(tmp_path, monkeypatch):
+    """PRESS-0012 § 4.4: the editor page's own Store reads run inside the
+    capture, so their failure is the Face's sentence. Breaks when the page
+    is drawn after the capture ends, and the failure reaches the last
+    resort instead."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+
+    def unreadable(folder: Path) -> tuple[str, ...]:
+        raise store.StoreError("the photographs folder could not be read")
+
+    monkeypatch.setattr(store, "list_photographs", unreadable)
+    with _editor(folder) as browser:
+        status, _, text = browser.request("GET", "/edit?slug=seaside")
+    assert status == 200 and _said(store.StoreError) in text
+
+
 # ------------------------------------------------------------------ INV-2 ---
 
 

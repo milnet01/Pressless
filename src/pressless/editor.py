@@ -351,8 +351,7 @@ def captured(face: Face, lock: threading.Lock, call: Callable[[], _T],
 def failed(face: Face, notices: list[str], failure: Exception) -> Reply:
     """A failure, for a script's request to show in its page. Called after the
     capture ends, since the notices are filled only then."""
-    body = render_notices(notices) + face.fail(failure, publishing=False)
-    return Reply(body.encode("utf-8"), _HTML, status=409)
+    return Reply(failed_page(face, notices, failure).encode("utf-8"), _HTML, status=409)
 
 
 def failed_page(face: Face, notices: list[str], failure: Exception) -> str:
@@ -689,23 +688,25 @@ def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             path = store.path_for(folder, slug, draft=draft)
             entry = store.read(path)
             base = digest(path)
+            preview, preview_failure = _preview(face, folder, entry, draft=draft)
+            missing = photographs.missing(folder, entry.body)
+            # PRESS-0346 § 4.1: the view asked for, which is remembered, else
+            # the one remembered, else the visual view.
+            asked = request.query.get("view", "")
+            if asked in (VISUAL, MARKS):
+                choices.remember(folder, entry_view=asked)
+            view = asked if asked in (VISUAL, MARKS) else choices.read(folder).entry_view
+            # PRESS-0012 § 4.4: the page reads the Store too, so it is drawn
+            # inside the capture.
+            page = _page(folder, entry, draft, base, preview, preview_failure, missing,
+                         face.view_site(), view=MARKS if view == MARKS else VISUAL)
         except (store.StoreError, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
             failure = None
-            preview, preview_failure = _preview(face, folder, entry, draft=draft)
-            missing = photographs.missing(folder, entry.body)
     if failure is not None:
-        return render_notices(notices) + face.fail(failure, publishing=False)
-    # PRESS-0346 § 4.1: the view asked for, which is remembered, else the one
-    # remembered, else the visual view.
-    asked = request.query.get("view", "")
-    if asked in (VISUAL, MARKS):
-        choices.remember(folder, entry_view=asked)
-    view = asked if asked in (VISUAL, MARKS) else choices.read(folder).entry_view
-    return render_notices(notices) + _page(folder, entry, draft, base, preview, preview_failure,
-                                           missing, face.view_site(),
-                                           view=MARKS if view == MARKS else VISUAL)
+        return failed_page(face, notices, failure)
+    return render_notices(notices) + page
 
 
 def _view_chosen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
