@@ -366,7 +366,9 @@ pastes the printed key into `update_key.TRUSTED`. **The private key never
 enters the repository or a session's context.**
 
 The release workflow creates the release as a **draft** (`gh release create
---draft`). Then `scripts/sign-release.py v<X.Y.Z>`, run by hand. It reads
+--draft`). First it keeps each file's SHA-256 with its own run, as the
+`fingerprints` artifact, where whoever can change a draft's files cannot
+rewrite it. Then `scripts/sign-release.py v<X.Y.Z>`, run by hand. It reads
 `PRESSLESS_UPDATE_REPOSITORY` as `updater.py` does, so § 7.1's scratch
 repository — a fork carrying the release workflow — is signed the same way:
 
@@ -374,8 +376,11 @@ repository — a fork carrying the release workflow — is signed the same way:
 2. Refuses unless the release is a draft holding both artefacts and nothing
    but this release's own files, and the release workflow run that built it
    was for the tag's own commit (FIBR-0318).
-3. Downloads the two artefacts, writes the list (§ 4.3) and the changes file
-   (§ 4.12), and signs each with each key.
+3. Downloads the two artefacts from the draft, and refuses unless each one's
+   SHA-256 is the one that run's `fingerprints` record holds for it; a
+   record missing, unreadable or without the file is a refusal too. Then
+   writes the list (§ 4.3) and the changes file (§ 4.12), and signs each
+   with each key.
 4. **Verifies every signature against `update_key.TRUSTED` as committed at
    the tag**, and refuses to attach anything if one fails.
 5. Uploads both files and their `.sig` files, replacing any a failed run
@@ -626,10 +631,13 @@ address. A roadmap id in brackets is left out.
   run time so the test does not match itself (FIBR-0355). *Breaks when:* a key
   or a fixture spelling one out is committed.
 - **INV-19** — `sign-release.py` attaches nothing when the signature does not
-  verify against the committed `TRUSTED`, or the build's commit is not the
-  tag's. *Test:* `tests/test_sign_release.py` drives its two refusal functions
-  with a mismatched key and a mismatched commit. *Breaks when:* it verifies
-  against the key it just signed with.
+  verify against the committed `TRUSTED`, the build's commit is not the
+  tag's, or an artefact is not the one the release run recorded (§ 4.8
+  step 3). *Test:* `tests/test_sign_release.py` drives its refusal functions
+  with a mismatched key and a mismatched commit, and `sign` with a swapped,
+  an unrecorded and an unreadable file and no record at all. *Breaks when:*
+  it verifies against the key it just signed with, or signs a file whose
+  SHA-256 the run did not record.
 - **INV-20** — The six failure types each have a three-part sentence. *Test:*
   `tests/test_face.py::test_every_failure_type_has_a_sentence`, which already
   walks every subclass. *Breaks when:* a type is added without one.
@@ -806,6 +814,7 @@ release.
 | § 4.1 the Updater imports no other part | `tests/test_updater.py::test_the_updater_reaches_no_store_settings_or_credentials` |
 | § 4.7 the new version starts | Partial: `tests/test_installer.py::test_the_windows_helper_runs` runs the Windows helper on the Windows box's gate, over throwaway folders; a real update is § 7.1 by hand, on each system |
 | § 4.8 the release is published only after signing | Partial: INV-19 covers the refusals; the draft flag in `release.yml` is checked by nothing |
+| § 4.8 the release run keeps the fingerprints the signer reads | `tests/test_sign_release.py::test_the_release_run_records_what_the_signer_reads` runs the step and checks the names. That GitHub keeps the artifact and `gh run download` fetches it is proved only at a real release |
 | § 4.12 a real release carries a changes file an installed copy shows | Nothing in the suite: `sign` itself runs only at a release. The first release after 2026-11-13 is its check |
 
 ## 11. Cross-doc impact

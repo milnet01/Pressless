@@ -1412,22 +1412,29 @@ window.presslessStop = (stopping) => (text) => {
 // The save itself, `send` above: `on` is the editor's own part: `address`,
 // the route; posting() and fields(posted), what it posts; unsaved(now), which
 // sets its flag; stop(text); and saved(reply, posted), what a reply updates.
-window.presslessSend = (on) => async () => {
-  const status = document.getElementById("save-status");
-  on.unsaved(false);
-  status.textContent = say("script.editor.saving");
-  try {
-    const posted = on.posting();
-    const answer = await fetch(on.address, {method: "POST", body: on.fields(posted)});
-    const text = await answer.text();
-    if (answer.status !== 200) { on.stop(text); return; }
-    const reply = JSON.parse(text);
-    document.getElementById("failure").innerHTML = reply.failure || "";
-    on.saved(reply, posted);
-    status.textContent = say("script.editor.saved");
-  } catch (error) {
-    on.stop("");
-  }
+// A clean save clears only a failure a save showed: one a press showed
+// meanwhile, such as a refused Remove, stays until it is read (PRESS-0480).
+window.presslessSend = (on) => {
+  let shown = "";
+  return async () => {
+    const status = document.getElementById("save-status");
+    on.unsaved(false);
+    status.textContent = say("script.editor.saving");
+    try {
+      const posted = on.posting();
+      const answer = await fetch(on.address, {method: "POST", body: on.fields(posted)});
+      const text = await answer.text();
+      if (answer.status !== 200) { on.stop(text); return; }
+      const reply = JSON.parse(text);
+      const box = document.getElementById("failure");
+      if (reply.failure || box.innerHTML === shown) box.innerHTML = reply.failure || "";
+      shown = reply.failure ? box.innerHTML : "";
+      on.saved(reply, posted);
+      status.textContent = say("script.editor.saved");
+    } catch (error) {
+      on.stop("");
+    }
+  };
 };
 """
 
