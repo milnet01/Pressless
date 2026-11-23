@@ -9359,20 +9359,40 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0454] **Second-round review fixes: the folder import and downloads.**
+- ✅ [PRESS-0454] **Second-round review fixes: the folder import and downloads.**
   Subject 15. Review types: Codebase, Test.
   Findings: review-code lane-15, review-readability lane-15, and the
   performance and test reviews' findings on these files and their tests.
   Among them: a slow-dripping download is not bounded in time.
+  Shipped 2026-11-23, 98df4c1 (merged cb4a8a4). 33 findings: 32 fixed, 1
+  queued (into PRESS-0462: a folder bring scans each page about ten
+  times). A slow-dripping download is cut at 30 minutes, handshake and
+  headers included; a body cut short is not kept as whole; why a file was
+  not fetched is in the screen's language; pages decode as a browser
+  decodes them; a live site's <base href> is followed; a deep name is
+  shortened; stylesheet media lists join correctly. Every own-network
+  refusal still holds. PRESS-0210 and PRESS-0333 amended. Full suite 2798
+  passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/15.json.
   **Layman:** Bug fixes and tidy-ups in bringing a folder of pages in, and copying an old site from the web.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0455] **Second-round review fixes: likes and JPEG XL.**
+- ✅ [PRESS-0455] **Second-round review fixes: likes and JPEG XL.**
   Subject 16. Review types: Codebase, Test.
   Findings: review-code lane-16, review-readability lane-16, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 153f9b2..da9d717 (merged d4a93f0). 13 findings: 9
+  fixed, 1 queued (PRESS-0485), 3 dismissed (reasoned in the ledger). A
+  header split over jxlp boxes is joined before its size is read; the
+  decoder's memory is capped (a data limit on Linux, a job object on
+  Windows), so a many-frame animation is refused. Both refusals are
+  proven. A refused folder is told; the size uses the language's decimal
+  mark; the votes Check tells Google's limit apart and removes its test
+  vote. PRESS-0275 (new INV-10) and PRESS-0211 amended. Real-decoder tests
+  passed on Linux and the Windows box. Full suite 2798 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/16.json.
   **Layman:** Bug fixes and tidy-ups in Like buttons and JPEG XL photographs.
   Kind: review-fix.
   Source: review-2026-11-23.
