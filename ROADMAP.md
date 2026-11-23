@@ -9329,10 +9329,20 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Sites.
 
-- 📋 [PRESS-0453] **Second-round review fixes: the WordPress import.**
+- ✅ [PRESS-0453] **Second-round review fixes: the WordPress import.**
   Subject 14. Review types: Codebase, Test.
   Findings: review-code lane-14, review-readability lane-14, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, e872c79..8be45a8 (merged ac20bc1). 26 findings: 24
+  fixed, 1 queued (PRESS-0483), 1 dismissed (the self-check's diff
+  measured at 0.19-0.67 s on a 5,000-line body). The export reader bounds
+  what an export can make it hold, attributes included; an unreadable
+  encoding gets the usual message; a page's code is listed in the Report;
+  a brace in a post's words never forms a mark; each moved file's line
+  reaches the drive before the file moves; a failed media write is told.
+  PRESS-0125 and PRESS-0007 amended. Full suite 2746 passed; ruff clean.
+  Sweep found PRESS-0484.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/14.json.
   **Layman:** Bug fixes and tidy-ups in bringing a WordPress site in.
   Kind: review-fix.
   Source: review-2026-11-23.
