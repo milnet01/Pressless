@@ -651,8 +651,11 @@ def _open_folder(folder: Path) -> None:
 # Every Face page's own script: the failure's buttons, the theme and size
 # pickers, More, help, message boxes and the true-colours switch. It lives in
 # the page, never in a fragment, and it asks for the folder's path only when
-# Copy is clicked, so the path is never in the document.
+# Copy is clicked, so the path is never in the document. It declares nothing
+# at the top level, because a page written over this one by document.write
+# runs it again in the same window, where a second `const` would throw.
 _SCRIPT = """
+(() => {
 // PRESS-0434: a press says at once that Pressless is working, on every
 // screen (user, 2026-11-21). A form a script sends itself is left to it, as
 // is anything marked data-quiet. The note is fixed, so nothing on the page
@@ -661,7 +664,9 @@ _SCRIPT = """
 // start so the note keeps its size, and asks GET /progress each second while
 // it is up. A form's page keeps running until its reply arrives, so the count
 // fills in during the wait.
-const sendFetch = window.fetch.bind(window);
+// The browser's own fetch, kept once per window so a second run does not
+// wrap the first run's wrapper.
+const sendFetch = window.presslessSendFetch ??= window.fetch.bind(window);
 let askingProgress = false;
 async function askProgress() {
   if (askingProgress) return;
@@ -906,6 +911,7 @@ if (!window.presslessAsksAlive) {
   };
   setTimeout(askAlive, 2000);
 }
+})();
 """
 
 # PRESS-0242 § 4.3: a page script's words. It fills `{name}` gaps and turns

@@ -1770,3 +1770,55 @@ def test_alive_needs_the_session(tmp_path) -> None:
     said = json.loads(text)
     assert said == {"face": served.id} and re.fullmatch(r"[0-9a-f]{16}", served.id), said
     assert served.returned.is_set()
+
+
+# ------------------------------------------------------------- PRESS-0440 ---
+
+# A page written over this one by document.write runs the Face's script again
+# in the same window: document.open clears the listeners but keeps the
+# window, so the first run's top-level names are still declared. Node runs
+# both in one context, as the browser does, and clears the listeners between.
+_RERUN_HARNESS = """const vm = require("vm");
+const fetched = [];
+const listening = [];
+const timers = [];
+const document = {
+  addEventListener: (kind) => listening.push(kind),
+  querySelectorAll: () => [], querySelector: () => null, getElementById: () => null,
+};
+const window = {fetch: (to, how = {}) => { fetched.push((how.method || "GET") + " " + to);
+                                          return Promise.resolve({}); }};
+const context = vm.createContext({window, document, location: {href: "http://face/"},
+                                  setTimeout: (run, wait) => timers.push(wait), clearTimeout: () => {},
+                                  addEventListener: (kind) => listening.push("window " + kind)});
+context.window.addEventListener = context.addEventListener;
+const script = new vm.Script(process.argv[2]);
+script.runInContext(context);
+const first = listening.length;
+listening.length = 0;
+let failed = null;
+try { new vm.Script(process.argv[2]).runInContext(context); } catch (error) { failed = String(error); }
+timers.length = 0;
+window.fetch("/theme", {method: "POST"});
+window.fetch("/progress");
+process.stdout.write(JSON.stringify({failed, first, second: listening.length, fetched, timers}));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_page_script_runs_again_on_a_page_written_over_it(tmp_path):
+    """PRESS-0440. Open folder's failure and every file box's answer write a
+    whole Face page over the old one, and its script runs a second time in
+    the same window. Breaks when that second run throws, so the written
+    page's buttons, pickers and working note do nothing, or when it wraps
+    fetch around the first run's wrapper, so one press is counted twice."""
+    harness = tmp_path / "rerun.js"
+    harness.write_text(_RERUN_HARNESS, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), face._SCRIPT], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    said = json.loads(run.stdout)
+    assert said["failed"] is None, said["failed"]
+    assert said["second"] == said["first"] > 0, said
+    # One wrapper: the press reaches the browser once and starts one working note.
+    assert said["fetched"] == ["POST /theme", "GET /progress"], said
+    assert said["timers"] == [600], said
