@@ -352,16 +352,21 @@ def details_for(failure: BaseException) -> str:
     return text
 
 
+def said_decimal(value: float) -> str:
+    """`value` to one decimal, marked as the language in use marks a
+    decimal: a comma wherever it marks thousands otherwise."""
+    decimal = "." if words.number(1000) == "1,000" else ","
+    return f"{value:.1f}".replace(".", decimal)
+
+
 def _said_bytes(count: int) -> str:
-    """`count` bytes in KB, MB or GB to one decimal, marked as the language
-    in use marks a decimal: a comma wherever it marks thousands otherwise."""
+    """`count` bytes in KB, MB or GB to one decimal (`said_decimal`)."""
     value, unit = count / 1024, "KB"
     for bigger in ("MB", "GB"):
         if value < 1024:
             break
         value, unit = value / 1024, bigger
-    decimal = "." if words.number(1000) == "1,000" else ","
-    return f"{value:.1f}".replace(".", decimal) + f" {unit}"
+    return said_decimal(value) + f" {unit}"
 
 
 def progress_said(counted: progress.Counted) -> dict:

@@ -84,11 +84,17 @@ def keep(path_for: Callable[[str], Path], data: bytes,
     same bytes return the name they are kept under."""
     # FALLBACK only finds the folder: any name the Store accepts would do,
     # and a kept file's own fallback would land in the same place.
-    staged = _stage(path_for(FALLBACK).parent, data)
+    where = path_for(FALLBACK).parent
+    # A staged copy a crash left would be listed as kept; the caller's lock
+    # means no other is being written.
+    for left in where.glob(_STAGED + "*"):
+        left.unlink(missing_ok=True)
+    staged = _stage(where, data)
 
     def free(name: str) -> bool:  # empty, or holding these same bytes
         target = path_for(name)  # raises on a device name such as con.jpg
-        return not target.exists() or (target.is_file() and target.read_bytes() == data)
+        return not target.exists() or (target.is_file() and target.stat().st_size == len(data)
+                                        and target.read_bytes() == data)
 
     try:
         stem, suffix = os.path.splitext(named(staged))
@@ -133,9 +139,12 @@ def missing(folder: Path, body: str) -> list[str]:
     return sorted(named - set(store.list_photographs(folder)))
 
 
+_STAGED = ".photograph-"
+
+
 def _stage(where: Path, data: bytes) -> Path:
     where.mkdir(parents=True, exist_ok=True)
-    handle, staged = tempfile.mkstemp(dir=where, prefix=".photograph-")
+    handle, staged = tempfile.mkstemp(dir=where, prefix=_STAGED)
     try:
         with os.fdopen(handle, "wb") as file:
             file.write(data)

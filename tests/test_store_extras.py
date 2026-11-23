@@ -14,7 +14,7 @@ import inspect
 import json
 import os
 import warnings
-from datetime import datetime, timezone, tzinfo
+from datetime import UTC, datetime, tzinfo
 from pathlib import Path
 
 import pytest
@@ -1004,7 +1004,7 @@ def test_a_comment_date_carrying_a_zone_is_refused(tmp_path):
     written = Path(write_comments(tmp_path, "an-example", (_comment("1"),)))
     before = _snapshot(tmp_path)
 
-    aware = (_comment("2", date=_A_DATE.replace(tzinfo=timezone.utc)),)
+    aware = (_comment("2", date=_A_DATE.replace(tzinfo=UTC)),)
     try:
         write_comments(tmp_path, "an-example", aware)
     except StoreError:

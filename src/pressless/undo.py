@@ -17,7 +17,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import NamedTuple, TypeVar
+from typing import NamedTuple
 
 from pressless import (
     builder,
@@ -44,8 +44,6 @@ from pressless.words import say, say_count
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
 CONTENT = builder.SOURCE_COPY   # the prefix fetched (PRESS-0008 § 4.7)
 KEPT_SUFFIX = "-before-undo"
-
-_T = TypeVar("_T")
 
 
 class NothingToUndo(Exception):
@@ -489,8 +487,8 @@ def _bin_demoted_page(folder: Path, name: str, html: str,
         lambda: store.write_html(folder, store.PAGES_FOLDER, name, html, waiting=True))
 
 
-def _restore_one(folder: Path, path: Path, remembered: _T | None, wanted: _T | None,
-                 write: Callable[[_T], None],
+def _restore_one[T](folder: Path, path: Path, remembered: T | None, wanted: T | None,
+                 write: Callable[[T], None],
                  reversals: list[Callable[[], None]]) -> None:
     """One file of one kind (§ 4.4): nothing where `remembered` (the Store's
     version, None where it has none) equals `wanted` (the fetched one).

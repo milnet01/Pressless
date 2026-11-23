@@ -23,7 +23,6 @@ import warnings
 from collections.abc import Callable, Collection
 from datetime import datetime
 from pathlib import Path
-from typing import TypeVar
 
 from pressless import (
     builder,
@@ -146,7 +145,6 @@ _VIEWS_LOCK = threading.Lock()
 PRESS_RUNNING = ' data-press="running"'
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
-_T = TypeVar("_T")   # what `captured` hands back
 
 
 def address_for(title: str) -> str:
@@ -333,9 +331,9 @@ def _preview(face: Face, folder: Path, entry: store.Entry, *, draft: bool
     return PREVIEW_ADDRESS + relative, None
 
 
-def captured(face: Face, lock: threading.Lock, call: Callable[[], _T],
+def captured[T](face: Face, lock: threading.Lock, call: Callable[[], T],
              failures: tuple[type[Exception], ...]
-             ) -> tuple[_T | None, list[str], Exception | None]:
+             ) -> tuple[T | None, list[str], Exception | None]:
     """`call`'s result under `lock` and a notice capture, with the notices and
     the failure among `failures` it raised, or None. The capture fills its
     list only as it ends, so a failure is answered after this returns."""
@@ -351,8 +349,7 @@ def captured(face: Face, lock: threading.Lock, call: Callable[[], _T],
 def failed(face: Face, notices: list[str], failure: Exception) -> Reply:
     """A failure, for a script's request to show in its page. Called after the
     capture ends, since the notices are filled only then."""
-    body = render_notices(notices) + face.fail(failure, publishing=False)
-    return Reply(body.encode("utf-8"), _HTML, status=409)
+    return Reply(failed_page(face, notices, failure).encode("utf-8"), _HTML, status=409)
 
 
 def failed_page(face: Face, notices: list[str], failure: Exception) -> str:
@@ -405,6 +402,10 @@ def _journal(face: Face, folder: Path, lock: threading.Lock,
 
 PAGES_ADDRESS = "/pages"
 JOURNAL_ADDRESS = "/journal"
+# The parts of every page (store.FURNITURE_NAMES), as their editors and the
+# lists of them name them.
+PART_WORDS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
+              "navigation": "editor.pages.navigation"}
 
 
 def page_address(kind: str, name: str, **more: str) -> str:
@@ -602,10 +603,7 @@ def _pages(folder: Path, hint: str = "") -> _Listed:
             for name in held_pages]
     held_parts = held_html(folder, store.FURNITURE_FOLDER)
     rows += [(store.FURNITURE_FOLDER, name, say(key))
-             for name, key in (("header", "editor.pages.header"),
-                               ("footer", "editor.pages.footer"),
-                               ("navigation", "editor.pages.navigation"))
-             if name in held_parts]
+             for name, key in PART_WORDS.items() if name in held_parts]
     items: dict[str, list[str]] = {store.PAGES_FOLDER: [], store.FURNITURE_FOLDER: []}
     carry_on = ""
     last = choices.read(folder).page  # PRESS-0263: where he left off, while it is held
@@ -689,23 +687,25 @@ def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             path = store.path_for(folder, slug, draft=draft)
             entry = store.read(path)
             base = digest(path)
+            preview, preview_failure = _preview(face, folder, entry, draft=draft)
+            missing = photographs.missing(folder, entry.body)
+            # PRESS-0346 § 4.1: the view asked for, which is remembered, else
+            # the one remembered, else the visual view.
+            asked = request.query.get("view", "")
+            if asked in (VISUAL, MARKS):
+                choices.remember(folder, entry_view=asked)
+            view = asked if asked in (VISUAL, MARKS) else choices.read(folder).entry_view
+            # PRESS-0012 § 4.4: the page reads the Store too, so it is drawn
+            # inside the capture.
+            page = _page(folder, entry, draft, base, preview, preview_failure, missing,
+                         face.view_site(), view=MARKS if view == MARKS else VISUAL)
         except (store.StoreError, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
             failure = None
-            preview, preview_failure = _preview(face, folder, entry, draft=draft)
-            missing = photographs.missing(folder, entry.body)
     if failure is not None:
-        return render_notices(notices) + face.fail(failure, publishing=False)
-    # PRESS-0346 § 4.1: the view asked for, which is remembered, else the one
-    # remembered, else the visual view.
-    asked = request.query.get("view", "")
-    if asked in (VISUAL, MARKS):
-        choices.remember(folder, entry_view=asked)
-    view = asked if asked in (VISUAL, MARKS) else choices.read(folder).entry_view
-    return render_notices(notices) + _page(folder, entry, draft, base, preview, preview_failure,
-                                           missing, face.view_site(),
-                                           view=MARKS if view == MARKS else VISUAL)
+        return failed_page(face, notices, failure)
+    return render_notices(notices) + page
 
 
 def _view_chosen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -724,8 +724,10 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 
     named = _replaced(folder, entry) if draft else None
     on_site = not draft or named is not None
-    proof = named is not None   # a "proof" here is a published entry's working copy
-    hide_published, hide_waiting = (" hidden", "") if proof else ("", " hidden")
+    # A published entry's working copy, which the words call a proof. Not
+    # #proof below, the box that holds the preview.
+    is_copy = named is not None
+    hide_published, hide_waiting = (" hidden", "") if is_copy else ("", " hidden")
     # Both states on every page, because a save turns a published entry's page
     # into a working copy's editor, and a press turns a draft's or a proof's
     # into a published entry's, without reloading it; the script shows the one
@@ -734,7 +736,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
                 f'<p data-when="0"{hide_published}>{say("editor.standing.published")}</p>'
                 f'<p data-when="1"{hide_waiting}>{say("editor.standing.waiting")}</p>'
                 f'<form data-when="1"{hide_waiting} method="post" action="/discard">'
-                f'<input type="hidden" name="slug" value="{attr(entry.slug) if proof else ""}">'
+                f'<input type="hidden" name="slug" value="{attr(entry.slug) if is_copy else ""}">'
                 f'<input type="hidden" name="base" value="{attr(base)}">'
                 f"<button>{say('editor.bin_proof')}</button></form></div>")
     if not on_site:
@@ -742,7 +744,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     # PRESS-0182: a published entry moves too; the script hides this once a
     # save makes a proof, whose address cannot change, and shows it again
     # once that proof is pressed (PRESS-0186).
-    address = _address_field(named if proof else entry.slug, hidden=proof)
+    address = _address_field(named if is_copy else entry.slug, hidden=is_copy)
     # PRESS-0234: the press row's status line, between presses. The script
     # keeps it in step (its `standing`).
     standing_word = say("script.standing.on_site" if not draft else
@@ -766,7 +768,9 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 {message_box("notices")}
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"
  data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}"
- data-on-site="{'1' if on_site else '0'}" data-view="{attr(view)}" onsubmit="return false">
+ data-on-site="{'1' if on_site else '0'}" data-view="{attr(view)}"
+ data-edit="{attr(_edit_address(''))}" data-journal="{attr(JOURNAL_ADDRESS)}"
+ onsubmit="return false">
 <label>{say("editor.title")} <input name="title" value="{attr(entry.title)}"></label>
 <label>{say("editor.categories")} <input name="categories"
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
@@ -933,7 +937,8 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
 # Each block's name on the screen; the script reads the same keys by kind.
 _KIND_WORDS = {"paragraph": "script.entry.kind.paragraph", "photo": "script.entry.kind.photo",
                "quote": "script.entry.kind.quote"}
-# The named colour marks' buttons (§ 4.3), by the mark each writes.
+# The named colour marks' buttons (§ 4.3), by the mark each writes. Every
+# named colour row of marks.MARKS, as _colours finds them, needs words here.
 _COLOUR_WORDS = {"accent": "editor.panel.colour.accent", "muted": "editor.panel.colour.muted"}
 # The marks.MARKS rows a quotation and a photograph built anew are written with.
 _QUOTE_MARK, _PHOTO_MARK = "quote", "photo"
@@ -1344,8 +1349,9 @@ UNDO_SCRIPT = pressing.SCRIPT + """
 # PRESS-0012 § 4.7 and PRESS-0135: both editors' leaving, the entry's here and
 # page_editor._PAGE_SCRIPT's. An unsaved change goes with the page unless a
 # save is in flight. A keepalive request carries at most 64 KiB, counted over
-# every keepalive body the page has in flight, so where the change is near that
-# the browser asks before leaving instead. `unsaved` says a
+# every keepalive body the page has in flight. This is the page's only one, so
+# where the change nears 60,000 bytes, a margin under that, the browser asks
+# before leaving instead. `unsaved` says a
 # change waits and saving has not stopped; `sending` says a save is in flight.
 LEAVING_SCRIPT = """
 window.presslessLeaving = (address, fields, unsaved, sending) => {
@@ -1396,6 +1402,13 @@ window.presslessSaving = (send, waiting) => {
   return {schedule, settle, release, sending: () => held !== null};
 };
 
+// Saving stops: `stopping` sets the editor's own flag, and the failure shows.
+window.presslessStop = (stopping) => (text) => {
+  stopping();
+  document.getElementById("save-status").textContent = say("script.editor.not_saved");
+  document.getElementById("failure").innerHTML = text;
+};
+
 // The save itself, `send` above: `on` is the editor's own part: `address`,
 // the route; posting() and fields(posted), what it posts; unsaved(now), which
 // sets its flag; stop(text); and saved(reply, posted), what a reply updates.
@@ -1423,9 +1436,11 @@ window.presslessSend = (on) => async () => {
 # (PRESS-0016) or any other file to /file (PRESS-0197). Answers the reply,
 # with its notices shown; or null where the Face refused the file, whose
 # failure is then shown, or could not be reached, which `stop`, the editor's
-# own, says.
+# own, says. `said`, the view's status line, says it is adding meanwhile.
 UPLOAD_SCRIPT = """
-window.presslessUpload = async (route, file, stop) => {
+window.presslessUpload = async (route, file, stop, said) => {
+  said.textContent = say(route === "/file" ? "script.editor.adding_file"
+                                           : "script.editor.adding_photograph");
   try {
     const answer = await fetch(route + "?name=" + encodeURIComponent(file.name),
                                {method: "POST", body: file});
@@ -1440,6 +1455,8 @@ window.presslessUpload = async (route, file, stop) => {
   } catch (error) {
     stop("");
     return null;
+  } finally {
+    said.textContent = "";
   }
 };
 """
@@ -1506,8 +1523,9 @@ window.presslessPublish = (on) => {
 # Link and the keys are here too; each editor passes in its own part.
 TYPING_SCRIPT = r"""
 window.presslessTyping = (() => {
+  // A browser types a no-break space where spaces meet; it is saved as a space.
   const text = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/ /g, " ");
+    .replace(/>/g, "&gt;").replace(/\u00a0/g, " ");
   // blocks.address_allowed's rule, which the save holds to: the scheme read as
   // a browser reads it, outer spaces and controls stripped, tabs and line
   // breaks removed (PRESS-0306).
@@ -1691,8 +1709,10 @@ _VISUAL_SCRIPT = r"""
   const typeable = (item) => item && item.kind !== "photo" && item.typed && !item.edited;
 
   // ---- what is posted (§ 4.5) ------------------------------------------
+  // A block added while the frame has no body has nothing typed in it yet.
   const empty = (item) => item.kind === "photo" ? !item.name
-    : typeable(item) && item.el !== null && !item.el.textContent.trim();
+    : typeable(item) && (item.el === null ? item.index === null
+                                          : !item.el.textContent.trim());
   // A quotation's paragraphs; words typed loose in it, as a browser may
   // leave them, are a paragraph of their own.
   const quoted = (element) => {
@@ -1723,15 +1743,16 @@ _VISUAL_SCRIPT = r"""
     const gone = removed.filter((item) => item.index !== null);
     const named = [...gone.map((item) => item.index), ...model
       .filter((item) => item.changed && item.index !== null).map((item) => item.index)];
+    const marked = sent.filter((item) => item.edited);
     return {
       blocks: JSON.stringify(sent.map(itemOf)),
       removed: JSON.stringify(named),
       saved(reply) {
-        removed = removed.filter((item) => !gone.includes(item));
+        // The server removed every block named; one removed while this save
+        // was out keeps a place only where it was sent.
+        removed = removed.filter((item) => sent.includes(item));
         if (reply.outline.length !== sent.length) {
-          // A marks box written as more or fewer blocks: open the body afresh.
-          open(reply.outline);
-          rebuild(reply.preview);
+          reshaped(reply, sent, marked, revs);
           return;
         }
         model.forEach((item) => { if (!sent.includes(item)) item.index = null; });
@@ -1746,6 +1767,49 @@ _VISUAL_SCRIPT = r"""
         if (reply.preview) rebuild(reply.preview);
       },
     };
+  }
+
+  // A marks box written as more or fewer blocks. Blocks sent before the
+  // first marks box and after the last keep their place, shifted; the span
+  // between is unknown. With nothing changed since the save, the body opens
+  // afresh. Otherwise what was typed meanwhile is kept: the span is posted
+  // again from the page, and the blocks it became are removed.
+  function reshaped(reply, sent, marked, revs) {
+    const since = (item) => revs.get(item) !== item.rev;
+    const first = sent.findIndex((item) => marked.includes(item));
+    const last = sent.findLastIndex((item) => marked.includes(item));
+    const grown = reply.outline.length - sent.length;
+    const place = (item) => {
+      const at = sent.indexOf(item);
+      if (at < 0 || first < 0 || (at >= first && at <= last)) return null;
+      return at < first ? at : at + grown;
+    };
+    const span = model.filter((item) => sent.includes(item) && place(item) === null);
+    if (!model.some(since)
+        || span.some((item) => item.changed && typeable(item) && item.el === null)) {
+      open(reply.outline);
+      rebuild(reply.preview);
+      return;
+    }
+    removed = removed.filter((item) => place(item) !== null);
+    removed.forEach((item) => { item.index = place(item); });
+    for (const item of model) {
+      item.index = place(item);
+      if (item.index === null) {
+        // Posted again as its marks, unless what is posted is on the page.
+        if (span.includes(item) && (!item.changed || (item.kind !== "photo"
+                                                      && !typeable(item)))) item.edited = true;
+        item.changed = true;
+      } else if (!since(item)) {
+        const block = reply.outline[item.index];
+        Object.assign(item, {changed: false, edited: false, kind: block.kind,
+                             typed: block.typed, marks: block.marks});
+      }
+    }
+    const from = first < 0 ? 0 : first, to = first < 0 ? reply.outline.length : last + grown + 1;
+    reply.outline.slice(from, to).forEach((block, at) => removed.push(node(block, from + at)));
+    if (picked) fill();
+    changed();
   }
 
   // ---- the frame (§ 4.2) -----------------------------------------------
@@ -1796,7 +1860,7 @@ _VISUAL_SCRIPT = r"""
     if (!model.length) addAfter(null, "paragraph", false);
     doc.addEventListener("click", clicked, true);
     doc.addEventListener("keydown", keyed);
-    doc.addEventListener("input", typed);
+    doc.addEventListener("input", onInput);
     doc.addEventListener("paste", pasted);
     doc.addEventListener("selectionchange", () => {
       const chosen = doc.getSelection();
@@ -1982,7 +2046,7 @@ _VISUAL_SCRIPT = r"""
   });
 
   // ---- typing (§ 4.4) --------------------------------------------------
-  function typed(event) {
+  function onInput(event) {
     if (picked && picked.el && picked.el.contains(event.target)) touch(picked);
   }
   function pasted(event) {
@@ -2020,11 +2084,9 @@ _VISUAL_SCRIPT = r"""
   chooser.addEventListener("change", async () => {
     const file = chooser.files[0];
     if (!file || !picked || picked.kind !== "photo") return;
-    const said = document.getElementById("panel-said");
-    said.textContent = say("script.editor.adding_photograph");
     const reply = await window.presslessUpload("/photograph", file,
-                                               window.presslessEntryPage.stop);
-    said.textContent = "";
+                                               window.presslessEntryPage.stop,
+                                               document.getElementById("panel-said"));
     if (!reply) return;
     const name = reply.name;
     if (![...field("name").options].some((option) => option.value === name)) {
@@ -2050,7 +2112,8 @@ _VISUAL_SCRIPT = r"""
 # never two saves at once, and on leaving only where a change is unsaved. Its
 # twin is page_editor._PAGE_SCRIPT: both save through SAVING_SCRIPT, press
 # through PUBLISH_SCRIPT and upload through UPLOAD_SCRIPT, and a fix to the
-# rest of either is owed to both. A raw string, as the scripts beside it are.
+# rest of either is owed to both. A raw string, as TYPING_SCRIPT and
+# _VISUAL_SCRIPT are.
 _EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCRIPT
                   + UPLOAD_SCRIPT + r"""
 (() => {
@@ -2094,7 +2157,7 @@ _EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCR
   const adopt = (reply) => {
     state.slug = reply.slug; state.draft = reply.draft ? "1" : "0"; state.base = reply.base;
     document.querySelectorAll("input[name=base]").forEach((input) => { input.value = reply.base; });
-    history.replaceState(null, "", "/edit?slug=" + encodeURIComponent(reply.slug));
+    history.replaceState(null, "", form.dataset.edit + encodeURIComponent(reply.slug));
     document.querySelectorAll("#standing [data-when]").forEach((part) => {
       part.hidden = part.dataset.when !== state.draft;
     });
@@ -2105,6 +2168,8 @@ _EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCR
     if ("missing" in reply) showMissing(reply.missing);
     // PRESS-0182: a proof's address cannot change, so its page offers none.
     // _page always draws the field, hidden where it does not apply.
+    // form.dataset.draft is still the standing the page was drawn with, until
+    // a press below changes it, so this spots a save that made a proof.
     const addressField = document.getElementById("address");
     if (state.draft === "1" && form.dataset.draft === "0") {
       addressField.hidden = true;
@@ -2128,11 +2193,7 @@ _EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCR
   const standing = () => say(state.draft === "0" ? "script.standing.on_site"
     : form.dataset.onSite === "1" ? "script.standing.changes" : "script.standing.off_site");
   window.presslessPress.standing(standing);
-  const stop = (text) => {
-    stopped = true;
-    status.textContent = say("script.editor.not_saved");
-    document.getElementById("failure").innerHTML = text;
-  };
+  const stop = window.presslessStop(() => { stopped = true; });
 
   // PRESS-0016: a photograph this entry names that Pressless does not have.
   // A press still stops on it; this says so while he writes.
@@ -2226,9 +2287,7 @@ _EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCR
   picker.addEventListener("change", async () => {
     const file = picker.files[0];
     if (!file) return;
-    photoSaid.textContent = say("script.editor.adding_photograph");
-    const reply = await window.presslessUpload("/photograph", file, stop);
-    photoSaid.textContent = "";
+    const reply = await window.presslessUpload("/photograph", file, stop, photoSaid);
     if (!reply) return;
     const [start, end] = caret || [box.value.length, box.value.length];
     const before = box.value.slice(0, start), after = box.value.slice(end);
@@ -2283,7 +2342,7 @@ _EDITOR_SCRIPT = (pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + PUBLISH_SCR
       const text = await answer.text();
       if (answer.status !== 200) { stop(text); return; }
       stopped = true;
-      window.location.assign("/journal");
+      window.location.assign(form.dataset.journal);
     } catch (error) {
       stop("");
     } finally {

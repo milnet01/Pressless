@@ -25,7 +25,11 @@ work=build/freeze
 appdir=build/AppDir
 rm -rf "$work" "$appdir"
 
-mapfile -t args < <("$PY" scripts/freeze_flags.py args "$work")
+# Assigned first, so set -e sees freeze_flags.py fail: a process
+# substitution's exit status is lost, and PyInstaller would freeze from a
+# list cut short.
+flags=$("$PY" scripts/freeze_flags.py args "$work")
+mapfile -t args <<<"$flags"
 "$PY" -m PyInstaller "${args[@]}" >&2
 version=$("$PY" scripts/freeze_flags.py version)
 
@@ -33,6 +37,14 @@ mkdir -p "$appdir/usr/bin" dist
 cp -a "$work/dist/Pressless" "$appdir/usr/bin/Pressless"
 install -m 755 packaging/linux/AppRun "$appdir/AppRun"
 cp packaging/linux/pressless.desktop "$appdir/pressless.desktop"
+# Its menu text in every other language Pressless speaks: the words setup's
+# own shortcut uses (PRESS-0241).
+PYTHONPATH=src PYTHONIOENCODING=utf-8 "$PY" - >>"$appdir/pressless.desktop" <<'PY'
+from pressless import words
+for code in words.LANGUAGES:
+    if code != "en":
+        print(f"Comment[{code}]={words.say_in(code, 'shortcuts.comment')}")
+PY
 
 # The icon the AppImage shows, and the one Pressless copies out for its menu
 # entry (PRESS-0183). Rendered from packaging/icons/pressless-icon.svg.

@@ -56,8 +56,8 @@ sys.path.insert(0, str(ROOT / "tests"))
 import test_publisher as tpub  # noqa: E402
 import test_publishing as tp  # noqa: E402
 from PIL import Image  # noqa: E402
-from test_votes import PASTED, VOTES  # noqa: E402
 from test_sendlog import _Relay  # noqa: E402
+from test_votes import PASTED, VOTES  # noqa: E402
 from test_votes import _Google as _CheckedGoogle  # noqa: E402
 
 import pressless.__main__ as launcher  # noqa: E402

@@ -168,7 +168,7 @@ def _open(face: Face, folder: Path, request: Request) -> str:
             choices = look.read(folder)
             extra = look.read_extra(folder)
         except store.StoreError as exc:     # LookUnreadable among them
-            return render_notices(notices) + face.fail(exc, publishing=False)
+            return editor.failed_page(face, notices, exc)
         restart = choices is None
         if restart:     # § 4.4 state 2: a layout picker, on its defaults
             asked = request.query.get("layout", "")

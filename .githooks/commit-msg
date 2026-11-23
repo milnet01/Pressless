@@ -17,8 +17,10 @@
 set -u
 msg_file="$1"
 # git's subject is the whole first paragraph, lines joined by a space, not
-# line 1 (commits.md, What checks this, the 1.3 row).
-subject=$(awk '/^#/ {next} /^[[:space:]]*$/ {exit} {printf "%s%s", sep, $0; sep=" "}' "$msg_file")
+# line 1 (commits.md, What checks this, the 1.3 row). Blank lines before it
+# are skipped, as git's cleanup strips them.
+subject=$(awk '/^#/ {next} /^[[:space:]]*$/ {if (seen) exit; next}
+    {seen = 1; printf "%s%s", sep, $0; sep=" "}' "$msg_file")
 
 # Ignore merges, reverts, fixups and comment-only aborts.
 case "$subject" in

@@ -21,7 +21,6 @@ import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
 
 # Windows refuses to replace a file another program holds open -- its own
 # scanners open what was just written for a moment -- where Linux does not
@@ -39,7 +38,6 @@ WINDOWS_PAUSE = 0.1
 WINDOWS_DEVICES = frozenset(
     ["con", "prn", "aux", "nul", "conin$", "conout$"]
     + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789\u00b9\u00b2\u00b3"])
-_T = TypeVar("_T")
 
 
 def write_whole(
@@ -108,7 +106,7 @@ def sync_folder(folder: Path) -> None:
         os.close(handle)
 
 
-def patiently(step: Callable[[], _T]) -> _T:
+def patiently[T](step: Callable[[], T]) -> T:
     """Run `step` and return what it returns, retrying a PermissionError for a
     moment on Windows only, where a scanner briefly refuses a file just
     written (PRESS-0135 #2). PRESS-0001 § 11 names its callers."""
