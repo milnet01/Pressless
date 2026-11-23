@@ -6,8 +6,9 @@ It reaches GitHub as a GitHub App installed on that repository alone.
 `docs/specs/PRESS-0436-send-my-log.md` § 4.3 owns what it does.
 
 Pressless holds no key the relay checks. The relay refuses a wrong method or
-path, a second send within a minute from one address, a body over 2.2 MiB
-and a body of the wrong shape, all before it asks GitHub for anything.
+path, a body that is not JSON, a second send within a minute from one
+address (an IPv6 sender by its /64), a body over 2.2 MiB and a body of the
+wrong shape, all before it asks GitHub for anything.
 
 ## Setting it up
 
