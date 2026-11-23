@@ -322,8 +322,8 @@ folder — `templates/`, which `templates.register` seeds at every launch —
 each file moves in alone, and a file already there is kept.
 
 A stop before the moves deletes `import/work/` and leaves the Store
-empty. Each held file is listed in `import/moved.jsonl` before it moves
-into `import/work/`, and that stop moves each back first. Where one will
+empty. Each held file is listed in `import/moved.jsonl`, forced to the
+drive, before it moves into `import/work/`, and that stop moves each back first. Where one will
 not go back, `import/work/` stays, and the next bring-in puts it back
 before reading anything (`pressless_import.recover`).
 `import/moving` is an empty file written before the first move

@@ -1648,6 +1648,97 @@ def test_a_file_that_would_not_go_back_goes_back_at_the_next_try(tmp_path, monke
     assert store.list_photographs(site) == ("a.jpg", "b.jpg")
 
 
+def test_each_held_file_is_listed_on_the_drive_before_it_moves(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7: each held file's line in import/moved.jsonl is
+    forced to the drive before the file moves, so after a power cut the move
+    can never survive without its line, and `staged` never deletes a held
+    file it cannot put back.
+
+    Breaks when the line is only flushed to the system before the move."""
+    import os
+
+    events = []
+    real_fsync, real_rename = os.fsync, os.rename
+
+    def fsync(descriptor):
+        events.append("fsync")
+        return real_fsync(descriptor)
+
+    def rename(source, target):
+        if "work" in Path(target).parts:
+            events.append("rename")
+        return real_rename(source, target)
+
+    monkeypatch.setattr(os, "fsync", fsync)
+    monkeypatch.setattr(os, "rename", rename)
+    _bring(tmp_path, _export(*_TWO_FILES), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+
+    moves = [at for at, event in enumerate(events) if event == "rename"]
+    assert len(moves) == 2, events
+    assert all(events[at - 1] == "fsync" for at in moves), events
+
+
+def _journal(tmp_path: Path, text: str | bytes) -> Path:
+    """A site whose import/work/ holds a.jpg, moved there from import/media/
+    as import/moved.jsonl says, with `text` after that line."""
+    import json
+
+    held = tmp_path / "site" / "import"
+    _files(held, {"work/photographs/a.jpg": b"a"})
+    line = json.dumps(["import/media/2012/05/a.jpg", "import/work/photographs/a.jpg"]) + "\n"
+    (held / "moved.jsonl").write_bytes(
+        line.encode("utf-8") + (text if isinstance(text, bytes) else text.encode("utf-8")))
+    return held
+
+
+def test_a_journal_line_cut_short_is_skipped_and_the_rest_go_back(tmp_path):
+    """PRESS-0125 § 4.7: a last line a stop cut short names no move that
+    began, so it is skipped, every whole line's file goes back, and the list
+    is deleted.
+
+    Breaks when a part-written line stops the putting back."""
+    from pressless_import import _bring
+
+    held = _journal(tmp_path, '["import/media/2012/05/b.jp')
+
+    assert _bring._put_back(held) is True
+    assert (held / "media/2012/05/a.jpg").read_bytes() == b"a"
+    assert not (held / "moved.jsonl").exists()
+
+
+def test_an_unreadable_journal_stops_the_next_bring_and_deletes_nothing(tmp_path):
+    """PRESS-0125 § 4.7: a list of moved files that cannot be read says
+    nothing was put back, so the next bring stops rather than deleting
+    import/work/ and the held file in it.
+
+    Breaks when an unreadable list counts as one with nothing to put back."""
+    held = _journal(tmp_path, b"\xff\xfe not words\n")
+
+    with pytest.raises(ImportStopped, match="could not be put back"):
+        pressless_import.recover(tmp_path / "site")
+    assert (held / "work/photographs/a.jpg").read_bytes() == b"a"
+
+
+def test_a_journal_that_cannot_be_deleted_counts_as_not_put_back(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7: where the list cannot be deleted once its files are
+    back, `_put_back` says so, as a list left behind would move them again.
+
+    Breaks when a failed delete of the list is taken as success."""
+    from pressless_import import _bring
+
+    held = _journal(tmp_path, "")
+    real = Path.unlink
+
+    def unlink(self, *args, **kwargs):
+        if self.name == "moved.jsonl":
+            raise OSError(13, "the file is in use")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+    assert _bring._put_back(held) is False
+    assert (held / "media/2012/05/a.jpg").read_bytes() == b"a"
+
+
 def test_the_report_is_given_before_the_moves(tmp_path, monkeypatch):
     """PRESS-0125 § 4.8: bring_in hands its Report to `keep` before the first
     move, so a stop during the moves still leaves it to write.

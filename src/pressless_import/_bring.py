@@ -739,9 +739,12 @@ def staged(into: Path, write: Callable[[Path, Callable[[Path, Path], None]], Non
 
             def move(source: Path, target: Path) -> None:
                 # Listed first: a stop after the rename can then put it back.
+                # Forced to the drive, not only flushed: after a power cut
+                # the rename must never be there without its line.
                 journal.write(json.dumps([_relative(source, into),
                                           _relative(target, into)]) + "\n")
                 journal.flush()
+                os.fsync(journal.fileno())
                 target.parent.mkdir(exist_ok=True)
                 os.rename(source, target)
 
