@@ -342,15 +342,16 @@ def from_json(text: str) -> Choices:
                                dark={name: choices.dark[name] for name in COLOURS})
 
 
-def read(folder: Path) -> Choices | None:
-    """The site's choices; None where it has no choices.json."""
-    text = store.read_look_file(folder, store.LOOK_CHOICES_NAME)
+def read(folder: Path, *, waiting: bool = False) -> Choices | None:
+    """The site's choices, or with `waiting` the waiting look's; None where
+    there is no choices.json."""
+    text = store.read_look_file(folder, store.LOOK_CHOICES_NAME, waiting=waiting)
     return None if text is None else from_json(text)
 
 
-def read_extra(folder: Path) -> str:
+def read_extra(folder: Path, *, waiting: bool = False) -> str:
     """Their own CSS; empty where there is none."""
-    return store.read_look_file(folder, store.EXTRA_CSS_NAME) or ""
+    return store.read_look_file(folder, store.EXTRA_CSS_NAME, waiting=waiting) or ""
 
 
 def made_here(folder: Path) -> bool:
@@ -378,25 +379,27 @@ def made_here(folder: Path) -> bool:
 
 
 def digest(folder: Path) -> str:
-    """SHA-256 over choices.json, extra.css and style.css in that order, an
-    absent file counting as a fixed marker (§ 4.4, INV-8)."""
+    """SHA-256 over choices.json, extra.css and style.css in that order, live
+    then waiting, an absent file counting as a fixed marker (§ 4.4, INV-8)."""
     total = hashlib.sha256()
-    for name in store.LOOK_FILES:
-        data = store.read_look_bytes(folder, name)
-        total.update(b"absent\0" if data is None else b"%d\0" % len(data) + data)
+    for waiting in (False, True):
+        for name in store.LOOK_FILES:
+            data = store.read_look_bytes(folder, name, waiting=waiting)
+            total.update(b"absent\0" if data is None else b"%d\0" % len(data) + data)
     return total.hexdigest()
 
 
-def save(folder: Path, choices: Choices, extra: str) -> None:
+def save(folder: Path, choices: Choices, extra: str, *, waiting: bool = False) -> None:
     """Write choices.json, then extra.css, then style.css made from them, each
     atomically; the stylesheet last, so the file the Builder publishes is never
-    newer than the choices it was made from (§ 4.2)."""
+    newer than the choices it was made from (§ 4.2). With `waiting`, into the
+    look that waits to be published (§ 4.4)."""
     why = problem(choices)
     if why:
         raise ValueError(why)
-    store.write_look_file(folder, store.LOOK_CHOICES_NAME, to_json(choices))
-    store.write_look_file(folder, store.EXTRA_CSS_NAME, extra)
-    store.write_style_code(folder, css(choices, extra))
+    store.write_look_file(folder, store.LOOK_CHOICES_NAME, to_json(choices), waiting=waiting)
+    store.write_look_file(folder, store.EXTRA_CSS_NAME, extra, waiting=waiting)
+    store.write_style_code(folder, css(choices, extra), waiting=waiting)
 
 
 def warnings(choices: Choices) -> list[tuple[str, str, str, float]]:
