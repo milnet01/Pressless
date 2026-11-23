@@ -240,3 +240,23 @@ def test_a_journal_link_carries_the_journal_marker():
     written = menu.arranged(ONE_LINE, posted)
     assert '<a href="{{UP}}blog/index.html" data-nav="Journal">About</a>' in written
     assert '<a href="{{UP}}blog/index.html" data-nav="Journal">Journal</a>' in written
+
+
+@pytest.mark.parametrize("start_tag", [
+    '<a data-href="x" href="{{UP}}pages/about.html">',
+    '<a xlink:href="x" href="{{UP}}pages/about.html">',
+    '<a title="its href=\'x\' is old" href="{{UP}}pages/about.html">',
+])
+def test_a_links_href_is_its_own_attribute(start_tag):
+    """Only the attribute named href is a link's address: not data-href, not
+    xlink:href, not href= written inside another attribute's value. Breaks
+    when the first `href=` in the tag is taken, so the link is missed and
+    the wrong attribute rewritten."""
+    text = f"<nav>{start_tag}About</a> <a href=\"{{{{UP}}}}index.html\">Home</a></nav>"
+    assert menu.links_to(text, "about")
+    renamed = menu.rename(text, "about", "story", ("About",), "Story")
+    assert start_tag.replace("pages/about.html", "pages/story.html") in renamed
+    assert menu.links(text)[0] == ("About", "{{UP}}pages/about.html")
+    moved = menu.arranged(text, [{"at": 0, "words": "About", "href": "{{UP}}pages/a.html"},
+                                 {"at": 1, "words": "Home", "href": "{{UP}}index.html"}])
+    assert start_tag.split(" href=")[0] in moved and 'href="{{UP}}pages/a.html"' in moved
