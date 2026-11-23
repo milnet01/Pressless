@@ -14,7 +14,6 @@ property, so a sign-in left half-way leaves the dashboard as it was.
 from __future__ import annotations
 
 import dataclasses
-import hmac
 import html
 import threading
 import time
@@ -94,13 +93,12 @@ def token(folder: Path) -> str:
     account = saved.credentials.google_account
     if account is None:
         raise insights.NotConfigured("the dashboard was never set up")
-    transport = state.transport()
     with state.lock:
         held = state.held
     if held is not None and held.expires_at - state.clock() > _REFRESH_MARGIN:
         return held.value
     refresh = credentials.read(saved.credentials.store, Path(folder), account)
-    access = google_signin.access_token(refresh, transport, clock=state.clock)
+    access = google_signin.access_token(refresh, state.transport(), clock=state.clock)
     with state.lock:
         state.held = access
     return access.value
@@ -179,7 +177,7 @@ def _start(state: _State) -> str | Reply:
         return shown
     if not google_signin.available():
         return _show(state)
-    attempt, address = google_signin.begin(state.face.origin + RETURN_PATH, state.transport())
+    attempt, address = google_signin.begin(state.face.origin + RETURN_PATH, state.client)
     with state.lock:
         state.attempt = attempt   # replaces any pending one
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=address)
@@ -190,8 +188,8 @@ def _back(state: _State, request: Request) -> str | Reply:
     the authentication: no match is the same 403 a missing cookie gets."""
     with state.lock:
         attempt = state.attempt
-        if attempt is None or not hmac.compare_digest(request.query.get("state", ""),
-                                                      attempt.state):
+        if attempt is None or not google_signin.same_state(request.query.get("state", ""),
+                                                           attempt.state):
             return Reply(b"Forbidden", "text/plain", status=403)
         state.attempt = None   # spent, whatever follows
     transport = state.transport()
@@ -261,36 +259,48 @@ def _choose(state: _State, request: Request) -> str:
     if chosen not in {p.id for p in pending.properties}:
         return _show(state, hint=say("google_setup.choose_hint"))
     filed = sites.account("google", state.folder)   # PRESS-0223 § 4.5
+    kind = saved.credentials.store
     try:
-        credentials.write(saved.credentials.store, state.folder, filed, pending.refresh_token)
+        before = _stored(kind, state.folder, filed)
+        credentials.write(kind, state.folder, filed, pending.refresh_token)
     except credentials.FAILURES as exc:
         return shown + state.face.fail(exc, publishing=False,
                                        secret=say("failure.secret.google_sign_in"))
     # PRESS-0199 § 4.3: the property's web streams, read with the token in
     # hand, renewed where its hour is nearly up. A failure here keeps today's
     # save, and any id Settings held.
+    transport = state.transport()
     access = pending.access
     found: tuple[str, ...] = ()
     lookup_failure = ""
     try:
         if access.expires_at - state.clock() <= _REFRESH_MARGIN:
-            access = google_signin.access_token(pending.refresh_token, state.client,
+            access = google_signin.access_token(pending.refresh_token, transport,
                                                 clock=state.clock)
         found = google_signin.measurement_ids(access.value, chosen,
-                                              saved.site_address, state.client)
+                                              saved.site_address, transport)
     except insights.InsightsError as exc:
         lookup_failure = state.face.fail(exc, publishing=False)
-    code = _counting_code(saved, found, failed=lookup_failure != "", replaced=(
-        not lookup_failure and _found_by_us(state, access.value, saved, chosen)))
+    replaced = not lookup_failure and _found_by_us(transport, access.value, saved, chosen)
+    code = _counting_code(saved, found, replaced=replaced)
     candidate = dataclasses.replace(
         saved,
         credentials=dataclasses.replace(saved.credentials, google_account=filed),
         analytics_property_id=chosen,
         measurement_id=code.saved,
     )
+    unsaved: settings.SettingsError | None = None
     with state.face.capture() as notices:
-        settings.check(candidate)
-        settings.save(state.folder, candidate)
+        try:
+            settings.check(candidate)
+            settings.save(state.folder, candidate)
+        except settings.SettingsError as exc:
+            unsaved = exc
+    if unsaved is not None:
+        # Settings still names the property it did, so the store goes back to
+        # the sign-in that reads it; the list stays, to choose again.
+        _put_back(state, kind, filed, before)
+        return shown + render_notices(notices) + state.face.fail(unsaved, publishing=False)
     not_forgotten = ""
     if chosen != saved.analytics_property_id:
         # The cache holds the last property's numbers, read as this one's.
@@ -325,19 +335,40 @@ class _CountingCode:
     removed: str | None   # the id a switch of property replaced
 
 
-def _counting_code(saved: settings.Settings, found: tuple[str, ...], *, failed: bool,
+def _stored(kind: str, folder: Path, account: str) -> str | None:
+    """The secret filed under `account`, or None where the store holds none."""
+    try:
+        return credentials.read(kind, folder, account)
+    except credentials.NotStored:
+        return None
+
+
+def _put_back(state: _State, kind: str, account: str, before: str | None) -> None:
+    """The store as it was before a choose whose save failed. Where that fails
+    too, the log says so; the page already shows the failed save."""
+    try:
+        if before is None:
+            credentials.delete(kind, state.folder, account)
+        else:
+            credentials.write(kind, state.folder, account, before)
+    except credentials.FAILURES as exc:
+        state.face.note(f"the earlier Google sign-in was not put back: {type(exc).__name__}")
+
+
+def _counting_code(saved: settings.Settings, found: tuple[str, ...], *,
                    replaced: bool) -> _CountingCode:
     """PRESS-0199 § 4.3 and PRESS-0253, in one place: the held id survives
     unless `replaced` says it was the previous property's own, and an empty
-    place takes the one id found, where exactly one was."""
+    place takes the one id found, where exactly one was. A failed lookup
+    never replaces."""
     held = saved.measurement_id
-    removed = held if replaced and not failed else None
+    removed = held if replaced else None
     kept = held if removed is None else None
     to_save = kept if kept is not None or len(found) != 1 else found[0]
     return _CountingCode(to_save, kept, removed)
 
 
-def _found_by_us(state: _State, token: str, saved: settings.Settings,
+def _found_by_us(transport: insights.Transport, token: str, saved: settings.Settings,
                  chosen: str) -> bool:
     """PRESS-0253: whether the held id is one of the previous property's own
     web streams, so a switch replaces it. An id that cannot be traced, the
@@ -346,7 +377,8 @@ def _found_by_us(state: _State, token: str, saved: settings.Settings,
     if saved.measurement_id is None or previous is None or previous == chosen:
         return False
     try:
-        streams = google_signin.measurement_ids(token, previous, "", state.client)
+        # No site address: every web stream's id, not only the site's own.
+        streams = google_signin.measurement_ids(token, previous, "", transport)
     except insights.InsightsError:
         return False
     return saved.measurement_id in streams

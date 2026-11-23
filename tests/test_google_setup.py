@@ -96,23 +96,31 @@ class _Google:
 class _Store:
     """Recording doubles for credentials.read, write and delete."""
 
-    def __init__(self, monkeypatch: pytest.MonkeyPatch, saved: str = OLD_REFRESH,
-                 delete_fails: bool = False) -> None:
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, saved: str | None = OLD_REFRESH,
+                 delete_fails: bool | str = False, write_fails: bool = False) -> None:
+        """`delete_fails` names the one account whose delete fails, or is True
+        for every one; `saved` None is a store holding nothing."""
         self.writes: list[tuple[str, str, str]] = []
         self.deletes: list[tuple[str, str]] = []
         self.saved = saved
+        self.write_fails = write_fails
 
         def read(kind: str, folder: Path, account: str) -> str:
+            if self.saved is None:
+                raise credentials.NotStored("nothing is filed under that name")
             return self.saved
 
         def write(kind: str, folder: Path, account: str, secret: str) -> None:
+            if self.write_fails:
+                raise credentials.CredentialError("the store refused the write")
             self.writes.append((kind, account, secret))
             self.saved = secret
 
         def delete(kind: str, folder: Path, account: str) -> None:
             self.deletes.append((kind, account))
-            if delete_fails:
+            if delete_fails is True or delete_fails == account:
                 raise credentials.CredentialError("the store could not remove that secret")
+            self.saved = None
 
         monkeypatch.setattr(credentials, "read", read)
         monkeypatch.setattr(credentials, "write", write)
@@ -348,6 +356,22 @@ def test_a_failed_removal_is_reported_and_still_turns_off(
     saved = settings.load(tmp_path)
     assert saved.credentials.google_account is None
     assert saved.analytics_property_id is None
+    assert MAY_STILL_BE_HERE in page
+
+
+def test_a_first_removal_that_fails_still_removes_the_second(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """INV-18, `credentials.delete_each`: a failure stops none of the others.
+    Breaks when the first failed delete returns early, so the key this site
+    files under stays on the computer."""
+    held = _Store(monkeypatch, delete_fails="google-by-hand")
+    _saved(tmp_path, credentials=settings.Credentials(
+        store="keyring", github_account="github", google_account="google-by-hand"),
+        analytics_property_id="999")
+    with _served(tmp_path, _Google()) as browser:
+        _, _, page = browser.send("POST", "/setup/google/off")
+    assert held.deletes == [("keyring", "google-by-hand"), ("keyring", "google")]
     assert MAY_STILL_BE_HERE in page
 
 
@@ -718,3 +742,93 @@ def test_a_property_chosen_late_is_read_with_a_fresh_token(
         _, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
     assert google.token_requests() == asked + renewed
     assert settings.load(tmp_path).measurement_id == "G-FRESH1", page
+
+
+# ------------------------------------------------- a choose that fails ----
+
+SAVE_FAILED = "the settings file could not be written"
+
+
+def _save_fails(*args, **kwargs):
+    raise settings.SettingsError(SAVE_FAILED)
+
+
+@pytest.mark.parametrize("before", [OLD_REFRESH, None])
+def test_a_failed_save_puts_the_earlier_sign_in_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None, before: str | None
+) -> None:
+    """§ 4.2's choose. Breaks when a save that fails leaves the new sign-in
+    stored, so the dashboard reads the property Settings still names with
+    another account's sign-in; or when the failure reaches the last-resort
+    page, or the list is dropped so he cannot choose again."""
+    held = _Store(monkeypatch, saved=OLD_REFRESH)
+    _signed_in(tmp_path)
+    settings_before = settings.path_for(tmp_path).read_bytes()
+    with _served(tmp_path, _Google()) as browser:
+        browser.come_back(browser.start())
+        held.saved = before
+        with monkeypatch.context() as patched:
+            patched.setattr(settings, "save", _save_fails)
+            status, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+        assert status == 200 and 'class="failure"' in page, page
+        assert held.saved == before
+        assert settings.path_for(tmp_path).read_bytes() == settings_before
+
+        status, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+    assert status == 200 and "expired" not in page
+    assert settings.load(tmp_path).analytics_property_id == "111"
+    assert held.saved == NEW_REFRESH
+
+
+def test_a_sign_in_the_store_refuses_saves_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """§ 6, the store cannot be written. Breaks when Settings is saved, or
+    the list dropped, after the store refused the new sign-in."""
+    held = _Store(monkeypatch)
+    _saved(tmp_path)
+    before = settings.path_for(tmp_path).read_bytes()
+    with _served(tmp_path, _Google()) as browser:
+        browser.come_back(browser.start())
+        held.write_fails = True
+        status, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+        assert status == 200 and "your Google sign-in" in page, page
+        assert settings.path_for(tmp_path).read_bytes() == before
+
+        held.write_fails = False
+        status, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+    assert status == 200 and "expired" not in page
+    assert settings.load(tmp_path).analytics_property_id == "111"
+
+
+def test_a_return_in_another_alphabet_is_the_same_403(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """§ 4.3 step 2. Breaks when a `state` outside ASCII reaches
+    `hmac.compare_digest` as text, which raises, so anyone can turn the 403
+    into the last-resort failure page; or when it spends the attempt."""
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    with _served(tmp_path, _Google()) as browser:
+        state = browser.start()
+        assert browser.come_back("\u00e9t\u00e9")[0] == 403
+        assert browser.come_back(state)[0] == 200
+
+
+def test_a_held_token_builds_no_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """INV-14. Breaks when `token` builds Insights' own client, a TLS context
+    each time, before it finds the held token that needs none."""
+    _Store(monkeypatch)
+    _signed_in(tmp_path)
+    google = _Google()
+    with _served(tmp_path, google):
+        assert google_setup.token(tmp_path) == f"access-{OLD_REFRESH}"
+        google_setup._state.client = None
+
+        def built():
+            raise AssertionError("a client was built")
+
+        monkeypatch.setattr(insights, "own_client", built)
+        assert google_setup.token(tmp_path) == f"access-{OLD_REFRESH}"
