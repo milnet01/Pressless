@@ -297,3 +297,35 @@ def test_the_long_jobs_count(tmp_path):
     bringing = [(c.done, c.total) for c in by_key["progress.bringing"]]
     assert bringing[0] == (0, bringing[0][1]) and bringing[-1] == (bringing[0][1],) * 2
     assert len(bringing) == bringing[0][1] + 1
+
+
+def test_a_record_ends_with_its_answer(tmp_path):
+    """A job's record ends once its answer is sent, so a page's after-reply
+    work, or a thread still closing, never shows as running afterwards.
+    Breaks when the record lasts until the request's thread lets go."""
+    from _face_session import Browser
+
+    from pressless import face
+
+    later, release = threading.Event(), threading.Event()
+    served = face.serve(tmp_path)
+
+    def counted(request):
+        progress.count("progress.packing", 3, 10)
+
+        def after() -> None:
+            later.set()
+            release.wait(30)
+        served.after_reply(after)
+        return face.Reply(b"done", "text/plain")
+
+    try:
+        served.add_page("POST", "/counted", counted)
+        browser = Browser(served)
+        assert browser.request("POST", "/counted")[0] == 200
+        assert later.wait(10)
+        during = _progress(browser)
+    finally:
+        release.set()
+        served.stop()
+    assert during == {"running": False, "said": "", "fraction": None}

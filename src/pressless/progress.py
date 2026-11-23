@@ -53,6 +53,13 @@ def job() -> Iterator[None]:
             _held.pop(me, None)
 
 
+def end() -> None:
+    """The calling thread's record ends now, before its job's block does: the
+    Face calls it as an answer goes, so nothing after reads as running."""
+    with _LOCK:
+        _held.pop(threading.get_ident(), None)
+
+
 def count(key: str, done: int = 0, total: int | None = None,
           bytes_done: int = 0, bytes_total: int | None = None) -> None:
     """The calling thread's record now says `key` with these numbers. Nothing
