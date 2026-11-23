@@ -353,6 +353,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     "sendlog.py": {
         **dict.fromkeys(("Content-Type", "User-Agent"), _HTTP_HEADERS),
         "Pressless/": "the User-Agent the relay is sent",
+        "_KEY": "part of the secret-shape pattern, matched and never shown",
     },
     "usage.py": {
         **dict.fromkeys(("Windows", "Linux", "Linux (", "an unknown system"),
