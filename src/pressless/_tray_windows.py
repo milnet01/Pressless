@@ -20,6 +20,7 @@ from pathlib import Path
 _SOURCE_ICON = Path(__file__).resolve().parents[2] / "packaging" / "icons" / "pressless.ico"
 
 _CALLBACK = 0x8001          # WM_APP + 1: the icon's messages
+_CLOSE_ICON = 0x8002        # WM_APP + 2: close() alone; another program's WM_CLOSE is ignored
 _ICON_ID = 1
 _WM_NULL, _WM_DESTROY, _WM_CLOSE = 0x0000, 0x0002, 0x0010
 _WM_LBUTTONUP, _WM_RBUTTONUP = 0x0202, 0x0205
@@ -29,6 +30,7 @@ _TPM_RIGHTBUTTON, _TPM_NONOTIFY, _TPM_RETURNCMD = 0x2, 0x80, 0x100
 _IMAGE_ICON, _LR_LOADFROMFILE = 1, 0x10
 _SM_CXSMICON, _SM_CYSMICON = 49, 50
 _START_WAIT = 10.0
+_TIP_UNITS = 127            # szTip's UTF-16 units, less its closing null
 
 _LRESULT = ctypes.c_ssize_t
 _WNDPROC = ctypes.WINFUNCTYPE(_LRESULT, wintypes.HWND, wintypes.UINT, wintypes.WPARAM,
@@ -130,13 +132,20 @@ def _load_icon() -> int:
     return loaded
 
 
+def _cut_tip(text: str) -> str:
+    """`text` cut to what szTip holds, counted in UTF-16 units, never
+    splitting a character."""
+    units = text.encode("utf-16-le")[:2 * _TIP_UNITS]
+    return units.decode("utf-16-le", errors="ignore")
+
+
 class Icon:
     """One notification-area icon, on a hidden window and a thread of its own."""
 
     def __init__(self, entries: Sequence[tuple[int, str]], tooltip: str,
                  run: Callable[[int], None]) -> None:
         self._entries = list(entries)
-        self._tooltip = tooltip[:127]
+        self._tooltip = _cut_tip(tooltip)
         self._run = run
         self._class = f"PresslessTray-{id(self)}"     # two icons never share a class
         self._procedure = _WNDPROC(self._window_procedure)   # kept alive while Windows calls it
@@ -146,6 +155,8 @@ class Icon:
         self._ready = threading.Event()
         self._failure: BaseException | None = None
         self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
+        self._abandoned = False      # start() gave up; the thread must add nothing
 
     def start(self) -> None:
         """Make the window and add the icon; raises where that cannot be done.
@@ -154,8 +165,11 @@ class Icon:
         self._thread = threading.Thread(target=self._serve, name="pressless-tray",
                                         daemon=True)
         self._thread.start()
-        if not self._ready.wait(_START_WAIT):
-            raise TimeoutError("the tray's window did not start")
+        self._ready.wait(_START_WAIT)
+        with self._lock:
+            if not self._ready.is_set():
+                self._abandoned = True
+                raise TimeoutError("the tray's window did not start")
         if self._failure is not None:
             raise self._failure
 
@@ -163,12 +177,13 @@ class Icon:
         """Delete the icon, then end the window and its thread. Without
         NIM_DELETE a stale icon stays until the pointer passes over it."""
         if self._hwnd:
-            _api().PostMessageW(self._hwnd, _WM_CLOSE, 0, 0)
+            _api().PostMessageW(self._hwnd, _CLOSE_ICON, 0, 0)
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=5)
 
     def _serve(self) -> None:
+        api = instance = hwnd = None
         try:
             api = _api()
             instance = api.GetModuleHandleW(None)
@@ -185,15 +200,22 @@ class Icon:
                 error = ctypes.WinError(ctypes.get_last_error())
                 api.UnregisterClassW(self._class, instance)
                 raise error
+            with self._lock:
+                if self._abandoned:
+                    raise TimeoutError("the tray's window started after start() gave up")
+                self._hwnd = hwnd
+                _notify(_NIM_ADD, self._data())
+                self._ready.set()
         except BaseException as exc:  # noqa: BLE001 -- handed to start(), which raises it
             self._failure = exc
+            self._hwnd = None
+            if hwnd:
+                api.DestroyWindow(hwnd)
+                api.UnregisterClassW(self._class, instance)
             if self._icon:
                 _api().DestroyIcon(self._icon)
             self._ready.set()
             return
-        self._hwnd = hwnd
-        _notify(_NIM_ADD, self._data())
-        self._ready.set()
         message = wintypes.MSG()
         while api.GetMessageW(ctypes.byref(message), None, 0, 0) > 0:
             api.TranslateMessage(ctypes.byref(message))
@@ -219,10 +241,12 @@ class Icon:
         if self._taskbar_created and message == self._taskbar_created:
             _notify(_NIM_ADD, self._data())      # Explorer restarted
             return 0
-        if message == _WM_CLOSE:
+        if message == _CLOSE_ICON:
             _notify(_NIM_DELETE, self._data())
             api.DestroyWindow(hwnd)
             return 0
+        if message == _WM_CLOSE:
+            return 0        # another program's: the icon goes only with Pressless
         if message == _WM_DESTROY:
             api.PostQuitMessage(0)
             return 0
