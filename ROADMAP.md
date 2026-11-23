@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=486 -->
+<!-- ants-roadmap-id-high-water: PRESS=487 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9603,7 +9603,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0471] **A publish too large for GitHub's hourly allowance is handled before it fails.**
+- ✅ [PRESS-0471] **A publish too large for GitHub's hourly allowance is handled before it fails.**
   Review type: Codebase. Queued by PRESS-0446 from review-code lane-07
   (publisher.py: past the hourly request allowance a publish fails late and
   resends everything). Needs the user's choice: wait out the reset with
@@ -9613,6 +9613,14 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   User decision 2026-11-23: wait and carry on. Past the hourly allowance,
   Pressless pauses until GitHub's reset, showing a countdown, then
   finishes; the publish stays one commit.
+  Shipped 2026-11-23, 7f1de14 (merged ab270a3), as the user decided. Past
+  the hourly allowance a publish waits for the reset GitHub names, counting
+  down in the progress note, then finishes as one commit. A reset over
+  MAX_RESET_WAIT_SECONDS away, a second reset, a long Retry-After or a
+  request outside a publish still end in RateLimited. PRESS-0009 and
+  PRESS-0435 amended. Full suite 2835 passed; ruff clean. Fetches (take-in,
+  undo, takeover reads) still fail at once past the allowance.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0471.json.
   **Layman:** A very large publish no longer fails late and starts again from nothing.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9622,6 +9630,11 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Review type: Codebase. Queued by PRESS-0446 from review-code
   --performance lane-05 (publisher.py's pause between uploads). Needs real
   GitHub, and a clock on the Transport seam PRESS-0009 § 4.1 pins.
+  Measured 2026-11-23 with a stand-in ($R/close-findings/0472-measure.py):
+  Pressless's own work is about 0.21 ms a file; the gap between uploads is
+  the 0.5 s pause plus GitHub's reply time. Shortening the pause saves up
+  to GitHub's reply time per file, unknown until a real publish is timed
+  on a scratch repository, which the user approves. Ledger: 0472.json.
   **Layman:** Publishing many files may get faster once a real publish is timed.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9640,11 +9653,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Tray.
 
-- 📋 [PRESS-0474] **Review-code lane-07's four open questions are answered.**
+- ✅ [PRESS-0474] **Review-code lane-07's four open questions are answered.**
   Review type: Codebase. From review-code lane-07's open questions, left
   open by PRESS-0446: the takeover fetch-area race; a file becoming a
   folder within one tree write; English commit messages; repository names
   unquoted in URLs. Each ends fixed, filed or dismissed with evidence.
+  Shipped 2026-11-23, e424c3c (merged ab270a3). The takeover read emptied
+  the fetch area under an undo (shown by a test): undo, take-in and the
+  takeover read now share undo.fetch_area, holding it for the whole
+  sequence. A file becoming a folder is PRESS-0487. English commit
+  messages are PRESS-0241 decision 9; repository names are confined by
+  settings.check, so the URL cannot change host. PRESS-0015 amended.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0474.json.
   **Layman:** Four possible publishing problems the review could not settle are checked.
   Kind: investigate.
   Source: review-2026-11-23.
@@ -9781,6 +9801,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: security.
   Source: review-2026-11-23.
   Lanes: Pipeline.
+
+- 📋 [PRESS-0487] **A publish where a file becomes a folder of the same name is tried on a scratch repository.**
+  Review type: Codebase. From PRESS-0474 (review-code lane-07's open
+  question). GitHub does not document how it orders a removal and an
+  addition of the same name in one tree write, so only a real repository
+  settles it. A refused write cannot harm the site: nothing moves until
+  the final branch update. Needs a publish to a scratch repository, which
+  the user approves.
+  **Layman:** An unusual publish is checked against real GitHub so it cannot fail unexpectedly.
+  Kind: investigate.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
 
 ## 1.3.0 — a home other than GitHub
 
