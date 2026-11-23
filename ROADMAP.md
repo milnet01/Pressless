@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=485 -->
+<!-- ants-roadmap-id-high-water: PRESS=486 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9439,10 +9439,20 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0458] **Second-round review fixes: the maintainer's scripts and by-hand checks.**
+- ✅ [PRESS-0458] **Second-round review fixes: the maintainer's scripts and by-hand checks.**
   Subject 19. Review types: Codebase, Test.
   Findings: review-code lane-19, review-readability lanes 19 and 19b, and
   the test review's findings on these scripts' tests.
+  Shipped 2026-11-23, d2246fe..b3d1a57 (merged 644d9ff). 49 findings: 43
+  fixed, 1 queued (PRESS-0486), 5 dismissed (two answered questions, three
+  duplicates). The release scripts refuse in words through one shared
+  helper; relay setup never replaces a kept App key and refuses a half-run
+  setup; generators and the key maker write safely; a translation saves
+  whole or not at all; the media kit removes only its own folder; the
+  browser checks name their rows, wait honestly, and now really check
+  /usage and /about. PRESS-0436 and PRESS-0241 amended. Full suite 2830
+  passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/19.json.
   **Layman:** Fixes to the tools the maintainer runs by hand, such as release signing and the browser checks.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9758,6 +9768,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Builder.
+
+- 📋 [PRESS-0486] **Signing checks each release file came from the release run.**
+  Review type: Codebase. Queued by PRESS-0458 from review-code lane-19
+  (scripts/sign-release.py; release-integrity class). Chosen 2026-11-23,
+  on the fix helper's recommendation: release.yml records each file's
+  fingerprint and the signer compares them, the only route that ties the
+  bytes to the run. Changes PRESS-0023 § 4.8 step 2 and release.yml; tried
+  for real at the next release. Also: by-hand-browser-checks.py keeps its
+  work folders in /tmp on Linux, against the project's scratch rule.
+  **Layman:** A release is signed only when every file in it is the one the release build made.
+  Kind: security.
+  Source: review-2026-11-23.
+  Lanes: Pipeline.
 
 ## 1.3.0 — a home other than GitHub
 
