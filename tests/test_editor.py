@@ -20,7 +20,6 @@ import re
 import shutil
 import subprocess
 import threading
-import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -1074,6 +1073,18 @@ process.stdout.write(JSON.stringify({stopped, status: shown["save-status"].textC
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_undo_row_leads_with_its_buttons_and_says_a_press_runs():
+    """PRESS-0015 § 4.6 and PRESS-0353 § 4.3: what Your site puts before Undo
+    shares its row, and a running press marks the status line. Breaks when
+    `before` lands outside the row, or the running mark is dropped."""
+    row = editor.undo_row("Undoing <now>", running=True, before="<a>Publish</a>")
+    assert row.startswith('<p><a>Publish</a><button type="button" data-undo>')
+    assert ('<p id="undo-status" class="press-status" role="status" data-press="running">'
+            "Undoing &lt;now&gt;</p>") in row
+    assert ' data-press="running"' not in editor.undo_row("", running=False)
+
+
+
 def test_both_editors_stop_saving_alike(tmp_path):
     """PRESS-0012 § 4.8: saving stops with its flag set, "not saved" on the
     status line and the failure shown, in either editor. Breaks when the
@@ -1666,28 +1677,56 @@ def test_the_editor_page_fetches_nothing_from_the_web(tmp_path):
 
 def test_two_requests_make_one_view_copy(tmp_path, monkeypatch):
     """PRESS-0275 § 4.7: the frame and the panel ask for the same view copy
-    at once, and it is made once. Breaks when a second request remakes it
-    over the file the first is sending, which Windows refuses (a 404)."""
+    at once, and it is made once, both getting it. Breaks when a second
+    request remakes it over the file the first is sending, which Windows
+    refuses (a 404)."""
     folder = _folder(tmp_path)
     original = store.photograph_path_for(folder, "seaside.jxl")
     original.parent.mkdir(parents=True)
     original.write_bytes(b"a stand-in original")
-    made = []
+    made, second = [], threading.Event()
 
-    def slow_copy(_original: Path, target: Path) -> None:
+    class Watched:
+        """The lock, saying when the second request reaches it."""
+        def __init__(self) -> None:
+            self.lock, self.asked = threading.Lock(), 0
+
+        def __enter__(self) -> None:
+            self.asked += 1
+            if self.asked == 2:
+                second.set()
+            self.lock.acquire()
+
+        def __exit__(self, *_: object) -> None:
+            self.lock.release()
+
+    def held_copy(_original: Path, target: Path) -> None:
+        # The first copy waits for the second request: at the lock, or here
+        # where nothing holds it off.
         made.append(target)
-        time.sleep(0.2)
+        if len(made) == 2:
+            second.set()
+        assert second.wait(10)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"a stand-in view")
 
-    monkeypatch.setattr(builder, "webp_copy", slow_copy)
-    asked = [threading.Thread(target=editor.photograph_file, args=(folder, "seaside.jxl"))
-             for _ in range(2)]
+    monkeypatch.setattr(editor, "_VIEWS_LOCK", Watched())
+    monkeypatch.setattr(builder, "webp_copy", held_copy)
+    answers: list[object] = []
+
+    def ask() -> None:
+        try:
+            answers.append(editor.photograph_file(folder, "seaside.jxl"))
+        except Exception as exc:  # noqa: BLE001 -- the assertion below names it
+            answers.append(exc)
+
+    asked = [threading.Thread(target=ask) for _ in range(2)]
     for thread in asked:
         thread.start()
     for thread in asked:
         thread.join()
     assert len(made) == 1
+    assert answers == [made[0], made[0]]
 
 
 def test_a_view_copy_is_remade_when_the_original_is_newer(tmp_path, monkeypatch):
