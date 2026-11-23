@@ -1502,14 +1502,23 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self, status: int, data: bytes, content_type: str,
         headers: tuple[tuple[str, str], ...] = (),
     ) -> None:
+        self._send_head(status, content_type, len(data), headers)
+        self.wfile.write(data)
+
+    def _send_head(self, status: int, content_type: str, length: int,
+                   headers: tuple[tuple[str, str], ...] = ()) -> None:
+        """The headers every answer shares, then its own: a page, a file and a
+        download alike. A 204 carries no body, so it names no type or length
+        (RFC 9110 § 8.6)."""
         self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
+        if status != 204:
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(length))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         for name, value in headers:
             self.send_header(name, value)
         self.end_headers()
-        self.wfile.write(data)
 
     def _send_page(self, face: Face, status: int, body: str) -> None:
         """`body` wrapped in the Face's frame, carrying the frames policy.
@@ -1885,15 +1894,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 plain = "".join(c if c.isascii() and (c.isalnum() or c in " ._-") else "_"
                                 for c in download.name)
                 quoted = urllib.parse.quote(download.name, safe="")
-                self.send_response(200)
-                self.send_header("Content-Type", _FILE_TYPES.get(
-                    Path(download.name).suffix.lower(), "application/octet-stream"))
-                self.send_header("Content-Length", str(size))
-                self.send_header("Content-Disposition",
-                                 f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}")
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Content-Type-Options", "nosniff")
-                self.end_headers()
+                # An attachment is saved, never shown, so it needs no
+                # FILES_POLICY; end_headers gives it frame-ancestors.
+                self._send_head(200, _FILE_TYPES.get(
+                    Path(download.name).suffix.lower(), "application/octet-stream"), size, ((
+                        "Content-Disposition",
+                        f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}"),))
                 self._send_pieces(handle)
         finally:
             download.path.unlink(missing_ok=True)
@@ -1920,14 +1926,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         handle, size = opened
         with handle:
-            self.send_response(200)
-            self.send_header("Content-Type",
-                             _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream"))
-            self.send_header("Content-Length", str(size))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Security-Policy", FILES_POLICY)
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.end_headers()
+            self._send_head(200, _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream"),
+                            size, (("Content-Security-Policy", FILES_POLICY),))
             self._send_pieces(handle)
 
 

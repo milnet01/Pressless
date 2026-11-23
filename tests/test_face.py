@@ -1822,3 +1822,31 @@ def test_the_page_script_runs_again_on_a_page_written_over_it(tmp_path):
     # One wrapper: the press reaches the browser once and starts one working note.
     assert said["fetched"] == ["POST /theme", "GET /progress"], said
     assert said["timers"] == [600], said
+
+
+def test_an_answer_with_no_content_says_no_length(tmp_path):
+    """PRESS-0440: RFC 9110 § 8.6 forbids Content-Length on a 204. Breaks
+    when a kept choice's empty answer carries one."""
+    served = face.serve(tmp_path)
+    try:
+        status, headers, body = _Client(served).raw("POST", "/theme", b"dark")
+    finally:
+        served.stop()
+    assert status == 204 and body == b""
+    assert "Content-Length" not in headers and "Content-Type" not in headers, headers
+
+
+def test_every_answer_tells_the_browser_not_to_guess_its_type(tmp_path):
+    """PRESS-0440: a page, a Reply in the type its page chose, and a refusal
+    each carry nosniff, as files and downloads do. Breaks when one sender
+    leaves it out."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/as-is", lambda request: face.Reply(b"{}", "application/json"))
+        client = _Client(served)
+        answers = {path: client.raw("GET", path) for path in ("/words", "/as-is", "/nowhere")}
+    finally:
+        served.stop()
+    for path, (status, headers, _) in answers.items():
+        assert headers.get("X-Content-Type-Options") == "nosniff", (path, status)
