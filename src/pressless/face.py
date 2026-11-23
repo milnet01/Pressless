@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import enum
+import hashlib
 import html
 import http.server
 import json
@@ -1528,15 +1529,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _send_head(self, status: int, content_type: str, length: int,
-                   headers: tuple[tuple[str, str], ...] = ()) -> None:
+                   headers: tuple[tuple[str, str], ...] = (), *,
+                   cache: str = "no-store") -> None:
         """The headers every answer shares, then its own: a page, a file and a
-        download alike. A 204 carries no body, so it names no type or length
-        (RFC 9110 § 8.6)."""
+        download alike. A 204 or a 304 carries no body, so it names no type or
+        length (RFC 9110 §§ 8.6 and 15.4.5). `cache` is what a browser may keep."""
         self.send_response(status)
-        if status != 204:
+        if status not in (204, 304):
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(length))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
         self.send_header("X-Content-Type-Options", "nosniff")
         for name, value in headers:
             self.send_header(name, value)
@@ -1943,7 +1945,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         """The longest registered prefix's file, or 404 (PRESS-0012 § 4.3).
         Sent in pieces: a kept song or video is never read whole."""
         prefixes = [prefix for prefix in face._files if path.startswith(prefix)]
-        target = None
+        target, prefix = None, ""
         if method == "GET" and prefixes:
             prefix = max(prefixes, key=len)
             target = _served_file(path[len(prefix):], face._files[prefix])
@@ -1955,9 +1957,24 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send(404, say("face.not_found"), "text/plain")
             return
         handle, size = opened
+        kind = _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream")
+        headers: tuple[tuple[str, str], ...] = (("Content-Security-Policy", FILES_POLICY),)
         with handle:
-            self._send_head(200, _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream"),
-                            size, (("Content-Security-Policy", FILES_POLICY),))
+            if prefix not in face._kept_files:
+                self._send_head(200, kind, size, headers)
+                self._send_pieces(handle)
+                return
+            # PRESS-0478: tagged by its bytes, never its name, size or time,
+            # so a name re-used for another photograph is always sent again.
+            tag = '"' + hashlib.file_digest(handle, "sha256").hexdigest() + '"'
+            handle.seek(0)
+            held = {each.strip().removeprefix("W/")
+                    for each in self.headers.get("If-None-Match", "").split(",")}
+            headers += (("ETag", tag),)
+            if tag in held:
+                self._send_head(304, kind, 0, headers, cache="no-cache")
+                return
+            self._send_head(200, kind, size, headers, cache="no-cache")
             self._send_pieces(handle)
 
 
@@ -2083,6 +2100,7 @@ class Face:
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
         self._returns: set[str] = set()
         self._files: dict[str, Locate] = {}
+        self._kept_files: set[str] = set()
         self._pieces: dict[str, list[Callable[[], str]]] = {place: [] for place in PLACES}
         self._unseen: list[Callable[[], bool]] = []
         self._doors: dict[str, tuple[Page, Callable[[str], bool]]] = {}
@@ -2178,10 +2196,14 @@ class Face:
             self.url = f"{self._origin}/?t={secret}"
         return f"{self._origin}{path}?t={secret}"
 
-    def add_files(self, prefix: str, locate: Locate) -> None:
+    def add_files(self, prefix: str, locate: Locate, *, kept: bool = False) -> None:
         """Answer GETs under `prefix`, which ends in "/", with the file `locate`
-        names for the rest of the path (PRESS-0012 § 4.3)."""
+        names for the rest of the path (PRESS-0012 § 4.3). `kept` lets the
+        browser keep each file, asking each time whether its bytes changed
+        (PRESS-0478)."""
         self._files[prefix] = locate
+        if kept:
+            self._kept_files.add(prefix)
 
     def add_piece(self, place: str, render: Callable[[], str]) -> None:
         """Have the screen holding `place` show `render()`'s HTML there

@@ -597,6 +597,51 @@ def test_a_preview_photograph_is_the_original(tmp_path):
         assert browser.request("GET", "/originals/nested%2finner.jpg")[0] == 404
 
 
+def _get_kept(browser: _Browser, path: str, tag: str | None = None
+              ) -> tuple[int, dict[str, str], bytes]:
+    """A GET as a browser holding `tag` for `path` sends it."""
+    conn = http.client.HTTPConnection("127.0.0.1", browser.port, timeout=10)
+    try:
+        conn.putrequest("GET", path, skip_host=True, skip_accept_encoding=True)
+        conn.putheader("Host", browser.host)
+        conn.putheader("Cookie", browser.cookie)
+        if tag is not None:
+            conn.putheader("If-None-Match", tag)
+        conn.endheaders()
+        response = conn.getresponse()
+        return response.status, dict(response.getheaders()), response.read()
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("address", ["/originals/", "/preview/photographs/"])
+def test_a_re_used_photograph_name_never_shows_the_old_picture(tmp_path, address):
+    """PRESS-0478: a preview's photograph is kept by the browser and asked
+    for again on each reload; it is sent again only when its bytes differ.
+    Breaks when the tag follows the file's size and time rather than its
+    bytes, or when an unchanged photograph is sent whole again."""
+    folder = _folder(tmp_path)
+    target = store.photograph_path_for(folder, "dusk.jpg")
+    target.parent.mkdir(exist_ok=True)
+    old, new = b"\xff\xd8 the old picture", b"\xff\xd8 the new picture"
+    target.write_bytes(old)
+    with _editor(folder) as browser:
+        status, headers, body = _get_kept(browser, address + "dusk.jpg")
+        tag = headers.get("ETag", "")
+        assert (status, body, headers.get("Cache-Control")) == (200, old, "no-cache")
+        assert tag
+        status, headers, body = _get_kept(browser, address + "dusk.jpg", tag)
+        assert (status, body, headers.get("ETag")) == (304, b"", tag)
+        # Binned, and a new photograph given the same name: same size, same time.
+        held = target.stat()
+        target.unlink()
+        target.write_bytes(new)
+        os.utime(target, ns=(held.st_atime_ns, held.st_mtime_ns))
+        status, headers, body = _get_kept(browser, address + "dusk.jpg", tag)
+        assert (status, body) == (200, new)
+        assert headers.get("ETag") not in ("", None, tag)
+
+
 # ----------------------------------------------------------------- INV-18 ---
 
 

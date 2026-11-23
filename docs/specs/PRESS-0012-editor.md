@@ -200,7 +200,7 @@ FILES_POLICY = ("default-src 'self'; img-src 'self' data:; "
 def within(folder: Path) -> Locate: ...
 
 class Face:
-    def add_files(self, prefix: str, locate: Locate) -> None: ...
+    def add_files(self, prefix: str, locate: Locate, *, kept: bool = False) -> None: ...  # kept: PRESS-0478
 ```
 
 **A page returning a `str`** is wrapped and sent as today, and now carries
@@ -230,7 +230,15 @@ A 404 here is not a failure: nothing is logged and no sentence is shown.
 **Every file response carries** `Content-Security-Policy: FILES_POLICY`,
 `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`. The policy is
 what keeps Google's script, and Spotify and YouTube players, out of a preview
-(§ 3 decision 4). The page itself is not rewritten, so it stays the Builder's
+(§ 3 decision 4).
+
+*Amended by PRESS-0478:* a prefix added with `kept=True`, the two photograph
+routes, answers `Cache-Control: no-cache` and an `ETag` of the SHA-256 of the
+file's bytes instead, and a 304 with no body to an `If-None-Match` holding
+that tag. So a save's reload sends no unchanged photograph again, and a name
+re-used for another photograph is always sent again, whatever its size and
+time. *Test:*
+`tests/test_editor.py::test_a_re_used_photograph_name_never_shows_the_old_picture`. The page itself is not rewritten, so it stays the Builder's
 bytes.
 
 **`script-src 'none'`** stops every script in a served file, the page's own

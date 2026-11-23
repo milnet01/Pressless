@@ -302,7 +302,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Escape": "a key's name, as the browser reports it",
         **dict.fromkeys(("Content-Type", "Content-Length", "Cache-Control",
                          "Content-Security-Policy", "X-Content-Type-Options", "Set-Cookie",
-                         "Content-Disposition",
+                         "Content-Disposition", "If-None-Match",
                          "Location", "Host", "Origin", "Cookie", "Authorization",
                          "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),

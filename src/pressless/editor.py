@@ -238,9 +238,11 @@ def register(face: Face, folder: Path) -> None:
     # PRESS-0260 § 4.6: a page's picture names its photograph as the site
     # will, so the preview serves the Store's originals there and copies none;
     # a JPEG XL original as its WebP view copy (PRESS-0275 § 4.7).
+    # PRESS-0478: kept by the browser, so a save's reload sends again only a
+    # photograph whose bytes changed.
     face.add_files(PREVIEW_ADDRESS + store.PHOTOGRAPHS_FOLDER + "/",
-                   lambda name: photograph_file(folder, name))
-    face.add_files(ORIGINALS_ADDRESS, lambda name: photograph_file(folder, name))
+                   lambda name: photograph_file(folder, name), kept=True)
+    face.add_files(ORIGINALS_ADDRESS, lambda name: photograph_file(folder, name), kept=True)
 
 
 # ------------------------------------------------------------- the Store ---
