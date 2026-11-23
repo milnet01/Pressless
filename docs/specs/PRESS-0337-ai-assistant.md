@@ -363,6 +363,10 @@ page with a press row shows the press running, as after its own button
 screen is loaded again, since its lists are what an ask changes. No other
 screen reloads: it may hold typing (PRESS-0356).
 
+**A publish that leaves a working copy** says so in the request's `said`, after
+"Done.", in the words the Publish button uses (`notice.publishing.kept_copy`, or
+`notice.page_editor.kept_copy` for a page). The box shows nothing more (PRESS-0488).
+
 **A failure after Yes** shows where the writer is. A publish's or an undo's
 is on the press row, made by `publishing.press_failure`, so a refusal carries
 the same way on as the writer's own publish. The row and the AI app's words

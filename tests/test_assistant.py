@@ -773,6 +773,25 @@ def test_a_failed_publish_reads_as_on_the_writers_screen(tmp_path, monkeypatch, 
         assert words in row and not_words not in row, row
 
 
+@pytest.mark.parametrize("kept, said_kept", [(True, True), (False, False)])
+def test_a_publish_that_kept_a_copy_says_so_to_the_ai_app(tmp_path, monkeypatch, kept,
+                                                          said_kept):
+    """PRESS-0488, PRESS-0013 § 4.3 step 5: the AI app is told, in the writer's
+    words, that a publish left a working copy, as the Publish button tells the
+    writer. Breaks when the answer drops the kept copy, or says it of a clean
+    publish."""
+    _key(monkeypatch)
+    with _pressless(tmp_path) as pressless:
+        store.write(pressless.folder, _entry("seaside"), draft=False)
+        asked = pressless.ok("publish")["request"]
+        monkeypatch.setattr(publishing, "press_site",
+                            lambda *args, **kwargs: publishing.Published(None, kept))
+        assert pressless.answer(asked, yes=True)["status"] == "done"
+        said = pressless.ok("request_status", {"request": asked})["said"]
+        assert (words.say("notice.publishing.kept_copy") in said) is said_kept, said
+        assert said.startswith(words.say("assistant.status.done"))
+
+
 def test_only_a_failure_no_press_row_shows_goes_to_the_box(tmp_path, monkeypatch):
     """PRESS-0403, § 4.6: a bin that fails after Yes runs no press, so its
     answer carries the failure for the box's script to show. A publish's

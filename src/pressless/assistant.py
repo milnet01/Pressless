@@ -785,10 +785,10 @@ class _Door:
                             told(pressing.quiet())
                         return _answer({"answered": False, "replanned": True})
                     if kind is not None:
-                        self._press(made)      # a press captures step by step itself
+                        extra = self._press(made)   # a press captures step by step itself
                     else:
                         with self.face.capture():
-                            self._press(made)
+                            extra = self._press(made)
                 except Exception as exc:  # noqa: BLE001 -- told to the AI app and the writer
                     # As the writer's own press shows it, the way on included
                     # (PRESS-0417, PRESS-0424). A re-plan that finds the ask
@@ -796,7 +796,7 @@ class _Door:
                     status, said = FAILED, _said(exc, secret=say(_KEY_WORDS))
                     failure = publishing.press_failure(self.face, exc)
                 else:
-                    status, said = DONE, say(_STATUS_WORDS[DONE])
+                    status, said = DONE, f"{say(_STATUS_WORDS[DONE])} {extra}".strip()
                 if told is not None:
                     told(pressing.ended(kind, status == DONE, failure))
         finally:
@@ -809,7 +809,9 @@ class _Door:
         return _answer({"answered": True, "status": status,
                         "failure": failure if told is None else None})
 
-    def _press(self, made: _Ask) -> None:
+    def _press(self, made: _Ask) -> str:
+        """Run the press; the words it adds to the answer, for a publish that left
+        a working copy (PRESS-0488), else \"\"."""
         folder, arguments, transport = self.folder, made.arguments, self.transport
         pressed = {"capture": self.face.capture, "notices": [], "transport": transport}
         if made.tool == "publish":
@@ -817,22 +819,23 @@ class _Door:
             if entry is not None:
                 slug, draft = _entry_file(folder, entry)
                 if draft:
-                    publishing.press_entry(folder, _entry_form(folder, slug), **pressed,
-                                           noted=self.face.note)
-                    return
+                    _, result = publishing.press_entry(
+                        folder, _entry_form(folder, slug), **pressed, noted=self.face.note)
+                    return _kept(result, "notice.publishing.kept_copy")
             elif page is not None:
                 kind = _kind(page)
                 copy = store.html_path_for(folder, kind, page, waiting=True)
                 if copy.is_file():
                     text = store.read_html(copy)
-                    page_editor.press_page(folder, {
+                    result = page_editor.press_page(folder, {
                         "kind": kind, "name": page, "waiting": "1",
                         "base": editor.digest(copy), "view": page_editor.CODE, "text": text},
                         **pressed, noted=self.face.note)
-                    return
+                    return _kept(result, "notice.page_editor.kept_copy")
             # § 4.5: an entry or page with nothing waiting publishes the site
             # as it stands, as `plan` showed it.
-            publishing.press_site(folder, **pressed)
+            return _kept(publishing.press_site(folder, **pressed),
+                         "notice.publishing.kept_copy")
         elif made.tool == "undo_last_publish":
             undo.press_undo(folder, **pressed)
         elif made.tool in ("remove_page", "rename_page"):
@@ -852,6 +855,7 @@ class _Door:
             files_screen.remove(folder, arguments["name"])
         else:
             raise ValueError(f"no press for the ask {made.tool}")
+        return ""
 
     # ------------------------------------------------------------ the screen ---
 
@@ -959,6 +963,11 @@ def register(face: Face, folder: Path, *, own: Path,
 
 
 # ------------------------------------------------------------ the helpers ---
+
+
+def _kept(result: publishing.Published, words: str) -> str:
+    """What the AI app is told when a publish left its working copy (PRESS-0488)."""
+    return say(words) if result.copy_kept else ""
 
 
 def _answer(value: dict) -> Reply:
