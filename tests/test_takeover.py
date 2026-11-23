@@ -832,7 +832,7 @@ def test_an_undo_refused_for_the_takeover_links_to_it(tmp_path, monkeypatch):
     _key(monkeypatch)
     served = face.serve(folder)
     try:
-        reply = undo._undo(served, folder, face.Request("POST", "/undo", {}, b""), github)
+        reply = undo._undo(served, folder, github)
     finally:
         served.stop()
     assert f'href="{publishing.TAKEOVER_ADDRESS}"' in json.loads(reply.body)["failure"]

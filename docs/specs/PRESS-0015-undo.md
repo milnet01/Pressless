@@ -241,7 +241,7 @@ succeeded.
    | created a kept draft | `store.move_to_bin` |
    | binned a draft to free its slug | writes the remembered draft back |
    | binned a page or a waiting copy | writes the remembered file back |
-   | demoted an entry | writes the remembered entry over the demoted draft, then `store.publish` |
+   | demoted an entry | `store.publish`, then writes the remembered entry over the published one |
 
    **A reversal never bins a file it is putting back.** Nothing moves a file
    out of the bin, and `store.move_to_bin` stamps to the second, so binning
@@ -332,8 +332,10 @@ address its `forwards.json` sends on.** Either may be written after a kept
 draft, so a kept address takes neither, whatever order the entries come in.
 
 **An entry the Store publishes and the fetched state does not hold** is
-demoted: `store.unpublish(folder, slug)`, then written back as a draft
-carrying `publishing.UNDONE` (§ 4.5).
+demoted: written over as published carrying `publishing.UNDONE` (§ 4.5),
+then `store.unpublish(folder, slug)`. In that order, a demotion cut short
+leaves it published, and the next press demotes it; the other order would
+leave a draft without the mark, which no press settles.
 
 **Every other kind the fetched state holds** is written where it differs or is
 absent, the superseded version going to the bin first with
@@ -495,8 +497,10 @@ does.
   published entry whose Store version differs, and for a draft whose slug the
   fetched state publishes, the kept draft holds the title, date, categories,
   tags and body the Store held, its `Slug` is the free address, and its
-  `Replaces` does not name the entry it was kept from. A `Replaces` naming
-  some other entry survives (§ 3 decision 7). Equality of the whole `Entry` is
+  `Replaces` does not name the entry it was kept from. On a draft, a
+  `Replaces` naming some other entry survives (§ 3 decision 7); a published
+  entry's kept version carries none
+  (`test_a_kept_published_version_carries_no_replaces`). Equality of the whole `Entry` is
   not asserted: `store.Entry` is frozen and carries `slug`, and the kept draft
   is written under a different address, so it can never hold.
   *Breaks when:* the differing version is overwritten, or is kept as a working
@@ -691,7 +695,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-3 | `tests/test_publishing.py::test_a_demoted_draft_keeps_its_date` |
 | INV-4 | `tests/test_publishing.py::test_a_copy_of_a_demoted_entry_publishes_over_it` |
 | INV-5 | `tests/test_publishing.py::test_a_replaces_naming_a_plain_draft_is_not_a_copy` |
-| INV-6 | `tests/test_undo.py::test_his_own_version_is_kept_beside_the_one_put_back` |
+| INV-6 | `tests/test_undo.py::test_his_own_version_is_kept_beside_the_one_put_back`, `tests/test_undo.py::test_a_kept_published_version_carries_no_replaces` |
 | INV-7 | `tests/test_undo.py::test_a_file_the_previous_state_lacks_is_kept` |
 | INV-8 | `tests/test_undo.py::test_undoing_to_an_empty_site_is_not_refused` |
 | INV-9 | `tests/test_undo.py::test_the_first_publish_cannot_be_undone` |

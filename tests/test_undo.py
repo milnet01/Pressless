@@ -244,6 +244,29 @@ def test_his_own_version_is_kept_beside_the_one_put_back(tmp_path):
         "The older harbour.")
 
 
+def test_a_kept_published_version_carries_no_replaces(tmp_path):
+    """§ 4.4: a published entry is nobody's working copy, so the draft kept
+    from it carries no `Replaces` at all -- one naming some other entry
+    included, which a hand edit or another Pressless can leave there.
+
+    Breaks when the kept draft keeps a `Replaces` naming another entry, which
+    would make it a working copy of that entry and publish over it."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("elsewhere", body="Other."), draft=False)
+    store.write(folder, _entry("cove", body="His newer cove.",
+                               extra=((REPLACES, "elsewhere"),)), draft=False)
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("cove", body="The older cove."),
+                                             _entry("elsewhere", body="Other.")))}
+
+    result = _undo(folder, _previous(files))
+
+    assert result.kept == ("cove-before-undo",)
+    kept = store.read(store.path_for(folder, "cove-before-undo", draft=True))
+    assert kept.body == "His newer cove."
+    assert not [pair for pair in kept.extra if pair[0] == REPLACES], kept.extra
+
+
 # ----------------------------------------------------------------- INV-13 ---
 
 
@@ -526,8 +549,8 @@ def test_the_key_is_never_shown(tmp_path, capfd):
 
     assert KEY not in str(raised.value) and KEY not in repr(raised.value)
     logged = log.path_for(folder)
-    if logged.is_file():
-        assert KEY not in logged.read_text("utf-8", errors="replace")
+    assert logged.is_file(), "nothing was logged, so the log half checked nothing"
+    assert KEY not in logged.read_text("utf-8", errors="replace")
     printed = capfd.readouterr()
     assert KEY not in printed.out and KEY not in printed.err
 
@@ -681,8 +704,7 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
     monkeypatch.setattr(undo, "read_state", unforeseen)
     served = face.serve(folder)
     try:
-        reply = undo._undo(served, folder, face.Request("POST", "/undo", {}, b""),
-                           _previous(files))
+        reply = undo._undo(served, folder, _previous(files))
     finally:
         served.stop()
     answer = json.loads(reply.body)
@@ -692,16 +714,19 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
     assert face.Site.UNKNOWN.words not in answer["failure"]
 
 
-def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failure", [OSError("the area could not be recreated"),
+                                     undo.FetchAreaInUse("a file is held open")])
+def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch, failure):
     """§ 4.3 step 7 never raises: step 1 of the next undo empties the area
-    again, and a raise here would replace what the sequence did."""
+    again, and a raise here would replace what the sequence did. Windows
+    leaves a held file behind as FetchAreaInUse, so that is swallowed too."""
     real = undo.empty_fetch
     calls = []
 
     def second_fails(fetch: Path) -> None:
         calls.append(fetch)
         if len(calls) % 2 == 0:
-            raise OSError("the area could not be recreated")
+            raise failure
         real(fetch)
 
     monkeypatch.setattr(undo, "empty_fetch", second_fails)
@@ -1008,3 +1033,43 @@ def test_a_fetch_area_that_cannot_be_emptied_stops_the_undo(tmp_path, monkeypatc
     assert transport.requests == [], "undo fetched into an area it could not empty"
     sentence = face.sentence_for(undo.FetchAreaInUse("x"), publishing=False)
     assert sentence.site is face.Site.UNCHANGED
+
+
+def test_a_demotion_cut_short_is_settled_by_the_next_press(tmp_path, monkeypatch):
+    """§ 6: closing the console mid-undo leaves the Store as far as it got, and
+    pressing Undo again settles it. A demotion is two Store calls; killed
+    between them, the entry must be either still published, so the next press
+    demotes it, or a draft carrying the mark. A draft without the mark is
+    neither: the next press leaves it alone, and publishing it later dates an
+    old entry as new, which § 4.5's mark exists to prevent.
+
+    Breaks when the entry leaves published/ before its marked text is
+    written."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Newer words."), draft=False)
+
+    class Killed(BaseException):
+        """The process ending; nothing after it runs, reversals included."""
+
+    moves = []
+    for name in ("write", "unpublish"):
+        real = getattr(store, name)
+
+        def counted(*args, _real=real, **kwargs):
+            moves.append(1)
+            if len(moves) == 2:
+                raise Killed
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(store, name, counted)
+    with pytest.raises(Killed):
+        undo._demote(folder, "seaside", [], undo._Changed())
+    monkeypatch.undo()
+
+    if "seaside" in store.list_slugs(folder, draft=False):
+        undo._demote(folder, "seaside", [], undo._Changed())   # the next press
+    left = store.read(store.path_for(folder, "seaside", draft=True))
+    assert any(name == UNDONE for name, _ in left.extra), (
+        "the cut-short demotion left a draft without the mark, which no press "
+        "settles")
+    assert left.body == "Newer words."

@@ -207,10 +207,10 @@ _FORBIDDEN_TOP_LEVEL_IMPORTS = {
 
 def test_store_imports_nothing_forbidden():
     """INV-2: store.py imports no HTML parser, no templating module, still no
-    network module, and not pressless.marks.
+    network module, and not pressless.marks. It is PRESS-0005 INV-1's test too.
 
-    Walks the module's AST, as PRESS-0005 INV-1's test does. The source is read
-    here, by the test, never by store.py itself.
+    Walks the module's AST. The source is read here, by the test, never by
+    store.py itself.
 
     Breaks when an implementer imports html.parser to check that a page is well
     formed, which is the obvious way to be helpful here and is what makes INV-1
@@ -228,7 +228,8 @@ def test_store_imports_nothing_forbidden():
                 imported.add(alias.name)
         elif isinstance(node, ast.ImportFrom):
             if node.level:
-                relative_imports.append(node.module or "")
+                relative_imports.append("." * node.level + (node.module or ", ".join(
+                    alias.name for alias in node.names)))
             elif node.module:
                 imported.add(node.module)
 
@@ -249,9 +250,13 @@ def test_store_imports_nothing_forbidden():
         f"store.py imports {sorted(marks)!r}. §4.5: turning marked text into "
         f"HTML is Marks' job and the Store does not import Marks"
     )
-    assert "marks" not in relative_imports, (
+    # Any relative import, because `from . import marks` records no module
+    # name at all, and the pressless modules it could reach are what these
+    # checks are about.
+    assert not relative_imports, (
         f"store.py has a relative import of {relative_imports!r}, which can only "
-        f"name a sibling pressless module -- 'marks' is forbidden (§4.5)"
+        f"name a sibling pressless module and so escapes the checks above; "
+        f"'marks' is forbidden (§4.5)"
     )
 
 

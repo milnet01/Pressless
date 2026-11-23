@@ -211,7 +211,8 @@ class StoreNotice(UserWarning): ...
 
 `write` is create-or-replace within its own folder: the slug
 identifies the entry, so writing a slug that folder already holds
-replaces that entry, and `write` consults no other folder. **Decision
+replaces that entry, and `write` consults no other folder but to
+finish a move cut short (below). **Decision
 5's Store-wide uniqueness is a rule callers keep, not one `write`
 enforces.** `exists` answers across both folders: PRESS-0012 asks it
 before offering a new entry, PRESS-0007 before writing an imported
@@ -240,7 +241,14 @@ through `safe_write.sync_folder`, as `write_whole` syncs its one.
 **A move killed between the link and the unlink is finished, not
 refused.** It leaves one file in both folders, which `os.path.samefile`
 tells from two entries. The next move of that slug unlinks the source
-and succeeds; nothing is overwritten.
+and succeeds; nothing is overwritten. **A `write` of that slug finishes
+it first, into the folder written**, or replacing one name alone would
+leave the other as a second entry with the same slug.
+
+**Binning syncs too.** `move_to_bin` and `copy_to_bin` sync the binned
+file's folder and the folder holding each bin folder they created, so
+a power loss cannot keep the caller's replacement and lose the bin's
+copy.
 
 **The check is not redundant, and one case needs it.** On a filesystem
 with no hard links `os.link` fails for its own reason before it can
@@ -618,8 +626,8 @@ is true of a template is PRESS-0006's (§9).
 
 - **INV-1** — `src/pressless/store.py` imports no network module and
   does not import `pressless.marks`.
-  *Test:* `tests/test_store.py::test_store_imports_nothing_forbidden`,
-  walking the module's imports as
+  *Test:* `tests/test_store_extras.py::test_store_imports_nothing_forbidden`,
+  which refuses any relative import too, walking the module's imports as
   `tests/test_marks.py::test_marks_is_pure` does.
   *Breaks when:* an implementer imports Marks to validate a body, or
   `urllib` to check that a slug is a legal address.
@@ -978,7 +986,10 @@ is true of a template is PRESS-0006's (§9).
   before anything is written and so never reach here. The archive
   carries at least one slug long enough to threaten the Windows path
   limit once the folder path is added, which
-  `tests/test_store_archive.py` measures. The write fails and says so;
+  `tests/test_store_archive.py` measures. Binning adds `bin/` and a
+  folder named for the second to the path, and a save's temporary file
+  can be longer than a short entry's own name, so an entry near the
+  limit can read and still fail to bin or to save. The write fails and says so;
   it is not silently truncated, because a truncated name could collide
   with another entry's and lose one. The remedy is a shorter path to
   Pressless's own folder, which the writer chooses when he chooses
@@ -1133,7 +1144,7 @@ imports.
 
 | Rule | What catches a breach |
 |------|----------------------|
-| INV-1 | `tests/test_store.py::test_store_imports_nothing_forbidden` |
+| INV-1 | `tests/test_store_extras.py::test_store_imports_nothing_forbidden` |
 | INV-2 | `tests/test_store.py::test_reading_never_writes` |
 | INV-3 | `tests/test_store.py::test_write_is_atomic` |
 | INV-4 | `tests/test_store.py::test_unknown_header_fields_survive` |
@@ -1224,6 +1235,7 @@ imports.
 | 14 | 2026-09-26 | 3, cold, every lane holding every question — identical brief; packet rebuilt from disk. Windows unrunnable | 0 | 2 | 0 | 0 | **Two verified, two fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the spec ships.** All three lanes: INV-13 now folds the whole name while §4.3, §6 and INV-10 still said only the suffix's case makes a twin — settled on the whole name, as `exists` does, and INV-13's test gains a `Seaside.txt` case. All three: "a folded twin is listed" predates the stem fold and now covers `Seaside`, which the listing refuses; narrowed to the suffix case. **A calm cap**: one of the two landed on text loop 13 wrote. Over the run, one of five findings fell inside the amendment's own lines; the other four were passages it made false. |
 | impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: the address forwards file and its three calls. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0376: §4.1 a cut-short move is finished and a POSIX move syncs both folders; §4.2 an empty header name is refused on read; §4.5 points at the folder sync; INV-10 names the cut-short case. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0445: §4.1 a `write` finishes a cut-short move first, and binning syncs the folders it names; §6 binning and a save's temporary lengthen the path; INV-1's test is the store_extras one. |
 
 ## 13. Resource cost
 
