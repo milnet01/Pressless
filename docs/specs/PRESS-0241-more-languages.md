@@ -210,10 +210,11 @@ today.
 
 A helper translates `ENGLISH` into one language, keeping each key, each
 `{slot}` and each tag. The user's instruction (decision 5) is the second
-opinion on wording. `scripts/translations.py` writes made-from for every
-entry, and with `--report` lists, per language, each key missing or made
-from older English. The manual and its captions are translated the same
-way.
+opinion on wording. `scripts/translations.py stamp` writes made-from for
+each entry that comes back as plain words, and leaves an entry that has one,
+so English reworded since still reads as out of date. With `--report` it
+lists, per language, each key missing or made from older English. The
+manual and its captions are translated the same way.
 
 ### 4.6 Building it
 

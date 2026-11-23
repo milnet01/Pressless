@@ -95,3 +95,46 @@ def test_package_text_that_could_change_the_flags_module_is_refused(
     done, target = _flags(monkeypatch, tmp_path, version, licence)
     assert done == 1
     assert not target.exists()
+
+
+_WHOLE = _LIST.format(extra="")
+
+
+@pytest.mark.parametrize("text", [
+    "",
+    _WHOLE.replace("// VERSION:", "// VERSIONS:"),
+    _WHOLE.replace("// COMMIT:", "// COMMITS:"),
+    _WHOLE.replace("// ===END ICANN DOMAINS===", ""),
+    _WHOLE.replace("// ===BEGIN ICANN DOMAINS===", ""),
+])
+def test_a_list_cut_short_is_refused_in_words(monkeypatch, tmp_path, text):
+    """review-code: a truncated or wrong download ended in an AttributeError
+    or IndexError traceback rather than a refusal."""
+    with pytest.raises(SystemExit, match="refused: the list"):
+        _suffixes(monkeypatch, tmp_path, text)
+    assert not (tmp_path / "_public_suffixes.py").exists()
+
+
+class _Recorded:
+    """A TARGET that keeps how it was written, as Windows would translate it."""
+
+    def write_text(self, text, encoding=None, newline=None):
+        self.newline = newline
+
+
+def test_the_generated_modules_are_written_with_lf_on_any_system(monkeypatch, tmp_path):
+    """review-code: written in text mode with no newline, they took CRLF on
+    Windows, and git saw every line change."""
+    target = _Recorded()
+    script = load_script("public-suffixes.py")
+    monkeypatch.setattr(script, "TARGET", target)
+    source = tmp_path / "list.dat"
+    source.write_text(_LIST.format(extra=""), encoding="utf-8")
+    script.main(source)
+    assert target.newline == "\n"
+    target = _Recorded()
+    flags = load_script("make_flags.py")
+    _flags(monkeypatch, tmp_path)
+    monkeypatch.setattr(flags, "TARGET", target)
+    flags.main([str(tmp_path / "flag-icons")])
+    assert target.newline == "\n"

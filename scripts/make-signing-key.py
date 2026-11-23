@@ -72,6 +72,13 @@ def main(argv: list[str]) -> int:
             # On the disk before its public half is printed and pasted anywhere.
             out.flush()
             os.fsync(out.fileno())
+        # The folder's entry for it too: a crash could otherwise keep the
+        # file's bytes but lose its name.
+        folder = os.open(target.parent, os.O_RDONLY)
+        try:
+            os.fsync(folder)
+        finally:
+            os.close(folder)
     except OSError as exc:
         target.unlink(missing_ok=True)   # a part-file would block the next run
         print(f"refused: the key could not be written ({type(exc).__name__})",
