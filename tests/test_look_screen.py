@@ -317,7 +317,8 @@ def test_css_on_top_saves_only_the_extra_css(tmp_path, monkeypatch):
                                             store.STYLE_CODE_NAME: None}
     assert _binned(folder) == []
 
-    store.move_to_bin(folder, folder / "look-waiting" / store.EXTRA_CSS_NAME)
+    # Gone, not binned: a second bin of one path in one second is refused.
+    (folder / "look-waiting" / store.EXTRA_CSS_NAME).unlink()
     starter_look.save(folder, starter_look.defaults("harbour"), "")
     made = store.read_style_code(folder)
     with _served(folder, _github()) as browser:
@@ -691,3 +692,26 @@ def test_the_plan_of_a_look_press_builds_the_waiting_look(tmp_path, monkeypatch)
     starter_look.save(folder, starter_look.defaults("meadow"), "", waiting=True)
     publishing.press_preview(folder, look=True, transport=_github())
     assert seen == [None, builder.WAITING_LOOK]
+
+
+def test_the_own_route_presses_over_hand_made_style_code(tmp_path, monkeypatch):
+    """PRESS-0276's own route pressed over style code its choices did not
+    make: the style code goes to the bin once. Breaks when the press copies
+    it to the bin and then moves it there too, which the bin refuses as one
+    name twice in one second, so the press fails."""
+    _key(monkeypatch)
+    folder = _own(tmp_path)
+    mine = "/* made by hand */ body { color: teal; }\n"
+    store.write_style_code(folder, mine)
+    with _served(folder, _github()) as browser:
+        _, _, page = browser.request("GET", "/look")
+        status, _, text = browser.request("POST", "/look/save", _routed(
+            starter_look.defaults("sunrise"), "p {}", _base(page), "own"))
+        assert status == 303, text
+        _, _, page = browser.request("GET", "/look")
+        status, _, text = browser.request("POST", "/look/publish", {"base": _base(page)})
+    assert status == 200 and json.loads(text)["published"] is True, text
+    assert store.read_style_code(folder) is None and not store.look_waits(folder)
+    copies = [path for path in (folder / "bin").rglob("*")
+              if path.is_file() and path.parent.name == "look"]
+    assert [path.read_text(encoding="utf-8") for path in copies] == [mine]

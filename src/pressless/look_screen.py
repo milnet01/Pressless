@@ -285,9 +285,12 @@ class _LookChanges:
     def move_in(self) -> None:
         """The live look becomes the waiting one, in LOOK_FILES' order, so the
         stylesheet is written last (§ 4.2). Style code the live choices did
-        not make is copied to the bin first (INV-7)."""
+        not make is copied to the bin first where the waiting look replaces
+        it (INV-7); where it has none, the move below bins it, and a copy too
+        would take the same name in the bin."""
         folder = self.folder
-        if has_style_code(folder) and not look.made_here(folder):
+        if (has_style_code(folder) and has_style_code(folder, waiting=True)
+                and not look.made_here(folder)):
             store.copy_to_bin(folder, store.style_code_path(folder))
         for name in store.LOOK_FILES:
             before = store.read_look_file(folder, name)
