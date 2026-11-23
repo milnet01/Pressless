@@ -61,6 +61,7 @@ from pressless import (
 from pressless.face import (
     SENTENCES,
     Face,
+    Notice,
     Reply,
     Request,
     Sentence,
@@ -770,6 +771,7 @@ class _Door:
         # Whatever raises, a taken request ends, unless it waits again: one
         # left running would refuse every later ask.
         status, said, failure = FAILED, say(_STATUS_WORDS[FAILED]), None
+        extra: list[str] = []      # a publish's kept-copy words (PRESS-0488)
         try:
             with lock:
                 try:
@@ -785,18 +787,19 @@ class _Door:
                             told(pressing.quiet())
                         return _answer({"answered": False, "replanned": True})
                     if kind is not None:
-                        self._press(made)      # a press captures step by step itself
+                        self._press(made, extra)   # a press captures step by step itself
                     else:
                         with self.face.capture():
-                            self._press(made)
+                            self._press(made, extra)
                 except Exception as exc:  # noqa: BLE001 -- told to the AI app and the writer
                     # As the writer's own press shows it, the way on included
                     # (PRESS-0417, PRESS-0424). A re-plan that finds the ask
                     # can no longer run fails it the same way (§ 4.6).
-                    status, said = FAILED, _said(exc, secret=say(_KEY_WORDS))
+                    status, said = FAILED, " ".join(
+                        [_said(exc, secret=say(_KEY_WORDS)), *extra])
                     failure = publishing.press_failure(self.face, exc)
                 else:
-                    status, said = DONE, say(_STATUS_WORDS[DONE])
+                    status, said = DONE, " ".join([say(_STATUS_WORDS[DONE]), *extra])
                 if told is not None:
                     told(pressing.ended(kind, status == DONE, failure))
         finally:
@@ -809,22 +812,35 @@ class _Door:
         return _answer({"answered": True, "status": status,
                         "failure": failure if told is None else None})
 
-    def _press(self, made: _Ask) -> None:
+    def _press(self, made: _Ask, kept: list[str]) -> None:
+        """Run the press. A publish that left, or may have left, a working copy
+        adds the words the Publish button shows to `kept`, whether it ended or
+        raised (PRESS-0488)."""
+        notices: list[str | Notice] = []
+        try:
+            self._run_press(made, notices)
+        finally:
+            kept.extend(n.text for n in notices
+                        if isinstance(n, Notice) and n.text in _kept_words())
+
+    def _run_press(self, made: _Ask, notices: list[str | Notice]) -> None:
         folder, arguments, transport = self.folder, made.arguments, self.transport
-        pressed = {"capture": self.face.capture, "notices": [], "transport": transport}
+        pressed = {"capture": self.face.capture, "notices": notices, "transport": transport}
         if made.tool == "publish":
             entry, page = arguments.get("entry"), arguments.get("page")
             if entry is not None:
                 slug, draft = _entry_file(folder, entry)
                 if draft:
-                    publishing.press_entry(folder, _entry_form(folder, slug), **pressed,
-                                           noted=self.face.note)
+                    _, result = publishing.press_entry(
+                        folder, _entry_form(folder, slug), **pressed, noted=self.face.note)
+                    _note_kept(result, notices, "notice.publishing.kept_copy")
                     return
             elif page is not None:
                 kind = _kind(page)
                 copy = store.html_path_for(folder, kind, page, waiting=True)
                 if copy.is_file():
                     text = store.read_html(copy)
+                    # press_page adds its own kept-copy notice.
                     page_editor.press_page(folder, {
                         "kind": kind, "name": page, "waiting": "1",
                         "base": editor.digest(copy), "view": page_editor.CODE, "text": text},
@@ -832,7 +848,8 @@ class _Door:
                     return
             # § 4.5: an entry or page with nothing waiting publishes the site
             # as it stands, as `plan` showed it.
-            publishing.press_site(folder, **pressed)
+            _note_kept(publishing.press_site(folder, **pressed), notices,
+                       "notice.publishing.kept_copy")
         elif made.tool == "undo_last_publish":
             undo.press_undo(folder, **pressed)
         elif made.tool in ("remove_page", "rename_page"):
@@ -959,6 +976,20 @@ def register(face: Face, folder: Path, *, own: Path,
 
 
 # ------------------------------------------------------------ the helpers ---
+
+
+_KEPT_KEYS = ("notice.publishing.kept_copy", "notice.publishing.kept_copy_unknown",
+              "notice.page_editor.kept_copy", "notice.page_editor.kept_copy_unknown")
+
+
+def _kept_words() -> set[str]:
+    return {say(key) for key in _KEPT_KEYS}
+
+
+def _note_kept(result: publishing.Published, notices: list, key: str) -> None:
+    """What a screen's press adds itself after a publish that left its copy."""
+    if result.copy_kept:
+        notices.append(Notice(say(key), Site.UPDATED))
 
 
 def _answer(value: dict) -> Reply:
