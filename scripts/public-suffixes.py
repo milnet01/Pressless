@@ -32,12 +32,24 @@ def ascii_rule(rule: str) -> str:
                            for label in labels)
 
 
+def _between(text: str, begin: str, end: str) -> str:
+    if begin not in text or end not in text.split(begin, 1)[1]:
+        raise SystemExit(f"refused: the list has no {begin} ... {end}; is it the whole list?")
+    return text.split(begin, 1)[1].split(end, 1)[0]
+
+
+def _stamp(name: str, text: str) -> str:
+    found = re.search(rf"^// {name}: (\S+)$", text, re.M)
+    if found is None:
+        raise SystemExit(f"refused: the list names no {name}; is it the whole list?")
+    return found.group(1)
+
+
 def main(source: Path) -> None:
     text = source.read_text(encoding="utf-8")
-    version = re.search(r"^// VERSION: (\S+)$", text, re.M).group(1)
-    commit = re.search(r"^// COMMIT: (\S+)$", text, re.M).group(1)
-    icann = text.split("// ===BEGIN ICANN DOMAINS===", 1)[1].split(
-        "// ===END ICANN DOMAINS===", 1)[0]
+    version = _stamp("VERSION", text)
+    commit = _stamp("COMMIT", text)
+    icann = _between(text, "// ===BEGIN ICANN DOMAINS===", "// ===END ICANN DOMAINS===")
     # The list's format: a rule runs to the first space; the rest is ignored.
     lines = (line.strip() for line in icann.splitlines())
     rules = sorted({ascii_rule(line.split()[0].lower()) for line in lines
@@ -56,9 +68,11 @@ def main(source: Path) -> None:
         "The list is the Mozilla Foundation's, under the Mozilla Public License 2.0:\n"
         'https://mozilla.org/MPL/2.0/\n"""\n\n'
         f"RULES = frozenset((\n{body}\n))\n",
-        encoding="utf-8")
+        encoding="utf-8", newline="\n")
     print(f"{len(rules)} rules, version {version}")
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        raise SystemExit("usage: public-suffixes.py <folder>/public_suffix_list.dat")
     main(Path(sys.argv[1]))

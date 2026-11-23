@@ -70,3 +70,23 @@ def test_a_key_not_safely_on_disk_is_removed_and_not_printed(tmp_path, capsys, m
     assert said.out == ""
     assert "could not be written" in said.err
     assert not target.exists()
+
+
+def test_the_key_and_its_folder_are_on_the_disk_before_it_is_printed(
+        tmp_path, capsys, monkeypatch):
+    """review-code: the key's bytes were synced but not the folder naming
+    it, so a crash after the public half was pasted could lose the key."""
+    import stat
+
+    maker = _maker()
+    synced: list[bool] = []
+    real = os.fsync
+
+    def noting(handle):
+        synced.append(stat.S_ISDIR(os.fstat(handle).st_mode))
+        real(handle)
+
+    monkeypatch.setattr(os, "fsync", noting)
+    assert maker.main([str(tmp_path / "key.pem")]) == 0
+    assert synced == [False, True]
+    assert capsys.readouterr().out.strip()

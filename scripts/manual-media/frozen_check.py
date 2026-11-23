@@ -8,6 +8,7 @@ import kit
 from playwright.sync_api import sync_playwright
 
 LINK = kit.WORK / "frozen-link.txt"
+LINK_WAIT, LINK_LOOK = 30, 0.5     # seconds, in all and between looks
 BROKEN_PICTURES = """async () => {
   const bad = [];
   for (const i of document.querySelectorAll('img')) {
@@ -41,13 +42,13 @@ TEXT_SIZE = """() => [document.documentElement.dataset.size,
 
 
 def main():
-    for _ in range(60):
+    for _ in range(int(LINK_WAIT / LINK_LOOK)):
         if LINK.exists():
             break
-        time.sleep(0.5)
+        time.sleep(LINK_LOOK)
     else:
-        raise SystemExit(f"the frozen program wrote no link to {LINK} in 30 seconds")
-    link = LINK.read_text().strip()
+        raise SystemExit(f"the frozen program wrote no link to {LINK} in {LINK_WAIT} seconds")
+    link = LINK.read_text(encoding="utf-8").strip()
     base = kit.origin(link)
     outside = []
 

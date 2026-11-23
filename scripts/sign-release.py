@@ -47,6 +47,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _refusing  # noqa: E402 -- beside this script, shared with publish-jpeg-xl.py
+from _refusing import Refused  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 REPOSITORY = os.environ.get("PRESSLESS_UPDATE_REPOSITORY") or "milnet01/Pressless"
 WORKFLOW = "release.yml"
@@ -54,10 +58,6 @@ _TAG = re.compile(r"v([0-9]+\.[0-9]+\.[0-9]+)", re.ASCII)
 # What an installed copy will read of a changes file: updater.CHANGES_LIMIT.
 # Written out, because this script reads nothing of Pressless's but at the tag.
 CHANGES_LIMIT = 512 * 1024
-
-
-class Refused(Exception):
-    """The release is not signed or published, and why."""
 
 
 def require_trusted(text: bytes, signatures: bytes, trusted: tuple[str, ...]) -> None:
@@ -97,11 +97,7 @@ def require_built_from(tag_commit: str, run_commit: str) -> None:
 
 def _run(*args: str) -> str:
     # UTF-8 whatever the locale: CHANGELOG.md is UTF-8, and so is its changes file.
-    done = subprocess.run(args, check=False, capture_output=True,  # noqa: S603
-                          encoding="utf-8")
-    if done.returncode != 0:
-        raise Refused(f"{args[0]} {args[1]} failed: {done.stderr.strip()}")
-    return done.stdout
+    return _refusing.run(args)
 
 
 def _configured() -> str:
@@ -132,7 +128,9 @@ def _trusted_at(tag: str) -> tuple[str, ...]:
 
 def artefacts(version: str) -> dict[str, str]:
     """The two files the release workflow builds, by platform, as
-    build-linux.sh and build-windows.sh name them."""
+    build-linux.sh and build-windows.sh name them. updater._names spells
+    these and signed_files' names again, for an installed copy to fetch;
+    tests/test_sign_release.py holds the two equal."""
     return {"linux": f"Pressless-{version}-x86_64.AppImage",
             "windows": f"Pressless-{version}-windows.zip"}
 

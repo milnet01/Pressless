@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from write_google_secret import _value, write_module  # noqa: E402 -- shared by both scripts
+from write_google_secret import from_environment_or_terminal, write_module  # noqa: E402 -- shared by both scripts
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT = ROOT / "src" / "pressless" / "_usage_key.py"
@@ -30,12 +30,13 @@ _SECRET = re.compile(r"[A-Za-z0-9_-]+")
 
 def main(argv: list[str]) -> int:
     target = Path(argv[0]) if argv else DEFAULT
-    measurement_id = _value("PRESSLESS_USAGE_MEASUREMENT_ID", "Measurement id: ")
+    measurement_id = from_environment_or_terminal("PRESSLESS_USAGE_MEASUREMENT_ID",
+                                                  "Measurement id: ")
     if not _ID.fullmatch(measurement_id):
         print("No usable measurement id: it must be G- followed by capital letters and "
               "digits. Nothing was written.", file=sys.stderr)
         return 1
-    secret = _value("PRESSLESS_USAGE_API_SECRET", "API secret: ")
+    secret = from_environment_or_terminal("PRESSLESS_USAGE_API_SECRET", "API secret: ")
     if not _SECRET.fullmatch(secret):
         print("No usable API secret: it must be non-empty and hold only letters, digits, "
               "'-' and '_'. Nothing was written.", file=sys.stderr)

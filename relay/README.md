@@ -34,6 +34,8 @@ A browser that withholds GitHub's sign-in from another site's form shows
 3. **Install App**, **Only select repositories**, `pressless-logs`.
 4. Run `.venv/bin/python scripts/relay-setup.py --key <the .pem> --app-id
    <its App ID>`. It moves the key into place and deletes the download.
+   It never replaces a key already kept there, which may be a live App's;
+   if that App is gone, remove its key and run this again.
 
 The script then fills the App's ids into `wrangler.jsonc`, deploys the
 Worker, gives it the App's key as the secret `APP_KEY`, and sends a test log

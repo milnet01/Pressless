@@ -64,6 +64,7 @@ import pressless.__main__ as launcher  # noqa: E402
 import pressless_import  # noqa: E402
 from pressless import (  # noqa: E402
     __version__,
+    about,
     assistant,
     blocks,
     builder,
@@ -94,6 +95,7 @@ from pressless import (  # noqa: E402
     templates,
     themes,
     undo,
+    usage,
     votes_setup,
     words,
 )
@@ -174,6 +176,13 @@ def main() -> int:
             pressing.register(served)
             report.register(served)
             sendlog.register(served, folder, client=RELAY)
+            about.register(served)
+            # Usage reports, answered no first, so its question never sits
+            # above the home screen's lists and nothing is sent.
+            usage_own = Path(tmp) / "usage-own"
+            usage_own.mkdir()
+            usage.set_answer(usage_own, False)
+            usage.register(served, usage_own, site=folder, transport=tp._github())
             assistant.register(served, folder, own=helper_own, transport=tp._github())
             # PRESS-0223: the Sites screen over a Pressless-data of its own,
             # holding two sites; a restart is only recorded.
@@ -196,6 +205,88 @@ def main() -> int:
     failed = [n for n, ok, _ in RESULTS if not ok]
     print(f"{len(RESULTS) - len(failed)} passed, {len(failed)} failed")
     return 1 if failed else 0
+
+
+def harbour_entry(page, origin: str, folder: Path) -> None:
+    """PRESS-0182, 0185 and 0186 on a fresh published entry, so the seaside
+    rows keep their state: changing its address, pressing its proof from
+    its own page, and the address coming back once the proof is pressed."""
+    # ---- PRESS-0182: a published entry changes address, asked first ------
+    store.write(folder, tp._entry("harbour", body="Words."), draft=False)
+    page.goto(f"{origin}/edit?slug=harbour", wait_until="networkidle")
+    check("PRESS-0182: a published entry's page offers Change address",
+          page.locator("#address").is_visible())
+    page.fill("input[name=address]", "harbour-moved")
+    moved_asked: list[str] = []
+
+    def refuse_move(dialog) -> None:
+        moved_asked.append(dialog.message)
+        dialog.dismiss()
+
+    page.once("dialog", refuse_move)
+    page.get_by_role("button", name="Change address", exact=True).click()
+    page.wait_for_timeout(500)
+    check("PRESS-0182: it asks first, and says old links still reach it",
+          len(moved_asked) == 1 and "Links to the old address" in moved_asked[0],
+          repr(moved_asked))
+    check("PRESS-0182: saying no moves nothing",
+          "harbour" in store.list_slugs(folder, draft=False)
+          and store.read_forwards(folder) == {})
+    page.once("dialog", lambda dialog: dialog.accept())
+    page.get_by_role("button", name="Change address", exact=True).click()
+    page.wait_for_timeout(1000)
+    check("PRESS-0182: saying yes moves it and forwards the old address",
+          store.list_slugs(folder, draft=False).count("harbour-moved") == 1
+          and store.read_forwards(folder) == {"harbour": "harbour-moved"}
+          and "slug=harbour-moved" in page.url,
+          f"{store.read_forwards(folder)!r} {page.url.split('?')[-1]}")
+    page.locator("textarea[name=body]").type(" More.", delay=10)
+    wait_for_save(page)
+    check("PRESS-0182: once a save makes a proof, the address is hidden",
+          editor.working_copy(folder, "harbour-moved") is not None
+          and page.locator("#address").is_hidden())
+    page.goto(f"{origin}/edit?slug=harbour-moved", wait_until="networkidle")
+    check("PRESS-0182: a proof's own page offers no address",
+          not page.locator("#address").is_visible(), page.url.split("?")[-1])
+    # ---- PRESS-0185: pressing a proof from its own page ------------------
+    press(page, page.get_by_role("button", name="Press to site", exact=True))
+    pressed = page.inner_text("body")
+    check("PRESS-0185: a pressed proof's page stops saying it is not on the site",
+          "Published." in pressed
+          and "These changes are not on your site yet." not in pressed
+          and "This entry is on your site." in pressed
+          and page.get_by_role("button", name="Bin this proof", exact=True).count() == 0,
+          repr(_snip(pressed, "on your site")))
+    # ---- PRESS-0186: the address comes back once the proof is pressed ----
+    address = page.locator("input[name=address]")
+    check("PRESS-0186: a proof pressed from its own page offers Change address",
+          page.locator("#address").is_visible()
+          and address.input_value() == "harbour-moved",
+          address.input_value() if address.count() else "no field")
+    page.locator("textarea[name=body]").type(" Again.", delay=10)
+    wait_for_save(page)
+    hidden = page.locator("#address").is_hidden()
+    press(page, page.get_by_role("button", name="Press to site", exact=True))
+    check("PRESS-0186: hidden for the next proof, and back when that is pressed",
+          hidden and page.locator("#address").is_visible()
+          and editor.working_copy(folder, "harbour-moved") is None,
+          f"hidden for the proof={hidden}")
+
+
+def gull_draft(page, origin: str, folder: Path) -> None:
+    """PRESS-0128: throwing away a draft with a change still unsaved."""
+    page.goto(f"{origin}/journal", wait_until="networkidle")
+    page.fill("input[name=title]", "Gull")
+    page.click("text=New entry")
+    page.wait_for_load_state("networkidle")
+    page.locator("textarea[name=body]").type("Unsaved", delay=10)
+    page.once("dialog", lambda dialog: dialog.accept())
+    page.get_by_role("button", name="Throw this draft away", exact=True).click()
+    page.wait_for_url(f"{origin}/journal", timeout=5000)
+    binned = sorted(p.name for p in (folder / "bin").rglob("gull*.txt"))
+    check("PRESS-0128: saying yes bins the draft and goes back to Journal",
+          "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
+          f"{binned!r} {page.url}")
 
 
 def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
@@ -358,81 +449,11 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
 
         pressed_entry(page, origin, folder)
 
-        # ---- PRESS-0182: a published entry changes address, asked first ------
-        # A fresh entry, so the seaside rows above keep their state.
-        store.write(folder, tp._entry("harbour", body="Words."), draft=False)
-        page.goto(f"{origin}/edit?slug=harbour", wait_until="networkidle")
-        check("PRESS-0182: a published entry's page offers Change address",
-              page.locator("#address").is_visible())
-        page.fill("input[name=address]", "harbour-moved")
-        moved_asked: list[str] = []
-
-        def refuse_move(dialog) -> None:
-            moved_asked.append(dialog.message)
-            dialog.dismiss()
-
-        page.once("dialog", refuse_move)
-        page.get_by_role("button", name="Change address", exact=True).click()
-        page.wait_for_timeout(500)
-        check("PRESS-0182: it asks first, and says old links still reach it",
-              len(moved_asked) == 1 and "Links to the old address" in moved_asked[0],
-              repr(moved_asked))
-        check("PRESS-0182: saying no moves nothing",
-              "harbour" in store.list_slugs(folder, draft=False)
-              and store.read_forwards(folder) == {})
-        page.once("dialog", lambda dialog: dialog.accept())
-        page.get_by_role("button", name="Change address", exact=True).click()
-        page.wait_for_timeout(1000)
-        check("PRESS-0182: saying yes moves it and forwards the old address",
-              store.list_slugs(folder, draft=False).count("harbour-moved") == 1
-              and store.read_forwards(folder) == {"harbour": "harbour-moved"}
-              and "slug=harbour-moved" in page.url,
-              f"{store.read_forwards(folder)!r} {page.url.split('?')[-1]}")
-        page.locator("textarea[name=body]").type(" More.", delay=10)
-        page.wait_for_timeout(2500)
-        check("PRESS-0182: once a save makes a proof, the address is hidden",
-              editor.working_copy(folder, "harbour-moved") is not None
-              and page.locator("#address").is_hidden())
-        page.goto(f"{origin}/edit?slug=harbour-moved", wait_until="networkidle")
-        check("PRESS-0182: a proof's own page offers no address",
-              not page.locator("#address").is_visible(), page.url.split("?")[-1])
-        # ---- PRESS-0185: pressing a proof from its own page ------------------
-        press(page, page.get_by_role("button", name="Press to site", exact=True))
-        pressed = page.inner_text("body")
-        check("PRESS-0185: a pressed proof's page stops saying it is not on the site",
-              "Published." in pressed
-              and "These changes are not on your site yet." not in pressed
-              and "This entry is on your site." in pressed
-              and page.get_by_role("button", name="Bin this proof", exact=True).count() == 0,
-              repr(_snip(pressed, "on your site")))
-        # ---- PRESS-0186: the address comes back once the proof is pressed ----
-        address = page.locator("input[name=address]")
-        check("PRESS-0186: a proof pressed from its own page offers Change address",
-              page.locator("#address").is_visible()
-              and address.input_value() == "harbour-moved",
-              address.input_value() if address.count() else "no field")
-        page.locator("textarea[name=body]").type(" Again.", delay=10)
-        page.wait_for_timeout(2500)
-        hidden = page.locator("#address").is_hidden()
-        press(page, page.get_by_role("button", name="Press to site", exact=True))
-        check("PRESS-0186: hidden for the next proof, and back when that is pressed",
-              hidden and page.locator("#address").is_visible()
-              and editor.working_copy(folder, "harbour-moved") is None,
-              f"hidden for the proof={hidden}")
-
-        # ---- PRESS-0128: throwing away a draft with a change still unsaved ----
-        page.goto(f"{origin}/journal", wait_until="networkidle")
-        page.fill("input[name=title]", "Gull")
-        page.click("text=New entry")
-        page.wait_for_load_state("networkidle")
-        page.locator("textarea[name=body]").type("Unsaved", delay=10)
-        page.once("dialog", lambda dialog: dialog.accept())
-        page.get_by_role("button", name="Throw this draft away", exact=True).click()
-        page.wait_for_url(f"{origin}/journal", timeout=5000)
-        binned = sorted(p.name for p in (folder / "bin").rglob("gull*.txt"))
-        check("PRESS-0128: saying yes bins the draft and goes back to Journal",
-              "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
-              f"{binned!r} {page.url}")
+        # Each row starts where the rows above it left the shared page and
+        # folder. Where the order matters, a comment says why; a new row
+        # goes before the two that save a look.
+        harbour_entry(page, origin, folder)
+        gull_draft(page, origin, folder)
 
         # Order matters here: code_colours, true_colours_kept and text_sizes
         # open the page "visual", which only visual_editor writes.
@@ -468,7 +489,8 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         layouts_and_styles(page, origin, folder)
 
         print("\n  console during the run:")
-        for line in console[-12:]:
+        # The working-note rows log the note every 200 ms; they would fill this.
+        for line in [line for line in console if not line.startswith("log: note ")][-12:]:
             print(f"    {line[:160]}")
         if OPTIONS.cdp:
             page.close()  # the browser is the person's; leave it running
@@ -505,9 +527,6 @@ def pressed_entry(page, origin: str, folder: Path) -> None:
           "Before your site changes" in said and "Seaside" in said
           and plan.count() == 0 and not btn.is_disabled()
           and "seaside" in store.list_slugs(folder, draft=True), said[:160])
-    # Sample from the click until the reply lands. The transport is a
-    # double, so the in-flight window is short; a single poll can miss
-    # it entirely and that is a fact about the probe, not the page.
     # A MutationObserver on the status element rather than a timer:
     # the in-flight window against a transport double can be shorter
     # than any sampling interval, so polling misses a message that was
@@ -523,7 +542,6 @@ def pressed_entry(page, origin: str, folder: Path) -> None:
                (b && b.disabled ? "DISABLED" : "enabled"));
              new MutationObserver(grab).observe(
                said, {childList: true, characterData: true, subtree: true});
-             window.__grab = grab;
            }""")
     press(page, btn)
     samples = page.evaluate("() => window.__seen")
@@ -556,7 +574,7 @@ def pressed_entry(page, origin: str, folder: Path) -> None:
           repr(_snip(pressed, "on your site")))
     # The page is a published entry's from here: its next save makes a proof.
     page.locator("textarea[name=body]").type(" More.", delay=10)
-    page.wait_for_timeout(2500)
+    wait_for_save(page)
     proofed = page.inner_text("body")
     check("PRESS-0185: the next save on that page shows a proof's line and no address",
           editor.working_copy(folder, "seaside") is not None
@@ -630,11 +648,13 @@ def pressed_entry(page, origin: str, folder: Path) -> None:
         page.locator("dialog.message[open]").get_by_role(
             "button", name="OK", exact=True).click()
         page.locator("textarea[name=body]").type(" Again.", delay=10)
-        page.wait_for_timeout(2500)
+        wait_for_save(page)
 
 
 # PRESS-0260: a page whose code section would set the frame's title if a
-# script ran there (INV-5).
+# script ran there (INV-5). _column_page cuts it from its heading marker to
+# its page-end marker, so move_between_columns and drag_sections keep
+# whatever sits outside those two.
 VISUAL_PAGE = (
     "<!doctype html><html><head><title>Visual</title></head><body>\n"
     "<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main><!-- pressless:page -->\n"
@@ -1336,6 +1356,13 @@ def text_sizes(page, origin: str) -> None:
     screens = page.evaluate("""() => [...document.querySelectorAll('.bar a')]
       .map(a => a.getAttribute('href')).filter(h => h.startsWith('/'))""")
     screens += ["/edit?slug=seaside", "/page?kind=pages&name=visual"]
+    # main() registers its own choice of screens. One in the bar it left out
+    # would answer "not found", which fits any width and so tests nothing.
+    unserved = [s for s in screens
+                if page.goto(f"{origin}{s}", wait_until="networkidle").status != 200]
+    check("PRESS-0338: every screen the bar links to is served here", not unserved,
+          f"{unserved}")
+    page.goto(f"{origin}/", wait_until="networkidle")
     # A container body hands Chrome's window no background, so the root has one.
     filled = page.evaluate("""() => getComputedStyle(document.documentElement).backgroundColor
       === getComputedStyle(document.body).backgroundColor""")
@@ -1497,14 +1524,16 @@ def helper_publish(page, origin: str, folder: Path, own: Path) -> None:
         page.goto(f"{origin}{assistant.SETUP}", wait_until="networkidle")
         page.click("button[name=on]")  # the button toggles: the helper's door off again
 
-    def count(listed: list[str], key: str) -> int:
+    def count(listed: list[str], key: str) -> int | None:
         named = words.say(key)
-        return next(int(text.rsplit("(", 1)[1].rstrip(")")) for text in listed
-                    if text.startswith(named))
+        return next((int(text.rsplit("(", 1)[1].rstrip(")")) for text in listed
+                     if text.startswith(named)), None)
 
+    drafts = [count(listed, "editor.list.drafts") for listed in (before, after)]
+    on_site = [count(listed, "editor.list.on_site") for listed in (before, after)]
     check("PRESS-0356: a helper's publish, once said yes to, shows in the home screen's lists",
-          count(after, "editor.list.drafts") == count(before, "editor.list.drafts") - 1
-          and count(after, "editor.list.on_site") == count(before, "editor.list.on_site") + 1,
+          None not in drafts + on_site
+          and drafts[1] == drafts[0] - 1 and on_site[1] == on_site[0] + 1,
           f"{before} {after} {answer}")
 
 
@@ -1521,7 +1550,7 @@ _MANUAL = """\
 
 # ---- PRESS-0435: the note's bar and count -----------------------------------
 
-_SLOW_BLOBS = 8
+_SLOW_BLOB_COUNT = 8     # files in _SlowBlobs' listing
 
 
 class _SlowBlobs(tpub._Transport):
@@ -1538,7 +1567,7 @@ def _register_slow_read(served, tmp: Path) -> None:
     and a POST that answers at once."""
     listing = json.dumps({"sha": "base-tree-sha", "truncated": False, "tree": [
         {"path": f"page-{n}.html", "type": "blob", "sha": f"s{n}", "size": 50_000}
-        for n in range(_SLOW_BLOBS)]}).encode()
+        for n in range(_SLOW_BLOB_COUNT)]}).encode()
 
     def read(request) -> str:
         publisher.fetch_state(tpub._settings(), tp.KEY, tmp / "slow-read", ("/",),
@@ -1575,8 +1604,9 @@ def _note(page) -> dict | None:
 
 # The page itself says what its note shows, every 200 ms, on its console:
 # Playwright's evaluate waits while a form's reply is awaited, so it cannot see
-# the old page then, but its console is heard throughout.
-_NOTE_REPORTER = """setInterval(() => {
+# the old page then, but its console is heard throughout. An init script stays
+# for every later load, so it reports on the slow check's pages alone.
+_NOTE_REPORTER = """if (location.pathname.startsWith("/check/slow")) setInterval(() => {
   const note = document.getElementById("working-note");
   if (!note) return;
   const box = note.getBoundingClientRect();
@@ -1635,7 +1665,7 @@ def send_log(page, origin: str) -> None:
                                arg=said.element_handle(), timeout=5000)
         check("PRESS-0436 INV-4 send_log: a failed send says so, and Send stays to retry",
               "not sent" in said.inner_text()
-              and box.locator("div.send-log").count() == 0
+              and box.evaluate("box => box.open")
               and page.get_by_role("button", name="Send", exact=True).is_enabled(),
               f"the box says {said.inner_text()!r}")
     finally:
@@ -1654,7 +1684,7 @@ def progress_note(page, origin: str) -> None:
     check("PRESS-0435 INV-6: the note is up while the form waits", bool(seen),
           f"{len(seen)} reads")
     check("PRESS-0435 INV-6: the count fills in during the wait",
-          bool(counted) and f"of {_SLOW_BLOBS} files" in counted[-1]["count"],
+          bool(counted) and f"of {_SLOW_BLOB_COUNT} files" in counted[-1]["count"],
           counted[-1]["count"] if counted else "no count seen")
     boxes = {(n["width"], n["height"], n["left"], n["top"]) for n in seen}
     check("PRESS-0435 INV-6: the note keeps its size and place", len(boxes) == 1,
@@ -1666,7 +1696,7 @@ def progress_note(page, origin: str) -> None:
     page.locator("#slow-script").click()
     seen = _watch_note(page, "#slow-said:text('200')")
     check("PRESS-0435 INV-7: a slow script POST shows the note and count",
-          any(f"of {_SLOW_BLOBS} files" in n["count"] for n in seen),
+          any(f"of {_SLOW_BLOB_COUNT} files" in n["count"] for n in seen),
           seen[-1]["count"] if seen else "no note seen")
     page.wait_for_timeout(300)
     check("PRESS-0435 INV-7: the note goes when it is answered", _note(page) is None)
@@ -1708,6 +1738,8 @@ def _overflows(page, address: str) -> bool:
 
 
 def _column_page(*columns: str, after: str) -> str:
+    """VISUAL_PAGE with everything from its heading marker to its page-end
+    marker replaced by `columns` and a text section holding `after`."""
     text = "<!-- pressless:text --><p>{}</p><!-- /pressless:text -->".format
     held = ('<!-- pressless:columns --><div class="pressless-columns">' + "".join(
         f'<!-- pressless:column --><div class="pressless-column">{text(column)}</div>'
@@ -2020,11 +2052,17 @@ def _vote_state(page) -> dict:
     })""", VOTE_NOTE)
 
 
+def _votes_ready(page) -> None:
+    """Wait until both vote buttons are enabled: a load or a press is done."""
+    page.wait_for_function(
+        "[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+
+
 def _vote_press(page, google: _FakeGoogle, value: str) -> list[str]:
     """Press a button, wait for it to finish, and return the steps it took."""
     before = len(google.steps)
     page.locator(f'button.vote[data-value="{value}"]').click()
-    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    _votes_ready(page)
     return google.steps[before:]
 
 
@@ -2075,7 +2113,7 @@ def _votes_rows(page, address: str, errors: list[str]) -> None:
     google.fail = {}
     google.steps.clear()
     page.reload(wait_until="networkidle")
-    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    _votes_ready(page)
     state = _vote_state(page)
     check("PRESS-0211 INV-7: the load fills the numbers and enables both",
           state["numbers"] == ["2", "1"] and state["pressed"] == ["false", "false"],
@@ -2109,7 +2147,7 @@ def _votes_rows(page, address: str, errors: list[str]) -> None:
           and state["note"]["votes"] == {}, f"{steps} {state['numbers']}")
     _vote_press(page, google, "1")
     page.reload(wait_until="networkidle")
-    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    _votes_ready(page)
     state = _vote_state(page)
     check("PRESS-0211 INV-7: a reload shows the visitor's own vote from the note",
           state["numbers"] == ["3", "1"] and state["pressed"] == ["true", "false"],
@@ -2139,7 +2177,7 @@ def _votes_rows(page, address: str, errors: list[str]) -> None:
       localStorage.removeItem(name);
     }""", VOTE_NOTE)
     page.reload(wait_until="networkidle")
-    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    _votes_ready(page)
     state = _vote_state(page)
     check("PRESS-0211 s4.3 step 3: with no note of the project's, the older shared one is read",
           state["numbers"] == ["3", "1"] and state["pressed"] == ["true", "false"]
@@ -2158,7 +2196,7 @@ def _votes_rows(page, address: str, errors: list[str]) -> None:
     # ---- a first press whose sign-up fails ------------------------------------
     page.evaluate("localStorage.clear()")
     page.reload(wait_until="networkidle")
-    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    _votes_ready(page)
     before = _vote_state(page)
     for status, label in ((400, "refused"), (None, "with no answer")):
         google.fail = {"signup": status}
@@ -2298,7 +2336,8 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
             return False
         return True
 
-    def kept() -> bool:
+    def same_page() -> bool:
+        """The marker set below survived: the page was not loaded again."""
         return page.evaluate("window.pressless0285 === 1")
 
     page.goto(f"{origin}/page?kind=pages&name=switch&view=visual", wait_until="networkidle")
@@ -2312,7 +2351,7 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
           went and "<p>Before words. typed</p>" in shown and "Before words. typed" in copy(),
           f"went={went} box={shown[-160:]!r}")
     check("PRESS-0285 INV-1: the switch to the code loads no new page",
-          went and kept() and "view=code" in page.url, page.url)
+          went and same_page() and "view=code" in page.url, page.url)
 
     added_html = "<!-- pressless:text --><p>Added in code</p><!-- /pressless:text -->\n"
     if went:
@@ -2342,7 +2381,7 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
     check("PRESS-0285 INV-2: code typed in the box shows in the frame at once",
           added_shown, f"back={back} frame={seen!r} copy={copy()[-160:]!r}")
     check("PRESS-0285 INV-1: the switch to the page loads no new page",
-          back and kept() and page.locator("#panel").is_visible(), page.url)
+          back and same_page() and page.locator("#panel").is_visible(), page.url)
 
     if added_shown:
         added_para.click()
@@ -2362,7 +2401,7 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
         there = switch("code") and box.is_visible()
         again = there and switch("visual") and page.locator(part).is_visible()
         check(f"PRESS-0285 INV-1: the {name} switches both ways with no new page",
-              there and again and kept(), f"code={there} back={again}")
+              there and again and same_page(), f"code={there} back={again}")
 
     page.goto(f"{origin}/page?kind=pages&name=switch&view=code", wait_until="networkidle")
     # The file changes on disk behind the open editor, so its next save is
@@ -2412,6 +2451,19 @@ def probe_preview_policy(page, origin: str, folder: Path) -> tuple[bool, str]:
     assets.mkdir(parents=True, exist_ok=True)
     (assets / "ran-assets.js").write_text("window.__assets = true;", encoding="utf-8")
 
+    try:
+        return _policy_seen(page, origin)
+    finally:
+        # The Builder refuses a preview folder holding files it did not make,
+        # so the probe pages go before the next preview is built, whatever
+        # happened above.
+        (preview / "policycheck.html").unlink(missing_ok=True)
+        (preview / "ran.js").unlink(missing_ok=True)
+        (assets / "ran-assets.js").unlink(missing_ok=True)
+
+
+def _policy_seen(page, origin: str) -> tuple[bool, str]:
+    """Load the probe page and say what its policy blocked."""
     page.goto("about:blank")
     # An init script stays on the page for every later load, so it listens on
     # the probe page alone.
@@ -2429,11 +2481,6 @@ def probe_preview_policy(page, origin: str, folder: Path) -> tuple[bool, str]:
     player = [v for v in violations if "youtube" in v]
     ran = page.evaluate("() => [window.__ran === true, window.__assets === true,"
                         " window.__inline === true]")
-    # The Builder refuses a preview folder holding files it did not make, so
-    # the probe pages go before the next preview is built.
-    (preview / "policycheck.html").unlink()
-    (preview / "ran.js").unlink()
-    (assets / "ran-assets.js").unlink()
     ok = bool(google) and bool(player) and ran == [False, False, False]
     return ok, (f"csp={csp!r} google_blocked={bool(google)} "
                 f"player_blocked={bool(player)} ran (own, assets, inline)={ran} "

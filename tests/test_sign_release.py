@@ -268,6 +268,29 @@ def test_a_run_that_failed_after_uploading_can_be_run_again(monkeypatch, tmp_pat
     signer, github = _signing(monkeypatch, tmp_path, held=left)
     signer.sign("v1.2.3")
     assert github.published
+    # review-tests: publishing alone passed a sign() that skipped the names
+    # the draft held, so the failed run's stale files shipped.
+    [upload] = github.uploads
+    assert "--clobber" in upload
+    assert left <= {Path(arg).name for arg in upload[6:]}
+
+
+def test_the_signer_names_each_file_an_installed_copy_fetches():
+    """review-readability: the release's file names are spelt here and in
+    updater._names, and a rename on one side only would make every
+    installed copy refuse every release."""
+    from pressless import updater
+
+    signer = _signer()
+    assert set(updater._names("1.2.3").values()) == signer.release_assets("1.2.3")
+
+
+def test_a_failed_git_call_names_what_git_was_asked():
+    """review-readability lead: every failed `git -C <root> ...` read
+    "git -C failed"."""
+    signer = _signer()
+    with pytest.raises(signer.Refused, match=r"^git show v0\.0\.0:none failed: "):
+        signer._run("git", "-C", str(_SCRIPT.parent), "show", "v0.0.0:none")
 
 
 def test_a_draft_holding_a_stranger_is_refused_before_anything_is_uploaded(
