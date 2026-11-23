@@ -21,6 +21,8 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 import weakref
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -395,6 +397,8 @@ def test_a_folder_held_for_a_moment_on_windows_is_still_replaced(
 
 _BUILD_IN_A_SUBPROCESS = """
 import sys
+import threading
+import time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 sys.path.insert(0, sys.argv[2])
@@ -735,7 +739,8 @@ def test_writing_renders_through_marks(tmp_path, monkeypatch):
 _ALLOWED_IMPORTS = {
     "__future__",
     "contextlib", "dataclasses", "datetime", "fnmatch", "html", "io", "os", "pathlib", "re",
-    "shutil", "tempfile",
+    "shutil", "tempfile", "threading",
+    "concurrent", "concurrent.futures",   # PRESS-0460: web copies on several cores
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
     "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
     "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
@@ -2396,3 +2401,109 @@ def test_a_device_name_tag_is_refused_for_its_own_reason(tmp_path):
     store.write(folder, _entry("seaside", tags=("No",)), draft=False)
     with pytest.raises(BuildStopped, match="'No'.*a-z, 0-9 and '-'"):
         build(folder, _settings(), tmp_path / "site")
+
+
+# ------------------------------------------------------------- PRESS-0460 ---
+# PRESS-0008 § 4.6 and § 13: web copies made on several threads, at most
+# PHOTOGRAPH_WORKERS at once, each JPEG decoded at the scale it needs.
+
+
+def _pictures_entry(folder: Path, names, slug="pictures", date="2020-01-02 03:04:05"):
+    body = "\n\n".join(f"{{photo: {name}}}" for name in names)
+    store.write(folder, _entry(slug, date, body=body), draft=False)
+
+
+def _counting(monkeypatch, owner, attribute, *, wait=None, pause=0.0):
+    """Wraps `owner.attribute`, returning the most calls seen at once. `wait`
+    is called inside each, after `pause` seconds."""
+    real = getattr(owner, attribute)
+    lock = threading.Lock()
+    running, most = [0], [0]
+
+    def watched(*args, **kwargs):
+        with lock:
+            running[0] += 1
+            most[0] = max(most[0], running[0])
+        try:
+            time.sleep(pause)
+            if wait:
+                wait()
+            return real(*args, **kwargs)
+        finally:
+            with lock:
+                running[0] -= 1
+
+    monkeypatch.setattr(owner, attribute, watched)
+    return most
+
+
+def test_web_copies_are_made_side_by_side(tmp_path, monkeypatch):
+    """§ 13: web copies are made PHOTOGRAPH_WORKERS at a time, never more.
+    Breaks when they are made one after another, or the pool is unbounded."""
+    monkeypatch.setattr(builder, "PHOTOGRAPH_WORKERS", 2)
+    folder = _store(tmp_path)
+    names = [f"p{k}.jpg" for k in range(6)]
+    for name in names:
+        _photograph(folder, name, _image("JPEG"))
+    _pictures_entry(folder, names)
+    together = threading.Barrier(2, timeout=5)   # broken unless two run at once
+    most = _counting(monkeypatch, builder, "_write_web_copy", wait=together.wait)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert most[0] == 2
+    assert sorted(p.name for p in (into / "photographs").iterdir()) == names
+
+
+@pytest.mark.parametrize("later", [".hidden.jpg", "second.jpg"])
+def test_a_web_copy_fails_as_a_serial_build_would(tmp_path, monkeypatch, later):
+    """§ 4.6 steps 1 and 6: the build stops with the failure a one-at-a-time
+    build meets first, the earliest-named photograph's, however long it
+    takes and whatever fails after it."""
+    folder = _store(tmp_path)
+    for name in ("first.jpg", "second.jpg"):
+        _photograph(folder, name, b"not a picture")
+    _pictures_entry(folder, ["first.jpg"], "newer", "2021-01-01 00:00:00")
+    _pictures_entry(folder, [later], "older", "2020-01-01 00:00:00")
+    _counting(monkeypatch, builder, "_write_web_copy", pause=0.3)
+    with pytest.raises(BuildStopped, match="first.jpg could not be read"):
+        build(folder, _settings(), tmp_path / "site")
+    assert not (tmp_path / "site").exists()
+
+
+def test_a_large_jpeg_is_decoded_at_the_scale_it_needs(tmp_path, monkeypatch):
+    """§ 13: a 6400 by 4800 JPEG is decoded at half scale, the smallest still
+    covering LONGEST_SIDE, and still published at LONGEST_SIDE."""
+    folder = _store(tmp_path)
+    _photograph(folder, "camera.jpg", _image("JPEG", (6400, 4800)))
+    _pictures_entry(folder, ["camera.jpg"])
+    seen = []
+    real = builder.ImageOps.exif_transpose
+
+    def upright(picture, **kwargs):
+        seen.append(picture.size)
+        return real(picture, **kwargs)
+
+    monkeypatch.setattr(builder.ImageOps, "exif_transpose", upright)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert seen == [(3200, 2400)]
+    with Image.open(into / "photographs" / "camera.jpg") as web:
+        assert web.size == (LONGEST_SIDE, 1200)
+
+
+def test_the_jpeg_xl_decoder_runs_once_at_a_time(tmp_path, monkeypatch):
+    """§ 13: two JPEG XL web copies never run the decoder together; it uses
+    every core itself, and its memory limit is per run (PRESS-0275 § 4.4)."""
+    import _jxl_standin as standin
+
+    from pressless import jpegxl
+    folder = _jxl_store(tmp_path, monkeypatch,
+                        body="{photo: seaside.jxl}\n\n{photo: harbour.jxl}")
+    _photograph(folder, "harbour.jxl", standin.CONTAINER)
+    most = _counting(monkeypatch, jpegxl, "decode", pause=0.3)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert most[0] == 1
+    assert sorted(p.name for p in (into / "photographs").iterdir()) == [
+        "harbour.jxl.webp", "seaside.jxl.webp"]
+
