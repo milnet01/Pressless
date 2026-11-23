@@ -1956,7 +1956,7 @@ _WORDS: dict[str, str] = {
         "If Google no longer accepts the sign-in, <a href=\"{page}\">sign in again</a>."
     ),
     "dashboard.stale": (
-        "Pressless could not reach Google just now, so these are the numbers from {when}."
+        "Google gave no new numbers just now, so these are the numbers from {when}."
     ),
     "dashboard.updated": "Last updated {when}.",
     "dashboard.count.none": "Nobody read your site in {window}, as far as Google can tell.",

@@ -24,6 +24,9 @@ from pressless import (
 from pressless.face import Face, message_box, render_notices
 from pressless.words import say, say_count
 
+# `editor.Entries.unreadable` is keyed by whether the entry is a draft.
+_DRAFT, _PUBLISHED = True, False
+
 
 def register(face: Face, folder: Path) -> None:
     """Add GET / to `face`. `folder` is the open site's."""
@@ -91,7 +94,7 @@ def _waiting(folder: Path) -> tuple[str, str]:
         if store.journal_on(folder):  # off, no entry can reach the site
             entries, _ = editor.read_entries(folder)
             counts.append((
-                len(entries.drafts) + len(entries.unreadable[True]) + len(entries.changed),
+                len(entries.drafts) + len(entries.unreadable[_DRAFT]) + len(entries.changed),
                 ("overview.waiting.entries.one", "overview.waiting.entries.many"),
                 editor.JOURNAL_ADDRESS))
     except store.StoreError:
@@ -141,8 +144,8 @@ def _journal(folder: Path) -> str:
     except store.StoreError:
         figures = ""
     else:
-        published = len(entries.published) + len(entries.unreadable[False])
-        drafts = len(entries.drafts) + len(entries.unreadable[True])
+        published = len(entries.published) + len(entries.unreadable[_PUBLISHED])
+        drafts = len(entries.drafts) + len(entries.unreadable[_DRAFT])
         figures = (say("overview.journal.figures", published=published,
                        drafts=say_count(drafts, "overview.drafts.one", "overview.drafts.many"))
                    if on else say("overview.journal.off"))
@@ -191,9 +194,12 @@ def _visitors(face: Face, folder: Path) -> str:
         figures = say("overview.visitors.not_set_up")
     else:
         kept = insights.kept(folder, dashboard.DEFAULT_DAYS)
+        # With when it was fetched: the tile is never refreshed from here, so
+        # an old figure must not read as the last four weeks' (§ 4.3).
         figures = (say("overview.visitors.none_yet") if kept is None else say(
             "overview.visitors.read", people=dashboard.people(kept.people),
-            window=dashboard.sentence(dashboard.DEFAULT_DAYS)))
+            window=dashboard.sentence(dashboard.DEFAULT_DAYS))
+            + " " + say("dashboard.updated", when=dashboard.when(kept.fetched_at)))
     return _tile("face.visitors", figures, _link(dashboard.PAGE, "overview.open_visitors"))
 
 

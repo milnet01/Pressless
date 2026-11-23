@@ -107,8 +107,8 @@ Each report says one of these things happened:
 
 Each report also carries Pressless's version, your operating system's
 name (with its version, where the system gives one), a random code
-made when you said yes, and a random number made each time Pressless
-starts.
+made when you said yes, a random number made each time Pressless
+starts, and a fixed number, always 1, that Google needs to count a report.
 
 A report never holds your writing, your pages' names, your site's
 address, your files or your settings.
