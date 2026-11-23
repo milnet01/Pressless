@@ -11,6 +11,8 @@
 # Every host is .example.org, and every global address a public resolver's.
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -152,8 +154,9 @@ def test_a_failed_write_here_is_not_called_a_failed_connection(tmp_path):
 
 
 def test_a_full_drive_mid_file_stops_the_rest(tmp_path, monkeypatch):
-    """§ 4.4: a drive that fills while a file is written is no room, and the
-    files after it are not fetched."""
+    """§ 4.4: a drive that fills while a file is written is no room, and no
+    fetch starts after it; those already under way, four at most
+    (PRESS-0461), find it full themselves."""
     import errno
 
     from test_importer import _export, _item
@@ -172,19 +175,18 @@ def test_a_full_drive_mid_file_stops_the_rest(tmp_path, monkeypatch):
 
     monkeypatch.setattr(fetch, "open", lambda *args, **kwargs: Full(), raising=False)
     export = tmp_path / "export.xml"
-    export.write_text(_export(
-        _item(1, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
-        _item(2, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
-    ), encoding="utf-8")
+    names = "abcdefgh"
+    export.write_text(_export(*(
+        _item(n, kind="attachment", status="inherit", attachment=f"2012/05/{name}.jpg")
+        for n, name in enumerate(names, start=1))), encoding="utf-8")
     base = "old.example.org/wp-content/uploads"
     network = _Network({"old.example.org": [GLOBAL]},
-                       {f"{base}/2012/05/a.jpg": _Answer(200, b"a"),
-                        f"{base}/2012/05/b.jpg": _Answer(200, b"b")})
+                       {f"{base}/2012/05/{name}.jpg": _Answer(200, b"x") for name in names})
     missing = fetch.fetch_all(pressless_import.read(export), tmp_path / "media",
                               lambda: 10**12, resolve=network.resolve,
                               connect=network.connect)
-    assert missing == {"2012/05/a.jpg": say(fetch.NO_ROOM), "2012/05/b.jpg": say(fetch.NO_ROOM)}
-    assert len(network.connected) == 1, "nothing is fetched once the drive is full"
+    assert missing == {f"2012/05/{name}.jpg": say(fetch.NO_ROOM) for name in names}
+    assert len(network.connected) <= 4, "nothing starts once the drive is full"
 
 
 def test_a_fetch_that_dribbles_stops(tmp_path, monkeypatch):
@@ -843,3 +845,120 @@ def test_a_landing_that_could_not_be_made_does_not_take_its_name(tmp_path):
     crawled = _download(network, "https://sites.example.org/", into)
     assert "Dir/a.html" in dict(crawled.left)
     assert "dir/b.html" in _landed(into), crawled.left
+
+
+# ----------------------------------------------------------- PRESS-0461 ----
+
+
+class _Overlapping(_Network):
+    """A network whose answers each take a twentieth of a second, recording
+    the most requests ever in flight at once."""
+
+    def __init__(self, hosts, answers):
+        super().__init__(hosts, answers)
+        self._lock = threading.Lock()
+        self.flying = self.most = 0
+
+    def connect(self, address, host, port, secure):
+        made = super().connect(address, host, port, secure)
+        network, asked = self, made.getresponse
+
+        def getresponse():
+            with network._lock:
+                network.flying += 1
+                network.most = max(network.most, network.flying)
+            try:
+                time.sleep(0.05)
+                return asked()
+            finally:
+                with network._lock:
+                    network.flying -= 1
+
+        made.getresponse = getresponse
+        return made
+
+
+def test_attachments_are_fetched_a_few_at_once(tmp_path):
+    """PRESS-0461, § 4.4: attachments are fetched a few at a time, never more
+    than four, each on its own checked connection. Breaks when they go back to
+    one at a time, or the bound goes."""
+    from test_importer import _export, _item
+
+    import pressless_import
+
+    export = tmp_path / "export.xml"
+    export.write_text(_export(*(_item(n, kind="attachment", status="inherit",
+                                      attachment=f"2012/05/a{n}.jpg") for n in range(1, 9))),
+                      encoding="utf-8")
+    base = "old.example.org/wp-content/uploads"
+    network = _Overlapping({"old.example.org": [GLOBAL]},
+                           {f"{base}/2012/05/a{n}.jpg": _Answer(200, b"a") for n in range(1, 9)})
+    seen = []
+    missing = fetch.fetch_all(pressless_import.read(export), tmp_path / "media",
+                              lambda: 10**12, resolve=network.resolve,
+                              connect=network.connect,
+                              progress=lambda done, total: seen.append((done, total)))
+    assert missing == {}
+    assert len(network.connected) == 8
+    assert 2 <= network.most <= 4, network.most
+    assert seen == [(n, 8) for n in range(1, 9)]
+
+
+def test_places_one_case_apart_are_fetched_in_turn(tmp_path):
+    """PRESS-0461: two places one case apart are one file on Windows, so
+    they go to one fetcher, in export order. Breaks when they are fetched at
+    once, writing one part file from two."""
+    from test_importer import _export, _item
+
+    import pressless_import
+
+    export = tmp_path / "export.xml"
+    export.write_text(_export(_item(1, kind="attachment", status="inherit",
+                                    attachment="2012/05/Same.jpg"),
+                              _item(2, kind="attachment", status="inherit",
+                                    attachment="2012/05/same.jpg")), encoding="utf-8")
+    base = "old.example.org/wp-content/uploads"
+    network = _Overlapping({"old.example.org": [GLOBAL]},
+                           {f"{base}/2012/05/Same.jpg": _Answer(200, b"1"),
+                            f"{base}/2012/05/same.jpg": _Answer(200, b"2")})
+    fetch.fetch_all(pressless_import.read(export), tmp_path / "media", lambda: 10**12,
+                    resolve=network.resolve, connect=network.connect)
+    assert network.most == 1
+    assert [path for _m, path, _h in network.requests] == [
+        "/wp-content/uploads/2012/05/Same.jpg", "/wp-content/uploads/2012/05/same.jpg"]
+
+
+def _a_site_of_many_pages() -> dict:
+    links = "".join(f'<a href="p{n}.html">{n}</a>' for n in range(9))
+    served = {"sites.example.org/": _html(f'<p>{links}<a href="%2e%2e/up">Up</a>'
+                                          f'<a href="gone.html">Gone</a></p>')}
+    for n in range(9):
+        inner = '<a href="deeper.html">D</a><a href="p0.html">Again</a>' if n == 4 else ""
+        served[f"sites.example.org/p{n}.html"] = _html(f"<p>Page {n}{inner}</p>")
+    served["sites.example.org/deeper.html"] = _html("<p>Deeper</p>")
+    return served
+
+
+def test_a_site_download_fetches_a_few_at_once_and_lands_as_one_at_a_time(tmp_path,
+                                                                           monkeypatch):
+    """PRESS-0461, PRESS-0333 § 4.2: the crawl fetches a few addresses at once
+    and lands them in turn, so what lands, what is left, and the order of
+    both, are as one at a time gives. Breaks when the crawl goes back to one
+    at a time, or lands in the order fetches finish."""
+    together = _live({"sites.example.org": [GLOBAL]}, _a_site_of_many_pages())
+    together.__class__ = type("_LiveOverlapping", (_Overlapping,), {})
+    together._lock = threading.Lock()
+    together.flying = together.most = 0
+    crawled = _download(together, "https://sites.example.org/", tmp_path / "at-once")
+
+    monkeypatch.setattr(fetch, "FETCHES_AT_ONCE", 1)
+    alone = _live({"sites.example.org": [GLOBAL]}, _a_site_of_many_pages())
+    crawled_alone = _download(alone, "https://sites.example.org/", tmp_path / "alone")
+
+    assert 2 <= together.most <= 4, together.most
+    assert crawled.left == crawled_alone.left
+    assert _landed(tmp_path / "at-once") == _landed(tmp_path / "alone")
+    for landed in _landed(tmp_path / "alone"):
+        assert ((tmp_path / "at-once" / landed).read_bytes()
+                == (tmp_path / "alone" / landed).read_bytes()), landed
+    assert not list(tmp_path.glob(".crawl-part*"))

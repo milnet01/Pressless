@@ -19,6 +19,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import traceback
 import tracemalloc
@@ -3080,3 +3081,95 @@ def test_a_rename_a_scanner_holds_is_tried_again(tmp_path, monkeypatch):
     assert fetched.paths == ("index.html",) and refused
     assert (tmp_path / "into" / "index.html").read_bytes() == b"<html>before</html>"
     assert transport.waits, "the second try did not wait on the transport's clock"
+
+
+# ----------------------------------------------------------- PRESS-0461 ----
+
+
+class _Overlapping(_Transport):
+    """Blob reads that each wait for a second to start beside them, so reads
+    made one at a time stall, recording how many were ever in flight and when
+    each started. `wait` sleeps for real where `sleeps`, so spacing shows."""
+
+    def __init__(self, *args, together: int = 2, sleeps: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._together = threading.Barrier(together, timeout=3) if together > 1 else None
+        self._lock = threading.Lock()
+        self._sleeps = sleeps
+        self.flying = self.most = 0
+        self.starts: list[float] = []
+
+    def request(self, method, url, body, headers):
+        if "/git/blobs/" not in url:
+            return super().request(method, url, body, headers)
+        with self._lock:
+            self.flying += 1
+            self.most = max(self.most, self.flying)
+            self.starts.append(time.monotonic())
+        try:
+            if self._together is not None:
+                try:
+                    self._together.wait()
+                except threading.BrokenBarrierError:
+                    pass
+            with self._lock:
+                return super().request(method, url, body, headers)
+        finally:
+            with self._lock:
+                self.flying -= 1
+
+    def wait(self, seconds):
+        super().wait(seconds)
+        if self._sleeps:
+            time.sleep(seconds)
+
+
+def _many(count: int) -> bytes:
+    return _listing([(f"content/e{n}.txt", f"sha-{n}") for n in range(count)])
+
+
+def test_a_fetch_reads_a_few_blobs_at_once(tmp_path):
+    """PRESS-0461, PRESS-0009 § 4.5: blobs are read a few at a time, never
+    more than four, and land whole as before. Breaks when the reads go back
+    to one at a time, or the bound goes."""
+    transport = _Overlapping(reads=_reads(_many(12), blob=b"words"))
+    fetched = fetch_state(_settings(), "a-token", tmp_path / "into", ("content/",),
+                          "chosen-sha", transport=transport)
+    assert len(fetched.paths) == 12
+    assert all((tmp_path / "into" / path).read_bytes() == b"words" for path in fetched.paths)
+    assert 2 <= transport.most <= 4, transport.most
+
+
+def test_a_fetch_spaces_its_reads_under_github_s_points_a_minute(tmp_path):
+    """PRESS-0461, PRESS-0009 § 4.5: read starts are 60/800 of a second apart
+    at least, so a fast line stays under GitHub's 900 points a minute. Breaks
+    when the spacing goes."""
+    transport = _Overlapping(reads=_reads(_many(8), blob=b"words"), together=1, sleeps=True)
+    fetch_state(_settings(), "a-token", tmp_path / "into", ("content/",), "chosen-sha",
+                transport=transport)
+    starts = sorted(transport.starts)
+    gaps = [later - earlier for earlier, later in zip(starts, starts[1:], strict=False)]
+    assert min(gaps) >= 60 / 800 - 0.02, gaps
+
+
+def test_a_slow_down_on_one_read_holds_the_others(tmp_path):
+    """PRESS-0461: GitHub warns that asking on while limited risks a ban, so
+    a wait one reader is told to take holds every reader of the fetch.
+    Breaks when the other readers carry on through it."""
+    limited = threading.Event()
+    told: list[float] = []
+
+    class _OnceLimited(_Overlapping):
+        def request(self, method, url, body, headers):
+            if "/git/blobs/" in url and not limited.is_set():
+                limited.set()
+                told.append(time.monotonic())
+                return 429, {"Retry-After": "1"}, b'{"message": "slow down"}'
+            return super().request(method, url, body, headers)
+
+    transport = _OnceLimited(reads=_reads(_many(6), blob=b"words"), together=1, sleeps=True)
+    fetch_state(_settings(), "a-token", tmp_path / "into", ("content/",), "chosen-sha",
+                transport=transport)
+    assert len(transport.starts) == 6
+    assert all(start >= told[0] + 1 - 0.05 for start in transport.starts), (
+        [start - told[0] for start in transport.starts])

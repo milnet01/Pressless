@@ -169,6 +169,11 @@ ends the crawl with nothing kept. Otherwise it takes addresses first found first
 - from a stylesheet, or a `style` element or attribute: each `url(...)` and `@import`;
 - from `sitemap.xml` at the site's root, where it answers: each `<loc>`.
 
+It fetches up to `fetch.FETCHES_AT_ONCE` waiting addresses at once and lands
+them in turn, so what lands, what is `left` and the order of both are as one at a
+time; near either limit below it takes one at a time (PRESS-0461,
+`tests/test_importer_fetch.py::test_a_site_download_fetches_a_few_at_once_and_lands_as_one_at_a_time`).
+
 A backslash in an address's path is read as a slash, as a browser reads it. A query
 and a fragment are dropped from what is fetched. An address or a redirect
 no parser can read is not followed, and the redirect is `left`.

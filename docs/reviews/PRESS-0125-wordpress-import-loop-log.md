@@ -15,3 +15,4 @@
 | amend | 2026-11-17 | none: PRESS-0409; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: `stays_inside` moved to `zip_member`. |
 | fix | 2026-11-23 | none: closing the 2026-11-23 code review, no reviewer dispatched | - | - | - | - | PRESS-0453 amended §§ 4.3, 4.4, 4.6 and 4.7: attributes count against the element bound, the export is read in pieces, an unreadable encoding is refused, a failed media write keeps what it filled, page code is listed, and each moved.jsonl line reaches the drive before its move. |
 | amend | 2026-11-23 | none: PRESS-0484; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.4 and 6: a media ZIP damaged partway keeps the places it filled. |
+| amend | 2026-11-23 | none: PRESS-0461; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: four attachments are fetched at once; places one case apart in turn. |

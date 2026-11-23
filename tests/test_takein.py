@@ -404,6 +404,22 @@ def test_looking_writes_nothing(tmp_path, monkeypatch):
         assert _held(folder) == before
 
 
+def test_the_site_step_shows_the_state_the_pages_step_read(tmp_path, monkeypatch):
+    """PRESS-0461, § 4.2: a commit names one state, so the site step, shown
+    and shown again, does not download what the pages step read. Breaks when
+    `look` fetches a commit it has just read."""
+    github, _ = _published(tmp_path)
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "site")
+        assert "A Journal" in page
+        assert "A Journal" in browser.get()[1]
+    listings = [url for _method, url, _key in github.calls
+                if "/git/trees/" in url and "recursive=1" in url]
+    assert len(listings) == 1, listings
+
+
 # ----------------------------------------------------------------- INV-6 ---
 
 

@@ -540,6 +540,18 @@ is a design change this document does not take; §10 records that nothing
 checks it, and PRESS-0015 must not be built assuming `into` is never part
 old and part new.
 
+**Blobs are read four at a time, each reader on a connection it keeps**
+(PRESS-0461). They are written in listing order, so the first failure
+raised is the first in the listing, and at most `FETCH_AHEAD` are read and
+not yet written. Each read starts `READ_PACE_SECONDS` after the one before,
+800 a minute. GitHub documents at most 100 requests at once and 900 points
+a minute, a read costing one, and advises asking one at a time; this keeps
+inside the limits and leaves the advice, because one at a time a 0.2-second
+round trip cost 0.65 s a blob against a stand-in (2026-11-23). A slow-down
+one reader is told of holds every reader until it is over. A write never
+rides a kept connection: it is never sent twice, so never on one that may
+have gone stale.
+
 **The consequence of §3 decision 1 lives here.** A second `fetch_previous`
 called after an undo has been published reads the parent of the undo
 commit, which is the state the undo replaced. That is the decided
@@ -954,6 +966,8 @@ code, so a green INV-1 says nothing about the rest.
 | §4.4's untouchable entries left unread | `tests/test_publisher.py::test_nothing_on_the_untouchable_list_is_read` |
 | §4.3's wait for the hourly reset during a publish, and its bounds | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown`, `::test_a_reset_too_far_off_or_that_does_not_clear_is_refused` and `::test_only_a_publish_waits_out_the_hourly_reset` |
 | §4.3's growth between successive retries, and its clamp | `tests/test_publisher.py::test_successive_retry_waits_grow_rather_than_repeating` and `::test_grown_retry_waits_stop_at_the_bound_rather_than_raising` |
+| §4.5's reads four at a time, spaced, and held by a slow-down | `tests/test_publisher.py::test_a_fetch_reads_a_few_blobs_at_once`, `::test_a_fetch_spaces_its_reads_under_github_s_points_a_minute` and `::test_a_slow_down_on_one_read_holds_the_others` |
+| §4.5's kept connections: reads only, one per thread, certificates checked as a write's | `tests/test_https.py::test_reads_from_one_thread_share_one_connection`, `::test_a_kept_connection_checks_certificates_as_a_write_s_does`, `::test_a_write_never_rides_a_kept_connection` and `::test_each_thread_reads_on_its_own_connection` |
 | §4.5's all-or-nothing fetch | `tests/test_publisher.py::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` |
 | Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |
 | That the default branch is the branch GitHub Pages serves from | **nothing** — §4.2 resolves the default branch, and a repository serving Pages from another branch would publish successfully while the live site never changed. No check here can see it; the first real publish is where it shows |

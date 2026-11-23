@@ -188,6 +188,13 @@ A fetch:
   `room`, answering `face._room(folder)`, which already keeps
   `face._SPARE` free.
 
+Four attachments are fetched at once (`fetch.FETCHES_AT_ONCE`, PRESS-0461),
+each a fetch as above on its own connection. None starts once one has found
+the drive full; one already under way finds it full itself. Places one case apart go to
+one fetcher, in export order, since Windows holds them as one file
+(`tests/test_importer_fetch.py::test_attachments_are_fetched_a_few_at_once`
+and `::test_places_one_case_apart_are_fetched_in_turn`).
+
 A refused or failed fetch is one Report line, naming the place and why
 ("the old site answered 404"). It never stops Import. A write that fails
 on this computer says so, not that the connection failed. A drive that

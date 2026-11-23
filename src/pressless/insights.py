@@ -209,7 +209,7 @@ class _Urllib(https.Client):
     request is the shared client's (PRESS-0331); the clock is ours."""
 
     def __init__(self, timeout: float = TIMEOUT_SECONDS) -> None:
-        super().__init__(timeout)
+        super().__init__(timeout, keep_alive=True)    # PRESS-0461
 
     def now(self) -> float:
         return time.time()

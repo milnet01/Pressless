@@ -26,8 +26,11 @@ import math
 import os
 import shutil
 import tempfile
+import threading
 import time
 import urllib.parse
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple, Protocol
@@ -82,6 +85,17 @@ COUNTDOWN_SECONDS = 1.0
 # bounded only by the retry count (PRESS-0113). The factor multiplies the hint
 # GitHub gave, so the FIRST retry still waits exactly as asked.
 RETRY_BACKOFF = 2.0
+
+# A fetch reads its blobs a few at a time (PRESS-0461, §4.5). GitHub's
+# documented secondary limits allow 100 requests at once and 900 points a
+# minute, a read costing one. Starts are spaced READ_PACE_SECONDS apart, 800 a
+# minute, so a fast line stays under the points whatever the count; four
+# readers keep that rate busy where a read takes a quarter of a second, and
+# more would only hold more connections and memory. FETCH_AHEAD bounds the
+# blobs read and not yet written.
+FETCH_WORKERS = 4
+READ_PACE_SECONDS = 60 / 800
+FETCH_AHEAD = 2 * FETCH_WORKERS
 
 # Every blob is written with the ordinary file mode. §4.3 takes one rule for
 # prose and photographs alike rather than two split by a property of the file.
@@ -213,7 +227,7 @@ class _Urllib(https.Client):
     request is the shared client's (PRESS-0331); the pacing clock is ours."""
 
     def __init__(self, timeout: float = TIMEOUT_SECONDS) -> None:
-        super().__init__(timeout)
+        super().__init__(timeout, keep_alive=True)    # PRESS-0461
 
     def wait(self, seconds: float) -> None:
         time.sleep(seconds)
@@ -776,17 +790,28 @@ def _fetch(session: _Session, repository: str, commit: str,
         # failure is one of the types above (PRESS-0073).
         raise not_written(exc) from exc
 
+    def read_blob(entry: dict) -> dict:
+        # _blobs_in reads the same field with .get; this site indexed it
+        # and raised a bare KeyError on an entry without one, which is
+        # neither of §4.1's types (PRESS-0073).
+        sha = _required(entry, "sha", f"a sha for {entry['path']!r}")
+        return session.paced_read(_repo_url(repository, f"git/blobs/{_segment(sha)}"))
+
+    pool = ThreadPoolExecutor(FETCH_WORKERS, thread_name_prefix="fetch")
     try:
         written = []
-        for entry in wanted:
+        # Read ahead in listing order and written in it, so the first failure
+        # raised is the first in the listing, as it was one at a time.
+        entries = iter(wanted)
+        ahead: deque[tuple[dict, Future]] = deque()
+        while True:
+            while len(ahead) < FETCH_AHEAD and (entry := next(entries, None)) is not None:
+                ahead.append((entry, pool.submit(read_blob, entry)))
+            if not ahead:
+                break
+            entry, reading = ahead.popleft()
+            blob = reading.result()
             path = entry["path"]
-            # _blobs_in reads the same field with .get; this site indexed it
-            # and raised a bare KeyError on an entry without one, which is
-            # neither of §4.1's types (PRESS-0073).
-            sha = _required(entry, "sha", f"a sha for {path!r}")
-            blob = session.read(
-                _repo_url(repository, f"git/blobs/{_segment(sha)}")
-            )
             target = staging / path
             try:
                 inside = _within_folder(target, staging)
@@ -814,6 +839,7 @@ def _fetch(session: _Session, repository: str, commit: str,
         except OSError as exc:
             raise not_written(exc) from exc
     finally:
+        pool.shutdown(cancel_futures=True)
         shutil.rmtree(staging, ignore_errors=True)
 
     return Fetched(commit=commit, paths=tuple(sorted(written)))
@@ -846,6 +872,27 @@ class _Session:
         self._token = token     # None for the wizard's reads before there is a key
         self._written = False
         self._waits_for_reset = waits_for_reset     # a publish's (PRESS-0471)
+        self._pace = threading.Lock()
+        self._last_read = -math.inf     # when the latest paced read may start
+        self._hold_until = -math.inf    # a slow-down one reader was told of
+
+    def paced_read(self, url: str) -> dict | None:
+        """`read`, started READ_PACE_SECONDS after the paced one before it and
+        after any slow-down a reader was told of, from whichever thread (§4.5,
+        PRESS-0461). Each takes its start under the lock and waits outside it,
+        so a slow-down told meanwhile is seen, and the start taken again."""
+        while True:
+            with self._pace:
+                now = time.monotonic()
+                start = max(now, self._last_read + READ_PACE_SECONDS, self._hold_until)
+                self._last_read = start
+                held = self._hold_until
+            if start > now:
+                self._client.wait(start - now)
+            with self._pace:
+                told = self._hold_until > held
+            if not told:
+                return self.read(url)
 
     def read(self, url: str, *, empty_ok: bool = False) -> dict | None:
         """GET `url`. With `empty_ok`, a repository with no commits answers
@@ -941,10 +988,12 @@ class _Session:
                 # GitHub ASKS for; the growth is ours, so exceeding the bound
                 # by our own multiplication is not the writer's problem to be
                 # told about -- it just stops growing (§4.3).
-                self._client.wait(
-                    min(hint.seconds * RETRY_BACKOFF ** (attempts - 1),
-                        MAX_WAIT_SECONDS)
-                )
+                backoff = min(hint.seconds * RETRY_BACKOFF ** (attempts - 1),
+                              MAX_WAIT_SECONDS)
+                with self._pace:
+                    # The other readers of a fetch wait it out too (§4.5).
+                    self._hold_until = max(self._hold_until, time.monotonic() + backoff)
+                self._client.wait(backoff)
                 continue
 
             if status in (301, 302, 303, 307, 308) and method != "GET":
