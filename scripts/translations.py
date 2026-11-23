@@ -47,7 +47,7 @@ def report(folder: Path = words.FOLDER, manual_folder: Path = manual.FOLDER,
     """One line per thing a language lacks."""
     lines = []
     videos = sorted(path.name.split(".")[0]
-                    for path in (manual_folder / "media").glob(f"*.{manual.ENGLISH}.vtt"))
+                    for path in (manual_folder / "media").glob(f"*.{manual.FALLBACK}.vtt"))
     for code in words.LANGUAGES[1:] if codes is None else codes:
         path = folder / f"{code}.json"
         held = json.loads(path.read_text(encoding="utf-8"))["words"] if path.is_file() else {}

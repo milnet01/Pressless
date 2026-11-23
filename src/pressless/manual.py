@@ -24,7 +24,7 @@ MEDIA = ADDRESS + "/media/"
 # Not `manual`, which would shadow this module on import (§ 4.1). Read through
 # importlib.resources so a frozen bundle finds it as the source tree does.
 FOLDER = Path(str(importlib.resources.files("pressless") / "manual_files"))
-ENGLISH = "en"   # the file every other language falls back to (PRESS-0241 § 4.3)
+FALLBACK = "en"  # the language every other falls back to (PRESS-0241 § 4.3)
 
 # The task id, picture name and video stem go into id= and src= unescaped.
 # These character classes are what keeps them safe: widen one, escape it.
@@ -61,7 +61,7 @@ def _video(stem: str, label: str, captions: str) -> str:
             f'label="{_e(words.name(captions))}" default></video>')
 
 
-def render(text: str, captions: Callable[[str], str] = lambda stem: ENGLISH) -> str:
+def render(text: str, captions: Callable[[str], str] = lambda stem: FALLBACK) -> str:
     """The manual's tasks as HTML, from the text of one language's file.
     `captions` names the language of a video's captions, by its stem."""
     out: list[str] = []
@@ -147,13 +147,13 @@ _SCRIPT = r"""
 def _text(folder: Path, code: str) -> Path:
     """The manual's file in `code`'s language, else the English one."""
     found = folder / f"{code}.txt"
-    return found if found.is_file() else folder / f"{ENGLISH}.txt"
+    return found if found.is_file() else folder / f"{FALLBACK}.txt"
 
 
 def _captions(folder: Path, stem: str, code: str) -> str:
     """The language of the captions shown for video `stem`: `code`'s where
     they exist, else English."""
-    return code if (folder / "media" / f"{stem}.{code}.vtt").is_file() else ENGLISH
+    return code if (folder / "media" / f"{stem}.{code}.vtt").is_file() else FALLBACK
 
 
 def _page(folder: Path):
