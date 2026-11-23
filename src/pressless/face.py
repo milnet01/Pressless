@@ -386,6 +386,9 @@ def progress_said(counted: progress.Counted) -> dict:
     what = say(counted.key)
     said = (say("progress.line", what=what, parts=", ".join(parts)) if parts
             else say("progress.bare", what=what))
+    if counted.seconds_left is not None:     # PRESS-0471: a countdown, as m:ss
+        minutes, seconds = divmod(counted.seconds_left, 60)
+        said += " " + say("progress.waiting", left=f"{minutes}:{seconds:02d}")
     fraction = None
     if counted.bytes_total:   # truthy, not `is not None`: a total of 0 counts files
         fraction = counted.bytes_done / counted.bytes_total

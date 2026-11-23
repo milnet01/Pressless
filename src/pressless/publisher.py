@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 import os
 import shutil
 import tempfile
@@ -29,7 +30,7 @@ import time
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import NamedTuple, Protocol
 
 from pressless import https, os_reason, progress, safe_write
 from pressless.settings import Settings, root_key
@@ -66,6 +67,14 @@ RATE_LIMIT_SECONDS = 60.0
 # would block with nothing said to the writer. A longer ask raises RateLimited
 # instead, which §6 already gives the Face a row for (PRESS-0046).
 MAX_WAIT_SECONDS = 120.0
+
+# A publish is the exception, once per request: past the hourly allowance it
+# waits for the reset GitHub names, counting down on the progress record, so
+# a large publish finishes in its one commit rather than failing late and
+# sending every file again (PRESS-0471). The allowance is hourly, so a reset
+# further off than this is a clock or an answer gone wrong, and is refused.
+MAX_RESET_WAIT_SECONDS = 3900.0
+COUNTDOWN_SECONDS = 1.0
 
 # Successive retries wait longer. GitHub's rate-limit documentation asks for an
 # exponentially increasing wait between retries and warns that continuing to
@@ -235,7 +244,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     precedes the blobs; there is no earlier site for it to damage.
     """
     folder = _site_folder(folder)
-    session = _Session(transport or _Urllib(), token)
+    session = _Session(transport or _Urllib(), token, waits_for_reset=True)
     branch = _default_branch(session, settings.repository)
     untouchable = settings.untouchable
     started: _Started | None = None
@@ -831,10 +840,12 @@ class _Session:
     Holds the key for the length of a call and never puts it in a message.
     """
 
-    def __init__(self, client: Transport, token: str | None) -> None:
+    def __init__(self, client: Transport, token: str | None, *,
+                 waits_for_reset: bool = False) -> None:
         self._client = client
         self._token = token     # None for the wizard's reads before there is a key
         self._written = False
+        self._waits_for_reset = waits_for_reset     # a publish's (PRESS-0471)
 
     def read(self, url: str, *, empty_ok: bool = False) -> dict | None:
         """GET `url`. With `empty_ok`, a repository with no commits answers
@@ -844,6 +855,19 @@ class _Session:
     def pause(self, seconds: float) -> None:
         """Wait on the transport's clock, which a test records."""
         self._client.wait(seconds)
+
+    def _wait_for_reset(self, seconds: float) -> None:
+        """Wait out a spent hourly allowance a step at a time, the progress
+        record saying how long is left at each (PRESS-0471)."""
+        left = seconds
+        try:
+            while left > 0:
+                progress.waiting(math.ceil(left), "progress.sending")
+                step = min(COUNTDOWN_SECONDS, left)
+                self._client.wait(step)
+                left -= step
+        finally:
+            progress.waiting(None, "progress.sending")
 
     def write(self, method: str, url: str, payload: dict, *,
               outcome_unknown: bool = False, no_content: bool = False,
@@ -874,6 +898,7 @@ class _Session:
             # JSON as a form. A body-less read has nothing to declare.
             headers["Content-Type"] = "application/json"
         attempts = 0
+        reset_waited = False
         while True:
             try:
                 status, response_headers, data = self._client.request(
@@ -892,11 +917,16 @@ class _Session:
 
             hint = _retry_hint(status, response_headers, data)
             if hint is not None:
-                if hint > MAX_WAIT_SECONDS:
+                if (hint.reset and self._waits_for_reset and not reset_waited
+                        and MAX_WAIT_SECONDS < hint.seconds <= MAX_RESET_WAIT_SECONDS):
+                    reset_waited = True
+                    self._wait_for_reset(hint.seconds)
+                    continue
+                if hint.seconds > MAX_WAIT_SECONDS:
                     # Honouring it would block for as long as GitHub asked,
                     # with nothing said to the writer (PRESS-0046).
                     raise RateLimited(
-                        f"GitHub asked us to wait {hint:.0f}s on {method} "
+                        f"GitHub asked us to wait {hint.seconds:.0f}s on {method} "
                         f"{_without_account(url)}, longer than a publish "
                         f"will block for"
                     )
@@ -912,7 +942,7 @@ class _Session:
                 # by our own multiplication is not the writer's problem to be
                 # told about -- it just stops growing (§4.3).
                 self._client.wait(
-                    min(hint * RETRY_BACKOFF ** (attempts - 1),
+                    min(hint.seconds * RETRY_BACKOFF ** (attempts - 1),
                         MAX_WAIT_SECONDS)
                 )
                 continue
@@ -1328,7 +1358,12 @@ def _content_of(blob: dict) -> bytes:
         ) from exc
 
 
-def _retry_hint(status: int, headers: dict[str, str], body: bytes = b"") -> float | None:
+class _Hint(NamedTuple):
+    seconds: float
+    reset: bool = False     # the spent hourly allowance's own reset (PRESS-0471)
+
+
+def _retry_hint(status: int, headers: dict[str, str], body: bytes = b"") -> _Hint | None:
     """The wait GitHub asked for, or None where it asked for none.
 
     A breach of the write pace is answered with a hint rather than a plain
@@ -1352,9 +1387,9 @@ def _retry_hint(status: int, headers: dict[str, str], body: bytes = b"") -> floa
         return None
     if after is not None:
         try:
-            return max(float(after), 0.0)
+            return _Hint(max(float(after), 0.0))
         except (TypeError, ValueError):
-            return RATE_LIMIT_SECONDS
+            return _Hint(RATE_LIMIT_SECONDS)
     if spent:
         # An absolute epoch second, so the wait is what is left of it. A reset
         # that reads as past while GitHub still says the budget is spent means
@@ -1364,9 +1399,9 @@ def _retry_hint(status: int, headers: dict[str, str], body: bytes = b"") -> floa
         try:
             left = float(header["x-ratelimit-reset"]) - time.time()
         except (KeyError, TypeError, ValueError):
-            return RATE_LIMIT_SECONDS
-        return left if left > 0 else RATE_LIMIT_SECONDS
-    return RATE_LIMIT_SECONDS
+            return _Hint(RATE_LIMIT_SECONDS)
+        return _Hint(left, reset=True) if left > 0 else _Hint(RATE_LIMIT_SECONDS)
+    return _Hint(RATE_LIMIT_SECONDS)
 
 
 def _names_the_repository(url: str) -> bool:
