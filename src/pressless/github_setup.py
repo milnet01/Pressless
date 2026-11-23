@@ -112,7 +112,7 @@ def own_name(saved: settings.Settings, folder: Path) -> settings.Settings:
         saved.credentials, github_account=sites.account("github", folder)))
 
 
-def replace(store: str, folder: Path, tokens: Tokens) -> None:
+def store_sign_in(store: str, folder: Path, tokens: Tokens) -> None:
     """A fresh sign-in stored under this site's own name and its first pass
     held, so the next `token` needs no renewal. Under the lock `token` takes,
     or a renewal at the same moment writes its older token over this one."""
@@ -207,16 +207,23 @@ def _page(state: _State, request: Request) -> str | Reply:
                     # Before the store, or a working sign-in is replaced by one that
                     # cannot publish (PRESS-0231 § 4.4). Reach, not a name: an
                     # organisation's repository has no owner who signs in.
-                    pressed = say("github_setup.cannot_write", repository=saved.repository,
-                                  signed_in=github_signin.login(pressed.access, state.transport))
+                    # design.md § Logging: a repository is its short name.
+                    pressed = say("github_setup.cannot_write",
+                                  repository=saved.repository.partition("/")[2],
+                                  signed_in=github_signin.account_name(pressed.access,
+                                                                       state.transport))
                 else:
-                    replace(saved.credentials.store, state.folder, pressed)
+                    store_sign_in(saved.credentials.store, state.folder, pressed)
                     filed = own_name(saved, state.folder)
                     if filed != saved:
                         settings.save(state.folder, filed)
                     return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
             above = message_box("step-hint", html.escape(pressed))
         except publisher.PublishError as exc:
+            above = message_box("failure", state.face.fail(exc, publishing=False))
+        except settings.SettingsError as exc:
+            # After the store: the sign-in is kept, and Settings still names
+            # the entry it did, so the failure is Settings', not the store's.
             above = message_box("failure", state.face.fail(exc, publishing=False))
         except (*credentials.FAILURES, OSError) as exc:
             above = message_box("failure", state.face.fail(

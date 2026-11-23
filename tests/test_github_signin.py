@@ -140,9 +140,9 @@ def test_no_answer_is_unreachable():
     assert REFRESH not in str(raised.value)
 
 
-def test_login_reads_the_user():
+def test_account_name_reads_the_user():
     github = _GitHub((200, {"login": "owner"}))
-    assert github_signin.login(ACCESS, github) == "owner"
+    assert github_signin.account_name(ACCESS, github) == "owner"
     method, url, _body, headers = github.sent[0]
     assert (method, url) == ("GET", f"{publisher.API}/user")
     assert headers["Authorization"] == f"Bearer {ACCESS}"
@@ -183,7 +183,7 @@ def test_a_rate_limit_named_only_in_the_message_is_a_wait_not_a_refusal():
     to sign in again when he only has to wait."""
     github = _GitHub((403, {"message": "You have exceeded a secondary rate limit."}))
     with pytest.raises(publisher.RateLimited):
-        github_signin.login(ACCESS, github)
+        github_signin.account_name(ACCESS, github)
 
 
 def test_a_refused_sign_in_request_is_a_refused_sign_in():
@@ -206,6 +206,34 @@ def test_reaches_reads_the_installations_repositories_where_they_are_chosen():
     assert github_signin.reaches(ACCESS, github_signin.Installation(7, True), "owner/site",
                                  every) is True
     assert every.sent == []
+
+
+def test_installation_reads_past_the_first_page():
+    """§ 4.1. Breaks when `installation` reads one page, so an account that
+    sees more than 100 installations, organisations' included, may not find
+    its own and is sent to install the app again and again."""
+    others = [{"id": number, "app_slug": "another-app", "account": {"login": "owner"}}
+              for number in range(100)]
+    github = _GitHub((200, {"installations": others}),
+                     (200, {"installations": [{"id": 7, "app_slug": APP,
+                                               "account": {"login": "owner"},
+                                               "repository_selection": "all"}]}))
+    assert github_signin.installation(ACCESS, "owner", github) == \
+        github_signin.Installation(7, all_repositories=True)
+    assert [url for _m, url, _b, _h in github.sent] == [
+        f"{publisher.API}/user/installations?per_page=100&page=1",
+        f"{publisher.API}/user/installations?per_page=100&page=2",
+    ]
+
+
+def test_a_renewal_refused_with_a_bare_403_is_a_refused_sign_in():
+    """§ 4.1: a 403 from any request is SignInRefused, a renewal's included,
+    unless it carries an `error`, which a renewal reads as SignedOut."""
+    with pytest.raises(publisher.SignInRefused) as raised:
+        github_signin.refresh(REFRESH, _GitHub((403, b"Forbidden")))
+    assert type(raised.value) is publisher.SignInRefused
+    with pytest.raises(github_signin.SignedOut):
+        github_signin.refresh(REFRESH, _GitHub((403, {"error": "bad_refresh_token"})))
 
 
 def test_reaches_reads_past_the_first_page():

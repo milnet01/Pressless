@@ -141,6 +141,27 @@ def test_finish_refuses_before_any_request():
     assert client.calls == []
 
 
+def test_a_state_outside_ascii_is_a_different_attempt():
+    """INV-3. Breaks when the state is compared as text, which
+    `hmac.compare_digest` refuses with TypeError outside ASCII."""
+    client = _Google((200, {"refresh_token": REFRESH}))
+    attempt = _attempt(client)
+    with pytest.raises(google_signin.Expired):
+        google_signin.finish(attempt, {"state": "\u00e9", "code": CODE}, client)
+    assert client.calls == []
+
+
+def test_begin_without_a_client_builds_none(monkeypatch: pytest.MonkeyPatch):
+    """PRESS-0122 § 4.1: begin makes no request. Breaks when it builds
+    Insights' own client, a TLS context, only to read the time."""
+    def built():
+        raise AssertionError("a client was built")
+
+    monkeypatch.setattr(insights, "own_client", built)
+    attempt, _address = google_signin.begin(REDIRECT)
+    assert attempt.started > 0
+
+
 # --------------------------------------------------------------- INV-4 ----
 
 

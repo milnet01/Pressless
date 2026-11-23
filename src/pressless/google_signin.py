@@ -95,8 +95,9 @@ def available() -> bool:
 
 
 def begin(redirect_uri: str, client: Transport | None = None) -> tuple[Attempt, str]:
-    """A new attempt and the address of Google's sign-in page. No request."""
-    transport = client if client is not None else insights.own_client()
+    """A new attempt and the address of Google's sign-in page. No request, so
+    no client is built: without one, the time is read as `own_client` reads it."""
+    started = client.now() if client is not None else time.time()
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(
@@ -113,7 +114,7 @@ def begin(redirect_uri: str, client: Transport | None = None) -> tuple[Attempt, 
         "access_type": "offline",
         "prompt": "consent",
     })
-    return Attempt(state, verifier, redirect_uri, transport.now()), f"{AUTH_URL}?{query}"
+    return Attempt(state, verifier, redirect_uri, started), f"{AUTH_URL}?{query}"
 
 
 def finish(attempt: Attempt, query: dict[str, str],
@@ -124,7 +125,7 @@ def finish(attempt: Attempt, query: dict[str, str],
     some other attempt is never sent to Google.
     """
     transport = client if client is not None else insights.own_client()
-    if not hmac.compare_digest(query.get("state", ""), attempt.state):
+    if not same_state(query.get("state", ""), attempt.state):
         raise Expired("the sign-in came back for a different attempt")
     if not 0.0 <= transport.now() - attempt.started < ATTEMPT_SECONDS:
         raise Expired("the sign-in took too long")
@@ -143,6 +144,13 @@ def finish(attempt: Attempt, query: dict[str, str],
         "grant_type": "authorization_code",
     }, (query.get("code", ""), attempt.verifier))
     return _field(answer, "refresh_token")
+
+
+def same_state(given: str, expected: str) -> bool:
+    """Whether a returned `state` is the attempt's, in constant time. Compared
+    as bytes: `hmac.compare_digest` raises on text outside ASCII, which anyone
+    can put in the return address."""
+    return hmac.compare_digest(given.encode("utf-8"), expected.encode("utf-8"))
 
 
 def access_token(refresh_token: str, client: Transport | None = None, *,
