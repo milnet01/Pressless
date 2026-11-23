@@ -483,6 +483,95 @@ def test_an_export_handed_over_during_a_fetch_is_fetched_afresh(tmp_path, monkey
     assert "second.jpg" in unfetched.read_text(encoding="utf-8")
 
 
+def test_a_media_download_that_cannot_be_written_keeps_what_it_filled(tmp_path, monkeypatch):
+    """§ 4.4: where writing a media download's files on this computer fails,
+    the gaps step says so, and the places filled before the failure leave
+    the list of gaps.
+
+    Breaks when the failure reads as an unusable download, and the gaps
+    page still lists files that came across."""
+    import shutil
+
+    def fetch_all(export, media, room, *, progress):
+        return {"2012/05/a.jpg": "the old site answered 404",
+                "2012/05/b.jpg": "the old site answered 404"}
+
+    real = shutil.copyfileobj
+
+    def full(source, target, *args, **kwargs):
+        if Path(getattr(target, "name", "")).name == ".b.jpg.part":
+            raise OSError(28, "No space left on device")
+        return real(source, target, *args, **kwargs)
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        _next(browser, "export")
+        _fetch_ended(folder)
+        _through_fetching(browser)
+        monkeypatch.setattr(shutil, "copyfileobj", full)
+        _status, _headers, page = browser.raw(
+            "POST", f"{importing.ADDRESS}/media",
+            _zipped({"2012/05/a.jpg": b"a", "2012/05/b.jpg": b"b"}))
+    finally:
+        served.stop()
+    page = page.decode("utf-8")
+    assert "could not save" in page and "1 was taken from the ZIP file." in page, page
+    assert "That file could not be used" not in page, page
+    left = (folder / "import" / "unfetched.json").read_text(encoding="utf-8")
+    assert "b.jpg" in left and "a.jpg" not in left, left
+
+
+def test_the_fetch_counts_against_its_own_total(tmp_path, monkeypatch):
+    """§ 4.4: the media step shows how far the fetch has got against the
+    number of files the fetch itself is copying.
+
+    Breaks when the page shows the count against another number, such as
+    the export's attachments, so it can read "3 of 0"."""
+    import threading
+
+    counted, let_go = threading.Event(), threading.Event()
+
+    def fetch_all(export, media, room, *, progress):
+        progress(3, 7)
+        counted.set()
+        let_go.wait(5)
+        return {}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        _next(browser, "export")
+        assert counted.wait(5), "the fetch never counted"
+        _status, _headers, page = browser.request("GET", importing.ADDRESS)
+        let_go.set()
+        _fetch_ended(folder)
+    finally:
+        let_go.set()
+        served.stop()
+    assert "3 of 7 so far" in page, page
+
+
+def test_a_kept_report_line_holding_a_line_separator_stays_one_line(tmp_path):
+    """§ 4.8: the kept Report reads back as the lines kept, though a value in
+    one holds a Unicode line or paragraph separator, which the kept text
+    leaves as it is.
+
+    Breaks when the kept text is split at every kind of line end."""
+    from pressless import import_report
+
+    import_report.keep(tmp_path, ["a b", "c d", "e"])
+    assert import_report.kept(tmp_path) == ["a b", "c d", "e"]
+
+
 def test_setups_done_page_offers_import_where_nothing_was_filled():
     """§ 4.1: setup's done page links to /import where the starter was not
     filled and the Store holds no site, and nowhere else."""

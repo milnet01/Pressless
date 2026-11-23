@@ -432,6 +432,9 @@ class _Converter:
         self.dropped.append(f"a social link, which today's site does not show: {address}")
 
     def _text(self, text: str, style: _Style, blocks: _Blocks):
+        # A brace in the post's words goes in as the character reference, as
+        # a leading > does, so a mark the converter did not write never forms.
+        text = text.replace("{", "&#123;")
         if self._preformatted:
             # Each of its newlines is a line; its spaces are the writer's.
             for number, piece in enumerate(text.split("\n")):

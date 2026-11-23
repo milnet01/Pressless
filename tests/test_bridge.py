@@ -5,9 +5,14 @@
 from __future__ import annotations
 
 import ast
+import http.server
 import io
 import json
 import sys
+import threading
+import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -205,10 +210,149 @@ def test_a_fault_in_one_call_is_answered_and_the_next_runs():
     def door(tool, arguments):
         raise RuntimeError("unforeseen")
 
-    first, second = _talk(_modern(1, "tools/call", name="list_entries", arguments={}),
-                          _modern(2, "tools/list"), door=door)
-    assert first["error"]["code"] == -32603 and first["id"] == 1
-    assert second["id"] == 2 and "tools" in second["result"]
+    replies = {reply["id"]: reply for reply in _talk(
+        _modern(1, "tools/call", name="list_entries", arguments={}),
+        _modern(2, "tools/list"), door=door)}
+    assert replies[1]["error"]["code"] == -32603
+    assert "tools" in replies[2]["result"]
+
+
+def test_a_ping_is_answered_while_a_call_waits():
+    """§ 4.4: a call may wait minutes on the door, and an AI app may drop a
+    server whose ping goes unanswered, so a ping is answered meanwhile.
+    Breaks when the bridge reads its next line only after the call ends."""
+    pinged, answered = threading.Event(), []
+
+    class Out(io.StringIO):
+        def write(self, text: str) -> int:
+            if '"id":2' in text:
+                pinged.set()
+            return super().write(text)
+
+    def door(tool, arguments):
+        answered.append(pinged.wait(10))
+        return {"ok": True, "result": {}}
+
+    out = Out()
+    bridge.run(io.StringIO(json.dumps(_modern(1, "tools/call", name="list_entries",
+                                              arguments={})) + "\n"
+                           + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "ping"}) + "\n"),
+               out, door=door)
+    assert answered == [True]
+    assert [json.loads(line)["id"] for line in out.getvalue().splitlines()] == [2, 1]
+
+
+# ------------------------------------------------------------------ INV-15 ---
+
+_HELD = "the door file's token"
+
+
+@contextmanager
+def _listener(tmp_path: Path, monkeypatch, answer: Callable) -> Iterator[list[dict]]:
+    """A server on the door file's port, as after a crash: `answer(handler,
+    heard)` replies to each POST. Yields what it heard, each request's
+    Authorization and body."""
+    heard: list[dict] = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            length = int(self.headers.get("Content-Length") or 0)
+            heard.append({"authorization": self.headers.get("Authorization", ""),
+                          "body": self.rfile.read(length).decode("utf-8")})
+            answer(self, heard[-1])
+
+        def log_message(self, *args: object) -> None:
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        (tmp_path / "assistant-door.json").write_text(json.dumps(
+            {"port": server.server_address[1], "token": _HELD, "version": "0"}),
+            encoding="utf-8")
+        monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path))
+        yield heard
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def _send(handler, body: bytes, length: int | None = None) -> None:
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(body) if length is None else length))
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def _proving(then: Callable) -> Callable:
+    """A listener that holds the token: it proves it, then answers with `then`."""
+    def answer(handler, heard: dict) -> None:
+        scheme, _, nonce = heard["authorization"].partition(" ")
+        if scheme == assistant_tools.PROVE:
+            _send(handler, json.dumps({"proof": assistant_tools.proof(_HELD, nonce)}).encode())
+        else:
+            then(handler, heard)
+    return answer
+
+
+def test_an_impostor_on_the_port_gets_nothing(tmp_path, monkeypatch):
+    """INV-15, § 6: something else on a crashed Pressless's old port is sent
+    neither the token nor the call, and its answer is not believed. Breaks
+    when the bridge posts the call before the door proves the token."""
+    forged = json.dumps({"ok": True, "result": {"forged": True}, "proof": "0" * 64}).encode()
+    with _listener(tmp_path, monkeypatch,
+                   lambda handler, heard: _send(handler, forged)) as heard:
+        reply = bridge._post("save_entry", {"body": "a private draft"})
+    assert reply is None
+    assert len(heard) == 1 and heard[0]["authorization"].startswith(assistant_tools.PROVE + " ")
+    assert "a private draft" not in json.dumps(heard) and _HELD not in json.dumps(heard)
+
+
+def test_a_proved_door_gets_the_call(tmp_path, monkeypatch):
+    """INV-15's other half: a listener proving the token is sent the call
+    with the token, and its reply is believed."""
+    def reply(handler, heard: dict) -> None:
+        _send(handler, json.dumps({"ok": True, "result": {"entries": []}}).encode())
+
+    with _listener(tmp_path, monkeypatch, _proving(reply)) as heard:
+        assert bridge._post("list_entries", {}) == {"ok": True, "result": {"entries": []}}
+    assert heard[1]["authorization"] == f"Bearer {_HELD}"
+    assert json.loads(heard[1]["body"])["tool"] == "list_entries"
+
+
+def test_a_reply_past_the_limit_is_not_believed(tmp_path, monkeypatch):
+    """§ 4.4: a reply larger than any door sends is refused, not read whole.
+    Breaks when the reply is read with no cap."""
+    monkeypatch.setattr(bridge, "REPLY_LIMIT", 1000)
+    big = json.dumps({"ok": True, "result": {"text": "x" * 5000}}).encode()
+    with _listener(tmp_path, monkeypatch, _proving(lambda handler, heard: _send(handler, big))):
+        assert bridge._post("list_entries", {}) is None
+
+
+def test_a_trickling_reply_ends_at_the_timeout(tmp_path, monkeypatch):
+    """§ 4.4: the timeout is the whole call's, so a reply sent a byte at a
+    time cannot hold the bridge past it. Breaks when the timeout applies
+    to each read alone."""
+    monkeypatch.setattr(bridge, "TIMEOUT_SECONDS", 0.5)
+    stop = threading.Event()
+
+    def trickle(handler, heard: dict) -> None:
+        _send(handler, b"", length=10_000)
+        while not stop.wait(0.05):
+            handler.wfile.write(b" ")
+            handler.wfile.flush()
+
+    with _listener(tmp_path, monkeypatch, _proving(trickle)):
+        started = time.monotonic()
+        try:
+            reply = bridge._post("list_entries", {})
+        finally:
+            stop.set()
+        took = time.monotonic() - started
+    assert took < 5, took
+    assert reply is not None and "took too long to answer" in reply["said"]
 
 
 def test_a_slow_door_is_not_called_closed(tmp_path, monkeypatch):

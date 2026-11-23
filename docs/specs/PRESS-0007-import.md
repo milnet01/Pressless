@@ -224,6 +224,7 @@ table's rows make a line or a paragraph.
 | `<h1>` to `<h6>` | its words, as a paragraph of their own; listed, since Marks has no heading |
 | `<figure>` otherwise | its contents |
 | a character reference such as `&nbsp;` | kept as written in text; decoded in an address before the address becomes a link's or is traced to a picture |
+| `{` in text | `&#123;`, so no mark forms that the converter did not write |
 
 **A wrap mark never begins or ends with whitespace, and never crosses a
 line.** For every wrap run the table emits — bold, italic, colour and link —

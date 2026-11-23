@@ -79,7 +79,9 @@ def kept(held: Path) -> list[str] | None:
         text = (held / _REPORT).read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return None
-    return text.splitlines()
+    # Split at the newlines `keep` wrote alone: a value may hold another
+    # kind of line end, such as U+2028, which `printable` leaves in.
+    return text.removesuffix("\n").split("\n") if text else []
 
 
 def rows(said: list[str]) -> str:

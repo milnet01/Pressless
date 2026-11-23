@@ -52,6 +52,7 @@ __all__ = [
     "Found",
     "ImportStopped",
     "Lookup",
+    "MediaNotWritten",
     "Report",
     "autop",
     "forget_folder_left",
@@ -122,8 +123,8 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 _RESIZED = re.compile(r"-\d+x\d+(?=\.[^./]+$)")
 _GALLERY = re.compile(r"\[gallery\b[^\]]*\]")
 _UPLOADS = "/uploads/"
-# A Report reason _bring.bring_in matches to put the fetch's own reason in its
-# place, so it is spelled once.
+# A Report reason _bring._unfetched matches to put the fetch's own reason in
+# its place, so it is spelled once.
 MISSING = "its original is missing"
 
 # §4.9, matched as today's generator matches them.
@@ -175,11 +176,14 @@ class Export:
 
 # Before the root element: space, the XML declaration, and comments.
 _PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->", re.S)
-# An export may hold one element for each of these bytes, and a few more.
+# An export may hold one element for each of these bytes, and a few more;
+# each attribute counts as an element, since each costs the tree an entry.
 # The test suite's exports take about twice as many bytes for each, and
 # each element read takes some ninety bytes of memory (measured
-# 2026-11-17). So a tree is never many times what a real export of its size
-# takes, as a file of empty elements would build (PRESS-0125 § 4.3).
+# 2026-11-17); a real export takes over fifty bytes for each element or
+# attribute (measured 2026-11-23). So a tree is never many times what a
+# real export of its size takes, as a file of empty elements, or of one
+# element with endless attributes, would build (PRESS-0125 § 4.3).
 _BYTES_PER_ELEMENT = 24
 _FEW_ELEMENTS = 10_000
 _PIECE = 1 << 20
@@ -198,32 +202,37 @@ def _declares(data: bytes) -> bool:
 
 def read(export: Path) -> Export:
     """The export, refused before parsing where it declares anything
-    (PRESS-0125 § 4.3)."""
+    (PRESS-0125 § 4.3). It is fed to the parser a piece at a time from the
+    file, so only its tree is ever held whole."""
     export = Path(export)
-    try:
-        data = export.read_bytes()
-    except OSError as exc:
-        raise ImportStopped(
-            f"the export {export.name} cannot be read ({type(exc).__name__})") from None
     refused = ImportStopped(f"{export.name} is not a WordPress export Pressless can read")
-    if _declares(data):
-        raise refused
-    room = len(data) // _BYTES_PER_ELEMENT + _FEW_ELEMENTS
     root, count = None, 0
     try:
-        # _declares refused every declaration first.
-        parser = ET.XMLPullParser(events=("start",))
-        for at in range(0, len(data), _PIECE):
-            parser.feed(data[at:at + _PIECE])
-            for _event, element in parser.read_events():
-                root = element if root is None else root
-                count += 1
-            if count > room:
+        with export.open("rb") as file:
+            room = os.fstat(file.fileno()).st_size // _BYTES_PER_ELEMENT + _FEW_ELEMENTS
+            piece = file.read(_PIECE)
+            # The prolog is read in the first piece; one longer than that,
+            # which WordPress never writes, is refused with it.
+            if _declares(piece):
                 raise refused
-        parser.close()
-    except ET.ParseError as exc:
+            # _declares refused every declaration first.
+            parser = ET.XMLPullParser(events=("start",))
+            while piece:
+                parser.feed(piece)
+                for _event, element in parser.read_events():
+                    root = element if root is None else root
+                    count += 1 + len(element.attrib)
+                if count > room:
+                    raise refused
+                piece = file.read(_PIECE)
+            parser.close()
+    except (OSError, ET.ParseError) as exc:
         raise ImportStopped(
             f"the export {export.name} cannot be read ({type(exc).__name__})") from None
+    except (ValueError, LookupError):
+        # The encoding it declares is one the parser cannot read: a
+        # multi-byte one, or a name Python does not know.
+        raise refused from None
     if root is None:
         raise ImportStopped(f"the export {export.name} cannot be read (ParseError)")
     # Read off the document, never pinned: WXR has shipped several.
@@ -240,7 +249,7 @@ def read(export: Path) -> Export:
                             "content": "http://purl.org/rss/1.0/modules/content/"})
 
 
-def _field(element, name: str, ns) -> str:
+def _field(element: ET.Element, name: str, ns: dict[str, str]) -> str:
     return (element.findtext(f"wp:{name}", "", ns) or "").strip()
 
 
@@ -334,7 +343,7 @@ def _comments(item, ns) -> tuple[tuple[store.Comment, ...], list[str]]:
 _DRAFT_STATUSES = ("draft", "private", "pending", "future")
 
 
-def _items(channel, ns, *, page_statuses: Container[str] | None = None,
+def _items(channel: ET.Element, ns: dict[str, str], *, page_statuses: Container[str] | None = None,
            titled_drafts: bool = False, any_date: bool = False) -> list[_Item]:
     """Every carried post, and every page whose status is in `page_statuses`,
     or every page where that is None. With `titled_drafts`, a draft whose
@@ -469,11 +478,13 @@ def _folded(name: str) -> str:
                    for letter in name)
 
 
-def _attachments(channel, ns, originals: Path, *, strict: bool = True,
-                 shown: Callable[[Path], bool] | None = None):
+def _attachments(channel: ET.Element, ns: dict[str, str], originals: Path, *,
+                 strict: bool = True, is_photograph: Callable[[Path], bool] | None = None,
+                 ) -> tuple[dict[str, str], Lookup, Lookup, list[tuple[str, str]]]:
     """Every attachment, a file as well as a photograph, whose original is
     in `originals`, by its upload path, with its Store name; the two
-    lookups, answering for those `shown` admits (all, where none is given);
+    lookups, answering only for a photograph where `is_photograph` is given
+    (for every attachment held, where it is not);
     and each attachment not held, with why. A
     name two attachments share, compared without regard to case, takes its
     upload month in front (decision 6). Where not `strict`, an attachment
@@ -523,7 +534,7 @@ def _attachments(channel, ns, originals: Path, *, strict: bool = True,
         names[upload_path] = name
         by_id_path[post_id] = upload_path
     pictures = {upload_path: name for upload_path, name in names.items()
-                if shown is None or shown(originals / upload_path)}
+                if is_photograph is None or is_photograph(originals / upload_path)}
 
     def by_address(address: str) -> str | None:
         upload_path = _upload_path(address)
@@ -693,7 +704,7 @@ def _furniture(templates: Path) -> dict[str, str]:
 # ------------------------------------------------------------- the run ----
 
 
-def _old_site(channel, ns) -> str:
+def _old_site(channel: ET.Element, ns: dict[str, str]) -> str:
     base = (_field(channel, "base_blog_url", ns) or _field(channel, "base_site_url", ns)
             or (channel.findtext("link") or "").strip())
     return urlparse(base).netloc
@@ -869,6 +880,7 @@ from ._bring import (  # noqa: E402
     FOLDER,
     IMPORT_FOLDER,
     MEDIA_FOLDER,
+    MediaNotWritten,
     bring_in,
     finish,
     recover,
