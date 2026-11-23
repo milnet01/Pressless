@@ -379,14 +379,25 @@ def _navigation(links: list[_Link], listed: list[str]) -> str:
 # -------------------------------------------------- media download (§ 4.4) ----
 
 
+class MediaNotWritten(ImportStopped):
+    """unpack_media could not write a file on this computer. `filled` are
+    the places it filled before that, which stay filled; `why` is the
+    system's reason in plain words."""
+
+    def __init__(self, message: str, filled: tuple[str, ...], why: str) -> None:
+        super().__init__(message)
+        self.filled, self.why = filled, why
+
+
 def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str],
                  room: Callable[[], int]) -> tuple[str, ...]:
-    """Fill each missing place from a media download: a member whose name is
-    the place, or ends in `/<place>`, is unpacked to `media/<place>`. Every
-    member is checked first, as a site file's are, and the members taken must
-    fit `room()`; a refused download writes nothing. A place `_place` would
-    refuse is never filled, nor one a member larger than the Builder keeps
-    would fill. Returns the places filled."""
+    """Fill each missing place from a media download: the first member whose
+    name is the place, or ends in `/<place>`, is unpacked to `media/<place>`.
+    Every member is checked first, as a site file's are, and the members
+    taken must fit `room()`; a refused download writes nothing. A place
+    `_place_refused` refuses is never filled, nor one a member larger than
+    the Builder keeps would fill. Returns the places filled; a write that
+    fails raises MediaNotWritten, naming those filled before it."""
     # The places are fetch_all's keys, and one with no usable place is keyed
     # by its raw address, which can be absolute: joined onto `media` it would
     # replace it outright. So each place is checked here, not only the names.
@@ -399,32 +410,45 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
                     raise ImportStopped("the media download holds a name outside its folder")
                 if sitefile.is_link(info):
                     raise ImportStopped("the media download holds a link")
-            named = [(_member_name(info), info) for info in infos if not info.is_dir()]
+            # Each member by every `/`-ending of its name, the first member in
+            # the download's order kept: one look-up for each place.
+            first: dict[str, zipfile.ZipInfo] = {}
+            for info in infos:
+                if not info.is_dir():
+                    parts = _member_name(info).split("/")
+                    for at in range(len(parts)):
+                        first.setdefault("/".join(parts[at:]), info)
             wanted: dict[str, zipfile.ZipInfo] = {}
             for place in missing:
                 if (_place_refused(place) is not None
                         or not (media / place).resolve().is_relative_to(inside)
                         or (media / place).is_file()):
                     continue
-                key = unicodedata.normalize("NFC", place)
-                for name, info in named:
-                    if name == key or name.endswith(f"/{key}"):
-                        if info.file_size <= builder.FILE_LARGEST:
-                            wanted[place] = info
-                        break
+                info = first.get(unicodedata.normalize("NFC", place))
+                if info is not None and info.file_size <= builder.FILE_LARGEST:
+                    wanted[place] = info
             if sum(info.file_size for info in wanted.values()) > room():
                 raise ImportStopped("the media download's files are larger than the room "
                                     "on this drive")
+            filled: list[str] = []
             for place, info in wanted.items():
                 target = media / place
-                target.parent.mkdir(parents=True, exist_ok=True)
                 part = target.with_name(f".{target.name}.part")
                 try:
+                    target.parent.mkdir(parents=True, exist_ok=True)
                     with held.open(info) as unpacked, open(part, "wb") as out:
                         shutil.copyfileobj(unpacked, out)
                     part.replace(target)
+                except OSError as exc:
+                    # This computer's write, not the download: a fault in the
+                    # download's own data is BadZipFile.
+                    why = os_reason.of(exc)
+                    raise MediaNotWritten(
+                        f"the media download's files could not be written: {why}",
+                        tuple(sorted(filled)), why) from None
                 finally:
                     part.unlink(missing_ok=True)
+                filled.append(place)
     except (zipfile.BadZipFile, OSError) as exc:
         raise ImportStopped(f"the media download could not be read "
                             f"({type(exc).__name__})") from None

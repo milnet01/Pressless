@@ -1370,8 +1370,10 @@ def test_a_media_zip_fills_gaps_only(tmp_path):
         unpack_media(download("uploads/2014/07/other.jpg"), media, missing, lambda: 3)
 
 
+# 2013/06/CON.jpg holds no `:`, so on every system only the place check
+# refuses it.
 @pytest.mark.parametrize("place", ["ABSOLUTE", "C:/Users/u/Startup/x.bat",
-                                   "http://old.example.org/x.jpg"])
+                                   "http://old.example.org/x.jpg", "2013/06/CON.jpg"])
 def test_a_media_zip_fills_only_places_import_may_use(tmp_path, place):
     """PRESS-0125 INV-6: a missing place keyed by an attachment's raw address,
     as fetch_all keys one with no usable place, is never filled, so no member
@@ -1424,6 +1426,32 @@ def test_a_media_zip_member_larger_than_a_file_may_be_is_not_taken(tmp_path, mon
 
     assert filled == ("2013/06/small.jpg",), filled
     assert not (media / "2013/06/big.jpg").exists()
+
+
+def test_a_media_zip_takes_the_first_member_naming_a_place(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.4: where several members end in a place, the first in
+    the download's order fills it, and a first one too large fills nothing
+    rather than giving way to a later one.
+
+    Breaks when a later member wins, as an index keeping the last would."""
+    import zipfile
+
+    from pressless import builder
+    from pressless_import import unpack_media
+
+    monkeypatch.setattr(builder, "FILE_LARGEST", 4)
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("a/2013/06/x.jpg", "one")
+        out.writestr("b/2013/06/x.jpg", "two")
+        out.writestr("a/2013/06/y.jpg", "12345")
+        out.writestr("b/2013/06/y.jpg", "1234")
+
+    filled = unpack_media(made, media, ("2013/06/x.jpg", "2013/06/y.jpg"), lambda: 10**9)
+
+    assert filled == ("2013/06/x.jpg",), filled
+    assert (media / "2013/06/x.jpg").read_text() == "one"
 
 
 def test_a_media_zip_matches_names_as_their_maker_wrote_them(tmp_path):
@@ -1481,6 +1509,40 @@ def test_a_media_zip_follows_no_link_out_of_media(tmp_path):
 
     assert unpack_media(made, media, ("2013/06/x.jpg",), lambda: 10**9) == ()
     assert not list(outside.rglob("*"))
+
+
+def test_a_media_zip_that_cannot_be_written_keeps_what_it_filled(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.4: a write on this computer that fails stops the
+    unpacking with a stop saying so, not that the download is unreadable,
+    and names the places already filled.
+
+    Breaks when a failed write is reported as an unreadable download, and
+    the places it filled are lost."""
+    import zipfile
+
+    from pressless_import import MediaNotWritten, unpack_media
+
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("2013/06/a.jpg", "a")
+        out.writestr("2013/06/b.jpg", "b")
+    real = shutil.copyfileobj
+
+    def full(source, target, *args, **kwargs):
+        if Path(target.name).name == ".b.jpg.part":
+            raise OSError(28, "No space left on device")
+        return real(source, target, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "copyfileobj", full)
+    with pytest.raises(MediaNotWritten) as stopped:
+        unpack_media(made, media, ("2013/06/a.jpg", "2013/06/b.jpg"), lambda: 10**9)
+
+    assert stopped.value.filled == ("2013/06/a.jpg",), stopped.value.filled
+    assert "could not be read" not in str(stopped.value), stopped.value
+    assert (media / "2013/06/a.jpg").read_text() == "a"
+    assert not (media / "2013/06/b.jpg").exists()
+    assert not list(media.rglob(".*.part"))
 
 
 def test_a_stop_leaves_the_store_empty(tmp_path):

@@ -1799,6 +1799,10 @@ _WORDS: dict[str, str] = {
     "import.gaps.refused": (
         "That file could not be used. Choose a ZIP file of the uploads folder."
     ),
+    "import.gaps.unwritten": (
+        "Pressless could not save every file from that ZIP file on this computer: {why}. "
+        "The ones it saved are kept."
+    ),
     "import.look": (
         "Your WordPress theme does not come across, so choose how your site looks. You "
         "can change it later on the Look screen."

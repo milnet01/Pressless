@@ -201,7 +201,10 @@ the members taken must fit `room()`.
 Other members are ignored. A place `_place` would refuse is never filled:
 `fetch_all` keys an attachment with no usable place by its raw address,
 which can be absolute. Nor is a place whose file would land outside
-`import/media/`, or one whose member is over `builder.FILE_LARGEST`.
+`import/media/`, or one whose first matching member is over `builder.FILE_LARGEST`.
+A file that cannot be written on this computer stops the unpacking
+(`MediaNotWritten`) with the system's reason, not as an unusable
+download; the places filled before it stay filled and leave the gaps.
 A member's name is matched as its maker wrote it: UTF-8 without the ZIP's
 UTF-8 flag, and accents composed.
 
