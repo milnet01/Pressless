@@ -1172,19 +1172,25 @@ globalThis.fetch = (address, request) => {
   answer(JSON.parse(process.argv[3]));
   answer = undefined;
   await pause(200);
-  process.stdout.write(JSON.stringify(posts));
+  process.stdout.write(JSON.stringify({posts, failure: element("#failure").innerHTML}));
 })();
 """
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 @pytest.mark.parametrize(("pages", "reply", "saved_as"), [
-    ("rename", {"published": True, "address": "/page?kind=pages&name=new"}, "new"),
+    ("rename", {"published": True, "moved": True, "address": "/page?kind=pages&name=new"},
+     "new"),
     ("rename", {"published": False, "hint": "pages.hint", "address": "/page?kind=pages&name=old"},
      "old"),
     ("remove", {"published": False, "failure": "x", "address": "/page?kind=pages&name=old"},
      "old"),
-    ("remove", {"published": True, "address": "/"}, None),
+    ("remove", {"published": True, "moved": True, "address": "/"}, None),
+    # The outcome unknown: the old file is gone, so nothing saves to it.
+    ("rename", {"published": False, "moved": True, "failure": "unknown",
+                "address": "/page?kind=pages&name=new"}, None),
+    ("remove", {"published": False, "moved": True, "failure": "unknown", "address": "/pages"},
+     None),
 ])
 def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, saved_as,
                                                                   tmp_path):
@@ -1192,14 +1198,21 @@ def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, 
     save beside it, which would write to the page being moved. Once the reply
     comes, the edit is saved where the page now is, before the editor leaves:
     under its new name after a rename, its own where nothing moved. A removed
-    page takes it along, as Remove's question says. Breaks when the button
-    posts without holding saves back."""
+    page takes it along, as Remove's question says. After an outcome
+    unknown nothing more is saved, so its failure stays shown. Breaks
+    when the button posts without holding saves back, or a save after an
+    unknown outcome goes to the binned page and writes over its failure."""
     harness = tmp_path / "reshape.js"
     harness.write_text(_RESHAPE_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
-    answered = {"notices": "", "failure": None, "hint": None, "busy": False, **reply}
+    answered = {"notices": "", "failure": None, "hint": None, "busy": False, "moved": False,
+                **reply}
     run = subprocess.run([_NODE, str(harness), pages, json.dumps(answered)],  # noqa: S603
                          capture_output=True, check=True, timeout=30)
-    posts = json.loads(run.stdout)
+    seen = json.loads(run.stdout)
+    posts = seen["posts"]
+    # A moved page's failure stays shown: no later save writes over it.
+    if answered["moved"]:
+        assert seen["failure"] == (answered["failure"] or "")
     assert [post["address"] for post in posts if post["during"]] == []
     saves = [post for post in posts if post["address"] == "/page/save"]
     if saved_as is None:
@@ -1365,3 +1378,28 @@ def test_the_menu_view_keeps_a_link_the_save_will_post(tmp_path):
     assert seen == {"alone": True, "besideEmpty": [True, False], "besideTyped": [False, False]}
     assert "if (lastSent(link)) return;" in script
     assert 'remove.disabled = lastSent(item.link);' in script
+
+
+# Pressless does not answer a Remove or Rename at all.
+_UNANSWERED_HARNESS = _STAND_IN + """
+globalThis.fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+%s
+(async () => {
+  await button.handlers.click();
+  process.stdout.write(JSON.stringify({failure: element("#failure").innerHTML}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize("pages", ["rename", "remove"])
+def test_no_answer_says_why_saving_stopped(pages, tmp_path):
+    """A Remove, Rename or switch that reaches no answer stops saving, and
+    says so. Breaks when the failure box is emptied instead, leaving "Not
+    saved" with no reason."""
+    harness = tmp_path / "unanswered.js"
+    harness.write_text(_UNANSWERED_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), pages], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    assert json.loads(run.stdout)["failure"] == "script.page.unreachable"
+    assert page_editor._PAGE_SCRIPT.count('stop(say("script.page.unreachable"))') == 2

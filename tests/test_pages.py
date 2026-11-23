@@ -306,8 +306,14 @@ def test_a_failed_remove_or_rename_puts_back(tmp_path, monkeypatch, route, outco
         assert after == before
         assert not _live(folder, "pages", "our-story").exists()
         assert reply["address"] == "/page?kind=pages&name=about"
+        assert reply["moved"] is False
     else:
-        assert after != before
+        # Each file as the press left it, none put back.
+        assert after["pages/about.html"] is None
+        assert after["furniture/navigation.html"] != before["furniture/navigation.html"]
+        assert after["forwards/pages.json"] != before["forwards/pages.json"]
+        assert _live(folder, "pages", "our-story").exists() == (route == "rename")
+        assert reply["moved"] is True
 
 
 @pytest.mark.parametrize("route", ["remove", "rename"])

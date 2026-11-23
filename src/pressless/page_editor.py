@@ -1300,9 +1300,11 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
             address = editor.page_address(store.PAGES_FOLDER, editor.name_address(to))
         else:
             address = editor.PAGES_ADDRESS  # § 4.4: the list, as after a discard
+        # Gone where it published, and where its outcome is unknown.
+        moved = not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file()
     published = hint is None and failure is None
     told(pressing.ended(pressing.PUBLISH, published, failure))
-    return editor.json_reply({"published": published, "failure": failure,
+    return editor.json_reply({"published": published, "moved": moved, "failure": failure,
                   "hint": say(hint) if hint else None,
                   "notices": render_notices(notices), "busy": False, "address": address})
 
@@ -1469,7 +1471,7 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
         document.getElementById("failure").innerHTML = reply.failure || "";
         frame.src = reply.preview ? reply.preview + "?n=" + Date.now() : "about:blank";
       } catch (error) {
-        stop("");
+        stop(say("script.page.unreachable"));
       } finally {
         free();
         release();
@@ -1527,28 +1529,34 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
         document.getElementById("failure").innerHTML = reply.failure || "";
         said.textContent = reply.published ? say("script.press.published")
           : reply.hint ? standing() : say("script.press.not_published");
-        if (reply.published && renaming) {
-          state.name = new URLSearchParams(reply.address.split("?")[1]).get("name");
-        } else if (reply.published) {
-          stopped = true;
+        // Published, or an outcome unknown with the old file already gone:
+        // the page is no longer where this window saves. A renamed page saves
+        // on under its new name, unless a failure says how the press ended:
+        // a save's answer would write over it.
+        if (reply.moved) {
+          const now = new URLSearchParams(reply.address.split("?")[1] || "").get("name");
+          if (renaming && now && !reply.failure) state.name = now; else stopped = true;
         }
       } catch (error) {
-        said.textContent = standing(); stop("");
+        said.textContent = standing(); stop(say("script.page.unreachable"));
       } finally {
         pressing = false;
         release();
       }
-      if (!reply || reply.busy || !reply.published) return;
+      if (!reply || reply.busy || !reply.moved) return;
       await settle(true);
       release();
-      if (!reply.notices) window.location.href = reply.address;
       // Read first, then on: this page's own editor may name a page that has
       // gone, and a save there would bring it back.
-      else {
-        stopped = true;
-        document.getElementById("notices").closest("dialog").addEventListener(
-          "close", () => { window.location.href = reply.address; }, {once: true});
-      }
+      const reading = ["notices", "failure"].filter((id) => reply[id])
+        .map((id) => document.getElementById(id).closest("dialog"));
+      if (!reading.length) { window.location.href = reply.address; return; }
+      stopped = true;
+      let open = reading.length;
+      reading.forEach((box) => box.addEventListener("close", () => {
+        open -= 1;
+        if (!open) window.location.href = reply.address;
+      }, {once: true}));
     });
   });
 })();

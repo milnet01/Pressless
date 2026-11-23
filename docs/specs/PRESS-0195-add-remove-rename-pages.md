@@ -240,10 +240,12 @@ reads as its label.
 reverse order: text is written, absent is binned. An
 `publisher.OutcomeUnknown` is not put back, as PRESS-0014 §4.7 has it.
 
-The reply is JSON: `published`, `failure`, `hint`, `notices`, `busy`,
-and `address` — the list after a Remove, the editor for `new` after a
-Rename, the page's own editor otherwise. `hint` is null except on a
-refusal. A `busy` reply adds `said`, the running press's words. Its
+The reply is JSON: `published`, `moved`, `failure`, `hint`, `notices`,
+`busy`, and `address` — the list after a Remove, the editor for `new`
+after a Rename, the page's own editor otherwise. `moved` is true where
+`name` is no longer on disk: published, or an outcome unknown. The
+editor then saves no more to `name`, and leaves for `address` once its
+notices and failure are read. `hint` is null except on a refusal. A `busy` reply adds `said`, the running press's words. Its
 notices say where `menu.remove` raised `Unusual` or found no link to
 `name`, and where the header or footer still holds `pages/<name>.html`.
 
