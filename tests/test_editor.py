@@ -1073,7 +1073,8 @@ def test_press_says_publishing_the_instant_it_is_clicked(answer, tmp_path):
     seen = json.loads(run.stdout)
     assert seen["clicked"] == ["script.press.checking", True]
     # PRESS-0345 INV-6: the press is posted only after Publish now.
-    assert seen["posted"][-1] == "check" if answer == "wait" else "/publish"
+    assert seen["posted"][-2:] == (["/save", "check"] if answer == "wait"
+                                   else ["check", "/publish"])
     if answer == "go":
         assert seen["shown"] == ["script.press.checking", "script.press.publishing",
                                  "script.press.published"]
