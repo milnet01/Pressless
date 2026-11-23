@@ -9079,7 +9079,7 @@ starts the way the local web-server manager asks.
 
 Every valid finding of the review of the code changed since 1.0.0-4: review-code, review-code --performance, review-tests, review-readability and verify-delivery. Filed by subject, and fixed before 1.3.0's work starts. The review records stay outside this public repository, in the gitignored local-archive/reviews/.
 
-- 🚧 [PRESS-0440] **Second-round review fixes: the Face core (server, log, themes, progress).**
+- ✅ [PRESS-0440] **Second-round review fixes: the Face core (server, log, themes, progress).**
   Subject 01. Review types: Codebase, Test.
   Findings: review-code lane-01, review-readability lane-01, and the
   performance and test reviews' findings on these files and their tests.
@@ -9087,6 +9087,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   page script's top-level const and let twice, so its controls may
   stop (review-code HIGH, read not run: prove it in a browser first).
   Untested: Face.setting_up's site_folder branch, after_restart.
+  Shipped 2026-11-23, f724b6f..834ce98 (merged 3b8e00b). 32 findings: 23
+  fixed, 3 queued (PRESS-0468, PRESS-0469, PRESS-0470), 6 dismissed. The
+  document.write HIGH reproduced in headless Chrome ("Identifier
+  'sendFetch' has already been declared") and is fixed: a page written
+  over a Face page keeps its buttons, with a node test running the script
+  twice. A choice saved over an unreadable file keeps the others; every
+  answer shares one set of headers; the last-resort answer cannot fail
+  silently. PRESS-0003, PRESS-0011, PRESS-0435 and design.md § Logging
+  amended. Full suite 2567 passed, 28 skipped.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/01.json.
   **Layman:** Bug fixes and tidy-ups in the part of Pressless that serves its screens to your browser.
   Kind: review-fix.
   Source: review-2026-11-23.
