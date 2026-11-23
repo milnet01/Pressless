@@ -23,6 +23,12 @@ pytestmark = pytest.mark.skipif(sys.platform == "win32" or _BASH is None or _GIT
                                 reason="the gate script runs under bash, with git, on Linux")
 
 
+def _git_env(home: Path) -> dict[str, str]:
+    """No config from this machine: its signing or hooks path would act on the
+    scratch repository's commits."""
+    return {"PATH": "/usr/bin:/bin", "HOME": str(home), "GIT_CONFIG_NOSYSTEM": "1"}
+
+
 def _repository(root: Path) -> None:
     (root / "scripts").mkdir(parents=True)
     shutil.copy(ROOT / "scripts" / "windows-gate.sh", root / "scripts")
@@ -32,7 +38,8 @@ def _repository(root: Path) -> None:
     for command in (["init", "-q"], ["add", "."],
                     ["-c", "user.name=Test", "-c", "user.email=test@example.invalid",
                      "commit", "-q", "-m", "start"]):
-        subprocess.run([_GIT, *command], cwd=root, check=True)  # noqa: S603 -- fixed arguments
+        subprocess.run([_GIT, *command], cwd=root, env=_git_env(root.parent),  # noqa: S603 -- fixed arguments
+                       check=True)
 
 
 def _stand_ins(bin_dir: Path, kept: Path, *, ssh_fails: str = "", scp_fails: str = "") -> None:
@@ -53,14 +60,17 @@ def _stand_ins(bin_dir: Path, kept: Path, *, ssh_fails: str = "", scp_fails: str
         (bin_dir / name).chmod(0o755)
 
 
-def _gate(tmp_path: Path, **failing: str) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
-    """The gate run against a stand-in box. Returns the run, the repository and
-    the folder holding what scp was given."""
+def _gate(tmp_path: Path, change=None, **failing: str) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+    """The gate run against a stand-in box. `change` gets the repository
+    first. Returns the run, the repository and the folder holding what scp
+    was given."""
     repo, kept = tmp_path / "repo", tmp_path / "sent"
     _repository(repo)
     kept.mkdir()
     _stand_ins(tmp_path / "bin", kept, **failing)
-    env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    if change:
+        change(repo)
+    env = {**_git_env(tmp_path), "PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin"}
     ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box"], cwd=repo, env=env,  # noqa: S603
                          capture_output=True, text=True, timeout=60, check=False)
     return ran, repo, kept
@@ -69,14 +79,7 @@ def _gate(tmp_path: Path, **failing: str) -> tuple[subprocess.CompletedProcess[s
 def test_a_tracked_file_deleted_but_not_staged_does_not_fail_the_gate(tmp_path: Path):
     """Breaks when the zip step reads every name ls-files lists, and a file
     deleted from disk but not staged fails the gate as if the suite had."""
-    repo, kept = tmp_path / "repo", tmp_path / "sent"
-    _repository(repo)
-    kept.mkdir()
-    _stand_ins(tmp_path / "bin", kept)
-    (repo / "removed.txt").unlink()
-    env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
-    ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box"], cwd=repo, env=env,  # noqa: S603
-                         capture_output=True, text=True, timeout=60, check=False)
+    ran, _, kept = _gate(tmp_path, change=lambda repo: (repo / "removed.txt").unlink())
     assert ran.returncode == 0, ran.stderr
     sent = next(kept.glob("*.zip"))
     with zipfile.ZipFile(sent) as archive:
@@ -96,10 +99,12 @@ def test_a_box_that_cannot_be_reached_exits_2(tmp_path: Path, said: str):
 
 
 @pytest.mark.parametrize("said", ["Host key verification failed.",
-                                  "box: Permission denied (publickey)."])
+                                  "box: Permission denied (publickey).",
+                                  "Connection timed out during banner exchange"])
 def test_a_box_that_answers_and_refuses_fails_the_gate(tmp_path: Path, said: str):
     """Breaks when every ssh 255 is read as an unreachable box, so a changed
-    host key or a refused key passes the gate with a warning."""
+    host key or a refused key passes the gate with a warning. A box that
+    connected and then sent no greeting is not unreachable either."""
     ran, _, _ = _gate(tmp_path, ssh_fails=said, scp_fails=said)
     assert ran.returncode == 1, ran.stderr
     assert said in ran.stderr
@@ -120,15 +125,12 @@ def test_a_file_deleted_here_is_absent_on_the_box(tmp_path: Path):
 
     The box's own steps are PowerShell, so they are replayed here with the
     same git commands the script sends, on what the script sent."""
-    repo, kept = tmp_path / "repo", tmp_path / "sent"
-    _repository(repo)
-    kept.mkdir()
-    _stand_ins(tmp_path / "bin", kept)
-    subprocess.run([_GIT, "rm", "-q", "removed.txt"], cwd=repo, check=True)  # noqa: S603
-    subprocess.run([_GIT, "mv", "kept.txt", "moved.txt"], cwd=repo, check=True)  # noqa: S603
-    env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
-    ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box"], cwd=repo, env=env,  # noqa: S603
-                         capture_output=True, text=True, timeout=60, check=False)
+    def delete_and_move(repo: Path) -> None:
+        for command in (["rm", "-q", "removed.txt"], ["mv", "kept.txt", "moved.txt"]):
+            subprocess.run([_GIT, *command], cwd=repo, env=_git_env(tmp_path),  # noqa: S603
+                           check=True)
+
+    ran, _, kept = _gate(tmp_path, change=delete_and_move)
     assert ran.returncode == 0, ran.stderr
     script = next(kept.glob("*.ps1")).read_text(encoding="utf-8")
     clone = re.search(r"git clone --quiet (.*?)\"", script).group(1)
@@ -138,8 +140,9 @@ def test_a_file_deleted_here_is_absent_on_the_box(tmp_path: Path):
     git = [_GIT, "-c", "core.autocrlf=false"]
     bundle = next(kept.glob("*.bundle"))
     subprocess.run([*git, "clone", "--quiet", *clone.split(), str(bundle), str(box)],  # noqa: S603
-                   check=True, capture_output=True)
-    subprocess.run([*git, "-C", str(box), "reset", "--quiet"], check=True)  # noqa: S603
+                   env=_git_env(tmp_path), check=True, capture_output=True)
+    subprocess.run([*git, "-C", str(box), "reset", "--quiet"],  # noqa: S603
+                   env=_git_env(tmp_path), check=True)
     with zipfile.ZipFile(next(kept.glob("*.zip"))) as archive:
         archive.extractall(box)
     assert (box / "moved.txt").is_file()
