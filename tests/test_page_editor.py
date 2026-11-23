@@ -1330,3 +1330,38 @@ def test_no_move_or_remove_leaves_a_holder_the_save_refuses(tmp_path):
     assert 'act("remove").disabled = !taken(picked);' in script
     assert "if (list !== listOf(item) && !leaves(item)) return null;" in script
     assert "if (words(item) || (words(target) && !after)) return null;" in script
+
+
+# PRESS-0216 § 4.4: the menu view's own rule, on links made by hand.
+_MENU_LINKS_HARNESS = """
+%s
+const kept = {at: 0, words: "Home", href: "{{UP}}index.html", kept: {words: "Home"}};
+const empty = {at: null, words: "", href: "", kept: null};
+const typed = {at: null, words: "About", href: "{{UP}}pages/about.html", kept: null};
+const seen = {};
+links.push(kept);
+seen.alone = lastSent(kept);
+links.push(empty);
+seen.besideEmpty = [lastSent(kept), lastSent(empty)];
+links.push(typed);
+seen.besideTyped = [lastSent(kept), lastSent(typed)];
+process.stdout.write(JSON.stringify(seen));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_menu_view_keeps_a_link_the_save_will_post(tmp_path):
+    """PRESS-0216 § 4.4: menu.arranged refuses a save with no link, so the
+    last link the save would post cannot be removed. Breaks when Remove takes
+    it, which stops every later save in the window."""
+    script = page_editor._MENU_SCRIPT
+    start = script.index("  const links = [];")
+    end = script.index("\n  // PRESS-0285 § 4.5: the links are taken", start)
+    harness = tmp_path / "menu.js"
+    harness.write_text(_MENU_LINKS_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    seen = json.loads(run.stdout)
+    assert seen == {"alone": True, "besideEmpty": [True, False], "besideTyped": [False, False]}
+    assert "if (lastSent(link)) return;" in script
+    assert 'remove.disabled = lastSent(item.link);' in script

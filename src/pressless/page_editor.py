@@ -1705,6 +1705,11 @@ _MENU_SCRIPT = r"""
   const row = document.getElementById("link-row");
   const frame = document.getElementById("preview");
   const links = [];
+  // A link the save posts: one the file held, or a new one with words and an
+  // address. menu.arranged refuses a save posting none, so the last such
+  // link cannot be removed.
+  const sends = (link) => Boolean(link.kept || (link.words.trim() && link.href.trim()));
+  const lastSent = (link) => sends(link) && links.filter(sends).length === 1;
   // PRESS-0285 § 4.5: the links are taken at load, and again at each switch
   // into this view.
   function open(given) {
@@ -1723,8 +1728,15 @@ _MENU_SCRIPT = r"""
       item.link = each;
       return item;
     }));
+    guard();
     const shown = [...list.children].find((item) => item.link === link);
     if (shown) shown.querySelector(act ? "[data-act=" + act + "]" : "input").focus();
+  }
+  function guard() {
+    for (const item of list.children) {
+      const remove = item.querySelector("[data-act=remove]");
+      remove.disabled = lastSent(item.link);
+    }
   }
   const changed = () => window.presslessPage.changed();
 
@@ -1732,6 +1744,7 @@ _MENU_SCRIPT = r"""
     const item = event.target.closest("li");
     if (!item || !event.target.dataset.link) return;
     item.link[event.target.dataset.link] = event.target.value;
+    guard();
     changed();
   });
   list.addEventListener("click", (event) => {
@@ -1741,6 +1754,7 @@ _MENU_SCRIPT = r"""
     const at = links.indexOf(link);
     const act = button.dataset.act;
     if (act === "remove") {
+      if (lastSent(link)) return;
       links.splice(at, 1);
       draw(links[Math.min(at, links.length - 1)], "remove");
     } else {
@@ -1760,8 +1774,7 @@ _MENU_SCRIPT = r"""
   });
 
   function post() {
-    const sent = links.filter((link) => link.kept
-      || (link.words.trim() && link.href.trim()));
+    const sent = links.filter(sends);
     const entries = sent.map((link) => ({
       at: link.at,
       words: link.words.trim() || link.kept.words,
