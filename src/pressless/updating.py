@@ -37,6 +37,9 @@ SENTENCES[updater.DiskFull] = Sentence(
     "failure.updater.DiskFull.what",
     Site.UNCHANGED,
     "failure.updater.DiskFull.next")
+SENTENCES[updater.NotWritable] = Sentence(
+    "failure.updater.NotWritable.what", Site.UNCHANGED,
+    "failure.updater.NotWritable.next")
 SENTENCES[updater.DownloadEndedEarly] = Sentence(
     "failure.updater.DownloadEndedEarly.what", Site.UNCHANGED,
     "failure.updater.DownloadEndedEarly.next")
@@ -71,9 +74,35 @@ class Updates:
         self.face: Face | None = None
         # The AppImage a Linux Update now put in place, and its version.
         # __main__ opens it in this process's place once the Face has stopped
-        # (PRESS-0408).
+        # (PRESS-0408). Set through put_in_place, cleared by stand_down.
         self.installed: tuple[Path, str] | None = None
         self._thread: threading.Thread | None = None
+        self._guard = threading.Lock()
+        self._stopping = False
+
+    def put_in_place(self, artefact: Path, version: str) -> None:
+        """Record a Linux update for __main__ to open, unless a stop came
+        first: a Ctrl+C before the reopen stops Pressless (§ 4.9 step 5)."""
+        with self._guard:
+            if not self._stopping:
+                self.installed = (artefact, version)
+
+    def stand_down(self) -> None:
+        """He asked Pressless to stop: nothing reopens, now or later."""
+        with self._guard:
+            self._stopping = True
+            self.installed = None
+
+    def hold(self) -> bool:
+        """For a Restart: wait out an Update now under way, then hold `busy`
+        so none starts until the caller lets it go. False, holding nothing,
+        where the update put a new version in place. In short spells, as
+        __main__._wait waits, so an interrupt on Windows is not held until
+        the end. On Windows a good update ends the process during the wait."""
+        while self.installed is None:
+            if self.busy.acquire(timeout=0.25):
+                return True
+        return False
 
     def wait(self, timeout: float | None = None) -> None:
         """Until the check has finished. Where no check runs, at once."""
@@ -119,7 +148,7 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
             updater.write_state(own, check=updater.read_state(own).check, skip=offer.version)
         return _home()
 
-    def checking(request: Request) -> Reply:
+    def set_switch(request: Request) -> Reply:
         form = request.form()
         wanted = (form.get("check") or ["true"])[0] != "false"
         updater.write_state(own, check=wanted, skip=updater.read_state(own).skip)
@@ -136,12 +165,12 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
     face.add_page("POST", "/update", update_now)
     face.add_page("POST", "/update/later", later)
     face.add_page("POST", "/update/skip", skip)
-    face.add_page("POST", "/update/checking", checking)
+    face.add_page("POST", "/update/checking", set_switch)
     face.add_piece("site-notices", lambda: _offer_html(shown(), running))
     face.add_piece("computer", lambda: _switch_html(updater.read_state(own).check))
 
     if artefact is not None and state._thread is None:
-        _clear_leftovers(artefact.parent)
+        _clear_leftovers(artefact.parent, platform)
 
         def look() -> None:
             found = updater.check(own, running, platform, transport)
@@ -158,23 +187,27 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
     return state
 
 
-def _clear_leftovers(beside: Path) -> None:
+def _clear_leftovers(beside: Path, platform: str) -> None:
     """Remove what an update stopped part way left beside the program: a
-    download or an unpacked folder, from a Pressless stopped during either,
-    and a Windows helper's script, from a helper that died. Run once per
-    process, before its check, so it never meets this process's own update.
-    Best effort: what stays is tried again at the next start."""
+    download, from a Pressless stopped during one, and on Windows an unpacked
+    folder or a helper's script, from a stopped unpack or a helper that died.
+    Only Windows makes those two, and on Linux the AppImage often sits in a
+    folder of his, such as Downloads, where a name alike may be his own.
+    Run once per process, before its check, so it never meets this process's
+    own update. Best effort: what stays is tried again at the next start."""
     try:
         found = list(Path(beside).iterdir())
     except OSError:
         return
     for path in found:
         name = path.name
-        if name.startswith(updater.UNPACK_PREFIX):
+        windows = platform == "windows"
+        if windows and name.startswith(updater.UNPACK_PREFIX):
             if path.is_dir() and not path.is_symlink():
                 shutil.rmtree(path, ignore_errors=True)
         elif name.startswith(updater.DOWNLOAD_PREFIX) or (
-                name.startswith(installer.SCRIPT_PREFIX) and name.endswith(".ps1")):
+                windows and name.startswith(installer.SCRIPT_PREFIX)
+                and name.endswith(".ps1")):
             with contextlib.suppress(OSError):
                 path.unlink()
 
@@ -220,12 +253,13 @@ def _release_html(text: str) -> str:
     own: a `###` heading, a `- ` item, and `**bold**`."""
     blocks: list[tuple[str, str]] = []   # (tag, words)
     for line in text.splitlines():
+        # Tested stripped, as `words` is, so an indented item is an item too.
         words = html.escape(_LINK.sub(r"\1", line.strip()), quote=False)
         if not words:
             blocks.append(("", ""))
-        elif line.startswith("### "):
+        elif words.startswith("### "):
             blocks.append(("h4", words.removeprefix("### ")))
-        elif line.startswith("- "):
+        elif words.startswith("- "):
             blocks.append(("li", words.removeprefix("- ")))
         elif blocks and blocks[-1][0] in ("li", "p"):
             blocks[-1] = (blocks[-1][0], f"{blocks[-1][1]} {words}")
@@ -292,7 +326,7 @@ def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
         print(say("updating.console"), flush=True)
         face.after_reply(lambda: _exit(0))
     else:
-        state.installed = (artefact, offer.version)
+        state.put_in_place(artefact, offer.version)
         face.after_reply(stop)
     return (f'<p {after_restart(face)}>'
             f'{say("updating.installing", version=html.escape(offer.version))}</p>')

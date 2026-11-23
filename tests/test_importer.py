@@ -343,6 +343,10 @@ _ROWS = [
     ("<p><strong>a<br>b</strong></p>", "**a**\n**b**", None),
     ("<p><strong><em>x</em></strong></p>", "**x**", "italic"),
     ("<p>a\nb</p>", "a b", None),
+    # A brace in the post's own words stays words, as a leading > does: a
+    # mark the converter did not write never forms.
+    ("<p>{photo: a.jpg}</p>", "&#123;photo: a.jpg}", None),
+    ("<p>a {b} c</p>", "a &#123;b} c", None),
 ]
 
 
@@ -1059,6 +1063,62 @@ def test_an_export_of_tiny_elements_is_refused_as_it_is_read(tmp_path, monkeypat
         pressless_import.read(export)
 
 
+def test_an_export_dense_in_attributes_is_refused_as_it_is_read(tmp_path):
+    """PRESS-0125 § 4.3: each attribute counts against the bound as an
+    element does, since each costs the tree an entry of its own.
+
+    Breaks when only elements are counted, so one element holding a great
+    many attributes builds a tree many times the file's size."""
+    valid = _export(_item(1, slug="one"))
+    attributes = " ".join(f'a{n}=""' for n in range(200_000))
+    export = tmp_path / "export.xml"
+    export.write_text(valid.replace("</channel>", f"<x {attributes}/></channel>", 1),
+                      encoding="utf-8")
+
+    with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
+        pressless_import.read(export)
+
+
+@pytest.mark.parametrize("encoding", ["Shift_JIS", "no-such-encoding"])
+def test_an_export_in_an_encoding_the_reader_lacks_is_refused(tmp_path, encoding):
+    """PRESS-0125 § 4.3: an export declaring an encoding the XML reader
+    cannot read, a multi-byte one or an unknown name, is refused with the
+    sentence every unreadable export gets.
+
+    Breaks when `read` catches only ParseError, so the reader's ValueError or
+    LookupError escapes every caller as an unexplained failure."""
+    rest = _export(_item(1, slug="one")).split("\n", 1)[1]
+    export = tmp_path / "export.xml"
+    export.write_text(f'<?xml version="1.0" encoding="{encoding}"?>\n' + rest,
+                      encoding="utf-8")
+
+    with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
+        pressless_import.read(export)
+
+
+def test_reading_an_export_never_holds_the_whole_file(tmp_path):
+    """PRESS-0125 § 4.3: the export is fed to the parser a piece at a time
+    from the file, so reading it takes its tree and one piece, not its tree
+    and the whole file besides.
+
+    Breaks when `read` reads the file whole before parsing it."""
+    import tracemalloc
+
+    body = "<p>" + "word " * (4 * 1024 * 1024) + "</p>"
+    export = tmp_path / "export.xml"
+    export.write_text(_export(_item(1, slug="one", body=body)), encoding="utf-8")
+    size = export.stat().st_size
+
+    tracemalloc.start()
+    try:
+        pressless_import.read(export)
+        _now, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    # The body's text is in the tree once; the whole file again would double it.
+    assert peak < size * 1.5, f"reading a {size}-byte export peaked at {peak} bytes"
+
+
 def test_a_post_body_naming_a_doctype_is_still_read(tmp_path):
     """The refusal reads the prolog, not the body: a post quoting an HTML
     page's `<!DOCTYPE html>` inside its CDATA is still an export."""
@@ -1120,6 +1180,19 @@ def test_a_comment_that_cannot_be_held_is_listed_and_skipped(tmp_path):
     assert [c.identifier for c in comments] == ["101"]
     assert comments[0].body == "Lovely.", "the first of a repeated identifier is kept"
     assert len([w for w in _whats(report, "one") if "comment" in w]) == 3, report.dropped
+
+
+def test_a_brace_in_the_words_never_forms_a_mark():
+    """PRESS-0007 § 4.3: Marks syntax written as text in a post reaches the
+    page as the same text, and the self-check finds nothing changed.
+
+    Breaks when a `{photo:` in the words becomes a live mark, which stops
+    every publish where it names no held photograph."""
+    body = "<p>{photo: gone.jpg}</p><p>see {link: https://example.org}here{/}</p>"
+    text, _dropped = convert(body, _by_address, _by_id)
+    assert "{photo:" not in text and "{link:" not in text, text
+    assert visible_lines(render(text, lambda name: name)) == visible_lines(body), text
+    assert pressless_import._differences(body, text) == []
 
 
 def test_script_and_style_are_dropped_and_listed():
@@ -1297,8 +1370,10 @@ def test_a_media_zip_fills_gaps_only(tmp_path):
         unpack_media(download("uploads/2014/07/other.jpg"), media, missing, lambda: 3)
 
 
+# 2013/06/CON.jpg holds no `:`, so on every system only the place check
+# refuses it.
 @pytest.mark.parametrize("place", ["ABSOLUTE", "C:/Users/u/Startup/x.bat",
-                                   "http://old.example.org/x.jpg"])
+                                   "http://old.example.org/x.jpg", "2013/06/CON.jpg"])
 def test_a_media_zip_fills_only_places_import_may_use(tmp_path, place):
     """PRESS-0125 INV-6: a missing place keyed by an attachment's raw address,
     as fetch_all keys one with no usable place, is never filled, so no member
@@ -1351,6 +1426,32 @@ def test_a_media_zip_member_larger_than_a_file_may_be_is_not_taken(tmp_path, mon
 
     assert filled == ("2013/06/small.jpg",), filled
     assert not (media / "2013/06/big.jpg").exists()
+
+
+def test_a_media_zip_takes_the_first_member_naming_a_place(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.4: where several members end in a place, the first in
+    the download's order fills it, and a first one too large fills nothing
+    rather than giving way to a later one.
+
+    Breaks when a later member wins, as an index keeping the last would."""
+    import zipfile
+
+    from pressless import builder
+    from pressless_import import unpack_media
+
+    monkeypatch.setattr(builder, "FILE_LARGEST", 4)
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("a/2013/06/x.jpg", "one")
+        out.writestr("b/2013/06/x.jpg", "two")
+        out.writestr("a/2013/06/y.jpg", "12345")
+        out.writestr("b/2013/06/y.jpg", "1234")
+
+    filled = unpack_media(made, media, ("2013/06/x.jpg", "2013/06/y.jpg"), lambda: 10**9)
+
+    assert filled == ("2013/06/x.jpg",), filled
+    assert (media / "2013/06/x.jpg").read_text() == "one"
 
 
 def test_a_media_zip_matches_names_as_their_maker_wrote_them(tmp_path):
@@ -1408,6 +1509,40 @@ def test_a_media_zip_follows_no_link_out_of_media(tmp_path):
 
     assert unpack_media(made, media, ("2013/06/x.jpg",), lambda: 10**9) == ()
     assert not list(outside.rglob("*"))
+
+
+def test_a_media_zip_that_cannot_be_written_keeps_what_it_filled(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.4: a write on this computer that fails stops the
+    unpacking with a stop saying so, not that the download is unreadable,
+    and names the places already filled.
+
+    Breaks when a failed write is reported as an unreadable download, and
+    the places it filled are lost."""
+    import zipfile
+
+    from pressless_import import MediaNotWritten, unpack_media
+
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("2013/06/a.jpg", "a")
+        out.writestr("2013/06/b.jpg", "b")
+    real = shutil.copyfileobj
+
+    def full(source, target, *args, **kwargs):
+        if Path(target.name).name == ".b.jpg.part":
+            raise OSError(28, "No space left on device")
+        return real(source, target, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "copyfileobj", full)
+    with pytest.raises(MediaNotWritten) as stopped:
+        unpack_media(made, media, ("2013/06/a.jpg", "2013/06/b.jpg"), lambda: 10**9)
+
+    assert stopped.value.filled == ("2013/06/a.jpg",), stopped.value.filled
+    assert "could not be read" not in str(stopped.value), stopped.value
+    assert (media / "2013/06/a.jpg").read_text() == "a"
+    assert not (media / "2013/06/b.jpg").exists()
+    assert not list(media.rglob(".*.part"))
 
 
 def test_a_stop_leaves_the_store_empty(tmp_path):
@@ -1573,6 +1708,97 @@ def test_a_file_that_would_not_go_back_goes_back_at_the_next_try(tmp_path, monke
 
     assert report.photographs == 2, report
     assert store.list_photographs(site) == ("a.jpg", "b.jpg")
+
+
+def test_each_held_file_is_listed_on_the_drive_before_it_moves(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7: each held file's line in import/moved.jsonl is
+    forced to the drive before the file moves, so after a power cut the move
+    can never survive without its line, and `staged` never deletes a held
+    file it cannot put back.
+
+    Breaks when the line is only flushed to the system before the move."""
+    import os
+
+    events = []
+    real_fsync, real_rename = os.fsync, os.rename
+
+    def fsync(descriptor):
+        events.append("fsync")
+        return real_fsync(descriptor)
+
+    def rename(source, target):
+        if "work" in Path(target).parts:
+            events.append("rename")
+        return real_rename(source, target)
+
+    monkeypatch.setattr(os, "fsync", fsync)
+    monkeypatch.setattr(os, "rename", rename)
+    _bring(tmp_path, _export(*_TWO_FILES), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+
+    moves = [at for at, event in enumerate(events) if event == "rename"]
+    assert len(moves) == 2, events
+    assert all(events[at - 1] == "fsync" for at in moves), events
+
+
+def _journal(tmp_path: Path, text: str | bytes) -> Path:
+    """A site whose import/work/ holds a.jpg, moved there from import/media/
+    as import/moved.jsonl says, with `text` after that line."""
+    import json
+
+    held = tmp_path / "site" / "import"
+    _files(held, {"work/photographs/a.jpg": b"a"})
+    line = json.dumps(["import/media/2012/05/a.jpg", "import/work/photographs/a.jpg"]) + "\n"
+    (held / "moved.jsonl").write_bytes(
+        line.encode("utf-8") + (text if isinstance(text, bytes) else text.encode("utf-8")))
+    return held
+
+
+def test_a_journal_line_cut_short_is_skipped_and_the_rest_go_back(tmp_path):
+    """PRESS-0125 § 4.7: a last line a stop cut short names no move that
+    began, so it is skipped, every whole line's file goes back, and the list
+    is deleted.
+
+    Breaks when a part-written line stops the putting back."""
+    from pressless_import import _bring
+
+    held = _journal(tmp_path, '["import/media/2012/05/b.jp')
+
+    assert _bring._put_back(held) is True
+    assert (held / "media/2012/05/a.jpg").read_bytes() == b"a"
+    assert not (held / "moved.jsonl").exists()
+
+
+def test_an_unreadable_journal_stops_the_next_bring_and_deletes_nothing(tmp_path):
+    """PRESS-0125 § 4.7: a list of moved files that cannot be read says
+    nothing was put back, so the next bring stops rather than deleting
+    import/work/ and the held file in it.
+
+    Breaks when an unreadable list counts as one with nothing to put back."""
+    held = _journal(tmp_path, b"\xff\xfe not words\n")
+
+    with pytest.raises(ImportStopped, match="could not be put back"):
+        pressless_import.recover(tmp_path / "site")
+    assert (held / "work/photographs/a.jpg").read_bytes() == b"a"
+
+
+def test_a_journal_that_cannot_be_deleted_counts_as_not_put_back(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7: where the list cannot be deleted once its files are
+    back, `_put_back` says so, as a list left behind would move them again.
+
+    Breaks when a failed delete of the list is taken as success."""
+    from pressless_import import _bring
+
+    held = _journal(tmp_path, "")
+    real = Path.unlink
+
+    def unlink(self, *args, **kwargs):
+        if self.name == "moved.jsonl":
+            raise OSError(13, "the file is in use")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+    assert _bring._put_back(held) is False
+    assert (held / "media/2012/05/a.jpg").read_bytes() == b"a"
 
 
 def test_the_report_is_given_before_the_moves(tmp_path, monkeypatch):
@@ -1741,6 +1967,26 @@ def test_pages_come_across_in_the_starter_shape(tmp_path):
     assert entry.body == "Words.\n\nMore.", "a classic post keeps its paragraphs"
     assert dict(report.other_types) == {"wp_block": 2}, report.other_types
     assert report.pages == ("about", "index")
+
+
+def test_code_a_page_carries_is_listed(tmp_path):
+    """PRESS-0125 § 4.6: a page's body comes across as written, so each kind
+    of code in it that runs in a browser is listed: a script, an embedded
+    frame, an attribute that runs a script, and a javascript: address.
+
+    Breaks when a page carries code from the export and nothing says so."""
+    site, report = _bring(tmp_path, _export(
+        _item(10, kind="page", slug="welcome", title="A site", body="<p>Hello.</p>"),
+        _item(11, kind="page", slug="about", title="About",
+              body='<p>Us.</p><script>steal()</script>'
+                   '<iframe src="https://video.example.org/v/1"></iframe>'
+                   '<img src="x.png" onerror="steal()"><a href="javascript:steal()">go</a>')))
+
+    about = [dropped.what for dropped in report.dropped if dropped.slug == "pages/about"]
+    for named in ("a script,", "an embedded frame", "an attribute that runs a script",
+                  "a javascript: address"):
+        assert any(what.startswith(named) for what in about), (named, about)
+    assert not any(dropped.slug == "pages/index" for dropped in report.dropped), report.dropped
 
 
 def test_an_export_with_no_pages_or_posts_takes_the_starter_home(tmp_path):

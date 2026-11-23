@@ -239,6 +239,7 @@ chunk is written; nothing is read back.
 | More than `offer.size` bytes arrive | `UpdateRejected` | removed |
 | The hash is not `offer.sha256` | `UpdateRejected` | removed |
 | The disk is full: an `OSError` whose `errno` is `ENOSPC` or `EDQUOT`, or whose `winerror` is 39, creating, writing, flushing or closing the file | `DiskFull` (a `DownloadFailed`) | removed |
+| Creating the file is refused: `errno` `EACCES`, `EPERM` or `EROFS`, as a folder that is read-only or not his refuses it | `NotWritable` (a `DownloadFailed`) | never made |
 | Any other error | `DownloadFailed` | removed |
 | All checks pass | — | returned |
 
@@ -257,20 +258,27 @@ removed. The zip is removed once unpacked. A file that cannot be removed,
 here or in the table above, because a scanner holds it, is left for the
 start-up sweep (§ 4.9); it never replaces the result or the error. A full disk while unpacking, by the same test as the download's row,
 `winerror` 39 included, raises
-`DiskFull`, with the zip and the folder removed.
+`DiskFull`, with the zip and the folder removed. On Windows the folder is
+written through its extended-length form, `\\?\` before the absolute path
+(`\\?\UNC\` for a share): the staging folder makes every path deeper than
+the installed one, and a long-paths setting that is off would refuse a
+program whose installed paths fit.
 
 **A full disk is told apart because the other sentence cannot help.**
 `DownloadFailed` tells him to check his connection and try again, which
 fails the same way on a full disk (PRESS-0174). Python maps Windows'
 `ERROR_DISK_FULL` (112) to `ENOSPC` and leaves `ERROR_HANDLE_DISK_FULL`
 (39) unmapped (CPython `PC/errmap.h`), so the test names 39 itself.
+**A folder he may not change is told apart for the same reason**: an
+AppImage in `/opt`, or a program under Program Files, fails the same way
+on every try.
 
 ### 4.7 Putting it in place
 
 ```python
 def apply_linux(appimage: Path, staged: Path, folder: Path) -> None: ...
-def reopen_linux(appimage: Path, folder: Path) -> None: ...  # returns only on failure
-def apply_windows(program: Path, staged: Path, folder: Path) -> None: ...
+def reopen_linux(appimage: Path, folder: Path, resume: str | None = None) -> None: ...  # returns only on failure
+def apply_windows(program: Path, staged: Path, folder: Path, resume: str | None = None) -> None: ...
 ```
 
 Each `apply_` raises `InstallFailed` where nothing has changed yet, and
@@ -377,21 +385,17 @@ repository — a fork carrying the release workflow — is signed the same way:
 
 ### 4.9 What he sees
 
-*Moved by PRESS-0353 § 4.6: the offer is a `site-notices` piece on Your site, `/`. The
-switch is a `computer` piece, drawn at the end of Settings, `/setup`.
-`Face.add_piece(place, render)` replaces `add_to_list`.*
+**`updating` reaches its pages through `Face.add_piece(place, render)`**,
+where `render` returns HTML (PRESS-0353 § 4.6): the offer is a
+`site-notices` piece on Your site, `/`, and the switch a `computer` piece
+at the end of Settings, `/setup`. Neither page imports `updating`.
 
-**`updating` reaches the page at `/` through a new
-`Face.add_to_list(render, *, above)`**, where `render` returns HTML.
-`editor._list` reads them back with `Face.list_pieces(above)` and puts each
-above or below the list. The editor never imports `updating`.
-
-**The switch**, one line under the list at `/`: *"Pressless looks for a new
+**The switch**, at the end of Settings: *"Pressless looks for a new
 version each time it starts."* with **Stop looking**, or *"Pressless does not
 look for new versions."* with **Look when Pressless starts**. It posts to
 `/update/checking` and writes `updates.json`.
 
-**The offer**, above the list at `/` once a check returns one: *"Pressless
+**The offer**, on Your site once a check returns one: *"Pressless
 <X.Y.Z> is ready to install. Your writing stays where it is."* with three
 buttons, posting to `/update`, `/update/later` and `/update/skip`. Below the
 buttons it shows what changed (§ 4.12).
@@ -420,15 +424,20 @@ in them, and losing them costs one check at the next start. Skip is written to
 and a Later stand and the check does not run again.
 
 **Before its one check, a packaged start removes what a stopped update left
-beside the program**: any `.pressless-update-*` file, `Pressless.new-*`
-folder and `pressless-update-*.ps1` script. A Pressless stopped during a
-download or an unpack, or a Windows helper that died, leaves one, and each but
-the script is the program's size. A removal that fails is tried at the next
+beside the program**: any `.pressless-update-*` file, and on Windows any
+`Pressless.new-*` folder and `pressless-update-*.ps1` script. A Pressless
+stopped during a download or an unpack, or a Windows helper that died,
+leaves one, and each but the script is the program's size. Linux makes
+neither of the last two, and its AppImage often sits in a folder of his,
+where a name alike may be his own. A removal that fails is tried at the next
 start.
 
 **Update now**, in order, one at a time: a second, from a double click or a
 second tab, goes home while one is under way, and a failed one lets the next
-start.
+start. **A Restart, or opening another site, waits for one under way**,
+since it runs on the Face the Restart would stop: a good one opens the new
+version instead, and a failed one lets the Restart go ahead. None starts
+from then until the old Face has stopped.
 
 1. Download, and on Windows unpack (§ 4.6), without the editor's lock. A failure
    shows its sentence (§ 4.10) and changes nothing.
@@ -459,11 +468,12 @@ Each is a typed failure with a three-part sentence in `face.SENTENCES`:
 | `DownloadFailed` | Pressless could not download the new version. | not changed | Check your internet connection and click Update now again. |
 | `DownloadEndedEarly` | The download stopped before it finished. | not changed | Click Update now again. |
 | `DiskFull` | There is not enough room on this computer to download the new version. | not changed | Free some space on this computer, then click Update now again. |
+| `NotWritable` | Pressless cannot save the new version, because it may not change the folder it runs from. | not changed | Ask whoever looks after this computer to let you change that folder, then click Update now again. |
 | `UpdateRejected` | The download did not prove it came from Pressless, so nothing was installed. | not changed | Keep using this version, and send the details below to whoever helps you. |
 | `InstallFailed` | Pressless could not put the new version in place. This version is still installed. | not changed | Try again later. If it keeps happening, send the details below to whoever helps you. |
 
-`installer.UpdateError` is the base of all five and carries the generic
-sentence. `updater.py` defines the first four as its subclasses.
+`installer.UpdateError` is the base of all six and carries the generic
+sentence. `updater.py` defines the first five as its subclasses.
 
 ### 4.11 One Pressless per folder
 
@@ -620,7 +630,7 @@ address. A roadmap id in brackets is left out.
   tag's. *Test:* `tests/test_sign_release.py` drives its two refusal functions
   with a mismatched key and a mismatched commit. *Breaks when:* it verifies
   against the key it just signed with.
-- **INV-20** — The five failure types each have a three-part sentence. *Test:*
+- **INV-20** — The six failure types each have a three-part sentence. *Test:*
   `tests/test_face.py::test_every_failure_type_has_a_sentence`, which already
   walks every subclass. *Breaks when:* a type is added without one.
 - **INV-21** — A full disk is `DiskFull`, and the file is removed. *Test:*

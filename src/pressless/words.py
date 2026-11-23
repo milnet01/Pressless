@@ -380,6 +380,14 @@ _WORDS: dict[str, str] = {
     "failure.updater.DiskFull.next": (
         "Free some space on this computer, then click Update now again."
     ),
+    "failure.updater.NotWritable.what": (
+        "Pressless cannot save the new version, because it may not change"
+        " the folder it runs from."
+    ),
+    "failure.updater.NotWritable.next": (
+        "Ask whoever looks after this computer to let you change that folder,"
+        " then click Update now again."
+    ),
     "failure.updater.DownloadEndedEarly.what": "The download stopped before it finished.",
     "failure.updater.DownloadEndedEarly.next": "Click Update now again.",
     "failure.updater.UpdateRejected.what": (
@@ -1799,6 +1807,10 @@ _WORDS: dict[str, str] = {
     "import.gaps.refused": (
         "That file could not be used. Choose a ZIP file of the uploads folder."
     ),
+    "import.gaps.unwritten": (
+        "Pressless could not save every file from that ZIP file on this computer: {why}. "
+        "The ones it saved are kept."
+    ),
     "import.look": (
         "Your WordPress theme does not come across, so choose how your site looks. You "
         "can change it later on the Look screen."
@@ -2017,6 +2029,11 @@ _WORDS: dict[str, str] = {
     ),
     "assistant.on": "On: an AI app can connect while Pressless is open.",
     "assistant.off": "Off: no AI app can connect.",
+    "assistant.unopened": (
+        "Pressless could not write the file an AI app finds it by, in Pressless's own "
+        "folder, so no AI app can connect. Check that the folder can be written to, then "
+        "switch the helper on again."
+    ),
     "assistant.switch_on": "Switch on",
     "assistant.switch_off": "Switch off",
     "assistant.connect": "Connecting an AI app",
@@ -2121,6 +2138,16 @@ _WORDS: dict[str, str] = {
         "Pressless was updated after this AI app started its helper. Restart the AI app."
     ),
     "assistant.bad_call": "That call cannot run: {why}.",
+    # assistant_tools.problem's reasons, each the {why} of assistant.bad_call.
+    # {type} is a JSON type's name, as the tool list gives it.
+    "assistant.why.no_tool": "there is no tool {tool}",
+    "assistant.why.not_object": "the arguments are not an object",
+    "assistant.why.needs": "{tool} needs {argument}",
+    "assistant.why.takes_no": "{tool} takes no {argument}",
+    "assistant.why.type": "{argument} must be {type}",
+    "assistant.why.whole_number": "{argument} must be a whole number",
+    "assistant.why.one_of": "{argument} must be one of {choices}",
+    "assistant.why.items": "each item of {argument} must be {type}",
     "assistant.not_json": "That call cannot run: it is not a JSON object.",
     "assistant.bad_data": "The file's data is not base64.",
     "assistant.one_waiting": (
@@ -2139,10 +2166,11 @@ _WORDS: dict[str, str] = {
         "screen, not by the AI helper."
     ),
     "assistant.box.undo": "Put your site back as it was before the last publish.",
-    "assistant.box.remove": "Remove the page {name} from your site, now.",
-    "assistant.box.rename": "Rename the page {name} to {to}, now.",
-    "assistant.box.bin": "Put {name} in the bin.",
-    "assistant.box.discard": "Throw away the changes waiting on {name}.",
+    # A name in the box may be the AI app's own text, so each is quoted.
+    "assistant.box.remove": "Remove the page “{name}” from your site, now.",
+    "assistant.box.rename": "Rename the page “{name}” to “{to}”, now.",
+    "assistant.box.bin": "Put “{name}” in the bin.",
+    "assistant.box.discard": "Throw away the changes waiting on “{name}”.",
     "assistant.status.waiting": (
         "Waiting for the writer's answer in Pressless's own window. Tell the writer, and ask "
         "again once they say they have answered. It waits up to 30 minutes."

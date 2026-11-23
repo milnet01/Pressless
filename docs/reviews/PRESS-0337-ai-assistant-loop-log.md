@@ -17,3 +17,4 @@
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0420: § 4.5 `list_files` answers each user of a file as a kind and a name. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0424: § 4.6 an unforeseen failure after Yes is worded as the writer's own press words it, site unchanged; § 10 names its test. |
 | impl | 2026-11-23 | none — amendment for PRESS-0446; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5 and § 5: `publishing.plan` is named `publishing.press_preview`, for the Preview it returns. |
+| amend | 2026-11-23 | none — PRESS-0451 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.2, 4.3, 4.4, 4.5, 4.6, 4.9, 6: the door proves its token before a call (INV-15); one deadline and a reply cap; ping answered during a call; an unwritable door file; quoted box names; re-plan outcomes. |

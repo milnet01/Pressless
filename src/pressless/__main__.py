@@ -77,6 +77,8 @@ from pressless import (
 )
 from pressless.words import say
 
+# Not `--assistant <folder>`: only a source run takes it (main's docstring),
+# and a packaged one refuses it.
 _USAGE = "usage: pressless [--self-check | --assistant]"
 _LOCK_NAME = "pressless.lock"
 
@@ -282,17 +284,17 @@ def _serve_behind_lock(own: Path, updates: updating.Updates, port: int,
     try:
         # PRESS-0223 § 4.3: behind the lock, so no second Pressless moves it.
         failed = sites.move_in(own)
-        stopped = None if failed is None else say(
+        refusal = None if failed is None else say(
             "main.moving_in", folder=own.name,
             reason=os_reason.of(failed))
         # PRESS-0125 § 4.7: an Import stopped part way through its moves
         # finishes before anything reads that site.
         for site in sites.all_sites(own):
             finished = importing.finish_moves(site)    # every site, though one stops
-            stopped = stopped or finished
+            refusal = refusal or finished
         backups.clear_leftovers(own)   # PRESS-0383: what a stopped save or open left
-        if stopped is not None:
-            print(stopped)
+        if refusal is not None:
+            print(refusal)
             return 1
         kept = _stop_on_close()
         stopped = threading.Event()
@@ -400,8 +402,8 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
     stopping = threading.Event()
     again = False
     folder = sites.current_site(own)
-    handed = last.hand if last.site in (None, folder) else None
-    served, handed = _start(own, folder, port, handed)
+    offered = last.hand if last.site in (None, folder) else None
+    served, taken = _start(own, folder, port, offered)
     last.site, last.hand = folder, served.hand_over()
     try:
         setup.register(served, folder, own=own)
@@ -432,8 +434,6 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
         sites_screen.register(served, own, restart.set)
         importing.register(served, folder)
         assistant.register(served, folder, own=own)         # PRESS-0337
-        _refresh_shortcuts(served)
-        icon.serve(served, restart.set)                     # PRESS-0204
 
         first = "/"
         with served.capture():
@@ -450,36 +450,51 @@ def _serve_once(own: Path, updates: updating.Updates, icon: tray.Tray,
                 if exc.key == "site_folder":
                     first = "/setup"
 
-        # PRESS-0428 § 4.4: a tab that came back is his, so none opens.
-        if handed is None or not _came_back(served):
+        # The tab first where none is handed: the tray's first start takes a
+        # fifth of a second (measured on Linux), and a moved shortcut starts
+        # PowerShell on Windows. PRESS-0428 § 4.4: a tab that came back is
+        # his, so none opens; the tray follows this Face before that wait.
+        if taken is None:
             _open_tab(served, first)
+        icon.serve(served, restart.set)                     # PRESS-0204
+        if taken is not None and not _came_back(served):
+            _open_tab(served, first)
+        _refresh_shortcuts(served)
         print(say("main.running"))
         # PRESS-0225: today's backups, then a look every hour, behind this Face.
         backups.start(own, stopping, served.note)
         try:
             # An update stops the Face as a restart does, but serves no new
-            # one: _serve opens the new version in this process's place.
-            again = _wait(restart) and updates.installed is None
+            # one: _serve opens the new version in this process's place. A
+            # Restart during an Update now waits for it, holding off another
+            # until this Face has stopped: the update runs on this Face's
+            # thread and takes editor.LOCK for good (PRESS-0023 § 4.9).
+            again = _wait(restart) and updates.hold()
         except KeyboardInterrupt:
-            updates.installed = None   # he asked it to stop: it stays stopped
+            updates.stand_down()   # he asked it to stop: it stays stopped
     finally:
         stopping.set()
-        if again:
-            # A save, publish or undo under way ends before its Face does,
-            # since the next Face serves the same files. A plain stop does
-            # not wait (PRESS-0013 § 4.5 step 6): the process ends with it.
-            # A stop arriving during that wait is a plain stop (PRESS-0427).
-            stopped = False
-            try:
-                with editor.LOCK:
-                    served.stop()
-                    stopped = True
-            except KeyboardInterrupt:
-                if not stopped:
-                    served.stop()
-                raise
-        else:
-            served.stop()
+        try:
+            if again:
+                # A save, publish or undo under way ends before its Face
+                # does, since the next Face serves the same files. A plain
+                # stop does not wait (PRESS-0013 § 4.5 step 6): the process
+                # ends with it. A stop arriving during that wait is a plain
+                # stop (PRESS-0427).
+                stopped = False
+                try:
+                    with editor.LOCK:
+                        served.stop()
+                        stopped = True
+                except KeyboardInterrupt:
+                    if not stopped:
+                        served.stop()
+                    raise
+            else:
+                served.stop()
+        finally:
+            if again:
+                updates.busy.release()
     return again
 
 

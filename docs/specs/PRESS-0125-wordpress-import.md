@@ -129,9 +129,13 @@ Pressless can read"): WordPress writes neither, and both are how an XML
 file expands past its size. A post's body quoting one is not in the
 prolog, and reads. An export over `EXPORT_LARGEST = 256 MiB` is
 refused at upload. One denser in elements than one for every
-`_BYTES_PER_ELEMENT` bytes, and a few more, is refused as it is read:
-a file of empty elements builds a tree many times its own size, and no
-WordPress export is that dense. The S314 exemption in `pyproject.toml` stays, now
+`_BYTES_PER_ELEMENT` bytes, and a few more, is refused as it is read,
+each attribute counting as an element:
+a file of empty elements, or of attributes, builds a tree many times its own size, and no
+WordPress export is that dense. The file is fed to the parser a piece at
+a time, never held whole, and the prolog is read in the first piece. An
+export declaring an encoding the parser cannot read, a multi-byte one or
+a name Python does not know, is refused with the same sentence. The S314 exemption in `pyproject.toml` stays, now
 resting on that refusal.
 
 What is carried, by `wp:post_type`:
@@ -197,7 +201,10 @@ the members taken must fit `room()`.
 Other members are ignored. A place `_place` would refuse is never filled:
 `fetch_all` keys an attachment with no usable place by its raw address,
 which can be absolute. Nor is a place whose file would land outside
-`import/media/`, or one whose member is over `builder.FILE_LARGEST`.
+`import/media/`, or one whose first matching member is over `builder.FILE_LARGEST`.
+A file that cannot be written on this computer stops the unpacking
+(`MediaNotWritten`) with the system's reason, not as an unusable
+download; the places filled before it stay filled and leave the gaps.
 A member's name is matched as its maker wrote it: UTF-8 without the ZIP's
 UTF-8 flag, and accents composed.
 
@@ -274,7 +281,10 @@ becomes `index` sits at the root, its links without `../`, as
 `starter.fill` writes it. Addresses under the old site's uploads folder
 whose file Import holds are rewritten to the page's `../`, or nothing for
 `index`, + `builder.web_photograph(name)`, or `builder.web_file(name)` for
-a file in `files/`; others stay and are listed. Blocks
+a file in `files/`; others stay and are listed. The body is
+carried as written, so each kind of code in it a browser runs is listed:
+a `<script>`, an `<iframe>`, `<embed>` or `<object>`, an `on…` attribute,
+and a `javascript:` address. Blocks
 reads what sections it can, and the rest is a code section (design.md
 § Pages, and how they are held).
 
@@ -315,8 +325,8 @@ folder — `templates/`, which `templates.register` seeds at every launch —
 each file moves in alone, and a file already there is kept.
 
 A stop before the moves deletes `import/work/` and leaves the Store
-empty. Each held file is listed in `import/moved.jsonl` before it moves
-into `import/work/`, and that stop moves each back first. Where one will
+empty. Each held file is listed in `import/moved.jsonl`, forced to the
+drive, before it moves into `import/work/`, and that stop moves each back first. Where one will
 not go back, `import/work/` stays, and the next bring-in puts it back
 before reading anything (`pressless_import.recover`).
 `import/moving` is an empty file written before the first move

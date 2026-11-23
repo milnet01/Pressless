@@ -11,9 +11,20 @@ optional argument, never rename or remove one, nor make an argument required.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 from dataclasses import dataclass, field
 
 READ, WRITE, ASK = "read", "write", "ask"
+
+# § 4.3: the Authorization scheme asking the door to prove it holds the door
+# file's token, before the bridge sends it anything of the writer's.
+PROVE = "Prove"
+
+
+def proof(token: str, nonce: str) -> str:
+    """The door's answer to PROVE `nonce`: only a holder of `token` can make it."""
+    return hmac.new(token.encode("utf-8"), nonce.encode("utf-8"), hashlib.sha256).hexdigest()
 
 # dashboard.WINDOWS' spans, written out so this module imports nothing; a test
 # checks they match.
@@ -40,7 +51,7 @@ class Tool:
                 "required": list(self.required), "additionalProperties": False}
 
 
-_ASKS = (" Nothing changes yet: this asks the writer, who answers yes or not yet in "
+_ASK_NOTE = (" Nothing changes yet: this asks the writer, who answers yes or not yet in "
          "Pressless's own window. It answers a request id at once; tell the writer, "
          "and ask request_status once they say they have answered.")
 
@@ -49,7 +60,7 @@ TOOLS: tuple[Tool, ...] = (
     Tool("site_overview", READ,
          "What the open site is: its address, whether it has a journal, how many "
          "entries and pages it holds, whether a publish is running, and any request "
-         "waiting for the writer."),
+         "waiting for the writer or running after their yes, with its status."),
     Tool("writing_guide", READ,
          "How an entry's body is written: each mark Pressless reads, an example of it, "
          "and what it does."),
@@ -124,59 +135,70 @@ TOOLS: tuple[Tool, ...] = (
          {"version": _VERSION, "choices": {"type": "object"}}, ("version", "choices")),
     # ------------------------------------------------------------- asks ---
     Tool("publish", ASK,
-         "Publish an entry, a page, or the whole site." + _ASKS,
+         "Publish an entry, a page, or the whole site." + _ASK_NOTE,
          {"entry": _ADDRESS, "page": _PAGE}),
     Tool("undo_last_publish", ASK,
-         "Put the site back as it was before the last publish." + _ASKS),
+         "Put the site back as it was before the last publish." + _ASK_NOTE),
     Tool("remove_entry", ASK,
          "Put an entry in the bin. A published one leaves the site at the next "
-         "publish." + _ASKS,
+         "publish." + _ASK_NOTE,
          {"address": _ADDRESS, "version": _VERSION}, ("address", "version")),
     Tool("discard_changes", ASK,
-         "Throw away the changes waiting on a published entry or page." + _ASKS,
+         "Throw away the changes waiting on a published entry or page." + _ASK_NOTE,
          {"entry": _ADDRESS, "page": _PAGE, "version": _VERSION}, ("version",)),
     Tool("remove_page", ASK,
          "Remove a page from the site, and its link from the navigation. It goes live "
-         "at once." + _ASKS,
+         "at once." + _ASK_NOTE,
          {"name": _PAGE}, ("name",)),
     Tool("rename_page", ASK,
          "Give a page a new name; its old address forwards to the new one. It goes "
-         "live at once." + _ASKS,
+         "live at once." + _ASK_NOTE,
          {"name": _PAGE, "to": _TEXT}, ("name", "to")),
     Tool("remove_file", ASK,
-         "Put a kept photograph or file in the bin. One a page uses is refused." + _ASKS,
+         "Put a kept photograph or file in the bin. One a page uses is refused." + _ASK_NOTE,
          {"name": _TEXT}, ("name",)),
 )
 
 BY_NAME = {tool.name: tool for tool in TOOLS}
 
-# Every schema type TOOLS uses, and an array's "items" type, must be here, or
-# `problem` raises on every call to that tool; a test checks TOOLS against it.
+# Every schema type TOOLS uses, an array's "items" type included, must be
+# here, or `problem` raises on every call to that tool; a test checks TOOLS
+# against it.
 _TYPES = {"string": str, "integer": int, "array": list, "object": dict}
 
 
-def problem(name: str, arguments: object) -> str | None:
-    """Why a call cannot run, in a plain sentence for the AI app; None where it
-    can. Checks the name, that the arguments are an object holding every
-    required one and no other, and each one's JSON type."""
+def problem(name: str, arguments: object) -> tuple[str, dict[str, str]] | None:
+    """Why a call cannot run, as a words key and its slots, which the door
+    says (this module imports no words); None where it can. Checks the
+    name, that the arguments are an object holding every required one and no
+    other, each one's JSON type, and each array item's."""
     tool = BY_NAME.get(name)
     if tool is None:
-        return f"there is no tool {name!r}"
+        return "assistant.why.no_tool", {"tool": repr(name)}
     if not isinstance(arguments, dict):
-        return "the arguments are not an object"
+        return "assistant.why.not_object", {}
     for argument in tool.required:
         if argument not in arguments:
-            return f"{name} needs {argument}"
+            return "assistant.why.needs", {"tool": name, "argument": argument}
     for argument, value in arguments.items():
         schema = tool.arguments.get(argument)
         if schema is None:
-            return f"{name} takes no {argument}"
-        wanted = _TYPES[schema["type"]]
-        if not isinstance(value, wanted) or (wanted is int and isinstance(value, bool)):
-            return f"{argument} must be {schema['type'] if wanted is not int else 'a whole number'}"
+            return "assistant.why.takes_no", {"tool": name, "argument": argument}
+        if not _is(value, schema["type"]):
+            if schema["type"] == "integer":
+                return "assistant.why.whole_number", {"argument": argument}
+            return "assistant.why.type", {"argument": argument, "type": schema["type"]}
         if "enum" in schema and value not in schema["enum"]:
-            return f"{argument} must be one of {schema['enum']}"
-        if wanted is list and schema["items"]["type"] == "string" and not all(
-                isinstance(item, str) for item in value):
-            return f"{argument} must list text"
+            return "assistant.why.one_of", {"argument": argument,
+                                            "choices": str(schema["enum"])}
+        if schema["type"] == "array" and not all(
+                _is(item, schema["items"]["type"]) for item in value):
+            return "assistant.why.items", {"argument": argument,
+                                           "type": schema["items"]["type"]}
     return None
+
+
+def _is(value: object, json_type: str) -> bool:
+    """Whether `value` is of `json_type`: JSON's true is no whole number."""
+    wanted = _TYPES[json_type]
+    return isinstance(value, wanted) and not (wanted is int and isinstance(value, bool))

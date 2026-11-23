@@ -20,6 +20,7 @@ import unicodedata
 import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -189,6 +190,7 @@ def _page_html(page: _Page, sheets: tuple[str, ...], web: Mapping[str, str],
     and the rest is code."""
     root = page.name == "index"
     body = prepared(page.body, wordpress_markup)
+    page.dropped.extend(_code(body))
     body, listed = _addresses(body, "" if root else "../", web, old_site)
     page.dropped.extend(listed)
     text = starter.new_page(builder.HOME_NAV if root else page.name, page.title, sheets,
@@ -198,6 +200,43 @@ def _page_html(page: _Page, sheets: tuple[str, ...], web: Mapping[str, str],
     except builder.BuildStopped:
         adopted = None
     return adopted or text
+
+
+# Code a page's body carries as written (§ 4.6). It runs wherever the page
+# is shown, and an old site's pages can hold code someone else put there,
+# so each kind is listed, in this order.
+_SCRIPT = "a script, carried as written: check you trust it"
+_FRAME = "an embedded frame or object, carried as written: check you trust it"
+_ON = "an attribute that runs a script (on…), carried as written: check you trust it"
+_SCRIPT_ADDRESS = "a javascript: address, carried as written: check you trust it"
+# What a browser leaves out of an address before reading its scheme.
+_IGNORED_IN_ADDRESS = re.compile(r"[\x00-\x20]")
+
+
+class _CodeFinder(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.found: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "script":
+            self.found.add(_SCRIPT)
+        elif tag in ("iframe", "embed", "object"):
+            self.found.add(_FRAME)
+        for name, value in attrs:
+            if name.startswith("on"):
+                self.found.add(_ON)
+            elif _IGNORED_IN_ADDRESS.sub("", value or "").lower().startswith("javascript:"):
+                self.found.add(_SCRIPT_ADDRESS)
+
+
+def _code(body: str) -> list[str]:
+    """Each kind of code in a page's body that runs in a browser, as a
+    Report line."""
+    finder = _CodeFinder()
+    finder.feed(body)
+    finder.close()
+    return [what for what in (_SCRIPT, _FRAME, _ON, _SCRIPT_ADDRESS) if what in finder.found]
 
 
 # ----------------------------------------------------------- the menu ----
@@ -340,14 +379,25 @@ def _navigation(links: list[_Link], listed: list[str]) -> str:
 # -------------------------------------------------- media download (§ 4.4) ----
 
 
+class MediaNotWritten(ImportStopped):
+    """unpack_media could not write a file on this computer. `filled` are
+    the places it filled before that, which stay filled; `why` is the
+    system's reason in plain words."""
+
+    def __init__(self, message: str, filled: tuple[str, ...], why: str) -> None:
+        super().__init__(message)
+        self.filled, self.why = filled, why
+
+
 def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str],
                  room: Callable[[], int]) -> tuple[str, ...]:
-    """Fill each missing place from a media download: a member whose name is
-    the place, or ends in `/<place>`, is unpacked to `media/<place>`. Every
-    member is checked first, as a site file's are, and the members taken must
-    fit `room()`; a refused download writes nothing. A place `_place` would
-    refuse is never filled, nor one a member larger than the Builder keeps
-    would fill. Returns the places filled."""
+    """Fill each missing place from a media download: the first member whose
+    name is the place, or ends in `/<place>`, is unpacked to `media/<place>`.
+    Every member is checked first, as a site file's are, and the members
+    taken must fit `room()`; a refused download writes nothing. A place
+    `_place_refused` refuses is never filled, nor one a member larger than
+    the Builder keeps would fill. Returns the places filled; a write that
+    fails raises MediaNotWritten, naming those filled before it."""
     # The places are fetch_all's keys, and one with no usable place is keyed
     # by its raw address, which can be absolute: joined onto `media` it would
     # replace it outright. So each place is checked here, not only the names.
@@ -360,32 +410,45 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
                     raise ImportStopped("the media download holds a name outside its folder")
                 if sitefile.is_link(info):
                     raise ImportStopped("the media download holds a link")
-            named = [(_member_name(info), info) for info in infos if not info.is_dir()]
+            # Each member by every `/`-ending of its name, the first member in
+            # the download's order kept: one look-up for each place.
+            first: dict[str, zipfile.ZipInfo] = {}
+            for info in infos:
+                if not info.is_dir():
+                    parts = _member_name(info).split("/")
+                    for at in range(len(parts)):
+                        first.setdefault("/".join(parts[at:]), info)
             wanted: dict[str, zipfile.ZipInfo] = {}
             for place in missing:
                 if (_place_refused(place) is not None
                         or not (media / place).resolve().is_relative_to(inside)
                         or (media / place).is_file()):
                     continue
-                key = unicodedata.normalize("NFC", place)
-                for name, info in named:
-                    if name == key or name.endswith(f"/{key}"):
-                        if info.file_size <= builder.FILE_LARGEST:
-                            wanted[place] = info
-                        break
+                info = first.get(unicodedata.normalize("NFC", place))
+                if info is not None and info.file_size <= builder.FILE_LARGEST:
+                    wanted[place] = info
             if sum(info.file_size for info in wanted.values()) > room():
                 raise ImportStopped("the media download's files are larger than the room "
                                     "on this drive")
+            filled: list[str] = []
             for place, info in wanted.items():
                 target = media / place
-                target.parent.mkdir(parents=True, exist_ok=True)
                 part = target.with_name(f".{target.name}.part")
                 try:
+                    target.parent.mkdir(parents=True, exist_ok=True)
                     with held.open(info) as unpacked, open(part, "wb") as out:
                         shutil.copyfileobj(unpacked, out)
                     part.replace(target)
+                except OSError as exc:
+                    # This computer's write, not the download: a fault in the
+                    # download's own data is BadZipFile.
+                    why = os_reason.of(exc)
+                    raise MediaNotWritten(
+                        f"the media download's files could not be written: {why}",
+                        tuple(sorted(filled)), why) from None
                 finally:
                     part.unlink(missing_ok=True)
+                filled.append(place)
     except (zipfile.BadZipFile, OSError) as exc:
         raise ImportStopped(f"the media download could not be read "
                             f"({type(exc).__name__})") from None
@@ -452,6 +515,10 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     menu_listed: list[str] = []
     navigation = _navigation(links, menu_listed)
 
+    # The Report is made inside `write`, after the pages list what they
+    # dropped, so `keep` has it before the first move (§ 4.8).
+    made: list[Report] = []
+
     def write(work: Path, move: Callable[[Path, Path], None]) -> None:
         _write_entries(work, items, entries)
         with _writing("the look"):
@@ -463,6 +530,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
                                  _page_html(page, sheets, web, old_site))
         if not pages:
             with _writing("the page index"):
+                # The name setup kept is the one the Builder shows as the
+                # site's, so the made-up home page agrees with it.
                 identity = store.read_identity(into)
                 store.write_html(work, store.PAGES_FOLDER, "index", starter.home_page(
                     identity.name if identity is not None else site_title))
@@ -499,7 +568,6 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         if keep is not None:
             keep(made[0])
 
-    made: list[Report] = []
     staged(into, write)
     return made[0]
 
@@ -517,7 +585,7 @@ def _held(channel, ns, media: Path):
         return photo[path]
 
     names, by_address, by_id, unheld = _attachments(channel, ns, media, strict=False,
-                                                    shown=is_photo)
+                                                    is_photograph=is_photo)
     kept: dict[str, tuple[str, str]] = {}
     for place, name in names.items():
         if is_photo(media / place):
@@ -563,14 +631,14 @@ def _dropped(items: list[_Item], pages: list[_Page], menu_listed: list[str]
     return tuple(dropped)
 
 
-def _unfetched(unheld: list[tuple[str, str]], fetched: Mapping[str, str]
+def _unfetched(unheld: list[tuple[str, str]], fetch_failures: Mapping[str, str]
                ) -> tuple[tuple[str, str], ...]:
     """Each attachment not held, once, with why: where its original is
     missing, the fetch's own reason for that place takes MISSING's place."""
     why_by_place: dict[str, str] = {}
     for place, why in unheld:
         if why == MISSING:
-            why = fetched.get(place, "it was not fetched, nor in the media download")
+            why = fetch_failures.get(place, "it was not fetched, nor in the media download")
         why_by_place[place] = why
     return tuple(why_by_place.items())
 
@@ -700,9 +768,12 @@ def staged(into: Path, write: Callable[[Path, Callable[[Path, Path], None]], Non
 
             def move(source: Path, target: Path) -> None:
                 # Listed first: a stop after the rename can then put it back.
+                # Forced to the drive, not only flushed: after a power cut
+                # the rename must never be there without its line.
                 journal.write(json.dumps([_relative(source, into),
                                           _relative(target, into)]) + "\n")
                 journal.flush()
+                os.fsync(journal.fileno())
                 target.parent.mkdir(exist_ok=True)
                 os.rename(source, target)
 
