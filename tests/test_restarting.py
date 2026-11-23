@@ -19,17 +19,32 @@ def test_settings_links_to_restart(tmp_path, monkeypatch):
     assert f'href="{restarting.PATH}"' in page
 
 
-def test_restart_asks_first_and_restarts_only_on_the_post(tmp_path):
+def _scheduled(served, monkeypatch) -> list:
+    """Each restart a page asks for, as it asks: once the page's answer has
+    been read, nothing it asked for is still to come."""
+    scheduled = []
+    real = served.after_reply
+
+    def recording(action):
+        scheduled.append(action)
+        real(action)
+
+    monkeypatch.setattr(served, "after_reply", recording)
+    return scheduled
+
+
+def test_restart_asks_first_and_restarts_only_on_the_post(tmp_path, monkeypatch):
     asked = threading.Event()
     served = face.serve(tmp_path)
     try:
         restarting.register(served, asked.set)
+        scheduled = _scheduled(served, monkeypatch)
         browser = Browser(served)
 
         status, _, page = browser.request("GET", restarting.PATH)
         assert status == 200
         assert f'method="post" action="{restarting.PATH}"' in page
-        assert not asked.wait(0.2), "showing the question restarted Pressless"
+        assert not scheduled and not asked.is_set(), "showing the question restarted Pressless"
 
         status, _, page = browser.request("POST", restarting.PATH)
         assert status == 200
@@ -40,14 +55,15 @@ def test_restart_asks_first_and_restarts_only_on_the_post(tmp_path):
         served.stop()
 
 
-def test_a_post_from_elsewhere_restarts_nothing(tmp_path):
+def test_a_post_from_elsewhere_restarts_nothing(tmp_path, monkeypatch):
     asked = threading.Event()
     served = face.serve(tmp_path)
     try:
         restarting.register(served, asked.set)
+        scheduled = _scheduled(served, monkeypatch)
         status, _, _ = Browser(served).request("POST", restarting.PATH,
                                                origin="http://127.0.0.1:1")
         assert status != 200
-        assert not asked.wait(0.2)
+        assert not scheduled and not asked.is_set()
     finally:
         served.stop()

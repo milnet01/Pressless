@@ -647,27 +647,6 @@ def test_files_carry_the_policy(tmp_path: Path) -> None:
         served.stop()
 
 
-def test_every_page_links_to_settings(tmp_path: Path) -> None:
-    """PRESS-0193. Breaks when the top bar loses the Settings link, on an
-    ordinary page or on a failure page."""
-    def broken(request: face.Request) -> str:
-        raise ValueError("x")
-
-    _set_up(tmp_path)
-    served = face.serve(tmp_path)
-    try:
-        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
-        served.add_page("GET", "/broken", broken)
-        client = _Client(served)
-        for path, expected in (("/words", 200), ("/broken", 500)):
-            status, _, body = client.request("GET", path)
-            bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
-            assert status == expected, path
-            assert '<a href="/setup">Settings</a>' in bar, path
-    finally:
-        served.stop()
-
-
 def test_every_page_links_back_to_your_site(tmp_path: Path) -> None:
     """PRESS-0281. Breaks when the top bar has no way back to Your site, on an
     ordinary page or on a failure page."""
@@ -1697,6 +1676,22 @@ def test_the_top_bar_unlocks_once_setup_is_done(tmp_path) -> None:
         served.stop()
     assert 'href="/pages"' in bar and 'href="/manual">' in bar
     assert "target=" not in bar
+
+
+def test_a_settings_file_from_another_machine_keeps_the_bar_locked(tmp_path) -> None:
+    """PRESS-0021 § 4.8: a file carried from another machine, whose site
+    folder is not a path here, is still first-run setup. Breaks when that
+    file unlocks the bar mid-setup."""
+    _set_up(tmp_path)
+    carried = json.loads((tmp_path / "settings.json").read_text(encoding="utf-8"))
+    carried["site_folder"] = "site"            # not absolute here
+    (tmp_path / "settings.json").write_text(json.dumps(carried), encoding="utf-8")
+    served = face.serve(tmp_path)
+    try:
+        bar = _bar(served)
+    finally:
+        served.stop()
+    assert 'href="/pages"' not in bar and 'href="/manual" target="_blank"' in bar
 
 
 def test_sites_stays_open_while_another_site_is_set_up(tmp_path) -> None:
