@@ -8,3 +8,4 @@
 | 1-impl | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | Fold-back from the build: plain paragraphs where a page has no sections area (§ 4.5), INV-6's one clause that changes no answer, and the tests § 4.7 missed. |
 | 1-hand | 2026-11-03 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | Fold-back from § 7 on real Firebase: step 4 now says to press Get started first, as the console asks. |
 | fix | 2026-11-17 | none; PRESS-0386 closing review findings; no reviewer dispatched | - | - | - | - | One note per project; a refused key told from Anonymous sign-in; Check counts as the page does and deletes after an unanswered first write; App Check's skip given its reason; `setup._privacy` is `setup.update_privacy`. |
+| fix | 2026-11-23 | none; PRESS-0455 closing review findings; no reviewer dispatched | - | - | - | - | § 4.6: a 429 at any step asks the writer to wait; any other refusal of the first write reads as unreachable. |

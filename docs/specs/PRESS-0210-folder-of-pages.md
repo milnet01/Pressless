@@ -197,6 +197,10 @@ over the same folder gives the same names.
 A photograph or file keeps its name. One taken or refused takes its folders
 joined by `-` before the name, and then a number, and is listed.
 
+A name joined from folders, a page's or a file's before its suffix, is cut to
+`_JOINED_LONGEST` bytes where it is longer, ending in `-` and a hash of the
+path, so a deep path cannot make a name the system refuses.
+
 ### 4.5 Addresses
 
 Every address in a page's `href`, `src`, `srcset` and `poster`, and in a CSS
@@ -254,10 +258,11 @@ Every stylesheet the folder's pages link, by a `<link>` or an `@import` in a
 link them, pages taken in path order. An `@import` of a stylesheet in the
 folder is replaced by that sheet's text, each sheet once. One inside another is
 followed `_IMPORTS_DEEPEST` deep; a sheet reached only deeper is `left`, with
-why, and its `@import` is written as one outside the folder. A `media` attribute
+why, and its `@import` is written as one outside the folder. A sheet another way
+reaches shallower is joined once, at the end where no way joined it sooner. A `media` attribute
 wraps its sheet's text in `@media`. An `@import` of an address outside the folder
-moves to the top of the result, that `media` as its own condition, because a
-browser ignores one below another rule (run in Firefox, 2026-10-31). `@charset`
+moves to the top of the result, that `media` joined to its own condition query
+by query, because a browser ignores one below another rule (run in Firefox, 2026-10-31). `@charset`
 is dropped. Each `url(...)` is read against its own
 sheet's old path and written from `builder.STYLE_CODE`'s place, by § 4.5's
 rows. A sheet that only some pages link is listed: its rules now reach every
@@ -310,12 +315,15 @@ listed, because new pages will not join it by themselves (`docs/design.md`
 
 ### 4.9 A page, and writing it
 
-**A page's text.** It is decoded as UTF-8, a leading byte-order mark dropped.
-Failing that, it is decoded by its `<meta charset>`, the label read as the WHATWG
-Encoding Standard reads it, so `iso-8859-1` and `us-ascii` mean windows-1252; a
-label naming no encoding there counts as none. With none, it is decoded as
-`cp1252`. Either way the declared charset is rewritten to `utf-8`, and each such
-page is listed. A file that none of these decode is `left`.
+**A page's text.** A UTF-16 byte-order mark decodes it as UTF-16. Otherwise it
+is decoded as UTF-8, a leading byte-order mark dropped. Failing that, it is
+decoded by its `<meta charset>`, the label read as the WHATWG Encoding Standard
+reads it, so `iso-8859-1` and `us-ascii` mean windows-1252 and a `utf-16` label
+means UTF-8; a label naming no encoding there counts as none. A page saying
+UTF-8 stays UTF-8, each wrong byte becoming U+FFFD, as a browser shows it. With
+no label, or where the labelled encoding fails, it is decoded as the standard's
+windows-1252, which reads every byte. Unless it stayed UTF-8, the declared
+charset is rewritten to `utf-8`, and each such page is listed.
 
 Any Builder marker comment or `pressless:page` mark the page holds is removed
 and listed, because the Builder would otherwise fill or read it. The words

@@ -1861,7 +1861,6 @@ _WORDS: dict[str, str] = {
         "would reload for ever"
     ),
     "import.folder.why.verification": "it proves to a search engine that the site is yours",
-    "import.folder.why.undecodable": "Pressless could not read its words",
     "import.folder.why.sheet": "no page links this stylesheet",
     "import.folder.why.deep": (
         "it is reached only through more than {most} stylesheets, each importing the next"),
@@ -1872,6 +1871,21 @@ _WORDS: dict[str, str] = {
         "Pressless keeps an SVG only as a small picture a page shows, and this is not one"
     ),
     "import.folder.why.kind": "it is not a kind of file Pressless keeps",
+    "import.fetch.why.no_room": "there was no room left on this drive",
+    "import.fetch.why.too_slow": "it was still arriving after {minutes} minutes",
+    "import.fetch.why.not_found": "the old site's name could not be found",
+    "import.fetch.why.not_web": "its address is not a web address",
+    "import.fetch.why.out_of_the_site": "it redirected out of the site",
+    "import.fetch.why.parent": "its address climbs out of the site",
+    "import.fetch.why.too_many": "the site holds too many files to bring in whole",
+    "import.fetch.why.port": "its address names no port Pressless can use",
+    "import.fetch.why.inside": "its address leads inside this computer or its network",
+    "import.fetch.why.moved_nowhere": "the old site answered {status} and named no address",
+    "import.fetch.why.answered": "the old site answered {status}",
+    "import.fetch.why.silent": "the old site sent nothing for {seconds} seconds",
+    "import.fetch.why.connection": "the connection failed ({what})",
+    "import.fetch.why.cut_short": "the old site stopped sending before the end",
+    "import.fetch.why.redirects": "the old site redirected it more than {most} times",
     "import.folder.front": "with no index page, {path} became the front page",
     "import.folder.not_carried": "a link to {path}, which did not come across",
     "import.folder.carried_link": (
@@ -2015,6 +2029,11 @@ _WORDS: dict[str, str] = {
     ),
     "assistant.on": "On: an AI app can connect while Pressless is open.",
     "assistant.off": "Off: no AI app can connect.",
+    "assistant.unopened": (
+        "Pressless could not write the file an AI app finds it by, in Pressless's own "
+        "folder, so no AI app can connect. Check that the folder can be written to, then "
+        "switch the helper on again."
+    ),
     "assistant.switch_on": "Switch on",
     "assistant.switch_off": "Switch off",
     "assistant.connect": "Connecting an AI app",
@@ -2119,6 +2138,16 @@ _WORDS: dict[str, str] = {
         "Pressless was updated after this AI app started its helper. Restart the AI app."
     ),
     "assistant.bad_call": "That call cannot run: {why}.",
+    # assistant_tools.problem's reasons, each the {why} of assistant.bad_call.
+    # {type} is a JSON type's name, as the tool list gives it.
+    "assistant.why.no_tool": "there is no tool {tool}",
+    "assistant.why.not_object": "the arguments are not an object",
+    "assistant.why.needs": "{tool} needs {argument}",
+    "assistant.why.takes_no": "{tool} takes no {argument}",
+    "assistant.why.type": "{argument} must be {type}",
+    "assistant.why.whole_number": "{argument} must be a whole number",
+    "assistant.why.one_of": "{argument} must be one of {choices}",
+    "assistant.why.items": "each item of {argument} must be {type}",
     "assistant.not_json": "That call cannot run: it is not a JSON object.",
     "assistant.bad_data": "The file's data is not base64.",
     "assistant.one_waiting": (
@@ -2137,10 +2166,11 @@ _WORDS: dict[str, str] = {
         "screen, not by the AI helper."
     ),
     "assistant.box.undo": "Put your site back as it was before the last publish.",
-    "assistant.box.remove": "Remove the page {name} from your site, now.",
-    "assistant.box.rename": "Rename the page {name} to {to}, now.",
-    "assistant.box.bin": "Put {name} in the bin.",
-    "assistant.box.discard": "Throw away the changes waiting on {name}.",
+    # A name in the box may be the AI app's own text, so each is quoted.
+    "assistant.box.remove": "Remove the page “{name}” from your site, now.",
+    "assistant.box.rename": "Rename the page “{name}” to “{to}”, now.",
+    "assistant.box.bin": "Put “{name}” in the bin.",
+    "assistant.box.discard": "Throw away the changes waiting on “{name}”.",
     "assistant.status.waiting": (
         "Waiting for the writer's answer in Pressless's own window. Tell the writer, and ask "
         "again once they say they have answered. It waits up to 30 minutes."
@@ -2165,6 +2195,10 @@ _WORDS: dict[str, str] = {
     "jpegxl.disk_full": (
         "There is not enough room on this computer for JPEG XL support. Free some space, then "
         "try again."
+    ),
+    "jpegxl.not_writable": (
+        "JPEG XL support could not be saved, because Pressless may not change the folder it "
+        "runs from."
     ),
     "jpegxl.rejected": "The download was not the expected file, so it was thrown away.",
     "jpegxl.no_decoder": (
@@ -2599,6 +2633,9 @@ _WORDS: dict[str, str] = {
     "votes_setup.check.database": "There is no database yet. Create it (step 2).",
     "votes_setup.check.unreachable": (
         "Pressless could not reach Google, so nothing is wrong yet. Try again later."
+    ),
+    "votes_setup.check.busy": (
+        "Google asked Pressless to wait, so nothing is wrong yet. Try again in a few minutes."
     ),
     "votes_setup.check.recaptcha": (
         "With App Check on, this cannot be checked from your computer. Try the buttons on your "

@@ -33,8 +33,11 @@ from pathlib import Path
 here = Path(__file__).resolve().parent
 told = json.loads((here / "standin.json").read_text(encoding="utf-8"))
 Path(told["record"]).write_text(json.dumps(sys.argv[1:]), encoding="utf-8")
+if told.get("hog"):
+    held = bytearray(told["hog"])     # MemoryError past the decoder's limit
 if told.get("sleep"):
-    Path(told["pid"]).write_text(str(os.getpid()), encoding="ascii")
+    if told.get("pid"):
+        Path(told["pid"]).write_text(str(os.getpid()), encoding="ascii")
     time.sleep(told["sleep"])
 if told.get("fail"):
     sys.exit(1)

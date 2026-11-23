@@ -76,7 +76,7 @@ def test_an_animation_gives_its_first_frame(decoder, tmp_path):
     work = tmp_path / "work"
     work.mkdir()
     out = jpegxl.decode(decoder, _FIXTURES / "animation.jxl", work)
-    assert sorted(path.name for path in work.iterdir()) == ["decoded.png"]
+    assert sorted(path.name for path in work.iterdir()) == ["decoded.png", "original.jxl"]
     with Image.open(out) as picture:
         assert picture.size == (32, 32)
         assert _near(picture.convert("RGB").getpixel((16, 16)), (255, 0, 0))

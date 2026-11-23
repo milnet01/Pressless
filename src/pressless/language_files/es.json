@@ -3437,10 +3437,6 @@
    "475aeb5d",
    "una carpeta de su ruta tiene el mismo nombre que otra, salvo por las mayúsculas"
   ],
-  "import.folder.why.undecodable": [
-   "ab8b29c9",
-   "Pressless no pudo leer sus palabras"
-  ],
   "import.folder.why.unwritable": [
    "174f1c23",
    "este ordenador no pudo escribirlo allí ({why})"

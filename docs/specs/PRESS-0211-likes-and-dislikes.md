@@ -304,11 +304,13 @@ and says buttons appear at the next press.
 | | any other refusal | turn on Anonymous sign-in (step 4) |
 | write `entries/0000-00-00-pressless-check/votes/<uid>` `value` 1 | 403 | paste the rules (step 3) |
 | | 404 | create the database (step 2) |
+| | any other refusal | could not reach Google; nothing is wrong yet |
 | write it again with `value` 5 | accepted | the rules are not the ones shown (step 3) |
 | count, as the page does (§ 4.3 step 1, `value` 1), with no sign-in | refused | the rules are not the ones shown (step 3) |
 | delete it | refused | the rules are not the ones shown (step 3) |
 | all passed | | ready |
 | no answer at any step | | could not reach Google; nothing is wrong yet |
+| any step | 429, Google's quota or rate limit | Google asked Pressless to wait; nothing is wrong yet |
 
 Firebase's Auth reference (<https://firebase.google.com/docs/reference/rest/auth>)
 names `API key not valid` and `OPERATION_NOT_ALLOWED` as sign-up answers. That a

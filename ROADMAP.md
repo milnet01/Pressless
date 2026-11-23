@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=484 -->
+<!-- ants-roadmap-id-high-water: PRESS=485 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9299,10 +9299,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Updater.
 
-- 📋 [PRESS-0451] **Second-round review fixes: the AI helper.**
+- ✅ [PRESS-0451] **Second-round review fixes: the AI helper.**
   Subject 12. Review types: Codebase, Test.
   Findings: review-code lane-12, review-readability lane-12, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, b20af86..2458934 (merged e3d4341). 28 findings: 24
+  fixed, 0 queued, 4 dismissed (two duplicates, the settings file's 0600
+  is harmless, the 2 s poll is the spec's rate). The bridge sends nothing
+  until the door proves its token, so a program left on the old port gets
+  neither key nor content. One 300 s deadline and a 64 MiB reply cap per
+  call; pings answered during a long plan; Pressless starts when the door
+  file cannot be written; a request always ends; names in the box are
+  quoted; a malformed call is refused in the writer's language. The proof
+  relies on the Face running admits and call on one thread, which its
+  tests lock. PRESS-0337 amended, new INV-15. Full suite 2762 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/12.json.
   **Layman:** Bug fixes and tidy-ups in the connection that lets an AI app work on your site.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9329,29 +9340,59 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Sites.
 
-- 📋 [PRESS-0453] **Second-round review fixes: the WordPress import.**
+- ✅ [PRESS-0453] **Second-round review fixes: the WordPress import.**
   Subject 14. Review types: Codebase, Test.
   Findings: review-code lane-14, review-readability lane-14, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, e872c79..8be45a8 (merged ac20bc1). 26 findings: 24
+  fixed, 1 queued (PRESS-0483), 1 dismissed (the self-check's diff
+  measured at 0.19-0.67 s on a 5,000-line body). The export reader bounds
+  what an export can make it hold, attributes included; an unreadable
+  encoding gets the usual message; a page's code is listed in the Report;
+  a brace in a post's words never forms a mark; each moved file's line
+  reaches the drive before the file moves; a failed media write is told.
+  PRESS-0125 and PRESS-0007 amended. Full suite 2746 passed; ruff clean.
+  Sweep found PRESS-0484.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/14.json.
   **Layman:** Bug fixes and tidy-ups in bringing a WordPress site in.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0454] **Second-round review fixes: the folder import and downloads.**
+- ✅ [PRESS-0454] **Second-round review fixes: the folder import and downloads.**
   Subject 15. Review types: Codebase, Test.
   Findings: review-code lane-15, review-readability lane-15, and the
   performance and test reviews' findings on these files and their tests.
   Among them: a slow-dripping download is not bounded in time.
+  Shipped 2026-11-23, 98df4c1 (merged cb4a8a4). 33 findings: 32 fixed, 1
+  queued (into PRESS-0462: a folder bring scans each page about ten
+  times). A slow-dripping download is cut at 30 minutes, handshake and
+  headers included; a body cut short is not kept as whole; why a file was
+  not fetched is in the screen's language; pages decode as a browser
+  decodes them; a live site's <base href> is followed; a deep name is
+  shortened; stylesheet media lists join correctly. Every own-network
+  refusal still holds. PRESS-0210 and PRESS-0333 amended. Full suite 2798
+  passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/15.json.
   **Layman:** Bug fixes and tidy-ups in bringing a folder of pages in, and copying an old site from the web.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0455] **Second-round review fixes: likes and JPEG XL.**
+- ✅ [PRESS-0455] **Second-round review fixes: likes and JPEG XL.**
   Subject 16. Review types: Codebase, Test.
   Findings: review-code lane-16, review-readability lane-16, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 153f9b2..da9d717 (merged d4a93f0). 13 findings: 9
+  fixed, 1 queued (PRESS-0485), 3 dismissed (reasoned in the ledger). A
+  header split over jxlp boxes is joined before its size is read; the
+  decoder's memory is capped (a data limit on Linux, a job object on
+  Windows), so a many-frame animation is refused. Both refusals are
+  proven. A refused folder is told; the size uses the language's decimal
+  mark; the votes Check tells Google's limit apart and removes its test
+  vote. PRESS-0275 (new INV-10) and PRESS-0211 amended. Real-decoder tests
+  passed on Linux and the Windows box. Full suite 2798 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/16.json.
   **Layman:** Bug fixes and tidy-ups in Like buttons and JPEG XL photographs.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9459,6 +9500,10 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   find the newest; an autosave parses the body about six times; a build
   parses each entry three or more times; Your site, the importer and the
   AI helper read the same files twice or more.
+  Also, queued by PRESS-0454 (review-code --performance PF-1,
+  _folder.py): a folder bring scans each page about ten times; measured
+  2026-11-23 on a 300-page bring, 21,901 page scans, 53% of profiled time.
+  Passing scans through costs memory in proportion to the folder.
   **Layman:** Screens and saves answer a little faster.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9555,6 +9600,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   progress, refuse before the first upload, or split into several commits
   and lose the one-commit guarantee. Measure a large publish on a scratch
   repository first.
+  User decision 2026-11-23: wait and carry on. Past the hourly allowance,
+  Pressless pauses until GitHub's reset, showing a countdown, then
+  finishes; the publish stays one commit.
   **Layman:** A very large publish no longer fails late and starts again from nothing.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9574,6 +9622,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   (relay/src/index.js: a body near the 2.2 MiB cap took 92 ms of CPU
   locally). Settle with one near-limit test send to the deployed relay;
   then a cheaper base64 pass or the paid plan's allowance, the user's call.
+  User decision 2026-11-23: redeploy the relay at push time, then one
+  near-limit test send to measure its CPU. Over the free limit, the choice
+  goes back to the user.
   **Layman:** A big log sent with Send my log is checked to fit the relay's free limits.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9670,6 +9721,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   (user, 2026-10-02), but look.save writes the live look files
   (PRESS-0196), so the next publish of anything ships a saved look. Needs
   the user's choice: build look drafts, or amend design.md.
+  User decision 2026-11-23: the look waits for Publish. Build look drafts,
+  so a saved look stays a draft until the look itself is published and an
+  entry's publish never ships it. design.md § Pages stands.
   **Layman:** Saving a new look either waits for Publish, or the design notes stop promising that it does.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9694,6 +9748,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
+
+- 📋 [PRESS-0485] **JPEG XL decodes to PAM rather than PNG, keeping colour profile and alpha.**
+  Review type: Codebase. Queued by PRESS-0455 from review-code
+  --performance lane-03 (jpegxl.py decodes to PNG). Measured 2026-11-23 on
+  30 MP: PNG 2.87 s, PAM 0.64 s. Changes PRESS-0275's fixed decoder command
+  (INV-3); the colour profile (--icc_out) and alpha must be kept another way.
+  **Layman:** Publishing JPEG XL photographs takes less time.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Builder.
 
 ## 1.3.0 — a home other than GitHub
 

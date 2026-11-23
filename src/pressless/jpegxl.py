@@ -16,6 +16,7 @@ import shutil
 import struct
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from platform import machine
@@ -45,6 +46,13 @@ DECODE_SECONDS = 120
 # Past this many pixels Pillow refuses any picture: twice its
 # MAX_IMAGE_PIXELS, which this module cannot import (a test holds the pair).
 MAX_PIXELS = 2 * 89_478_485
+# The decoder's memory: this much, and this much again for each pixel the
+# header claims (§ 4.4 step 3). libjxl v0.12.0's djxl needed about 53 bytes a
+# pixel for a 16-bit lossless picture with alpha, the costliest kind measured
+# (2026-11-23). An animation keeps every frame and extra channels add to each,
+# so this, not MAX_PIXELS, is what bounds them.
+MEMORY_BASE = 512 * 1024 * 1024
+MEMORY_PER_PIXEL = 80
 
 _CODESTREAM = b"\xff\x0a"
 _CONTAINER = b"\x00\x00\x00\x0cJXL \r\n\x87\x0a"
@@ -126,14 +134,19 @@ def find_program() -> Path | None:
     return installed(own, system)
 
 
+_HEAD = 18                              # bytes of codestream the SizeHeader fits in
+
+
 def _codestream_head(source) -> bytes | None:
     """The first bytes of the codestream in an open JPEG XL file: the file's
-    start, or inside the container's `jxlc` box or first `jxlp` box. None
-    where no codestream box is found."""
+    start, or inside the container's `jxlc` box, or its `jxlp` boxes joined
+    in order, as the decoder joins them. None where no codestream box is
+    found."""
     head = source.read(len(_CONTAINER))
     if head.startswith(_CODESTREAM):
-        return head + source.read(16)
-    while header := source.read(8):
+        return head + source.read(_HEAD - len(head))
+    found = b""
+    while len(found) < _HEAD and (header := source.read(8)):
         if len(header) < 8:
             return None
         size, kind = struct.unpack(">I4s", header)
@@ -145,12 +158,23 @@ def _codestream_head(source) -> bytes | None:
             size, taken = struct.unpack(">Q", wide)[0], 16
         if kind == b"jxlp":
             source.read(4)              # the part's index
-        if kind in (b"jxlc", b"jxlp"):
-            return source.read(18)
-        if size < taken:                # 0: the box runs to the end, and holds no codestream
+            taken += 4
+        left = size - taken             # what the box holds past its header
+        if size == 0:                   # the box runs to the end of the file
+            left = None
+        elif left < 0:
             return None
-        source.seek(size - taken, 1)
-    return None
+        if kind in (b"jxlc", b"jxlp"):
+            want = _HEAD - len(found)
+            found += source.read(want if left is None else min(want, left))
+            if kind == b"jxlc" or left is None:
+                break
+            source.seek(max(left - want, 0), 1)
+        elif left is None:
+            return None
+        else:
+            source.seek(left, 1)
+    return found or None
 
 
 def _size(head: bytes) -> tuple[int, int]:
@@ -179,10 +203,11 @@ def _size(head: bytes) -> tuple[int, int]:
     return height * wide // high, height
 
 
-def _refuse_past_the_limit(original: Path) -> None:
-    """§ 4.4 step 2: Unreadable where the file's own header is missing or
-    claims more than MAX_PIXELS. Read before the decoder runs, since the
-    decoder holds the whole picture in memory and writes it out in full."""
+def _refuse_past_the_limit(original: Path) -> int:
+    """§ 4.4 step 2: the pixels the file's own header claims, else
+    Unreadable where it is missing or claims more than MAX_PIXELS. Read
+    before the decoder runs, since the decoder holds the whole picture in
+    memory and writes it out in full."""
     with open(original, "rb") as source:
         head = _codestream_head(source)
     if head is None or not head.startswith(_CODESTREAM):
@@ -190,6 +215,75 @@ def _refuse_past_the_limit(original: Path) -> None:
     width, height = _size(head)
     if width * height > MAX_PIXELS:
         raise Unreadable("the JPEG XL picture is past the pixel limit")
+    return width * height
+
+
+def _limit_memory(process: subprocess.Popen, limit: int) -> Callable[[], None]:
+    """§ 4.4 step 3: hold the running `process` to `limit` bytes of memory,
+    and on Linux to no core file. Returns what lets it go, called once the
+    process has ended. OSError where the limit cannot be set."""
+    if sys.platform == "win32":
+        return _limit_windows(process, limit)
+    import resource
+    try:
+        resource.prlimit(process.pid, resource.RLIMIT_DATA, (limit, limit))
+        resource.prlimit(process.pid, resource.RLIMIT_CORE, (0, 0))
+    except ProcessLookupError:
+        pass                            # it has already ended
+    return lambda: None
+
+
+def _limit_windows(process: subprocess.Popen, limit: int) -> Callable[[], None]:
+    """A job object holding `process` to `limit` bytes of committed memory.
+    Closing it ends whatever still runs in it."""
+    import ctypes
+    from ctypes import wintypes
+
+    class Counters(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_ulonglong) for name in (
+            "reads", "writes", "others", "read_bytes", "written_bytes", "other_bytes")]
+
+    class Basic(ctypes.Structure):
+        _fields_ = [("process_time", ctypes.c_int64), ("job_time", ctypes.c_int64),
+                    ("flags", wintypes.DWORD), ("least_working_set", ctypes.c_size_t),
+                    ("most_working_set", ctypes.c_size_t), ("processes", wintypes.DWORD),
+                    ("affinity", ctypes.c_size_t), ("priority", wintypes.DWORD),
+                    ("scheduling", wintypes.DWORD)]
+
+    class Extended(ctypes.Structure):
+        _fields_ = [("basic", Basic), ("io", Counters), ("process_memory", ctypes.c_size_t),
+                    ("job_memory", ctypes.c_size_t), ("peak_process_memory", ctypes.c_size_t),
+                    ("peak_job_memory", ctypes.c_size_t)]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    kernel32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int,
+                                                 ctypes.c_void_p, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        raise ctypes.WinError(ctypes.get_last_error())
+    info = Extended()
+    # JOB_OBJECT_LIMIT_PROCESS_MEMORY | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    info.basic.flags = 0x100 | 0x2000
+    info.process_memory = limit
+    # PROCESS_SET_QUOTA | PROCESS_TERMINATE, which AssignProcessToJobObject needs.
+    handle = kernel32.OpenProcess(0x0100 | 0x0001, False, process.pid)
+    extended = 9                        # JobObjectExtendedLimitInformation
+    held = (handle and kernel32.SetInformationJobObject(
+                job, extended, ctypes.byref(info), ctypes.sizeof(info))
+            and kernel32.AssignProcessToJobObject(job, handle))
+    error = ctypes.get_last_error()
+    if handle:
+        kernel32.CloseHandle(handle)
+    if not held:
+        kernel32.CloseHandle(job)
+        raise ctypes.WinError(error)
+    return lambda: kernel32.CloseHandle(job)
 
 
 def decode(program: Path, original: Path, work: Path) -> Path:
@@ -198,19 +292,30 @@ def decode(program: Path, original: Path, work: Path) -> Path:
     system = this_system()
     if system is None or not _matches(program, PINS[system]):
         raise NotInstalled("the JPEG XL decoder is not the file Pressless expects")
-    _refuse_past_the_limit(original)
+    pixels = _refuse_past_the_limit(original)
     shutil.copyfile(original, Path(work) / SOURCE)
     out = Path(work) / DECODED
     try:
-        finished = subprocess.run(  # noqa: S603 -- the pinned program, two fixed names
+        process = subprocess.Popen(  # noqa: S603 -- the pinned program, two fixed names
             [str(program), SOURCE, DECODED], cwd=work,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            timeout=DECODE_SECONDS,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    except subprocess.TimeoutExpired:
-        raise Unreadable("the JPEG XL decoder ran past its time") from None
     except OSError as exc:
         raise Unreadable(f"the JPEG XL decoder did not start: {type(exc).__name__}") from None
-    if finished.returncode != 0 or not out.is_file():
+    try:
+        release = _limit_memory(process, MEMORY_BASE + MEMORY_PER_PIXEL * pixels)
+    except OSError:
+        process.kill()
+        process.wait()
+        raise Unreadable("the JPEG XL decoder's memory could not be limited") from None
+    try:
+        code = process.wait(timeout=DECODE_SECONDS)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+        raise Unreadable("the JPEG XL decoder ran past its time") from None
+    finally:
+        release()
+    if code != 0 or not out.is_file():
         raise Unreadable("the JPEG XL decoder gave no picture")
     return out

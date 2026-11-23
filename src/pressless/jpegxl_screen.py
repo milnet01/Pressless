@@ -11,7 +11,7 @@ import threading
 from pathlib import Path
 
 from pressless import jpegxl, updater
-from pressless.face import Face, Reply, Request
+from pressless.face import Face, Reply, Request, said_decimal
 from pressless.words import say
 
 
@@ -19,13 +19,14 @@ def install(folder: Path, platform: str, transport: updater.Transport | None = N
     """Download this system's decoder into `folder`/extras under the pin's
     name. `updater.download` keeps nothing whose size or hash is not the
     pin's; its failures are raised as they are, and this function's own
-    steps fail as DiskFull or DownloadFailed too (§ 4.3)."""
+    steps fail as DiskFull, NotWritable or DownloadFailed too (§ 4.3)."""
     pin = jpegxl.PINS[platform]
     beside = Path(folder) / jpegxl.FOLDER_NAME
     try:
         beside.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        raise updater.download_failure(exc, "the extras folder could not be made") from exc
+        raise updater.download_failure(exc, "the extras folder could not be made",
+                                       folder=True) from exc
     offer = updater.Offer(version=jpegxl.RELEASE,
                           asset_url=jpegxl.download_url(platform),
                           size=pin.size, sha256=pin.sha256)
@@ -37,7 +38,8 @@ def install(folder: Path, platform: str, transport: updater.Transport | None = N
         os.replace(staged, target)
     except OSError as exc:
         staged.unlink(missing_ok=True)
-        raise updater.download_failure(exc, "the decoder could not be put in place") from exc
+        raise updater.download_failure(exc, "the decoder could not be put in place",
+                                       folder=True) from exc
     return target
 
 
@@ -62,6 +64,8 @@ def register(face: Face, own: Path, *, platform: str | None = None,
                     install(own, platform, transport)
                 except updater.DiskFull:
                     failure.append("jpegxl.disk_full")
+                except updater.NotWritable:
+                    failure.append("jpegxl.not_writable")
                 except updater.UpdateRejected:
                     failure.append("jpegxl.rejected")
                 except (updater.UpdateError, OSError):
@@ -84,7 +88,7 @@ def line_html(ready: bool, size: int, failure: list[str]) -> str:
     place, unseen and so not clickable, once the decoder is in."""
     words = say("jpegxl.ready") if ready else say("jpegxl.line")
     told = "".join(f'<p class="failure-line">{say(key)}</p>' for key in failure)
-    button = say("jpegxl.add", size=f"{size / 1_000_000:.1f}")
+    button = say("jpegxl.add", size=said_decimal(size / 1_000_000))
     return ('<form method="post" action="/jpeg-xl" id="jpeg-xl" class="switch-row">'
             f'<div class="states"><p>{words}</p>{told}</div>'
             f'<span class="states"><button{" hidden" if ready else ""}>{button}</button>'
