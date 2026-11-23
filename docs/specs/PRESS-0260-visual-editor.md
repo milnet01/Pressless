@@ -166,6 +166,10 @@ frame, at a fixed place and size. It shows:
 - **Move up, Move down, Remove.** A section moves within the list it
   sits in: the page's, a column's, or a row of pictures'. At an end of
   its list, the button it cannot use is shown disabled, never hidden.
+  No Remove, drag or Backspace leaves a holder Blocks refuses: a row's
+  last picture goes with its row, a question's words take the question
+  (the only question takes the section), and an answer's last section
+  cannot go.
 
 *Amended by PRESS-0217:* the Add list and this table gain its six kinds
 (PRESS-0217 § 4.1, § 4.2), and PRESS-0273's `style` kind (PRESS-0217 § 14).

@@ -1263,3 +1263,70 @@ def test_a_press_says_publishing_the_instant_it_is_clicked(pages, tmp_path):
                                                 "script.press.published"]))
     # PRESS-0345 INV-6: Press to site asks first; Rename and Remove do not.
     assert ("check" in seen["posted"]) == (pages == "publish")
+
+
+# ------------------------------------------------- PRESS-0260 § 4.3 ---------
+
+# What a holder keeps, under node: the visual view's own rules on a
+# hand-built model, so no frame is needed.
+_HOLDS_HARNESS = """
+const ROWS = ["pictures", "slideshow"];
+const model = [];
+%s
+const holder = (kind, ...lists) => {
+  const made = {kind, parts: lists};
+  lists.forEach((list, column) => list.forEach((item) => {
+    item.parent = made; item.column = column;
+  }));
+  model.push(made);
+  return made;
+};
+const item = (kind) => ({kind, parts: []});
+const lone = item("picture"), first = item("picture"), second = item("picture");
+const row = holder("pictures", [lone]);
+holder("slideshow", [first, second]);
+const onlyWords = item("text"), onlyAnswer = item("text");
+const only = holder("questions", [onlyWords, onlyAnswer]);
+const asked = item("text"), answer = item("text"), more = item("text");
+const other = [item("text"), item("text")];
+holder("questions", [asked, answer, more], other);
+const top = item("text");
+model.push(top);
+const name = (found) => found === null ? null : found === row ? "row" : found === only
+  ? "questions" : found.kind === "questions" || ROWS.includes(found.kind) ? "holder" : "itself";
+process.stdout.write(JSON.stringify({
+  taken: {lone: name(taken(lone)), first: name(taken(first)), onlyWords: name(taken(onlyWords)),
+          words: name(taken(asked)), onlyAnswer: name(taken(onlyAnswer)),
+          answer: name(taken(answer)), top: name(taken(top))},
+  leaves: {lone: leaves(lone), first: leaves(first), words: leaves(asked),
+           onlyAnswer: leaves(onlyAnswer), answer: leaves(answer), top: leaves(top)},
+}));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_no_move_or_remove_leaves_a_holder_the_save_refuses(tmp_path):
+    """PRESS-0260 § 4.3 and blocks' own rules: a row of pictures keeps a
+    picture, and a question its words first and an answer. Remove takes the
+    holder a last picture or an only question's words would empty, and is
+    refused on an answer's last section; a drag leaves nothing it would
+    break. Breaks when Remove or a drag lets a holder go empty, which the
+    save refuses and so stops every later save."""
+    script = page_editor._VISUAL_SCRIPT
+    start = script.index("  const listOf = ")
+    end = script.index("\n  const each = ", start)
+    harness = tmp_path / "holds.js"
+    harness.write_text(_HOLDS_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    seen = json.loads(run.stdout)
+    assert seen["taken"] == {"lone": "row", "first": "itself", "onlyWords": "questions",
+                             "words": "itself", "onlyAnswer": None, "answer": "itself",
+                             "top": "itself"}
+    assert seen["leaves"] == {"lone": False, "first": True, "words": False,
+                              "onlyAnswer": False, "answer": True, "top": True}
+    # Every way a section goes asks the same rules.
+    assert "const gone = taken(picked);" in script
+    assert 'act("remove").disabled = !taken(picked);' in script
+    assert "if (list !== listOf(item) && !leaves(item)) return null;" in script
+    assert "if (words(item) || (words(target) && !after)) return null;" in script

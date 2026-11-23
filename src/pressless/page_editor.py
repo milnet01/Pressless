@@ -1852,6 +1852,24 @@ _VISUAL_SCRIPT = r"""
   open(given.sections);
 
   const listOf = (item) => item.parent ? item.parent.parts[item.column] : model;
+  // What a holder keeps, as Blocks checks it: a row of pictures a picture,
+  // and a question its words first, then an answer (PRESS-0217). Up, Down,
+  // Remove, Backspace and a drag all ask these, so none of them leaves a page
+  // the save refuses.
+  const asking = (item) => Boolean(item && item.parent && item.parent.kind === "questions");
+  const words = (item) => asking(item) && listOf(item).indexOf(item) === 0;
+  // Whether `item` may leave its list, for another or for good.
+  const leaves = (item) => !item.parent || (ROWS.includes(item.parent.kind)
+    ? listOf(item).length > 1 : !asking(item) || (!words(item) && listOf(item).length > 2));
+  // What Remove takes: the section, or the holder its going would empty (a
+  // row's last picture, the only question's words); a question's words take
+  // their question. Null for an answer's last section.
+  function taken(item) {
+    if (!item) return null;
+    if (words(item)) return item.parent.parts.length > 1 ? item : item.parent;
+    if (leaves(item)) return item;
+    return ROWS.includes(item.parent.kind) ? item.parent : null;
+  }
   const each = (list, visit) => list.forEach((item) => {
     visit(item);
     item.parts.forEach((part) => each(part, visit));
@@ -2096,11 +2114,9 @@ _VISUAL_SCRIPT = r"""
     }
     const list = picked ? listOf(picked) : model;
     const at = picked ? list.indexOf(picked) : -1;
-    // PRESS-0217: a question's words stay first in it, above its answer.
-    const asked = picked && picked.parent && picked.parent.kind === "questions";
-    act("up").disabled = !picked || at <= (asked ? 1 : 0);
-    act("down").disabled = !picked || at >= list.length - 1 || (asked && at === 0);
-    act("remove").disabled = !picked;
+    act("up").disabled = !picked || at <= (asking(picked) ? 1 : 0);
+    act("down").disabled = !picked || at >= list.length - 1 || words(picked);
+    act("remove").disabled = !taken(picked);
     destinations = places(picked);
     const where = document.getElementById("move-to");
     where.replaceChildren(...(destinations.length ? destinations.map((spot, at) => new Option(
@@ -2356,11 +2372,11 @@ _VISUAL_SCRIPT = r"""
     if (item.parent) touch(item.parent); else window.presslessPage.changed();
   }
   act("remove").addEventListener("click", () => {
-    if (!picked) return;
-    const gone = picked;
+    const gone = taken(picked);
+    if (!gone) return;
     show(null, false);
     const container = gone.parent;
-    if (container && container.kind === "questions" && listOf(gone).indexOf(gone) === 0) {
+    if (words(gone)) {
       // A question's words go with the whole question, answer and all.
       const column = gone.column;
       [...container.parts[column]].forEach(drop);
@@ -2379,7 +2395,7 @@ _VISUAL_SCRIPT = r"""
   // The handle sits at the picked section's top right corner. Dragged, a line shows
   // where the section will land: before or after the section under the
   // pointer, in that section's list, where its kind fits there; else beside
-  // the columns or row holding it. A row of pictures keeps its last picture.
+  // the columns or row holding it. Each holder keeps what `leaves` says.
   function box(item) {
     const rects = between(item).filter((at) => at.nodeType === Node.ELEMENT_NODE)
       .map((at) => at.getBoundingClientRect()).filter((at) => at.width || at.height);
@@ -2423,8 +2439,8 @@ _VISUAL_SCRIPT = r"""
     const list = listOf(target);
     const next = list[list.indexOf(target) + (after ? 1 : -1)];
     if (next === item) return null;
-    const row = item.parent && ROWS.includes(item.parent.kind) ? item.parent : null;
-    if (row && row !== target.parent && row.parts[0].length === 1) return null;
+    if (words(item) || (words(target) && !after)) return null;
+    if (list !== listOf(item) && !leaves(item)) return null;
     return {target, after, edges};
   }
   function relocate(item, target, after) {
@@ -2505,7 +2521,7 @@ _VISUAL_SCRIPT = r"""
       above() {
         const list = listOf(picked);
         const above = list[list.indexOf(picked) - 1];
-        return above && above.kind === "text" && above.el ? above : null;
+        return above && above.kind === "text" && above.el && leaves(picked) ? above : null;
       },
       join(above) {
         const gone = picked;
