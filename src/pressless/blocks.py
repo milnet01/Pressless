@@ -689,7 +689,12 @@ def read(name: str, html: str) -> Page | None:
     """The page's sections area as sections, or None where it has none
     (§4.2). `name`, the page's, is not read: PRESS-0215 § 4.1's signature
     keeps it."""
-    marks = _marks(html, _scan(html))
+    return _read(html, _scan(html))
+
+
+def _read(html: str, events: tuple[_Event, ...]) -> Page | None:
+    """`read`, given `html` already scanned (PRESS-0462)."""
+    marks = _marks(html, events)
     opening = next((mark for mark in marks if not mark.closing and mark.name == _PAGE), None)
     if opening is None:
         return None
@@ -760,9 +765,9 @@ def adopt(html: str, furniture: tuple[tuple[int, int], ...], element: str = "mai
     `builder.furniture_spans(name, html)`. `element` names another element to
     make the area in: `header` or `footer` for the furniture files
     (PRESS-0216 § 4.1)."""
-    if read("", html) is not None:
+    events = _scan(html)        # once, for the check and the adopting
+    if _read(html, events) is not None:
         return html
-    events = _scan(html)
 
     def in_furniture(at: int) -> bool:
         return any(start <= at < end for start, end in furniture)
