@@ -9500,19 +9500,30 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0461] **Network work runs in parallel over reused connections.**
+- ✅ [PRESS-0461] **Network work runs in parallel over reused connections.**
   Review type: Codebase. From review-code --performance, theme 5.
   One GitHub blob per request in series (publisher.py, setup step 5,
   where PRESS-0435 records a user giving up); import attachments fetched
   one by one on new connections (fetch.py); take-in downloads the same
   commit three times (takein.py); https.py and youtube.py the same shape.
   Measure each before and after.
+  Shipped 2026-11-23, 419e19c..15b47e0 (merged c494060, 0e80261). Reads go
+  over kept connections (https.KeptOpen; writes and proxies never reuse);
+  setup's blob reads run four readers within GitHub's documented limits;
+  import attachments and a site crawl fetch four at a time, each checking
+  every address is global on every hop; take-in answers a repeat look from
+  memory. Measured 2026-11-23 against a stand-in: setup reads 26.9 s to 4.2
+  s, take-in 80.5 s to 12.7 s, attachments 26.2 s to 6.6 s. Uploads, the
+  pause and the one-commit guarantee are unchanged; each blob counts as its
+  read lands. PRESS-0009, 0125, 0218, 0333 and 0435 amended. Full suite
+  2890 passed. PRESS-0489 queued.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0461.json.
   **Layman:** Publishing, taking a site in and importing take less waiting.
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0462] **The same data is read once per request or job.**
+- ✅ [PRESS-0462] **The same data is read once per request or job.**
   Review type: Codebase. From review-code --performance, themes 2 and 3.
   The header, footer and menu preview reads every published entry to
   find the newest; an autosave parses the body about six times; a build
@@ -9522,6 +9533,14 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   _folder.py): a folder bring scans each page about ten times; measured
   2026-11-23 on a 300-page bring, 21,901 page scans, 53% of profiled time.
   Passing scans through costs memory in proportion to the folder.
+  Shipped 2026-11-23, f0def73 and 5763b86 (merged 30c9ad5). A build parses
+  each entry twice, not eight times (measured 12.5 s to 3.3 s on 300
+  entries); the folder import reads the whole folder only at the found step
+  and the bring, with glance_folder elsewhere (18 ms against 1,077 ms);
+  the bring scans each page fewer times, holding one page's scan at a
+  time. Six instances measured small and closed with their numbers.
+  PRESS-0210 amended. Full suite 2890 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0462.json.
   **Layman:** Screens and saves answer a little faster.
   Kind: perf.
   Source: review-2026-11-23.
