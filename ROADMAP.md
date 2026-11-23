@@ -9548,22 +9548,37 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0463] **Slow work stops holding locks, and usage reports wait until after the page.**
+- ✅ [PRESS-0463] **Slow work stops holding locks, and usage reports wait until after the page.**
   Review type: Codebase. From review-code --performance, themes 1 and 4.
   With usage reports on, every screen load writes and fsyncs a file
   before the page is sent (face.py, usage.py). Process-wide locks are
   held across long work in face.py, assistant.py and backups.py
   (sitefile's case is subject 13's).
+  Shipped 2026-11-23, 8570af5 and 66dd6a7. With usage reports on, a screen's
+  report runs after the page is sent (58.6 ms median before), on its own
+  path, still read under usage._LOCK so nothing goes after a No. Notices
+  are captured per thread with no lock, so screens no longer wait behind a
+  publish build; the AI helper's insights read holds no editor.LOCK;
+  --assistant starts in 0.07 s against 0.21 s. backups.py closed by
+  measure (0.035 s). PRESS-0011, 0262, 0013, 0015 amended. Full suite 2916.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0463.json.
   **Layman:** One slow job no longer holds up the rest of Pressless.
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0464] **Every long job shows a count.**
+- ✅ [PRESS-0464] **Every long job shows a count.**
   Review type: Codebase. From review-code --performance, theme 6, under
   the 2026-11-21 ruling that every action shows progress.
   publisher.py, importing.py, updating.py and builder.py report no count;
   GET /sites/save's counts go nowhere.
+  Shipped 2026-11-23, 30151c0 and 66dd6a7. Publishing counts files checked,
+  pages built and photographs readied; a bring-in counts files written; an
+  update counts bytes downloaded; a download link (Save site) shows working
+  at once with its packing count, as GET now holds a record. A record ends
+  as its answer's headers go out (tested). PRESS-0435 amended. A by-hand
+  browser check of the download note is still owed. Full suite 2916 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0464.json.
   **Layman:** Long jobs such as publishing and importing show how far they have got.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9638,10 +9653,15 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Words.
 
-- 📋 [PRESS-0470] **A large page-editor save is measured, then its files go through uploads.**
+- ✅ [PRESS-0470] **A large page-editor save is measured, then its files go through uploads.**
   Review type: Codebase. Queued by PRESS-0440 from review-code
   --performance (face.py holds a large form body as bytes, text and parsed
   copies at once). Measure peak memory first; change only if it shows.
+  Closed 2026-11-23 by measure, nothing changed: files never travel as a
+  form (they go as raw bytes to /file and /photograph; a 49 MB upload peaks
+  at one copy). A 4 MB page's save peaks at +182 MB against +164 MB for
+  opening it, so the form's copies are a small share.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0470.json.
   **Layman:** Saving a page holding big files uses less memory.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9745,31 +9765,48 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0477] **Opening an editor shows the page before its preview is built.**
+- ✅ [PRESS-0477] **Opening an editor shows the page before its preview is built.**
   Review type: Codebase. Queued by PRESS-0441 from review-code
   --performance (editor.py builds the preview before sending the page).
   Changes PRESS-0012 § 4.7 for both editors; measure in a browser first.
+  Closed 2026-11-23 by measure, nothing changed: building the preview takes
+  2-25 ms of a 65-643 ms first byte, so sending the page first saves under
+  25 ms at the price of PRESS-0012 § 4.7 for both editors. The rest of a
+  large page's opening cost is PRESS-0492.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0477.json.
   **Layman:** The editor opens at once instead of waiting for the preview.
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0478] **A save's preview reload reuses the originals it already fetched.**
+- ✅ [PRESS-0478] **A save's preview reload reuses the originals it already fetched.**
   Review type: Codebase. Queued by PRESS-0441 from review-code
   --performance (every answer, /originals/ included, is sent no-store).
   Measure in a browser first; a re-used name must never show the old
   picture.
+  Shipped 2026-11-23, 29090d4. Both photograph routes let the browser keep a
+  picture and ask by its SHA-256 whether it changed. Measured 2026-11-23,
+  headless Chrome, ten 9 MB photographs: a save moved 90.98 MB and reloaded
+  in 137-188 ms; now nothing is re-sent and it reloads in 27-29 ms. A
+  re-used name with the same size and time shows the new picture (tested).
+  PRESS-0012 § 4.3 amended. Full suite 2916 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0478.json.
   **Layman:** Saving in the visual editor stops re-downloading every full-size photograph.
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0479] **The code view recolours only what changed while typing.**
+- ✅ [PRESS-0479] **The code view recolours only what changed while typing.**
   Review type: Codebase. Queued by PRESS-0442 from review-code
   --performance lane-02 (page_editor.py's code view recolours the whole
   page on each repaint). The colouring step measured 8.6 ms per repaint on
   a 200 KB page after 842bc89; rebuilding the coloured text needs a
   browser profiler to measure first.
+  Shipped 2026-11-23, 5e9f72a. The code view's coloured copy holds one block
+  per line and a keystroke rebuilds only the lines it changed. Measured
+  2026-11-23: keystroke to screen 256 to 111 ms on 200 KB, 1336 to 536 ms on
+  1 MB; most of the rest is the browser's own text box. Full suite 2916
+  passed. Ledger: local-archive/reviews/2026-11-23/close-findings/0479.json.
   **Layman:** Typing in the code view of a very big page stays smooth.
   Kind: perf.
   Source: review-2026-11-23.
