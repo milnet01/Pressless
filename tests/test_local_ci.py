@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 import pytest
@@ -383,10 +384,21 @@ def test_setup_hooks_turns_the_hooks_on_in_a_fresh_clone(tmp_path):
 
 def test_the_committed_docs_glob_leaves_out_what_a_test_reads():
     """PRESS-0362: a test reads the manual's en.txt and the release build reads
-    a .txt lock, so `*.txt` must not make a push documentation-only."""
+    a .txt lock, so `*.txt` must not make a push documentation-only.
+    test_sign_release reads CHANGELOG.md, so a push changing it runs the
+    whole gate (PRESS-0457). The hook matches a path as bash's `==` does,
+    where `*` crosses a `/`, as fnmatch's does."""
     conf = _SCRIPT.parent.parent / ".ants" / "gate.conf"
     glob = subprocess.run([_GIT, "config", "-f", str(conf), "--get", "ants.gate.docsGlob"],  # noqa: S603
                           capture_output=True, text=True, check=True).stdout.strip()
     patterns = glob.split("|")
-    assert "*.md" in patterns
-    assert not any(pattern.endswith(".txt") or pattern in {"*", "*.*"} for pattern in patterns)
+
+    def documentation(path: str) -> bool:
+        return any(fnmatchcase(path, pattern) for pattern in patterns)
+
+    for path in ("README.md", "CLAUDE.md", "ROADMAP.md", "docs/design.md", "relay/README.md"):
+        assert documentation(path), path
+    for path in ("CHANGELOG.md", "src/pressless/manual_files/en.txt",
+                 "packaging/release-requirements.txt"):
+        assert not documentation(path), path
+    assert not any(pattern in {"*", "*.*"} for pattern in patterns)
