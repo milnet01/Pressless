@@ -233,27 +233,17 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     folder, written through the Contents API (PRESS-0127 §4.3). That write
     precedes the blobs; there is no earlier site for it to damage.
     """
-    folder = Path(folder)
-    if not folder.is_dir():
-        # Checked first and typed: a walk that read a missing folder as empty
-        # would have §4.4 read every unprotected remote path as a deletion
-        # the writer asked for, and report the wipe as a successful publish
-        # (PRESS-0043).
-        raise SiteFolderMissing(
-            "the site folder is not a directory, so there is nothing to publish"
-        )
-
+    folder = _site_folder(folder)
     session = _Session(transport or _Urllib(), token)
     branch = _default_branch(session, settings.repository)
-    head_url = _repo_url(settings.repository, f"commits/{_segment(branch)}")
     untouchable = settings.untouchable
     started: _Started | None = None
-    head = session.read(head_url, empty_ok=True)
+    head = _head(session, settings.repository, branch)
     if head is None:
         started = _start(session, settings.repository, folder, untouchable, message)
         if started is None:
             return Outcome(commit="", uploaded=(), removed=())
-        head = session.read(head_url, empty_ok=True)
+        head = _head(session, settings.repository, branch)
         if head is None:
             # The start is made once (PRESS-0127 INV-6), never retried.
             raise RemoteStateMissing(
@@ -266,7 +256,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
 
     local = started.local if started else _local_files(folder, untouchable)
 
-    uploaded, removed, unprotected = _compare(local, remote, untouchable)
+    uploaded, removed = _compare(local, remote, untouchable)
 
     if not uploaded and not removed:
         # Nothing differed, so nothing is written at all (§5 INV-4) -- unless
@@ -274,15 +264,6 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         if started:
             return Outcome(commit=started.commit, uploaded=(started.path,), removed=())
         return Outcome(commit="", uploaded=(), removed=())
-
-    if not uploaded and len(removed) == len(unprotected):
-        # Every unprotected path deleted and nothing written. A finished
-        # build is never empty, and §3 decision 1 makes the commit
-        # unrecoverable from inside Pressless (PRESS-0043).
-        raise SiteWouldBeEmptied(
-            "publishing the site folder would delete every file on the site "
-            "and add none, so it is refused"
-        )
 
     entries = []
     whole = sum(file.size for file in uploaded.values())
@@ -385,31 +366,66 @@ def plan(settings: Settings, folder: Path, token: str,
          named: frozenset[str] = frozenset()) -> Plan:
     """PRESS-0345 § 4.1: the reads `publish` makes before its first write, and
     no write. `named` paths are files the folder does not carry, compared by
-    presence alone: uploaded where the listing lacks one, never removed."""
+    presence alone: uploaded where the listing lacks one, never removed. A
+    repository with no commits plans every unprotected file as uploaded, which
+    is what `publish` sends once it has started one."""
+    folder = _site_folder(folder)
+    session = _Session(transport or _Urllib(), token)
+    local: dict[str, _Local | None] = {
+        **_local_files(folder, settings.untouchable), **dict.fromkeys(named)}
+    uploaded, removed = _compare(local, _remote(session, settings.repository),
+                                 settings.untouchable)
+    return Plan(tuple(uploaded), tuple(removed))
+
+
+def remote_paths(settings: Settings, token: str,
+                 transport: Transport | None = None) -> tuple[str, ...]:
+    """Every file on the default branch, sorted; () for a repository with no
+    commits. It decides nothing: rule 5 leaves this module unable to tell an
+    entry page from any other file (PRESS-0446)."""
+    session = _Session(transport or _Urllib(), token)
+    return tuple(sorted(_remote(session, settings.repository)))
+
+
+def _site_folder(folder: Path) -> Path:
+    """`folder`, checked first and typed by `publish` and `plan` alike: a walk
+    that read a missing folder as empty would have §4.4 read every unprotected
+    remote path as a deletion the writer asked for, and report the wipe as a
+    successful publish (PRESS-0043)."""
     folder = Path(folder)
     if not folder.is_dir():
         raise SiteFolderMissing(
             "the site folder is not a directory, so there is nothing to publish"
         )
-    session = _Session(transport or _Urllib(), token)
-    branch = _default_branch(session, settings.repository)
-    head = session.read(_repo_url(settings.repository, f"commits/{_segment(branch)}"),
-                        empty_ok=True)
-    remote = ({} if head is None else _blobs_in(
-        _tree(session, settings.repository, _required(head, "sha", "the head commit"))))
-    local: dict[str, _Local | None] = {
-        **_local_files(folder, settings.untouchable), **dict.fromkeys(named)}
-    uploaded, removed, _ = _compare(local, remote, settings.untouchable)
-    return Plan(tuple(uploaded), tuple(removed))
+    return folder
+
+
+def _head(session: _Session, repository: str, ref: str = "HEAD") -> dict | None:
+    """The commit `ref` stands at, or None for a repository with no commits.
+    Each caller says what an empty repository means to it."""
+    return session.read(_repo_url(repository, f"commits/{_segment(ref)}"), empty_ok=True)
+
+
+def _remote(session: _Session, repository: str) -> dict[str, str]:
+    """Each file on the default branch and its blob hash; {} for a repository
+    with no commits."""
+    head = _head(session, repository, _default_branch(session, repository))
+    if head is None:
+        return {}
+    return _blobs_in(_tree(session, repository, _required(head, "sha", "the head commit")))
 
 
 def _compare(local: dict[str, _Local | None], remote: dict[str, str],
              untouchable: tuple[str, ...]
-             ) -> tuple[dict[str, _Local | None], list[str], list[str]]:
+             ) -> tuple[dict[str, _Local | None], list[str]]:
     """What differs (§4.2, INV-4): the unprotected files whose hash the listing
-    does not hold, the unprotected remote paths the folder lacks, and every
-    unprotected remote path. A file with no `_Local` is compared by presence
-    (PRESS-0345 § 4.1)."""
+    does not hold, and the unprotected remote paths the folder lacks. A file
+    with no `_Local` is compared by presence (PRESS-0345 § 4.1).
+
+    Raises SiteWouldBeEmptied where every unprotected remote path would go and
+    nothing would be written: a finished build is never empty, and §3 decision
+    1 makes the commit unrecoverable from inside Pressless (PRESS-0043). `plan`
+    shares it, so a preview refuses as the press would."""
     uploaded: dict[str, _Local | None] = {}
     for path, file in sorted(local.items()):
         if _is_protected(path, untouchable):
@@ -419,7 +435,12 @@ def _compare(local: dict[str, _Local | None], remote: dict[str, str],
         uploaded[path] = file
     unprotected = [path for path in remote if not _is_protected(path, untouchable)]
     removed = sorted(path for path in unprotected if path not in local)
-    return uploaded, removed, unprotected
+    if not uploaded and removed and len(removed) == len(unprotected):
+        raise SiteWouldBeEmptied(
+            "publishing the site folder would delete every file on the site "
+            "and add none, so it is refused"
+        )
+    return uploaded, removed
 
 
 def root_entries(settings: Settings, token: str | None,
@@ -438,7 +459,7 @@ def root_entries(settings: Settings, token: str | None,
 
 def _root_names(session: _Session, repository: str) -> tuple[str, ...]:
     """root_entries' answer over `session`; () for an empty repository."""
-    head = session.read(_repo_url(repository, "commits/HEAD"), empty_ok=True)
+    head = _head(session, repository)
     if head is None:
         return ()
     listing = _tree(session, repository, _required(head, "sha", "the head commit"),
@@ -591,8 +612,7 @@ def _write_cname(session: _Session, repository: str, domain: str) -> None:
 def head_commit(settings: Settings, token: str, transport: Transport | None = None) -> str:
     """The commit the default branch stands at. A repository with no commits
     raises RemoteStateMissing, as fetch_state does."""
-    session = _Session(transport or _Urllib(), token)
-    head = session.read(_repo_url(settings.repository, "commits/HEAD"), empty_ok=True)
+    head = _head(_Session(transport or _Urllib(), token), settings.repository)
     if head is None:
         raise RemoteStateMissing("the repository has no commits to read")
     return _required(head, "sha", "the head commit")
@@ -656,8 +676,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     (PRESS-0046).
     """
     session = _Session(transport or _Urllib(), token)
-    current = session.read(_repo_url(settings.repository, "commits/HEAD"),
-                           empty_ok=True)
+    current = _head(session, settings.repository)
     if current is None:
         raise NoPreviousState(
             "the repository has no commits, so there is no state before it"
@@ -685,8 +704,7 @@ def fetch_state(settings: Settings, token: str, into: Path,
     """
     session = _Session(transport or _Urllib(), token)
     if not commit:
-        current = session.read(_repo_url(settings.repository, "commits/HEAD"),
-                               empty_ok=True)
+        current = _head(session, settings.repository)
         if current is None:
             raise RemoteStateMissing("the repository has no commits to read")
         commit = _required(current, "sha", "the head commit")

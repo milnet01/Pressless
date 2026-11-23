@@ -206,7 +206,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     def guard_and_build() -> None:
         _refuse(folder, settings, key, transport, taking_over=taking_over)
         if not emptying:
-            _guard(folder, settings)
+            _guard(folder, settings, key, transport)
         progress.count("progress.building")
         builder.build(folder, settings, settings.site_folder)
         _refuse_kept(folder, settings, settings.site_folder)
@@ -299,15 +299,21 @@ def _refuse_kept(folder: Path, settings: settings.Settings, built: Path) -> None
                                   folder_name)
 
 
-def _guard(folder: Path, settings: settings.Settings) -> None:
+def _guard(folder: Path, settings: settings.Settings, key: str,
+           transport: publisher.Transport | None) -> None:
     """Design rule 9: a site whose journal is on, when no published entry
     would remain. It guards a Store that lost its entries, so it passes where
     Pressless can see there were none to lose (PRESS-0358): a starter's first
     publish, and a site whose last build wrote no entry page. A site folder
-    never built into shows nothing either way, and is refused."""
+    never built into shows nothing, so the repository is read instead, and
+    one holding no entry page passes too: a site started blank (PRESS-0446)."""
     if not store.journal_on(folder) or store.list_slugs(folder, draft=False):
         return
     if starter.unpublished(folder) or builder.built_without_entries(settings.site_folder):
+        return
+    if not builder.built_into(settings.site_folder) and not any(
+            builder.is_entry_page(path)
+            for path in publisher.remote_paths(settings, key, transport)):
         return
     raise NothingToPublish("no published entry would remain")
 
@@ -332,7 +338,7 @@ def preview(folder: Path, settings: settings.Settings, key: str, *,
         raise JournalOff("the journal is off")
     _refuse(folder, settings, key, transport)
     if entry is None:   # pressing an entry publishes it, so one would remain
-        _guard(folder, settings)
+        _guard(folder, settings, key, transport)
     change = _going(folder, entry).published if entry is not None else page
     scratch = Path(tempfile.mkdtemp(prefix="press-plan-", dir=folder))
     try:

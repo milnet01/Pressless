@@ -163,7 +163,9 @@ live site is unchanged. Both checks run before the build.
   refused, and nor is undo's: each is the result that was asked for.
   Nor is a site with no entries to lose: a starter's first publish, or a
   site whose last build wrote no entry page (PRESS-0358). A site folder
-  never built into shows nothing either way, and is refused.
+  never built into shows nothing either way, so the repository is read: one
+  holding no entry page passes, as a site started blank does (PRESS-0446),
+  and one holding any is refused.
   PRESS-0013 built it.
 - **The first publish of a starter site, when the repository already
   holds a site.** Setup offers to take that site in instead, and

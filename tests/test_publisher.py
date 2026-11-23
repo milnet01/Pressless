@@ -54,6 +54,7 @@ from pressless.publisher import (
     fetch_state,
     plan,
     publish,
+    remote_paths,
 )
 from pressless.settings import Credentials, Settings
 
@@ -1672,6 +1673,7 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
     the symlink case shipped as until PRESS-0089.
     """
     def plant_symlink(folder):
+        _require_symlinks(folder)
         (folder / "linked").symlink_to(folder / "index.html")
 
     def plant_symlinked_directory(folder):
@@ -1681,6 +1683,7 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
         outside = folder.parent / "outside-the-site"
         outside.mkdir(exist_ok=True)
         (outside / "not-for-publication.txt").write_text("x", encoding="utf-8")
+        _require_symlinks(folder)
         (folder / "linkdir").symlink_to(outside, target_is_directory=True)
 
     def plant_root_dot_name(folder):
@@ -1784,6 +1787,7 @@ def test_an_untouchable_symlink_does_not_refuse(tmp_path):
     folder.mkdir()
     (tmp_path / "domain.txt").write_text("writer.example.test\n", encoding="utf-8")
     (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    _require_symlinks(folder)
     (folder / "CNAME").symlink_to(tmp_path / "domain.txt")
 
     listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
@@ -2473,6 +2477,7 @@ def test_a_windows_junction_is_refused_and_not_walked(tmp_path, monkeypatch):
     folder.mkdir()
     (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
     junction = folder / "joined"
+    _require_symlinks(folder)
     junction.symlink_to(outside, target_is_directory=True)
     real_is_symlink = Path.is_symlink
     monkeypatch.setattr(Path, "is_symlink",
@@ -2731,6 +2736,33 @@ def test_a_plan_names_what_a_publish_sends(tmp_path):
                    transport=_Transport(reads=_reads(listing), writes=_writes()))
     assert (planned.uploaded, planned.removed) == (sent.uploaded, sent.removed)
     assert planned.uploaded == ("index.html", "new.html") and planned.removed == ("gone.html",)
+
+
+def test_a_plan_refuses_as_a_publish_does(tmp_path):
+    """PRESS-0345 § 4.1: plan shares publish's comparison, refusal included,
+    so a preview never lists a press that then refuses. Breaks when plan
+    answers a whole-site deletion rather than raising SiteWouldBeEmptied."""
+    listing = _listing([("CNAME", _blob_hash(b"example.org\n")),
+                        ("index.html", _blob_hash(b"<p>old</p>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+    with pytest.raises(SiteWouldBeEmptied):
+        plan(_settings(), tmp_path, "a-token", transport=transport)
+    assert _no_writes(transport)
+
+
+def test_remote_paths_lists_the_default_branch(tmp_path):
+    """PRESS-0446: what the guard reads where no build shows what was lost.
+    Breaks when it reads another ref than the one a publish replaces, or an
+    empty repository is an error rather than nothing."""
+    listing = _listing([("index.html", "a"), ("blog/2014/11/09/x/index.html", "b")])
+    transport = _Transport(reads=_reads(listing, default_branch="pages"))
+    assert remote_paths(_settings(), "a-token", transport) == (
+        "blog/2014/11/09/x/index.html", "index.html")
+    assert any(url.endswith("/commits/pages") for _, url, _, _ in transport.requests)
+    assert _no_writes(transport)
+    empty = _Transport(reads=[("/commits/", (409, {}, b'{"message": "Git Repository is empty."}')),
+                              *_reads(listing)])
+    assert remote_paths(_settings(), "a-token", empty) == ()
 
 
 def test_a_named_path_is_compared_by_presence(tmp_path):

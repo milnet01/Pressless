@@ -172,7 +172,7 @@ changes was left in place and can be thrown away.
 
 ### 4.3 The sequence
 
-*PRESS-0126 § 4.5 adds a check to the guard step. PRESS-0214 § 4.3 adds `JournalOff` before the move and limits the guard to a site whose journal is on. PRESS-0333 § 4.5 puts `TakeoverOwed` first in the guard step, while a takeover is owed. PRESS-0358 passes the guard where there were no entries to lose: a starter's first publish, or a site folder whose last build wrote no entry page (`builder.built_without_entries`). A site folder never built into is still refused. `preview` runs the same guard.*
+*PRESS-0126 § 4.5 adds a check to the guard step. PRESS-0214 § 4.3 adds `JournalOff` before the move and limits the guard to a site whose journal is on. PRESS-0333 § 4.5 puts `TakeoverOwed` first in the guard step, while a takeover is owed. PRESS-0358 passes the guard where there were no entries to lose: a starter's first publish, or a site folder whose last build wrote no entry page (`builder.built_without_entries`). A site folder never built into is refused only where the repository holds an entry page (`publisher.remote_paths`, `builder.is_entry_page`), so a site started blank publishes (PRESS-0446). `preview` runs the same guard.*
 
 `publish` runs these in order. Each step runs only if the one before it
 succeeded.
@@ -344,9 +344,10 @@ does.
   `NothingToPublish`, the site folder is unchanged, and the transport
   records no request. With `emptying=True` the same call builds and
   publishes. `test_a_site_never_built_here_is_refused` holds the refusal
-  where the site folder is absent or empty, and
-  `test_a_site_that_never_had_an_entry_publishes` holds the two passes
-  PRESS-0358 added.
+  where the site folder is absent or empty and the repository holds an
+  entry page, `test_a_site_that_never_had_an_entry_publishes` holds the two
+  passes PRESS-0358 added, and `test_a_site_started_blank_publishes` the
+  one PRESS-0446 added.
   *Breaks when:* the guard is dropped, runs after the build, ignores
   `emptying`, or refuses a site with no entries to lose.
 

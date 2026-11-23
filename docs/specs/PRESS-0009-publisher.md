@@ -159,6 +159,10 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
 def root_entries(settings: Settings, token: str,
                  transport: Transport | None = None) -> tuple[str, ...]: ...
 
+def remote_paths(settings: Settings, token: str,
+                 transport: Transport | None = None) -> tuple[str, ...]: ...
+    # every file on the default branch, () for an empty repository (PRESS-0446)
+
 def fetch_previous(settings: Settings, token: str, into: Path,
                    prefix: str = "",
                    transport: Transport | None = None) -> Fetched: ...
