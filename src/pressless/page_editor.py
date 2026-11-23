@@ -1549,7 +1549,7 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
         // Published, or an outcome unknown with the old file already gone:
         // the page is no longer where this window saves. A renamed page saves
         // on under its new name, unless a failure says how the press ended:
-        // a save's answer would write over it.
+        // the answer to a save would write over it.
         if (reply.moved) {
           const now = new URLSearchParams(reply.address.split("?")[1] || "").get("name");
           if (renaming && now && !reply.failure) state.name = now; else stopped = true;
@@ -1718,7 +1718,7 @@ _CODE_SCRIPT = r"""
     });
     paint(box);
   }
-  // A script that sets a box's value repaints it here, or every box.
+  // A script that sets the value of a box repaints it here, or every box.
   window.presslessCode = {colour, paint: (box) => (box ? [box] : boxes).forEach(paint)};
 })();
 """
@@ -1905,9 +1905,9 @@ _VISUAL_SCRIPT = r"""
   // Whether `item` may leave its list, for another or for good.
   const leaves = (item) => !item.parent || (ROWS.includes(item.parent.kind)
     ? listOf(item).length > 1 : !asking(item) || (!words(item) && listOf(item).length > 2));
-  // What Remove takes: the section, or the holder its going would empty (a
-  // row's last picture, the only question's words); a question's words take
-  // their question. Null for an answer's last section.
+  // What Remove takes: the section, or the holder its going would empty (the
+  // last picture of a row, the words of the only question); the words of a
+  // question take the question. Null for the last section of an answer.
   function taken(item) {
     if (!item) return null;
     if (words(item)) return item.parent.parts.length > 1 ? item : item.parent;
@@ -1982,7 +1982,7 @@ _VISUAL_SCRIPT = r"""
     + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}"
     // PRESS-0287: a player's own controls keep its click, so the frame takes it.
     + "audio,video,iframe{pointer-events:none}";
-  // Each opening mark's closing one, or -1: the next closing mark of its name
+  // The closing mark of each opening one, or -1: the next closing mark of its name
   // not taken by one opened after it. One pass, a stack for each name.
   function partners(marks) {
     const found = marks.map(() => -1), open = new Map();
@@ -2159,7 +2159,7 @@ _VISUAL_SCRIPT = r"""
           }
         }
       });
-      // The panel's own box alone: the code view's holds the whole page.
+      // The box in the panel alone: the one in the code view holds the whole page.
       window.presslessCode.paint(field("code").closest(".code-box"));
       panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
         button.hidden = kind !== "columns" || Number(button.dataset.column) >= picked.parts.length;
@@ -2310,7 +2310,7 @@ _VISUAL_SCRIPT = r"""
   // PRESS-0282: a section playing or offering a file is added by choosing
   // the file, so Add with no address asks for it, and the upload's answer
   // is the address. Every other kind needs its address typed. The kinds are
-  // files.ACCEPT's.
+  // the keys of files.ACCEPT.
   const FILED = Object.keys(given.accept);
   let adding = null;
   function asked(kind, address, column) {
