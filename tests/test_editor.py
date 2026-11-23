@@ -1072,7 +1072,6 @@ process.stdout.write(JSON.stringify({stopped, status: shown["save-status"].textC
 """
 
 
-@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_the_undo_row_leads_with_its_buttons_and_says_a_press_runs():
     """PRESS-0015 § 4.6 and PRESS-0353 § 4.3: what Your site puts before Undo
     shares its row, and a running press marks the status line. Breaks when
@@ -1124,6 +1123,7 @@ def test_a_save_clears_only_the_failure_a_save_showed(tmp_path):
     assert json.loads(run.stdout) == {"own": "no preview", "cleared": "", "kept": "refused"}
 
 
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_both_editors_stop_saving_alike(tmp_path):
     """PRESS-0012 § 4.8: saving stops with its flag set, "not saved" on the
     status line and the failure shown, in either editor. Breaks when the
