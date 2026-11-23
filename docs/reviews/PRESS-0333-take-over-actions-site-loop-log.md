@@ -12,3 +12,4 @@
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: the notice moved to Your site. |
 | fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0385 amended § 4.2: a backslash in an address's path is read as a slash. No direction changed, so no gate. |
 | amend-0379 | 2026-11-17 | none — no reviewer dispatched; an amendment | – | – | – | – | PRESS-0379: § 4.1 and step 6 — `takeover.done` is `takeover.unmark`; the test note names `fetch.addresses`. |
+| impl | 2026-11-23 | none — amendment for PRESS-0446; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5 step 3 asks for a build while the marker stands; step 6's marker that will not go is a notice. INV-8 names the build test. |

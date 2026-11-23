@@ -800,6 +800,10 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
             if final != saved:
                 gathered(lambda: settings.save(folder, final))
             if not shown.built_elsewhere:
+                if shown.serves_root:
+                    # Step 5 may have switched Pages and stopped before its
+                    # build was asked for; the marker says it never finished.
+                    publisher.request_build(final.repository, key, transport)
                 gathered(lambda: takeover.unmark(folder))
                 told(pressing.quiet())      # the switch was made elsewhere
                 return f"<p>{say(_already_key(shown))}</p>"
@@ -813,12 +817,21 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
             # kept_on_a_branch folds case, so the removed CNAME may be lower case.
             stale = any(path.casefold() == publisher.CNAME.casefold()
                         for path in published.outcome.removed)
-            gathered(lambda: takeover.unmark(folder))                                 # step 6
+            gathered(lambda: _forget_the_takeover(folder))                           # step 6
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
             return stopped(exc)
     told(pressing.ended(pressing.PUBLISH, True))
     return render_notices(notices) + _takeover_report(final, shown, files, stale,
                                                       published.outcome)
+
+
+def _forget_the_takeover(folder: Path) -> None:
+    """Step 6: the site has changed, so a marker that will not go is a notice,
+    never a failure; the next press finds the switch made and removes it."""
+    try:
+        takeover.unmark(folder)
+    except OSError:
+        warnings.warn(store.StoreNotice("notice.publishing.takeover_kept"), stacklevel=2)
 
 
 def _already_key(shown: publisher.Pages) -> str:

@@ -563,8 +563,18 @@ def switch_pages_to_branch(repository: str, token: str, domain: str | None,
     if domain:
         switch["cname"] = domain
     session.write("PUT", _repo_url(repository, "pages"), switch, no_content=True)
-    session.write("POST", _repo_url(repository, "pages/builds"), {})
+    _request_build(session, repository)
     return _pages(session, repository)
+
+
+def request_build(repository: str, token: str, transport: Transport | None = None) -> None:
+    """PRESS-0333 § 4.5 step 3: ask Pages to build again, for a switch whose
+    own request for one may never have landed."""
+    _request_build(_Session(transport or _Urllib(), token), repository)
+
+
+def _request_build(session: _Session, repository: str) -> None:
+    session.write("POST", _repo_url(repository, "pages/builds"), {})
 
 
 def set_domain(repository: str, token: str, domain: str,
