@@ -680,6 +680,7 @@ _WORDS: dict[str, str] = {
         " them."
     ),
     "script.editor.adding_photograph": "Adding the photograph\u2026",
+    "script.editor.adding_file": "Adding the file\u2026",
     "script.editor.photograph_added": "Added {name}.",
     "script.editor.confirm_address": (
         "Change this entry's address? It moves now in your Pressless-data folder, and on "

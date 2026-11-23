@@ -1035,34 +1035,86 @@ _UPLOAD_HARNESS = """
 const shown = {};
 globalThis.document = {getElementById: (id) => shown[id] || (shown[id] = {innerHTML: ""})};
 globalThis.window = globalThis;
+globalThis.say = (key) => key;
+const said = {textContent: ""}, during = [];
 const answers = [
   () => Promise.resolve({status: 409, text: async () => "refused"}),
   () => Promise.reject(new TypeError("no connection")),
   () => Promise.resolve({status: 200,
                          text: async () => JSON.stringify({name: "a.jpg", notices: "noted"})}),
 ];
-globalThis.fetch = () => answers.shift()();
+globalThis.fetch = () => { during.push(said.textContent); return answers.shift()(); };
 %s
 (async () => {
   const stopped = [];
   const stop = (text) => stopped.push(text);
   const file = {name: "a b.jpg"};
-  const refused = await window.presslessUpload("/photograph", file, stop);
+  const refused = await window.presslessUpload("/photograph", file, stop, said);
   const failure = shown.failure.innerHTML;
-  const dropped = await window.presslessUpload("/photograph", file, stop);
-  const kept = await window.presslessUpload("/file", file, stop);
-  process.stdout.write(JSON.stringify({refused, failure, dropped, stopped, kept,
+  const dropped = await window.presslessUpload("/photograph", file, stop, said);
+  const kept = await window.presslessUpload("/file", file, stop, said);
+  process.stdout.write(JSON.stringify({refused, failure, dropped, stopped, kept, during,
+                                       after: said.textContent,
                                        notices: shown.notices.innerHTML}));
 })();
 """
+
+
+_STOP_HARNESS = """
+const shown = {};
+globalThis.document = {getElementById: (id) => shown[id] || (shown[id] = {})};
+globalThis.window = globalThis;
+globalThis.say = (key) => key;
+%s
+let stopped = false;
+window.presslessStop(() => { stopped = true; })("refused");
+process.stdout.write(JSON.stringify({stopped, status: shown["save-status"].textContent,
+                                     failure: shown.failure.innerHTML}));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_both_editors_stop_saving_alike(tmp_path):
+    """PRESS-0012 § 4.8: saving stops with its flag set, "not saved" on the
+    status line and the failure shown, in either editor. Breaks when the
+    shared stop leaves one of the three out, or an editor keeps its own."""
+    harness = tmp_path / "stop.js"
+    harness.write_text(_STOP_HARNESS % editor.SAVING_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    assert json.loads(run.stdout) == {"stopped": True, "status": "script.editor.not_saved",
+                                      "failure": "refused"}
+    for script in (editor._EDITOR_SCRIPT, page_editor._PAGE_SCRIPT):
+        assert script.count("window.presslessStop(") == 1
+        assert script.count('"script.editor.not_saved"') == 1    # SAVING_SCRIPT's own
+
+
+def _arguments(script: str, call: str) -> list[list[str]]:
+    """Each call's arguments in `script`, split at its own commas."""
+    found = []
+    for start in [m.end() for m in re.finditer(re.escape(call), script)]:
+        depth, args, at = 0, [], start
+        for i in range(start, len(script)):
+            if script[i] in "([{":
+                depth += 1
+            elif script[i] in ")]}" and depth:
+                depth -= 1
+            elif script[i] == ")" or (script[i] == "," and not depth):
+                args.append(script[at:i].strip())
+                at = i + 1
+                if script[i] == ")":
+                    break
+        found.append(args)
+    return found
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_every_upload_says_how_it_ended(tmp_path):
     """A photograph or file posted from either editor's view shows a refusal,
     stops saving where the Face cannot be reached, and shows a kept file's
-    notices. Breaks when a view posts on its own and a dropped connection
-    says nothing, or the notices are dropped."""
+    notices. Each says it is adding while it posts. Breaks when a view posts
+    on its own and a dropped connection says nothing, the notices are
+    dropped, or an upload shows nothing until it ends."""
     harness = tmp_path / "upload.js"
     harness.write_text(_UPLOAD_HARNESS % editor.UPLOAD_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
@@ -1071,8 +1123,11 @@ def test_every_upload_says_how_it_ended(tmp_path):
     assert (seen["refused"], seen["failure"]) == (None, "refused")
     assert (seen["dropped"], seen["stopped"]) == (None, [""])
     assert seen["kept"] == {"name": "a.jpg", "notices": "noted"} and seen["notices"] == "noted"
+    assert seen["during"] == ["script.editor.adding_photograph"] * 2 + ["script.editor.adding_file"]
+    assert seen["after"] == ""
     for script in (editor._VISUAL_SCRIPT, editor._EDITOR_SCRIPT, page_editor._VISUAL_SCRIPT):
         assert '"/photograph?name=' not in script and "presslessUpload(" in script
+        assert all(len(args) == 4 for args in _arguments(script, "presslessUpload("))
     assert '"/file?name=' not in page_editor._VISUAL_SCRIPT
 
 
