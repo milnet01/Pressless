@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=482 -->
+<!-- ants-roadmap-id-high-water: PRESS=484 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9280,10 +9280,20 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Insights.
 
-- 📋 [PRESS-0450] **Second-round review fixes: updating and starting Pressless.**
+- ✅ [PRESS-0450] **Second-round review fixes: updating and starting Pressless.**
   Subject 11. Review types: Codebase, Test.
   Findings: review-code lane-11, review-readability lane-11, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 024aca8..2a8ce21 (merged 7de8a6e). 29 findings: 24
+  fixed, 0 queued, 5 dismissed (two measured small, two closed by
+  PRESS-0459's open_link, one reasoned in the ledger). A Restart or a site
+  switch waits for an Update now under way; a Ctrl+C during the swap
+  stops Pressless; a folder Pressless may not change gets its own
+  NotWritable message; Windows unpacks through long paths and its batch
+  file ends itself on one line (three new Windows tests passed on the
+  box). Every PRESS-0023 signature, size and fingerprint check is
+  untouched. PRESS-0023 amended. Full suite 2728 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/11.json.
   **Layman:** Bug fixes and tidy-ups in how Pressless starts, restarts and updates itself.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9664,6 +9674,26 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Builder.
+
+- 📋 [PRESS-0483] **Imported entries link a held non-picture file to its kept copy, not the old site.**
+  Review type: Codebase. Queued by PRESS-0453 from a review-readability
+  lead (_html.py: a link to a held non-picture file is misreported and
+  points at the old site). PRESS-0125 § 4.5 says the lookups answer
+  nothing for a file kept in files/, and marks has no way to address
+  files/ relative to an entry, so the spec changes first.
+  **Layman:** A brought-in post's links to its own files point at the copies Pressless kept.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Import.
+
+- 📋 [PRESS-0484] **A media ZIP that turns out corrupt partway keeps the places it already filled.**
+  Review type: Codebase. Surfaced by PRESS-0453's sweep: unpack_media
+  keeps its filled places after a failed write on this computer, but
+  still loses them when the ZIP proves corrupt partway through.
+  **Layman:** A damaged media ZIP no longer makes Pressless forget the files it already saved.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Import.
 
 ## 1.3.0 — a home other than GitHub
 
