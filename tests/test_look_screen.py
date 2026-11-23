@@ -21,19 +21,31 @@ from pathlib import Path
 import _marked_language
 import pytest
 from test_editor import _binned, _Browser, _folder, _said
+from test_page_editor import UNKNOWN_WORDS, _key, _uploaded
+from test_publisher import _listing, _reads, _Transport, _writes
 
-from pressless import builder, editor, face, look_screen, settings, starter, store
+from pressless import (
+    builder,
+    editor,
+    face,
+    look_screen,
+    overview,
+    publishing,
+    settings,
+    starter,
+    store,
+)
 from pressless import look as starter_look
 
 LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
 
 
 @contextlib.contextmanager
-def _served(folder: Path) -> Iterator[_Browser]:
+def _served(folder: Path, transport: _Transport | None = None) -> Iterator[_Browser]:
     served = face.serve(folder)
     try:
         editor.register(served, folder)
-        look_screen.register(served, folder)
+        look_screen.register(served, folder, transport=transport)
         yield _Browser(served)
     finally:
         served.stop()
@@ -57,10 +69,12 @@ def _form(choices: starter_look.Choices, extra: str, base: str) -> dict[str, str
     return form
 
 
-def _files(folder: Path) -> dict[str, bytes | None]:
+def _files(folder: Path, *, waiting: bool = False) -> dict[str, bytes | None]:
+    """The live look's files, or with `waiting` the saved look's, whose
+    folder is written out here."""
     found = {}
     for name in LOOK_FILES:
-        path = store.look_path_for(folder, name)
+        path = folder / ("look-waiting" if waiting else "look") / name
         found[name] = path.read_bytes() if path.is_file() else None
     return found
 
@@ -92,7 +106,7 @@ def test_hard_to_read_text_is_warned_about_and_still_saved(tmp_path):
 
         status, headers, _ = browser.request("POST", "/look/save", form)
         assert (status, headers.get("Location")) == (303, "/look?saved=1")
-        assert starter_look.read(folder) == unreadable
+        assert starter_look.read(folder, waiting=True) == unreadable
         _, _, page = browser.request("GET", "/look?saved=1")
     for scheme in ("light", "dark"):
         slot = re.search(rf'data-warn="{scheme}\.ink"[^>]*>([^<]*)<', page)
@@ -123,31 +137,42 @@ def test_a_contrast_ratio_has_the_languages_decimal_mark(tmp_path, monkeypatch):
 # ------------------------------------------------------------------ INV-7 ---
 
 
-def test_saving_over_hand_made_style_code_keeps_a_copy(tmp_path, monkeypatch):
+def _github() -> _Transport:
+    return _Transport(reads=_reads(_listing([])), writes=_writes())
+
+
+def test_pressing_over_hand_made_style_code_keeps_a_copy(tmp_path, monkeypatch):
     """Breaks when the old stylesheet is overwritten without a copy, or moved
     away before the new one is written."""
+    _key(monkeypatch)
     folder = _site(tmp_path)
     mine = "/* made by hand */ body { color: teal; }\n"
     store.write_style_code(folder, mine)
     written = []
     real = store.write_look_file
 
-    def watched(at: Path, name: str, text: str) -> Path:
-        # Every write look.save makes, the stylesheet's own included, finds
-        # the hand-made one still in place.
-        written.append(store.read_style_code(at))
-        return real(at, name, text)
+    def watched(at: Path, name: str, text: str, *, waiting: bool = False) -> Path:
+        # Every live write the press makes, the stylesheet's own included,
+        # finds the hand-made one still in place.
+        if not waiting:
+            written.append(store.read_style_code(at))
+        return real(at, name, text, waiting=waiting)
 
-    with _served(folder) as browser:
+    with _served(folder, _github()) as browser:
         _, _, page = browser.request("GET", "/look")
         assert "a copy of the current one in the bin" in page
-        monkeypatch.setattr(store, "write_look_file", watched)
         status, _, text = browser.request(
             "POST", "/look/save", _form(starter_look.defaults("meadow"), "", _base(page)))
-    assert status == 303, text
+        assert status == 303, text
+        assert store.read_style_code(folder) == mine and _binned(folder) == []
+        _, _, page = browser.request("GET", "/look")
+        monkeypatch.setattr(store, "write_look_file", watched)
+        status, _, text = browser.request("POST", "/look/publish", {"base": _base(page)})
+    assert status == 200 and json.loads(text)["published"] is True, text
     assert written and set(written) == {mine}
     assert store.read_style_code(folder) == starter_look.css(starter_look.defaults("meadow"), "")
-    copies = [path for path in (folder / "bin").rglob("*") if path.is_file()]
+    copies = [path for path in (folder / "bin").rglob("*")
+              if path.is_file() and path.parent.name == "look"]
     assert [path.read_text(encoding="utf-8") for path in copies] == [mine]
 
 
@@ -213,7 +238,7 @@ def test_picking_a_layout_to_start_from_keeps_the_css_typed(tmp_path):
     restart = re.search(r'<form id="look"[^>]*\sdata-restart="([^"]*)"', page)
     assert restart, "the form carries no layouts to start from"
     script = look_screen._SCRIPT
-    assert f"<script>{script}</script>" in page
+    assert f"{script}</script>" in page
     harness = tmp_path / "restart.js"
     harness.write_text(
         _RESTART_HARNESS.replace("COLOURS", json.dumps(starter_look.COLOURS))
@@ -251,6 +276,7 @@ def test_a_look_changed_elsewhere_is_not_saved_over(tmp_path):
     assert status == 409
     assert _said(editor.ChangedElsewhere) in text
     assert _files(folder) == before
+    assert not store.look_waits(folder)
     assert _binned(folder) == []
 
 
@@ -275,9 +301,10 @@ def _routed(choices: starter_look.Choices, extra: str, base: str, route: str) ->
     return {**_form(choices, extra, base), "route": route}
 
 
-def test_css_on_top_saves_only_the_extra_css(tmp_path):
+def test_css_on_top_saves_only_the_extra_css(tmp_path, monkeypatch):
     """INV-4. Breaks when choices.json is binned, or style.css is overwritten
     rather than moved to the bin."""
+    _key(monkeypatch)
     folder = _own(tmp_path)
     with _served(folder) as browser:
         _, _, page = browser.request("GET", "/look")
@@ -285,24 +312,32 @@ def test_css_on_top_saves_only_the_extra_css(tmp_path):
         status, _, text = browser.request("POST", "/look/save", _routed(
             starter_look.defaults("sunrise"), "h1 { color: red; }", _base(page), "own"))
     assert status == 303, text
-    assert _files(folder) == {store.LOOK_CHOICES_NAME: None,
-                              store.EXTRA_CSS_NAME: b"h1 { color: red; }",
-                              store.STYLE_CODE_NAME: None}
+    assert _files(folder, waiting=True) == {store.LOOK_CHOICES_NAME: None,
+                                            store.EXTRA_CSS_NAME: b"h1 { color: red; }",
+                                            store.STYLE_CODE_NAME: None}
     assert _binned(folder) == []
 
+    store.move_to_bin(folder, folder / "look-waiting" / store.EXTRA_CSS_NAME)
     starter_look.save(folder, starter_look.defaults("harbour"), "")
     made = store.read_style_code(folder)
-    with _served(folder) as browser:
+    with _served(folder, _github()) as browser:
         _, _, page = browser.request("GET", "/look")
         assert re.search(r'type="radio" name="route" value="pressless" checked', page)
         status, _, text = browser.request("POST", "/look/save", _routed(
             starter_look.defaults("harbour"), "p { margin: 0; }", _base(page), "own"))
-    assert status == 303, text
+        assert status == 303, text
+        assert store.read_style_code(folder) == made
+        _, _, page = browser.request("GET", "/look")
+        assert re.search(r'type="radio" name="route" value="own" checked', page)
+        status, _, text = browser.request("POST", "/look/publish", {"base": _base(page)})
+    assert status == 200 and json.loads(text)["published"] is True, text
     found = _files(folder)
     assert found[store.STYLE_CODE_NAME] is None
     assert found[store.EXTRA_CSS_NAME] == b"p { margin: 0; }"
     assert starter_look.read(folder) == starter_look.defaults("harbour")
-    copies = [path for path in (folder / "bin").rglob("*") if path.is_file()]
+    assert not store.look_waits(folder)
+    copies = [path for path in (folder / "bin").rglob("*")
+              if path.is_file() and path.parent.name == "look"]
     assert [path.read_text(encoding="utf-8") for path in copies] == [made]
 
 
@@ -315,11 +350,11 @@ def test_a_site_with_its_own_stylesheets_can_take_a_pressless_look(tmp_path):
         status, _, text = browser.request(
             "POST", "/look/save", _routed(meadow, "", _base(page), "pressless"))
     assert status == 303, text
-    assert starter_look.read(folder) == meadow
-    assert store.read_style_code(folder) == starter_look.css(meadow, "")
+    assert starter_look.read(folder, waiting=True) == meadow
+    assert store.read_style_code(folder, waiting=True) == starter_look.css(meadow, "")
     assert _binned(folder) == []
     built = tmp_path / "built"
-    builder.build(folder, settings.load(folder), built)
+    builder.build(folder, settings.load(folder), built, change=builder.WAITING_LOOK)
     home = (built / "index.html").read_text(encoding="utf-8")
     assert '<link rel="stylesheet" href="look/style.css">' in home
     assert "assets/" not in home
@@ -486,7 +521,7 @@ def test_a_posted_style_reaches_the_choices_only_as_the_boxes_colours(tmp_path: 
         form = {**_form(posted, "", _base(page)), "style": "night"}
         status, _, text = browser.request("POST", "/look/save", form)
     assert status == 303, text
-    saved = json.loads(store.read_look_file(folder, store.LOOK_CHOICES_NAME))
+    saved = json.loads(store.read_look_file(folder, store.LOOK_CHOICES_NAME, waiting=True))
     assert sorted(saved) == sorted(starter_look._FIELDS)
     assert saved["colours"] == {"light": posted.light, "dark": posted.dark}
 
@@ -520,3 +555,139 @@ def test_the_unreadable_look_has_its_sentence_without_undo():
     ran = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True,  # noqa: S603
                          check=False, cwd=Path(face.__file__).resolve().parents[1])
     assert ran.returncode == 0, ran.stderr
+
+
+# --------------------------------------------------- § 4.4, the waiting look ---
+# PRESS-0482: a saved look waits until the look itself is pressed to the site.
+
+
+def _saved(browser: _Browser, choices: starter_look.Choices, extra: str = "") -> str:
+    """Save `choices` from a freshly drawn screen; the screen after it."""
+    _, _, page = browser.request("GET", "/look")
+    status, _, text = browser.request("POST", "/look/save", _form(choices, extra, _base(page)))
+    assert status == 303, text
+    return browser.request("GET", "/look")[2]
+
+
+def _pressed(page: str) -> str:
+    found = re.search(r"<button[^>]*data-look-press[^>]*>", page)
+    assert found, "the screen has no Press to site"
+    return found.group(0)
+
+
+def test_a_saved_look_waits_and_no_other_publish_sends_it(tmp_path):
+    """INV-13. Breaks when Save writes the live look, or a build for an entry
+    or a page reads the waiting one."""
+    folder = _site(tmp_path)
+    live = _files(folder)
+    meadow = starter_look.defaults("meadow")
+    with _served(folder) as browser:
+        page = browser.request("GET", "/look")[2]
+        assert " disabled" in _pressed(page)     # nothing waits on a starter site
+        page = _saved(browser, meadow, "h1 { color: red; }")
+    assert _files(folder) == live
+    assert starter_look.read(folder, waiting=True) == meadow
+    assert " disabled" not in _pressed(page)
+    assert f'name="light.paper" value="{meadow.light["paper"]}"' in page
+    assert "h1 { color: red; }" in page
+    built = tmp_path / "built"
+    builder.build(folder, settings.load(folder), built)
+    assert (built / "look" / "style.css").read_bytes() == live[store.STYLE_CODE_NAME]
+    builder.build(folder, settings.load(folder), built, change=builder.WAITING_LOOK)
+    assert (built / "look" / "style.css").read_text(encoding="utf-8") == (
+        starter_look.css(meadow, "h1 { color: red; }"))
+
+
+def test_pressing_the_look_publishes_it_and_a_failure_keeps_it_waiting(tmp_path, monkeypatch):
+    """INV-14. Breaks when the press publishes the live look, leaves the
+    waiting one behind after a publish, or loses either after a failure."""
+    _key(monkeypatch)
+    meadow = starter_look.defaults("meadow")
+    made = starter_look.css(meadow, "").encode("utf-8")
+    for name, github in (
+            ("published", _github()),
+            ("refused", _Transport(responses=[(401, {}, b'{"message": "Bad credentials"}')])),
+            ("unknown", _Transport(reads=_reads(_listing([])), writes=_writes(),
+                                   fail_at="/git/refs"))):
+        (tmp_path / name).mkdir()
+        folder = _site(tmp_path / name)
+        live = _files(folder)
+        with _served(folder, github) as browser:
+            page = _saved(browser, meadow)
+            status, _, text = browser.request("POST", "/look/publish", {"base": _base(page)})
+        assert status == 200, (name, text)
+        reply = json.loads(text)
+        assert reply["busy"] is False and reply["base"] == starter_look.digest(folder), name
+        if name == "refused":
+            assert reply["published"] is False and reply["failure"], reply
+            assert _files(folder) == live
+            assert starter_look.read(folder, waiting=True) == meadow
+            assert reply["waiting"] is True
+            continue
+        assert _files(folder)[store.STYLE_CODE_NAME] == made, name
+        assert starter_look.read(folder) == meadow, name
+        assert not store.look_waits(folder) and reply["waiting"] is False, name
+        if name == "unknown":
+            assert reply["published"] is False and UNKNOWN_WORDS in reply["failure"], reply
+        else:
+            assert reply["published"] is True, reply
+            assert made in _uploaded(github)
+
+
+def test_a_stale_press_or_bin_writes_nothing(tmp_path, monkeypatch):
+    """INV-8 for the press and the bin. Breaks when either skips the digest,
+    which a change to the waiting look alone must move."""
+    _key(monkeypatch)
+    folder = _site(tmp_path)
+    with _served(folder, _github()) as browser:
+        page = _saved(browser, starter_look.defaults("meadow"))
+        store.write_look_file(folder, store.EXTRA_CSS_NAME, "p {}", waiting=True)
+        live, waiting = _files(folder), _files(folder, waiting=True)
+        status, _, text = browser.request("POST", "/look/publish", {"base": _base(page)})
+        assert status == 409 and _said(editor.ChangedElsewhere) in text, text
+        _, _, text = browser.request("POST", "/look/discard", {"base": _base(page)})
+        assert _said(editor.ChangedElsewhere) in text, text
+    assert (_files(folder), _files(folder, waiting=True)) == (live, waiting)
+
+
+def test_binning_the_look_keeps_the_live_one(tmp_path):
+    """§ 4.4's Bin this look. Breaks when it touches the live look, or leaves
+    a waiting file behind."""
+    folder = _site(tmp_path)
+    live = _files(folder)
+    with _served(folder) as browser:
+        page = _saved(browser, starter_look.defaults("harbour"))
+        status, headers, _ = browser.request("POST", "/look/discard", {"base": _base(page)})
+        assert (status, headers.get("Location")) == (303, "/look")
+        page = browser.request("GET", "/look")[2]
+    assert _files(folder) == live and not store.look_waits(folder)
+    assert " disabled" in _pressed(page)
+    assert sorted(_binned(folder)) == sorted(LOOK_FILES)
+
+
+def test_the_overview_counts_a_waiting_look(tmp_path):
+    """PRESS-0364's line. Breaks when a waiting look is left out of it."""
+    folder = _site(tmp_path)
+    assert overview._waiting(folder) == ("", "")
+    starter_look.save(folder, starter_look.defaults("harbour"), "", waiting=True)
+    said, _ = overview._waiting(folder)
+    assert 'href="/look">the look</a>' in said
+
+
+def test_the_plan_of_a_look_press_builds_the_waiting_look(tmp_path, monkeypatch):
+    """PRESS-0345's box for the look's press. Breaks when the plan builds the
+    live look, so the box says nothing would change."""
+    _key(monkeypatch)
+    folder = _site(tmp_path)
+    seen = []
+    real = builder.build
+
+    def watched(*args, change=None, **kwargs):
+        seen.append(change)
+        return real(*args, change=change, **kwargs)
+
+    monkeypatch.setattr(builder, "build", watched)
+    publishing.press_preview(folder, look=True, transport=_github())   # nothing waits
+    starter_look.save(folder, starter_look.defaults("meadow"), "", waiting=True)
+    publishing.press_preview(folder, look=True, transport=_github())
+    assert seen == [None, builder.WAITING_LOOK]

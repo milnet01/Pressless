@@ -2,8 +2,10 @@
 live preview (PRESS-0196 § 4.4, docs/specs/PRESS-0196-site-look.md).
 
 `GET /look` shows one of three states: choices that made the style code
-beside them; style code they did not make, which a save first copies into
-the bin; and no style code at all. A site with no style code, or whose pages
+beside them; style code they did not make, which a press first copies into
+the bin; and no style code at all. Save keeps the look waiting, and the
+site's look changes only when the look itself is pressed to the site
+(§ 4.4); publishing an entry or a page never sends it. A site with no style code, or whose pages
 link their own stylesheets, also gets a route choice: those stylesheets with
 CSS on top, or a Pressless look (PRESS-0276 § 4.3). The screen links none of
 the site's stylesheets into its own document, so the site's CSS reaches only
@@ -14,10 +16,37 @@ from __future__ import annotations
 import dataclasses
 import html
 import json
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
 
-from pressless import builder, editor, look, marks, page_editor, settings, setup, store
-from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
+from pressless import (
+    builder,
+    editor,
+    look,
+    marks,
+    page_editor,
+    pressing,
+    publisher,
+    publishing,
+    settings,
+    setup,
+    store,
+)
+from pressless.face import (
+    SENTENCES,
+    Face,
+    Notice,
+    Reply,
+    Request,
+    Sentence,
+    Site,
+    details_for,
+    gatherer,
+    message_box,
+    nothing_captured,
+    render_notices,
+)
 from pressless.words import decimal, say
 
 ADDRESS = "/look"
@@ -72,9 +101,11 @@ _SCHEME_WORDS = {"light": "script.look.light", "dark": "script.look.dark"}
 _TEXT_COLOURS = {text for text, _ in look.TEXT_PAIRS}
 
 
-def register(face: Face, folder: Path) -> None:
+def register(face: Face, folder: Path, *,
+             transport: publisher.Transport | None = None) -> None:
     """Add the Look screen's routes to `face`. Its frame's files are served by
-    `editor.register`, which the launch calls first."""
+    `editor.register`, which the launch calls first. `transport` is the
+    publish's, as `page_editor.register` takes one."""
     folder = Path(folder)
 
     def route(handler):
@@ -83,10 +114,14 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("GET", ADDRESS, route(_open))
     face.add_page("POST", ADDRESS + "/preview", route(_preview))
     face.add_page("POST", ADDRESS + "/save", route(_save))
+    face.add_page("POST", ADDRESS + "/discard", route(_discard))
+    face.add_page("POST", ADDRESS + "/publish",
+                  lambda request: _publish(face, folder, request, transport))
 
 
-def has_style_code(folder: Path) -> bool:
-    return store.style_code_path(folder).is_file()
+def has_style_code(folder: Path, *, waiting: bool = False) -> bool:
+    """Whether the live look, or with `waiting` the waiting one, holds style code."""
+    return store.style_code_path(folder, waiting=waiting).is_file()
 
 
 def offers_routes(folder: Path) -> bool:
@@ -155,7 +190,8 @@ def _open(face: Face, folder: Path, request: Request) -> str:
     """§ 4.4's three states, PRESS-0276's route choice, and § 6's
     unreadable choices."""
     with editor.LOCK, face.capture() as notices:
-        styled = has_style_code(folder)
+        waiting = store.look_waits(folder)     # the screen shows the look that waits
+        styled = has_style_code(folder, waiting=waiting)
         route = None
         if offers_routes(folder):
             asked = request.query.get("route", "")
@@ -164,9 +200,10 @@ def _open(face: Face, folder: Path, request: Request) -> str:
             route = asked if asked in (OWN, PRESSLESS) else PRESSLESS if styled else OWN
         try:
             base = look.digest(folder)
-            made = look.made_here(folder) or not styled
-            choices = look.read(folder)
-            extra = look.read_extra(folder)
+            # The live style code is what a press replaces (INV-7).
+            made = look.made_here(folder) or not has_style_code(folder)
+            choices = look.read(folder, waiting=waiting)
+            extra = look.read_extra(folder, waiting=waiting)
         except store.StoreError as exc:     # LookUnreadable among them
             return editor.failed_page(face, notices, exc)
         restart = choices is None
@@ -174,9 +211,11 @@ def _open(face: Face, folder: Path, request: Request) -> str:
             asked = request.query.get("layout", "")
             choices = look.defaults(asked if asked in look.LAYOUTS else look.LAYOUTS[0])
         frame, failure = _frame(face, folder)
+        said, running, ended = pressing.shown("")
     return render_notices(notices) + _page(
         choices, extra, base=base, made=made, restart=restart, frame=frame, failure=failure,
-        saved=SAVED in request.query, route=route, styled=styled)
+        saved=SAVED in request.query, route=route, styled=has_style_code(folder),
+        waiting=waiting, press=(said, running, ended))
 
 
 def _preview(face: Face, folder: Path, request: Request) -> Reply:
@@ -199,26 +238,173 @@ def _preview(face: Face, folder: Path, request: Request) -> Reply:
 
 
 def save(folder: Path, form: dict[str, str]) -> None:
-    """§ 4.4's Save: nothing is written where the look changed since the
-    screen was drawn, or where choices.json cannot be read (§ 4.1). Style code
-    the choices did not make is copied into the bin first, and left in place
-    until look.save replaces it last (INV-7). The route keeping the site's
-    own stylesheets writes the CSS on top, then moves any style code to the
-    bin, leaving the choices for a later switch (PRESS-0276 § 4.3). Takes no
-    lock (PRESS-0337 § 4.7)."""
+    """§ 4.4's Save, into the waiting look; the live look is never written.
+    Nothing is written where the look changed since the screen was drawn, or
+    where the choices.json the screen shows cannot be read (§ 4.1). The route
+    keeping the site's own stylesheets writes the CSS on top and leaves the
+    waiting look no style code, keeping the choices for a later switch
+    (PRESS-0276 § 4.3). Takes no lock (PRESS-0337 § 4.7)."""
     route = _route(folder, form)
     if look.digest(folder) != form.get("base", ""):
         raise editor.ChangedElsewhere("the site's look changed since this window read it")
+    waiting = store.look_waits(folder)
     if route == OWN:
-        store.write_look_file(folder, store.EXTRA_CSS_NAME, _extra(form))
-        if has_style_code(folder):
-            store.move_to_bin(folder, store.style_code_path(folder))
+        if not waiting:     # the choices a later switch starts from
+            kept = store.read_look_file(folder, store.LOOK_CHOICES_NAME)
+            if kept is not None:
+                store.write_look_file(folder, store.LOOK_CHOICES_NAME, kept, waiting=True)
+        store.write_look_file(folder, store.EXTRA_CSS_NAME, _extra(form), waiting=True)
+        if has_style_code(folder, waiting=True):
+            store.move_to_bin(folder, store.style_code_path(folder, waiting=True))
     else:
-        look.read(folder)   # raises LookUnreadable, so nothing is written over it
+        look.read(folder, waiting=waiting)   # LookUnreadable, so nothing is written over it
         choices, extra = _posted(form)
+        look.save(folder, choices, extra, waiting=True)
+
+
+def discard(folder: Path, base: str) -> None:
+    """§ 4.4's Bin this draft: the waiting look's files go to the bin, where
+    the look is the one this window read. The live look is not touched.
+    Takes no lock (PRESS-0337 § 4.7)."""
+    if look.digest(folder) != base or not store.look_waits(folder):
+        raise editor.ChangedElsewhere("the site's look changed since this window read it")
+    for name in store.LOOK_FILES:
+        path = store.look_path_for(folder, name, waiting=True)
+        if path.is_file():
+            store.move_to_bin(folder, path)
+
+
+class _LookChanges:
+    """§ 4.4's press: each live look file the waiting one replaces or lacks,
+    remembered first, so a failed publish puts each back in reverse order."""
+
+    def __init__(self, folder: Path) -> None:
+        self.folder = folder
+        self._back: list[Callable[[], object]] = []
+
+    def move_in(self) -> None:
+        """The live look becomes the waiting one, in LOOK_FILES' order, so the
+        stylesheet is written last (§ 4.2). Style code the live choices did
+        not make is copied to the bin first (INV-7)."""
+        folder = self.folder
         if has_style_code(folder) and not look.made_here(folder):
             store.copy_to_bin(folder, store.style_code_path(folder))
-        look.save(folder, choices, extra)
+        for name in store.LOOK_FILES:
+            before = store.read_look_file(folder, name)
+            new = store.read_look_file(folder, name, waiting=True)
+            live = store.look_path_for(folder, name)
+            if new is not None:
+                store.write_look_file(folder, name, new)
+            elif before is not None:
+                store.move_to_bin(folder, live)
+            else:
+                continue
+            self._back.append(
+                (lambda path=live: store.move_to_bin(folder, path)) if before is None else
+                (lambda name=name, text=before: store.write_look_file(folder, name, text)))
+
+    def put_back(self) -> None:
+        for step in reversed(self._back):
+            step()
+
+
+def press_look(folder: Path, base: str, *,
+               capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
+               notices: list | None = None,
+               transport: publisher.Transport | None = None,
+               noted: Callable[[str], None] = lambda _line: None) -> publishing.Published:
+    """§ 4.4's Press to site: the waiting look this window read becomes the
+    live one, and the site is published. A failure puts the live look back
+    and keeps the waiting one; a success, or an outcome not known, bins the
+    waiting look, since the site may hold it. Raises ChangedElsewhere before
+    anything is written. The caller holds editor.LOCK (PRESS-0337 § 4.7)."""
+    gathered_notices = notices if notices is not None else []
+    gathered = gatherer(capture, gathered_notices)
+    if look.digest(folder) != base or not store.look_waits(folder):
+        raise editor.ChangedElsewhere("the site's look changed since this window read it")
+
+    def kept_after_binning() -> bool:
+        try:
+            for name in store.LOOK_FILES:
+                path = store.look_path_for(folder, name, waiting=True)
+                if path.is_file():
+                    gathered(lambda path=path: store.move_to_bin(folder, path))
+        except Exception as exc:  # noqa: BLE001 -- never replaces the publish's result
+            noted(details_for(exc))
+            return True
+        return False
+
+    def unknown() -> None:
+        if kept_after_binning():
+            gathered_notices.append(Notice(say("notice.look_screen.kept_unknown"),
+                                           Site.UNKNOWN))
+
+    saved, key = publishing.settings_and_key(folder, gathered)
+    changes = _LookChanges(folder)
+    try:
+        gathered(changes.move_in)
+    except BaseException:
+        gathered(changes.put_back)    # nothing half-made is left live
+        raise
+    result = page_editor.publish_or_put_back(folder, saved, key, changes, gathered_notices,
+                                             transport, gathered, unknown, capture=capture)
+    if kept_after_binning():
+        gathered_notices.append(Notice(say("notice.look_screen.kept"), Site.UPDATED))
+        return publishing.Published(result.outcome, True)
+    return result
+
+
+def _discard(face: Face, folder: Path, request: Request) -> str | Reply:
+    """§ 4.4's Bin this draft, through `discard`. The button is a form, so a
+    failure answers a whole Face page."""
+    form = editor.form_fields(request)
+    with editor.LOCK, face.capture() as notices:
+        try:
+            discard(folder, form.get("base", ""))
+        except (store.StoreError, editor.ChangedElsewhere) as exc:
+            failure: Exception | None = exc
+        else:
+            failure = None
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
+    return Reply(b"", "text/plain; charset=utf-8", status=303, location=ADDRESS)
+
+
+def _publish(face: Face, folder: Path, request: Request,
+             transport: publisher.Transport | None) -> Reply:
+    """§ 4.4's Press to site, run as a press (PRESS-0235 § 4.4)."""
+    form = editor.form_fields(request)
+
+    def busy(said: str) -> Reply:
+        return editor.json_reply({"published": False, "waiting": True,
+                                  "base": form.get("base", ""), "failure": None,
+                                  "notices": "", "busy": True, "said": said})
+
+    return pressing.run(pressing.PUBLISH, busy,
+                        lambda told: _pressed(face, folder, form, transport, told))
+
+
+def _pressed(face: Face, folder: Path, form: dict[str, str],
+             transport: publisher.Transport | None,
+             told: Callable[[pressing.Outcome], None]) -> Reply:
+    notices: list[str | Notice] = []
+    with editor.LOCK:
+        try:
+            press_look(folder, form.get("base", ""), capture=face.capture, notices=notices,
+                       transport=transport, noted=face.note)
+        except editor.ChangedElsewhere as exc:
+            told(pressing.ended(pressing.PUBLISH, False, face.fail(exc, publishing=False)))
+            return editor.failed(face, notices, exc)
+        except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the press
+            failure: str | None = publishing.press_failure(face, exc)
+        else:
+            failure = None
+        told(pressing.ended(pressing.PUBLISH, failure is None, failure))
+        with face.capture():
+            waiting, base = store.look_waits(folder), look.digest(folder)
+    return editor.json_reply({"published": failure is None, "waiting": waiting, "base": base,
+                              "failure": failure, "notices": render_notices(notices),
+                              "busy": False})
 
 
 def _save(face: Face, folder: Path, request: Request) -> Reply:
@@ -241,7 +427,8 @@ def _warning(scheme: str, text: str, ground: str, ratio: float) -> str:
 
 def _page(choices: look.Choices, extra: str, *, base: str, made: bool, restart: bool,
           frame: str | None, failure: str | None, saved: bool,
-          route: str | None, styled: bool) -> str:
+          route: str | None, styled: bool, waiting: bool,
+          press: tuple[str, bool, str | None]) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -276,7 +463,10 @@ def _page(choices: look.Choices, extra: str, *, base: str, made: bool, restart: 
         f'<label><input type="checkbox" name="effect.{name}" value="on"'
         f'{" checked" if name in choices.effects else ""}> {say(key)}</label>'
         for name, key in _EFFECT_WORDS.items())
-    said = say("look_screen.saved") if saved else ""
+    said, running_now, ended = press
+    running = editor.PRESS_RUNNING if running_now else ""
+    off = "" if waiting else " disabled"
+    saved_words = say("look_screen.saved") if saved else ""
     replaces = ("" if made else
                 f'<p class="look-replaces"{shown(PRESSLESS)}>{say("look_screen.replaces")}</p>')
     if route is not None and styled:
@@ -292,7 +482,7 @@ def _page(choices: look.Choices, extra: str, *, base: str, made: bool, restart: 
     return f"""<p class="nav"><a href="/">{say("face.your_site")}</a></p>
 <h1>{say("look_screen.title")}</h1>
 <p>{say("look_screen.about")}</p>
-<p id="look-status" class="press-status" role="status">{said}</p>
+<p id="look-status" class="press-status" role="status">{saved_words}</p>
 <form id="look" method="post" action="{ADDRESS}/save"{_starts() if restart else ''}>
 <input type="hidden" name="base" value="{attr(base)}">
 {routes}
@@ -323,12 +513,21 @@ def _page(choices: look.Choices, extra: str, *, base: str, made: bool, restart: 
 <textarea name="extra" rows="10" spellcheck="false">
 {html.escape(extra)}</textarea>
 {replaces}
-<p><button>{say("look_screen.save")}</button></p>
+<div id="look-standing">
+<p data-when="1"{"" if waiting else " hidden"}>{say("look_screen.waiting")}</p>
+<p data-when="0"{" hidden" if waiting else ""}>{say("look_screen.live")}</p></div>
+<p><button>{say("look_screen.save")}</button>
+ <button type="button" data-editor="publish" data-look-press{off}>{say("editor.press")}</button>
+ <button form="look-bin" data-look-bin{off}>{say("look_screen.bin")}</button></p>
+<p id="publish-status" class="press-status" role="status"{running}>{attr(said)}</p>
 </form>
+<form id="look-bin" method="post" action="{ADDRESS}/discard">
+<input type="hidden" name="base" value="{attr(base)}"></form>
+{message_box("failure", ended or "", forgets=True)}
 <div id="proof"><div id="look-failure">{failure or ""}</div>
 <iframe id="preview" class="undimmed" title="{attr(say("look_screen.preview_title"))}"
  sandbox="allow-same-origin" src="{attr(frame or "about:blank")}"></iframe></div>
-<script>{_SCRIPT}</script>"""
+<script>{pressing.SCRIPT}{_SCRIPT}</script>"""
 
 
 def _starts() -> str:
@@ -455,7 +654,9 @@ _SCRIPT = r"""
     });
     mark();
   }
+  const press = form.querySelector("button[data-look-press]");
   form.addEventListener("input", (event) => {
+    if (press) press.disabled = true;    // what is pressed is what Save kept
     if (starts && event.target.name === "layout") restart(event.target.value);
     else if (event.target.name === "style") fill(JSON.parse(event.target.dataset.colours));
     else if (event.target.type === "color") mark();
@@ -473,11 +674,60 @@ _SCRIPT = r"""
     const layout = form.querySelector("input[name=layout]:checked");
     const palette = layout && JSON.parse(own.dataset.ownColours)[layout.value];
     if (!palette) return;
+    if (press) press.disabled = true;
     fill(palette);
     mark();
     clearTimeout(timer);
     preview();
   });
   frame.addEventListener("load", apply);
+
+  // § 4.4: Press to site sends the look as saved, after the box saying what
+  // it would change. A change since the save turns it off until the next
+  // save, so what is pressed is what Save kept.
+  const bin = form.querySelector("button[data-look-bin]");
+  const said = document.getElementById("publish-status");
+  const failure = document.getElementById("failure");
+  function standing(waiting) {
+    form.querySelectorAll("#look-standing [data-when]").forEach((line) => {
+      line.hidden = line.dataset.when !== (waiting ? "1" : "0");
+    });
+  }
+  if (press) press.addEventListener("click", async () => {
+    if (window.presslessPress.asking()) return;
+    press.disabled = true;
+    said.textContent = say("script.press.checking");
+    try {
+      if (!await window.presslessCheck(new URLSearchParams({look: "1"}))) {
+        said.textContent = "";
+        press.disabled = false;
+        return;
+      }
+      said.textContent = say("script.press.publishing");
+      const base = form.querySelector("input[name=base]").value;
+      const answer = await fetch("/look/publish",
+                                 {method: "POST", body: new URLSearchParams({base})});
+      const text = await answer.text();
+      if (answer.status !== 200) {
+        said.textContent = say("script.press.not_published");
+        failure.innerHTML = text;
+        return;
+      }
+      const reply = JSON.parse(text);
+      if (window.presslessPress.busy(reply)) return;
+      said.textContent = reply.published
+        ? say("script.press.published") : say("script.press.not_published");
+      failure.innerHTML = (reply.notices || "") + (reply.failure || "");
+      document.querySelectorAll("input[name=base]").forEach((field) => {
+        field.value = reply.base;
+      });
+      standing(reply.waiting);
+      press.disabled = bin.disabled = !reply.waiting;
+      if (reply.published) window.presslessPress.viewable();
+    } catch (error) {
+      said.textContent = say("script.press.not_published");
+      press.disabled = false;
+    }
+  });
 })();
 """.replace("SITE_SHEETS", json.dumps(builder.SITE_SHEETS))

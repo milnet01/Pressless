@@ -2134,6 +2134,19 @@ def test_a_build_publishes_what_any_address_names(tmp_path):
     assert set(builder.files_named(folder)) == {"in-href.pdf", "in-nav.pdf"}
 
 
+def test_a_file_the_waiting_look_names_stays_named(tmp_path):
+    """PRESS-0196 § 4.4 (PRESS-0482): a file only the saved look waiting to be
+    published names is still in use, so it is not offered for removal. Breaks
+    when files_named reads the live look alone."""
+    folder = _store(tmp_path, pages={})
+    store.write_style_code(folder, "body{background:url(../files/waiting.pdf)}", waiting=True)
+    target = store.file_path_for(folder, "waiting.pdf")
+    target.parent.mkdir(exist_ok=True)
+    target.write_bytes(b"%PDF-1.4\n")
+    assert builder.files_named(folder) == {
+        "waiting.pdf": (builder.FileUser(store.LOOK_FOLDER, store.LOOK_FOLDER),)}
+
+
 @pytest.mark.parametrize(("suffix", "opening"), [
     (".woff", b"wOFF"), (".woff2", b"wOF2"), (".ttf", b"\x00\x01\x00\x00"),
     (".ttf", b"true"), (".otf", b"OTTO"), (".ico", b"\x00\x00\x01\x00")])

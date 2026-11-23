@@ -458,7 +458,8 @@ class _Door:
                           for name in store.list_files(folder)]}
 
     def _read_look(self) -> dict:
-        chosen = look.read(self.folder)
+        # PRESS-0196 § 4.4: the look the Look screen shows, a saved one waiting first.
+        chosen = look.read(self.folder, waiting=store.look_waits(self.folder))
         return {"choices": dataclasses.asdict(chosen) if chosen is not None else None,
                 "version": look.digest(self.folder)}
 
@@ -536,9 +537,10 @@ class _Door:
         # with no Pressless style code stands on its own stylesheets, and a
         # save of choices would move it to the Pressless look: refused.
         offers_routes = look_screen.offers_routes(folder)
-        if offers_routes and not look_screen.has_style_code(folder):
+        waiting = store.look_waits(folder)
+        if offers_routes and not look_screen.has_style_code(folder, waiting=waiting):
             raise Refused("assistant.own_stylesheets")
-        form = {"base": version, "extra": look.read_extra(folder),
+        form = {"base": version, "extra": look.read_extra(folder, waiting=waiting),
                 "route": look_screen.PRESSLESS if offers_routes else ""}
         for name in _PLAIN_CHOICES:
             form[name] = str(choices.get(name, ""))

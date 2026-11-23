@@ -258,9 +258,10 @@ picture look.png | The Look screen, with the layouts and colour styles to choose
 3. Click Save.
 video changing-the-look.webm | Choosing another headings font on the Look screen, the preview changing to match, and clicking Save.
 
-Your site shows the new look after you next publish. Each colour has a
-light and a dark choice: a visitor whose computer is set to dark sees
-the dark one.
+Your site keeps its current look until you click Press to site on the
+Look screen. Publishing a page or an entry does not send it. Bin this
+look throws a saved look away. Each colour has a light and a dark
+choice: a visitor whose computer is set to dark sees the dark one.
 
 Each layout and each colour style says what kind of site it suits. Any
 layout can wear any colour style. Choosing a colour style fills the

@@ -97,15 +97,17 @@ def _waiting(folder: Path) -> tuple[str, str]:
                 len(entries.drafts) + len(entries.unreadable[_DRAFT]) + len(entries.changed),
                 ("overview.waiting.entries.one", "overview.waiting.entries.many"),
                 editor.JOURNAL_ADDRESS))
+        waits = store.look_waits(folder)     # PRESS-0196 § 4.4: one look, never counted
     except store.StoreError:
         return "", ""
-    total = sum(count for count, _, _ in counts)
+    shown = [(count, say_count(count, *keys), address) for count, keys, address in counts]
+    shown.append((int(waits), say("overview.waiting.look"), "/look"))
+    total = sum(count for count, _, _ in shown)
     if not total:
         return "", ""
     kinds = ", ".join(
-        f'<a href="{html.escape(address, quote=True)}">'
-        f'{say_count(count, *keys)}</a>'
-        for count, keys, address in counts if count)
+        f'<a href="{html.escape(address, quote=True)}">{words}</a>'
+        for count, words, address in shown if count)
     said = say_count(total, "overview.waiting.one", "overview.waiting.many", kinds=kinds)
     nothing = say_count(total, "overview.publish.nothing.one", "overview.publish.nothing.many",
                         kinds=kinds)

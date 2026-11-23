@@ -929,7 +929,7 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
                 notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
                                       Site.UNKNOWN))
 
-        result = _publish_or_put_back(folder, saved, key, changes, notices, transport,
+        result = publish_or_put_back(folder, saved, key, changes, notices, transport,
                                       gathered, unknown, capture=capture)
         kept = kept_after_binning()
     except Exception as exc:
@@ -1281,7 +1281,7 @@ def reshape(folder: Path, name: str, to: str, *, renaming: bool,
             # Nothing is published yet: a half-made change is undone.
             gathered(changes.put_back)
             raise
-        result = _publish_or_put_back(folder, saved, key, changes, gathered_notices,
+        result = publish_or_put_back(folder, saved, key, changes, gathered_notices,
                                       transport, gathered, capture=capture)
     except Exception as exc:
         gathered_notices.extend(_site_said(said, False,
@@ -1323,7 +1323,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                   "notices": render_notices(notices), "busy": False, "address": address})
 
 
-def _publish_or_put_back(folder: Path, saved: settings.Settings, key: str,
+def publish_or_put_back(folder: Path, saved: settings.Settings, key: str,
                          changes: _Changes, notices: list,
                          transport: publisher.Transport | None,
                          gathered: Callable, unknown: Callable[[], None] = lambda: None, *,
