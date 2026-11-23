@@ -273,8 +273,8 @@ names no version** — it links to the latest release page, so nothing
 there goes stale and no step edits it at release time. That is what
 keeps S4's "the steps are complete" true of a README nobody updates.
 
-`pyproject.toml` reads `0.0.0` today, and `cut-release` is what moves
-it — this item adds no version-bumping of its own. It requires only
+`cut-release` moves `pyproject.toml`'s `version` — this item adds no
+version-bumping of its own. It requires only
 that the workflow reject a tag disagreeing with the manifest, so a
 mislabelled artefact cannot be published.
 
@@ -530,16 +530,13 @@ cannot serve them all.**
    job must still run the test suite rather than only producing a
    file"* — and this is the first time any of it runs on Windows.
 
-   **Two things make that script Linux-only today, and both are this
-   item's to fix.** It invokes `python3`, which is the Linux spelling —
-   the Windows installer ships `python.exe` and a `py` launcher and
-   creates no `python3` — so the script must resolve the interpreter
-   rather than name one. And its leak sweep walks `git rev-list --all`,
-   which a shallow clone cannot answer: `ci.yml` already sets
-   `fetch-depth: 0` and says why, and the release workflow needs the
-   same on both jobs. Without it the sweep reports a clean history it
-   never fetched, which is the failure mode that comment exists to
-   prevent.
+   **Two things would make that script Linux-only.** The Windows
+   installer ships `python.exe` and a `py` launcher and creates no
+   `python3`, so the script resolves the interpreter through
+   `scripts/python.sh` rather than naming one. And its leak sweep walks
+   `git rev-list --all`, which a shallow clone cannot answer, so every
+   job running it sets `fetch-depth: 0`. Without it the sweep reports a
+   clean history it never fetched.
 2. **INV-7, in a clean room. Linux only**: `env -i PATH=/nonexistent
    FUSERMOUNT_PROG=<fusermount>` on the AppImage. The pinned runtime looks
    for `fusermount` on `PATH` and honours `FUSERMOUNT_PROG` where it finds
