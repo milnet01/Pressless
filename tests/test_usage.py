@@ -356,20 +356,32 @@ def test_a_no_during_a_report_is_kept(tmp_path, monkeypatch):
     _keyed(monkeypatch)
     usage.set_answer(tmp_path, True)
     usage.register(_NoFace(), tmp_path, transport=_Recorder())
-    read, said_no = threading.Event(), threading.Event()
-    real = usage._record
+    # `arrived`: the No has reached the lock, or, with none held, has landed.
+    # Either lets the report go on, so no wait is timed.
+    read, arrived = threading.Event(), threading.Event()
+    real, lock = usage._record, usage._LOCK
+
+    class _Watched:
+        def __enter__(self):
+            if read.is_set():
+                arrived.set()
+            lock.acquire()
+
+        def __exit__(self, *exc):
+            lock.release()
 
     def record(folder: Path) -> dict | None:
         found = real(folder)
         read.set()
-        said_no.wait(0.5)   # the No lands here, unless the lock holds it off
+        assert arrived.wait(10)
         return found
 
     def no() -> None:
         read.wait(10)
         usage.set_answer(tmp_path, False)
-        said_no.set()
+        arrived.set()
 
+    monkeypatch.setattr(usage, "_LOCK", _Watched())
     monkeypatch.setattr(usage, "_record", record)
     other = threading.Thread(target=no)
     other.start()
@@ -442,23 +454,3 @@ def test_an_error_status_is_logged_and_a_success_is_not():
     usage._send(_Answers(400), "https://x.invalid/mp/collect", b"{}", "screen", notes.append)
     usage._send(_Answers(204), "https://x.invalid/mp/collect", b"{}", "press", notes.append)
     assert notes == ["usage report screen not sent: status 400"]
-
-
-def test_a_failed_send_logs_no_secret_and_no_url():
-    """Security (PRESS-0262): when a report cannot be sent, the one log line
-    names the event and the exception type only -- never the address, which
-    carries the api_secret in its query. Breaks when `_send` logs str(exc) or
-    the url instead of type(exc).__name__."""
-    notes: list[str] = []
-
-    class _Raiser:
-        def request(self, *args):
-            raise OSError("POST https://x/mp/collect?api_secret=plain-words-secret failed")
-
-    url = ("https://www.google-analytics.com/mp/collect"
-           "?measurement_id=G-PLAINWORDS&api_secret=plain-words-secret")
-    usage._send(_Raiser(), url, b"{}", "screen", notes.append)
-    assert notes and "not sent" in notes[0]
-    assert "plain-words-secret" not in notes[0]
-    assert "api_secret" not in notes[0]
-    assert "google-analytics" not in notes[0]

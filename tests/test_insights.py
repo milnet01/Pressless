@@ -28,10 +28,7 @@
 # INV-1 passes against the stub by design -- an import walk passes against a
 # module that does nothing, so it is evidence about imports and never about
 # where the token came from. Every other invariant needs the real
-# implementation; against the stub each one fails where it calls read() or
-# cache_path(), because the stub raises NotImplementedError unconditionally.
-# That failure is expected and is the point of this run: PRESS-0019 is not
-# yet implemented.
+# implementation.
 from __future__ import annotations
 
 import ast
@@ -1413,10 +1410,9 @@ def test_googles_own_reason_is_carried_on_the_failure(tmp_path):
 # tie-break, INV-24's no-temporary promise on its two failure arms, INV-25's
 # length cap, and INV-7 against a transport's own OSError rather than only
 # this module's literals. The first three needed no source change -- each
-# gap was in the test, not in insights.py. The fourth does: _fetch's OSError
-# arm chains the transport's exception with `from exc`, which keeps it
-# reachable as __cause__ and prints it in any formatted traceback, so the
-# last test below is expected to FAIL until that line is fixed.
+# gap was in the test, not in insights.py. The fourth needed one: _fetch's
+# OSError arm chained the transport's exception with `from exc`, which kept
+# it reachable as __cause__ and printed it in any formatted traceback.
 
 
 def test_countries_tie_break_by_code(tmp_path):
@@ -1972,14 +1968,16 @@ def test_provinces_survive_the_cache_and_an_older_cache_still_reads(tmp_path):
     assert read(_settings(), "a-token", tmp_path, client=transport).regions == ()
 
 
-def test_a_kept_reply_with_no_honest_time_reads_as_absent(tmp_path):
+@pytest.mark.parametrize("moment", [float("nan"), 1e20, -1e20])
+def test_a_kept_reply_with_no_honest_time_reads_as_absent(tmp_path, moment):
     """INV-14. Breaks when a kept reply whose `fetched_at` is not a finite
-    number loads: every age comparison is then false, so it is answered as
-    the stale fallback, and the page that draws its time fails."""
+    number, or is one no clock can show, loads: NaN fails every age
+    comparison and a time far out of range reads as old, so either is
+    answered as the stale fallback, and the page that draws its time fails."""
     _seed(tmp_path, _Transport())
     target = cache_path(tmp_path)
     held = json.loads(target.read_text(encoding="utf-8"))
-    held["windows"][str(DEFAULT_DAYS)]["fetched_at"] = float("nan")
+    held["windows"][str(DEFAULT_DAYS)]["fetched_at"] = moment
     target.write_text(json.dumps(held), encoding="utf-8")   # json writes NaN
     with pytest.raises(Unreachable):
         read(_settings(), "a-token", tmp_path, client=_Transport(unreachable=True))
@@ -2000,20 +1998,33 @@ def test_two_windows_stored_at_once_are_both_kept(tmp_path, monkeypatch):
     and writes it back without holding off a second store: a window stored
     between the two is overwritten, and asked for again."""
     real = insights_module.write_whole
-    started, stored = threading.Event(), threading.Event()
+    lock = insights_module._CACHE_LOCK
+    # `arrived`: the other store has reached the lock, or, with none held,
+    # has landed. Either lets the first write go on, so no wait is timed.
+    started, arrived = threading.Event(), threading.Event()
+
+    class _Watched:
+        def __enter__(self):
+            if started.is_set():
+                arrived.set()
+            lock.acquire()
+
+        def __exit__(self, *exc):
+            lock.release()
 
     def write_whole(target, text, **kwargs):
         if not started.is_set():
             started.set()
-            stored.wait(0.5)   # the other store lands here, unless a lock holds it off
+            assert arrived.wait(10)
         real(target, text, **kwargs)
 
     def other() -> None:
         started.wait(10)
         _seed(tmp_path, _Transport(default=_ok(_google(rows=(("ZA", 30),), total=44))),
               days=7)
-        stored.set()
+        arrived.set()
 
+    monkeypatch.setattr(insights_module, "_CACHE_LOCK", _Watched())
     monkeypatch.setattr(insights_module, "write_whole", write_whole)
     thread = threading.Thread(target=other)
     thread.start()
@@ -2021,3 +2032,38 @@ def test_two_windows_stored_at_once_are_both_kept(tmp_path, monkeypatch):
     thread.join(10)
     held = json.loads(cache_path(tmp_path).read_text(encoding="utf-8"))["windows"]
     assert set(held) == {"7", "28"}
+
+
+def test_fresh_answers_only_a_young_reply_for_its_window(tmp_path):
+    """§ 4.1's `fresh`, read()'s own age test on the cache alone. Breaks when
+    it answers a reply an hour old, one dated ahead of the clock, or another
+    window's."""
+    _seed(tmp_path, _Transport(clock=NOW))
+    young = insights_module.fresh(tmp_path, DEFAULT_DAYS, client=_Transport(clock=NOW + 60))
+    assert young is not None and young.people == TOTAL and not young.stale
+    for clock in (NOW + 3600, NOW - 60):
+        assert insights_module.fresh(tmp_path, DEFAULT_DAYS,
+                                     client=_Transport(clock=clock)) is None
+    assert insights_module.fresh(tmp_path, 7, client=_Transport(clock=NOW + 60)) is None
+
+
+def test_a_rate_limit_is_not_asked_again_until_the_age_passes(tmp_path):
+    """§ 4.4: after a 429 the kept reply answers, stale, without asking, until
+    `max_age_seconds` has passed again. Breaks when every open during a rate
+    limit asks Google again, or when any other failure holds the asking off."""
+    _seed(tmp_path, _Transport(clock=NOW))
+    limited = _Transport(default=(429, {}, b'{"error": {"message": "slow down"}}'),
+                         clock=NOW + 7200)
+    assert read(_settings(), "a-token", tmp_path, client=limited).stale
+    limited.clock += 3599
+    again = read(_settings(), "a-token", tmp_path, client=limited)
+    assert again.stale and again.people == TOTAL and len(limited.requests) == 1
+    limited.clock += 1
+    read(_settings(), "a-token", tmp_path, client=limited)
+    assert len(limited.requests) == 2
+
+    _seed(tmp_path, _Transport(clock=NOW), days=7)
+    away = _Transport(unreachable=True, clock=NOW + 7200)
+    for _ in range(2):
+        assert read(_settings(), "a-token", tmp_path, days=7, client=away).stale
+    assert len(away.requests) == 2

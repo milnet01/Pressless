@@ -1367,7 +1367,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         taking_over = answers.get("take_over") == "yes"
         try:
             address = answers.get("site_address", "") if taking_over else ""
-            found = takein.found_held(folder, reading, key, commit, transport, address=address)
+            found = takein.read_held_or_fetch(folder, reading, key, commit, transport,
+                                              address=address)
             entries = publisher.root_entries(reading, key, transport)
             if taking_over:
                 shown = publisher.pages(reading.repository, key, transport)
@@ -1394,7 +1395,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             pressed = sign_in.press()
             if isinstance(pressed, str):
                 return wizard.Hint("", pressed)
-            account = github_signin.login(pressed.access, transport)
+            account = github_signin.account_name(pressed.access, transport)
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         # GitHub's account names ignore case; the name kept is GitHub's.
@@ -1405,7 +1406,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if not kept.get("store"):
                 choice = credentials.choose()
                 kept.update(store=choice.store, store_name=choice.name)
-            github_setup.replace(kept["store"], folder, pressed)
+            github_setup.store_sign_in(kept["store"], folder, pressed)
         except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
         kept["account"] = account
@@ -1417,7 +1418,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         kept = {**answers, "store": "keyring"}
         try:
             key = github_setup.token(folder, "keyring", answers["reuse"])
-            kept["account"] = github_signin.login(key, transport)
+            kept["account"] = github_signin.account_name(key, transport)
             if not answers.get("store_name"):
                 kept["store_name"] = credentials.choose().name
         except credentials.FAILURES as exc:

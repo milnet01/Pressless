@@ -150,11 +150,12 @@ def look_site(folder: Path, settings: Settings, key: str, address: str, commit: 
 ```
 
 `look_site` empties the held folder as `look_folder` does, and calls
-`fetch_site(address, held, room)`. It writes `import/folder.json` naming `commit`,
-or `head_commit` where that is empty, and `import/folder-left.json`, whose shape
-`importing` already reads, holding `Crawled.left`. That file's name and reader move
-to the package, as `pressless_import.FOLDER_LEFT` and `read_folder_left`, so `setup`
-reads it without importing `importing`. It answers `read_folder`'s `Found`
+`fetch_site(address, held, room)`. It writes `import/folder-left.json`, whose shape
+`importing` already reads, holding `Crawled.left`, and then `import/folder.json`
+naming `commit`, or `head_commit` where that is empty, so a close between the two
+never leaves a held commit without its list. That file's name, writer and reader
+move to the package, as `pressless_import.FOLDER_LEFT`, `write_folder_left` and
+`read_folder_left`, so `setup` reads it without importing `importing`. It answers `read_folder`'s `Found`
 and the commit.
 
 A `resolve` or `connect` left `None` is read from the module when called, so
@@ -202,7 +203,7 @@ and a page a script builds in the browser, which arrives as the script's shell.
 
 ### 4.3 Finish (Face)
 
-`takein.found_held` and `takein.bring_folder` gain `address: str = ""`. Where it is
+`takein.read_held_or_fetch` and `takein.bring_folder` gain `address: str = ""`. Where it is
 set, laying the folder out again calls `look_site` with that commit, not
 `look_folder`. So what is
 written is what was shown, and a held folder that has gone is downloaded again.

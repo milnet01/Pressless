@@ -34,16 +34,12 @@ def render(folder: Path) -> str:
              editor.page_address(store.FURNITURE_FOLDER, "navigation")
              if _held(folder, store.FURNITURE_FOLDER, "navigation") else editor.PAGES_ADDRESS,
              _own(folder, store.FURNITURE_FOLDER, "navigation", starter.navigation)),
-            # Any publish that lands removes the starter's marker (PRESS-0126
-            # § 4.5), a page's Press to site included, so the link opens Home,
-            # the starter's first page, rather than Publish. A site taken over
-            # from GitHub Actions has no marker, and none of Pressless's pages
-            # are on the web until the takeover's publish (PRESS-0393). A blank
-            # site has no marker either, and has nothing on the web until
-            # something of his is pressed; with no Home, the link opens the
-            # Pages screen, where a page is made (PRESS-0419). An imported
-            # site holds live pages, but none is on the web until a publish
-            # lands (PRESS-0422).
+            # Done once something of his is on the web: no starter marker
+            # (any publish that lands removes it, PRESS-0126 § 4.5), no
+            # takeover owed (PRESS-0393), no imported site unpublished
+            # (PRESS-0422), and something live (PRESS-0419). The link opens
+            # the takeover where one is owed, else Home, else the Pages
+            # screen, where a page is made.
             ("checklist.publish",
              publishing.TAKEOVER_ADDRESS if takeover.owed(folder)
              else _HOME if _held(folder, store.PAGES_FOLDER, "index")

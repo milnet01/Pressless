@@ -380,6 +380,14 @@ _WORDS: dict[str, str] = {
     "failure.updater.DiskFull.next": (
         "Free some space on this computer, then click Update now again."
     ),
+    "failure.updater.NotWritable.what": (
+        "Pressless cannot save the new version, because it may not change"
+        " the folder it runs from."
+    ),
+    "failure.updater.NotWritable.next": (
+        "Ask whoever looks after this computer to let you change that folder,"
+        " then click Update now again."
+    ),
     "failure.updater.DownloadEndedEarly.what": "The download stopped before it finished.",
     "failure.updater.DownloadEndedEarly.next": "Click Update now again.",
     "failure.updater.UpdateRejected.what": (
@@ -1311,6 +1319,10 @@ _WORDS: dict[str, str] = {
     ),
     "domain.field": "Your domain name",
     "domain.hint.name": "Type the name you bought, such as example.com.",
+    "domain.hint.alphabet": (
+        "Pressless cannot check a name in this alphabet yet. Type it as your domain seller "
+        "shows it in the letters a to z, the form starting xn--."
+    ),
     "domain.hint.takeover": (
         "Your site is still built by GitHub Actions. Switch it to Pressless first, by "
         "publishing, then come back."
@@ -1952,7 +1964,7 @@ _WORDS: dict[str, str] = {
         "If Google no longer accepts the sign-in, <a href=\"{page}\">sign in again</a>."
     ),
     "dashboard.stale": (
-        "Pressless could not reach Google just now, so these are the numbers from {when}."
+        "Google gave no new numbers just now, so these are the numbers from {when}."
     ),
     "dashboard.updated": "Last updated {when}.",
     "dashboard.count.none": "Nobody read your site in {window}, as far as Google can tell.",

@@ -28,33 +28,56 @@ _NAME_LONGEST = 253
 _CERTIFICATE_READY = "approved"
 _CERTIFICATE_FAILED = frozenset({"errored", "bad_authz", "dns_changed", "authorization_revoked"})
 _OWN_NAMES = ("github.io", "github.com")   # GitHub's, so never a person's own domain
+# The full stops other alphabets type, which today's rules (UTS #46) read as ".".
+_OTHER_DOTS = ("\u3002", "\uff0e", "\uff61")
 
 
 def clean(typed: str) -> str | None:
     """The domain in what was typed, however it was pasted, or None. A name in another
     alphabet becomes the form GitHub and the seller's records use. One that Python's
-    older IDNA rules would turn into a different name, such as `faß` into `fass`, is
-    refused rather than changed."""
-    name = typed.strip().lower().removeprefix("https://").removeprefix("http://")
-    name = unicodedata.normalize("NFC", name.split("/", 1)[0].rstrip("."))
-    try:
-        if not all(label.isascii() or label.encode("idna").decode("idna") == label
-                   for label in name.split(".")):
-            return None
-        name = name.encode("idna").decode("ascii")
-    except UnicodeError:
+    older IDNA rules would turn into a different name, such as `faß` into `fass`, or
+    cannot read, is refused rather than changed: `checkable` tells the two apart."""
+    name = _ascii(_typed(typed))
+    if name is None:
         return None
     labels = name.split(".")
     if (len(labels) < 2 or len(name) > _NAME_LONGEST
             or not all(_good_label(label) for label in labels)
-            or labels[-1].isdigit()   # an IP address, which bought() would accept
+            or labels[-1].isdigit()   # an IP address, which bought_name() would accept
             or any(name == own or name.endswith(f".{own}") for own in _OWN_NAMES)
-            or bought(name) is None):
+            or bought_name(name) is None):
         return None
     return name
 
 
-def bought(name: str) -> str | None:
+def checkable(typed: str) -> bool:
+    """Whether Python's IDNA rules, which predate today's, can read the name. One
+    they cannot, such as `faß.de`, can still be typed in its `xn--` form."""
+    name = _typed(typed)
+    return name.isascii() or _ascii(name) is not None
+
+
+def _typed(typed: str) -> str:
+    name = typed.strip().lower()
+    for dot in _OTHER_DOTS:
+        name = name.replace(dot, ".")
+    name = name.removeprefix("https://").removeprefix("http://")
+    return unicodedata.normalize("NFC", name.split("/", 1)[0].rstrip("."))
+
+
+def _ascii(name: str) -> str | None:
+    """`name` in the form GitHub uses, or None where the IDNA 2003 codec would
+    change it or cannot read it."""
+    try:
+        if not all(label.isascii() or label.encode("idna").decode("idna") == label
+                   for label in name.split(".")):
+            return None
+        return name.encode("idna").decode("ascii")
+    except UnicodeError:
+        return None
+
+
+def bought_name(name: str) -> str | None:
     """PRESS-0342: the name someone bought that `name` is, or is a part of, by the
     public suffix list: its ending plus one label. None where `name` is an ending
     itself, such as co.za. The longest rule matching wins, and where none does, the
@@ -101,7 +124,7 @@ def records(domain: str, repository: str) -> str:
     bought name leads to the site too (PRESS-0342)."""
     e = html.escape
     host = f"{repository.split('/', 1)[0].lower()}.github.io"
-    whole = bought(domain) or domain
+    whole = bought_name(domain) or domain
     part = domain.removesuffix(whole).removesuffix(".")
     if part == "www":
         return (f"<p>{say('domain.records.www', domain=e(domain), bought=e(whole))}</p>"
@@ -112,7 +135,7 @@ def records(domain: str, repository: str) -> str:
             "</p>" + _table([_record_row("CNAME", part, host)]))
 
 
-def _state(domain: str, resolve: fetch.Resolve) -> str:
+def _where_it_leads(domain: str, resolve: fetch.Resolve) -> str:
     """Where the name leads from this computer, as a words key."""
     try:
         found = set(resolve(domain, 443))
@@ -139,9 +162,11 @@ def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
                 + wizard.field("domain", say("domain.field"), answers, hint))
 
     def check_name(answers: wizard.Answers):
-        domain = clean(answers.get("domain", ""))
+        typed = answers.get("domain", "")
+        domain = clean(typed)
         if domain is None:
-            return wizard.Hint("domain", say("domain.hint.name"))
+            return wizard.Hint("domain", say("domain.hint.name" if checkable(typed)
+                                             else "domain.hint.alphabet"))
         if takeover.owed(folder):
             return wizard.Hint("", say("domain.hint.takeover"))
         try:
@@ -168,6 +193,8 @@ def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
         try:
             saved, key = settings_and_key()
             publisher.set_domain(saved.repository, key, domain, transport)
+            # A branch build keeps its CNAME file only while a publish leaves
+            # it alone, so the domain joins the untouchable files.
             settings.save(folder, dataclasses.replace(
                 saved, site_address=f"https://{domain}/",
                 untouchable=publisher.kept_on_a_branch(saved.untouchable, domain)))
@@ -179,7 +206,7 @@ def _steps(face: Face, folder: Path, transport: publisher.Transport | None,
         domain = answers.get("domain", "")
         return (f"<p>{say('domain.set', domain=html.escape(domain))}</p>"
                 + records(domain, repository())
-                + f'<p id="domain-state">{say(_state(domain, resolve))}</p>'
+                + f'<p id="domain-state">{say(_where_it_leads(domain, resolve))}</p>'
                 + f"<p>{say('domain.leave')}</p>")
 
     def show_secure(answers: wizard.Answers, _hint: wizard.Hint | None) -> str:

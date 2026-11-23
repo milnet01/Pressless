@@ -1696,7 +1696,7 @@ def test_a_settings_file_from_another_machine_keeps_the_bar_locked(tmp_path) -> 
 
 def test_sites_stays_open_while_another_site_is_set_up(tmp_path) -> None:
     """A second site's setup must not trap him away from his first site."""
-    first = sites.open_site(tmp_path)
+    first = sites.current_site(tmp_path)
     _set_up(first)
     second = sites.new_site(tmp_path)
     served = face.serve(tmp_path, site=second)

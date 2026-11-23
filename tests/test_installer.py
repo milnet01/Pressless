@@ -396,3 +396,77 @@ def test_the_hand_over_travels_in_the_environment(tmp_path, monkeypatch, _signal
     script = Path(args[args.index("-File") + 1])
     assert session not in script.read_text(encoding="utf-8")
     assert kwargs["env"][installer.RESUME_VARIABLE] == resume
+
+
+def _helper_case(tmp_path: Path, *, staged_program: bool) -> tuple[Path, Path, Path, Path]:
+    """(folder, program, staged, started): an old program, an update staged
+    beside it -- with no Pressless folder inside where `staged_program` is
+    False, so the swap's second rename fails -- and a batch file that records
+    that it ran."""
+    folder = tmp_path / "Pressless-data"
+    folder.mkdir()
+    program = tmp_path / "Pressless"
+    program.mkdir()
+    (program / "old.txt").write_text("old", encoding="ascii")
+    staged = tmp_path / "Pressless.new-c"
+    staged.mkdir()
+    if staged_program:
+        (staged / "Pressless").mkdir()
+        (staged / "Pressless" / "new.txt").write_text("new", encoding="ascii")
+    started = tmp_path / "started.txt"
+    (tmp_path / "Start Pressless.bat").write_text(
+        f'@echo off\r\necho started> "{started}"\r\n', encoding="ascii")
+    return folder, program, staged, started
+
+
+def _until(done, seconds: float = 30.0) -> None:
+    deadline = time.monotonic() + seconds
+    while not done() and time.monotonic() < deadline:
+        time.sleep(0.1)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the helper is a Windows PowerShell script")
+def test_the_windows_helper_rolls_a_failed_swap_back(tmp_path):
+    """review-tests 2026-11-23 lane A: the rollback was held only as text in
+    the script. The run: the second rename fails, so the old program goes
+    back where it was, the log says so, and nothing is started.
+
+    Breaks when a failed swap leaves the program moved, or starts it."""
+    folder, program, staged, started = _helper_case(tmp_path, staged_program=False)
+    installer.apply_windows(program, staged, folder)
+    _until(lambda: (folder / "update.log").exists()
+           and _log(folder)[-1:] == ["rolled back"]
+           and not list(tmp_path.glob("pressless-update-*.ps1")))
+    assert _log(folder) == ["waiting", "rolled back"]
+    assert (program / "old.txt").exists() and not (tmp_path / "Pressless.old").exists()
+    assert not staged.exists() and not started.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the helper is a Windows PowerShell script")
+def test_a_held_log_never_stops_the_windows_helper(tmp_path):
+    """review-tests 2026-11-23 lane A: test_the_windows_helpers_log_never_stops_it
+    pins the script's text. The run: update.log held open with no sharing,
+    as a scanner holds it, and the helper still swaps and starts.
+
+    Breaks when a write the log refuses ends the helper."""
+    import ctypes
+    from ctypes import wintypes
+
+    folder, program, staged, started = _helper_case(tmp_path, staged_program=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                     wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD,
+                                     wintypes.HANDLE)
+    generic_write, no_sharing, create_always = 0x40000000, 0, 2
+    held = kernel32.CreateFileW(str(folder / "update.log"), generic_write, no_sharing,
+                                None, create_always, 0, None)
+    assert held not in (None, wintypes.HANDLE(-1).value), ctypes.get_last_error()
+    try:
+        installer.apply_windows(program, staged, folder)
+        _until(lambda: started.exists() and not list(tmp_path.glob("pressless-update-*.ps1")))
+    finally:
+        kernel32.CloseHandle(held)
+    assert started.exists(), "the helper stopped at a log it could not write"
+    assert (program / "new.txt").exists() and not staged.exists()
+    assert (folder / "update.log").read_bytes() == b"", "the held log was written"

@@ -75,7 +75,7 @@ def main() -> None:
     kit.INSTANCE.mkdir(parents=True)
     sites.move_in(kit.INSTANCE)
     if mode == "site":
-        seed(sites.open_site(kit.INSTANCE))
+        seed(sites.current_site(kit.INSTANCE))
     practice.disarm()
     publisher._Urllib = lambda: test_publishing._github()
     insights.own_client = demo_google.Google

@@ -525,6 +525,29 @@ def test_what_was_not_read_is_named(tmp_path, monkeypatch):
     assert "gone/" in done and "big.pdf" in done, done
 
 
+def test_a_close_between_the_two_records_downloads_again(tmp_path, monkeypatch):
+    """INV-12. Breaks when import/folder.json is written before
+    folder-left.json: a close between them leaves the commit named as held, so
+    the next press brings the folder in without the list of what was not read."""
+    _site(monkeypatch)
+    github = _Built()
+    folder = _empty_store(tmp_path)
+    written = safe_write.write_whole
+    calls: list[Path] = []
+
+    def closes_after_the_first(target, *args, **kwargs):
+        calls.append(Path(target))
+        if len(calls) > 1:
+            raise OSError("Pressless closed")
+        return written(target, *args, **kwargs)
+
+    monkeypatch.setattr(safe_write, "write_whole", closes_after_the_first)
+    with pytest.raises(OSError):
+        takein.look_site(folder, _settings(folder), KEY, SITE, transport=github)
+    commit = publisher.head_commit(_settings(folder), KEY, github)
+    assert takein._held_commit(folder) != commit
+
+
 # ---------------------------------------------------------------- INV-13 ---
 
 

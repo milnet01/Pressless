@@ -79,7 +79,7 @@ def _release(signer, version: str) -> tuple[_Release, dict[str, object]]:
 @contextlib.contextmanager
 def _pressless(folder: Path, artefact: Path, answers: dict[str, object], *,
                state: updating.Updates | None = None,
-               stop=lambda: None) -> Iterator[_Browser]:
+               stop=lambda: None, platform: str = "linux") -> Iterator[_Browser]:
     """One run of Pressless: a fresh Face, Your site, Settings, and updating.
     `stop` stands in for __main__'s, which ends the Face after a Linux update."""
     served = face.serve(folder)
@@ -87,7 +87,7 @@ def _pressless(folder: Path, artefact: Path, answers: dict[str, object], *,
         editor.register(served, folder)
         overview.register(served, folder)
         setup.register(served, folder)
-        running = updating.register(served, folder, artefact=artefact, platform="linux",
+        running = updating.register(served, folder, artefact=artefact, platform=platform,
                                     running="0.1.2", transport=_Net(answers),
                                     state=state, stop=stop)
         running.wait(10)
@@ -236,6 +236,35 @@ def test_a_failed_download_shows_its_sentence_and_changes_nothing(tmp_path, sign
 # ----------------------------------------------------------------- INV-15 ---
 
 
+class _Recording:
+    """editor.LOCK, telling when an acquire found it held and began to wait."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.waited = threading.Event()
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        if self._lock.acquire(blocking=False):
+            return True
+        if not blocking:
+            return False
+        self.waited.set()
+        return self._lock.acquire(timeout=timeout)
+
+    def release(self) -> None:
+        self._lock.release()
+
+    def locked(self) -> bool:
+        return self._lock.locked()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.release()
+
+
 def test_update_waits_for_a_save(tmp_path, signer, monkeypatch):
     """Breaks when the lock is skipped, or released before the exit."""
     folder = _folder(tmp_path)
@@ -248,21 +277,26 @@ def test_update_waits_for_a_save(tmp_path, signer, monkeypatch):
         applied.set()
 
     monkeypatch.setattr(installer, "apply_linux", apply)
+    lock = _Recording()
+    monkeypatch.setattr(editor, "LOCK", lock)
     stopped = threading.Event()
 
     with _pressless(folder, artefact, answers, stop=stopped.set) as browser:
-        editor.LOCK.acquire()
+        lock.acquire()
         replies: list[tuple[int, str]] = []
         worker = threading.Thread(
             target=lambda: replies.append(browser.request("POST", "/update")[::2]))
         worker.start()
-        assert not applied.wait(1.0), "apply ran while a save held the lock"
-        editor.LOCK.release()
+        # No timed wait: the update has asked for the lock the save holds.
+        assert lock.waited.wait(10), "Update now never asked for the lock"
+        assert not applied.is_set(), "apply ran while a save held the lock"
+        lock.release()
         assert applied.wait(10), "apply never ran once the lock was free"
         worker.join(10)
         assert replies and replies[0][0] == 200, replies
         assert stopped.wait(5), "the Face was never stopped"
-        assert editor.LOCK.locked(), "the lock was released before the exit"
+        assert lock.locked(), "the lock was released before the exit"
+    lock.release()
 
 
 def test_a_second_update_now_goes_home(tmp_path, signer, monkeypatch):
@@ -348,23 +382,29 @@ def test_a_start_clears_what_a_stopped_update_left(tmp_path, signer):
     """review-code 2026-11-16 lane 11: a Pressless stopped during a download
     or an unpack, or a Windows helper that died, left a file or folder the
     size of the program beside it for good. A packaged start removes those
-    before its check, and nothing else.
+    before its check, and nothing else. review-code 2026-11-23 lane 11: on
+    Linux, which never unpacks or starts a helper, the AppImage often sits in
+    a folder of his, and a folder of his named alike was removed.
 
-    Breaks when one is left, or another file beside the program goes."""
+    Breaks when one is left, or another file beside the program goes, or
+    Linux removes what only Windows makes."""
     folder = _folder(tmp_path)
     artefact = _artefact(tmp_path)
     beside = artefact.parent
-    (beside / ".pressless-update-0a1b2c3d").write_bytes(b"half a download")
-    (beside / "Pressless.new-0a1b" / "Pressless").mkdir(parents=True)
-    (beside / "pressless-update-0a1b.ps1").write_text("the helper", encoding="ascii")
     kept = ("notes.txt", "pressless-update-notes.txt", "Pressless.newer")
-    for name in kept[:2]:
-        (beside / name).write_text("his", encoding="ascii")
-    (beside / "Pressless.newer").mkdir()
+    windows_only = ("Pressless.new-0a1b", "pressless-update-0a1b.ps1")
     _, answers = _release(signer, "0.1.3")
-    with _pressless(folder, artefact, answers):
-        pass
-    assert sorted(p.name for p in beside.iterdir()) == sorted((artefact.name, *kept))
+    for platform, left in (("linux", windows_only), ("windows", ())):
+        (beside / ".pressless-update-0a1b2c3d").write_bytes(b"half a download")
+        (beside / "Pressless.new-0a1b" / "Pressless").mkdir(parents=True, exist_ok=True)
+        (beside / "pressless-update-0a1b.ps1").write_text("the helper", encoding="ascii")
+        for name in kept[:2]:
+            (beside / name).write_text("his", encoding="ascii")
+        (beside / "Pressless.newer").mkdir(exist_ok=True)
+        with _pressless(folder, artefact, answers, platform=platform):
+            pass
+        assert sorted(p.name for p in beside.iterdir()) == sorted(
+            (artefact.name, *kept, *left)), platform
 
 
 # ----------------------------------------------------------------- INV-24 ---
@@ -380,7 +420,8 @@ def test_the_offer_shows_what_changed(tmp_path, signer):
     text = (
         b"pressless-changes 1\nversion 0.1.4\n"
         b"## [0.1.4] - 2026-01-04\n\n### Added\n\n"
-        b"- **A bold thing** (PRESS-0001)\n  It does <script>alert(1)</script> more.\n\n"
+        b"- **A bold thing** (PRESS-0001)\n  It does <script>alert(1)</script> more.\n"
+        b"  - An indented item\n\n"
         b"## [0.1.3] - 2026-01-03\n\n**Theme:** Third\n\n"
         b"## [0.1.2] - 2026-01-02\n\nthe running one\n"
     )
@@ -391,6 +432,8 @@ def test_the_offer_shows_what_changed(tmp_path, signer):
     assert "What is new since version 0.1.2" in page, page
     assert "Version 0.1.4" in page and "Version 0.1.3" in page, page
     assert "<strong>A bold thing</strong>" in page and "<h4>Added</h4>" in page, page
+    # An indented item is an item, never a "- " inside the item above.
+    assert "<li>An indented item</li>" in page and "- An indented" not in page, page
     assert "It does &lt;script&gt;alert(1)&lt;/script&gt; more." in page, page
     assert "<script>alert(1)" not in page and "PRESS-0001" not in page, page
     assert "Third" in page and "the running one" not in page, page
@@ -399,3 +442,35 @@ def test_the_offer_shows_what_changed(tmp_path, signer):
     with _pressless(folder, artefact, plain) as browser:
         page = _shown(browser)
     assert f"Pressless 0.1.4 {OFFER}" in page and "What is new" not in page, page
+
+
+# ------------------------------------------------------------ § 4.9 step 5 ---
+
+
+def test_a_stop_during_the_swap_reopens_nothing(tmp_path, signer, monkeypatch):
+    """review-code 2026-11-23 lane 11: a Ctrl+C that landed between the swap
+    and the line recording it was overwritten, so the new version opened
+    though he had asked Pressless to stop.
+
+    Breaks when Update now records the new version after a stop."""
+    folder = _folder(tmp_path)
+    artefact = _artefact(tmp_path)
+    _, answers = _release(signer, "0.1.3")
+    state = updating.Updates()
+
+    def apply(appimage, staged, where):
+        state.stand_down()          # his Ctrl+C, handled on the main thread
+
+    monkeypatch.setattr(installer, "apply_linux", apply)
+    with _pressless(folder, artefact, answers, state=state) as browser:
+        status, _, text = browser.request("POST", "/update")
+    assert status == 200 and INSTALLING in text, text
+    assert state.installed is None, state.installed
+    editor.LOCK.release()           # kept to the exit, which is replaced here
+
+    # The control: with no stop, the new version is recorded.
+    state = updating.Updates()
+    monkeypatch.setattr(installer, "apply_linux", lambda *args: None)
+    with _pressless(folder, artefact, answers, state=state) as browser:
+        browser.request("POST", "/update")
+    assert state.installed == (artefact, "0.1.3"), state.installed

@@ -163,7 +163,8 @@ owner registers with `Face.add_page` (PRESS-0021 INV-14).
 
 ### 4.2 The progress file
 
-`<folder>/wizards/<name>.json`, where `folder` is Pressless's own folder.
+`<folder>/wizards/<name>.json`, where `folder` is the open site's folder
+(PRESS-0223 § 4.2), so each site keeps its own.
 Written whole with `safe_write.write_whole`, under a lock held by the
 `Wizard`, so two tabs cannot interleave.
 

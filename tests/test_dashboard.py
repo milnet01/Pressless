@@ -202,9 +202,50 @@ def test_unreachable_google_shows_the_numbers_kept(tmp_path: Path) -> None:
         google.clock += 2 * 3600       # the held token and the cache are both old
         google.down = True
         page = browser.get("/visitors")
-    assert "could not reach Google just now" in page
+    assert "Google gave no new numbers just now" in page
     assert "10 people read your site" in _seen(page)
     assert "South Africa" in page
+
+
+def test_a_refusal_over_kept_numbers_still_offers_signing_in_again(tmp_path: Path) -> None:
+    """PRESS-0019 § 4.4 answers a refusal with the kept numbers. Breaks when
+    the page then says Google could not be reached, or leaves no route back
+    to signing in."""
+    _saved(tmp_path)
+    google = _Google()
+    with _served(tmp_path, google) as browser:
+        browser.get("/visitors")
+        google.clock += 2 * 3600
+        google.report_status = 403
+        page = browser.get("/visitors")
+    assert "10 people read your site" in _seen(page)
+    assert "could not reach Google" not in page
+    assert f'<a href="{google_setup.PAGE}">sign in again</a>' in page
+
+
+def test_a_fresh_cache_needs_no_token(tmp_path: Path) -> None:
+    """Breaks when the page or the door asks Google for a token before
+    looking at the cache: every first open after a launch then waits on a
+    round trip for numbers already held."""
+    _saved(tmp_path)
+    google = _Google()
+    with _served(tmp_path, google) as browser:
+        browser.get("/visitors")
+    asked = google.requests
+    with _served(tmp_path, google) as browser:    # a new launch holds no token
+        page = browser.get("/visitors")
+    assert "10 people read your site" in _seen(page)
+    assert dashboard.figures(tmp_path, 28, client=google).people == 10
+    assert google.requests == asked
+
+
+def test_the_strip_ends_are_escaped() -> None:
+    """Breaks when a day label read back from the cache, which nothing
+    checks, reaches the page as markup at either end of the strip."""
+    days = (dashboard.insights.Day("<img src=x>", 1), dashboard.insights.Day("<b>late</b>", 2))
+    strip = dashboard._strip(days)
+    assert "<img" not in strip and "<b>" not in strip
+    assert "&lt;img src=x&gt;" in strip and "&lt;b&gt;late&lt;/b&gt;" in strip
 
 
 def test_unreachable_with_nothing_kept_is_a_failure_not_a_blank(tmp_path: Path) -> None:
@@ -241,6 +282,7 @@ def test_the_card_reads_the_cache_and_never_google(tmp_path: Path) -> None:
         after = browser.card()
         assert google.requests == asked
     assert "10 people read your site in the last 4 weeks" in _seen(after)
+    assert f"Last updated {dashboard.when(google.clock)}" in _seen(after)
 
 
 def test_a_kept_report_is_marked_stale(tmp_path: Path) -> None:

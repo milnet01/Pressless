@@ -203,3 +203,28 @@ def test_a_write_failing_without_a_reason_names_its_type(tmp_path, monkeypatch):
         starter.note_filled(tmp_path, {})
     for caught in (marker, filled):
         assert str(caught.value).endswith("could not be written: OSError"), str(caught.value)
+
+
+def test_the_menu_keeps_its_shape_and_escapes_its_words(monkeypatch):
+    """PRESS-0126 § 4.2's navigation, byte for byte, so a saved starter menu
+    still reads as unchanged. Breaks when the shape drifts, or a translation
+    holding `&` or `<` breaks the markup."""
+    assert starter.navigation() == (
+        '  <nav class="primary" aria-label="Primary">\n'
+        '    <a href="{{UP}}index.html" data-nav="Home">Home</a>\n'
+        '    <a href="{{UP}}pages/about.html" data-nav="about">About</a>\n  </nav>')
+    say_in = starter.say_in
+    monkeypatch.setattr(starter, "say_in", lambda code, key: (
+        "Home & <Away>" if key == "starter.home" else say_in(code, key)))
+    assert ">Home &amp; &lt;Away&gt;</a>" in starter.navigation()
+
+
+def test_consent_to_replace_is_kept_until_the_publish_lands(tmp_path):
+    """PRESS-0126 § 4.5. Breaks when an empty marker reads as consent, or
+    consent outlives the publish."""
+    starter.fill(tmp_path, "Sentinel Site")
+    assert starter.unpublished(tmp_path) and not starter.replace_agreed(tmp_path)
+    starter.agree_to_replace(tmp_path)
+    assert starter.unpublished(tmp_path) and starter.replace_agreed(tmp_path)
+    starter.mark_published(tmp_path)
+    assert not starter.unpublished(tmp_path) and not starter.replace_agreed(tmp_path)

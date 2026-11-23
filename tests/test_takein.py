@@ -334,6 +334,27 @@ def test_a_take_in_needs_an_empty_store(tmp_path):
     assert _held(folder) == before
 
 
+def test_a_site_that_arrives_during_the_fetch_stops_the_take_in(tmp_path, monkeypatch):
+    """INV-3. Breaks when the empty-Store check is not asked again after the
+    fetch, which holds no lock, so a site saved meanwhile is written over."""
+    github, _ = _published(tmp_path)
+    folder = _empty_store(tmp_path)
+    found = takein.look(folder, _settings(folder), KEY, transport=github)
+    fetched = publisher.fetch_state
+
+    def fetch_then_a_site_arrives(*args, **kwargs):
+        answer = fetched(*args, **kwargs)
+        store.write(folder, store.Entry(
+            slug="mine", title="Mine", date=datetime(2020, 1, 1), categories=(), tags=(),
+            body="His own.", extra=()), draft=True)
+        return answer
+
+    monkeypatch.setattr(publisher, "fetch_state", fetch_then_a_site_arrives)
+    with pytest.raises(takein.TakeInStopped):
+        takein.take_in(folder, _settings(folder), KEY, found.commit, transport=github)
+    assert set(_held(folder)) == {"drafts/mine.txt"}, _held(folder)
+
+
 # ---------------------------------------------------------------- INV-11 ---
 
 
@@ -517,9 +538,11 @@ def test_a_take_in_writes_nothing_to_github(tmp_path, monkeypatch):
 
 def test_only_a_take_in_deletes_a_photograph(tmp_path):
     """INV-12. Breaks when another module deletes a photograph through it."""
-    source = Path(takein.__file__).parent
+    # Both packages: pressless_import writes photographs too.
+    source = Path(takein.__file__).parent.parent
     callers = set()
-    for path in source.rglob("*.py"):
+    for path in (*(source / "pressless").rglob("*.py"),
+                 *(source / "pressless_import").rglob("*.py")):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Attribute) and node.attr == "unplace_photograph":
                 callers.add(path.name)

@@ -24,6 +24,7 @@ import re
 import secrets
 import shutil
 import ssl
+import sys
 import urllib.error
 import urllib.request
 import zipfile
@@ -76,6 +77,13 @@ class DiskFull(DownloadFailed):
     DownloadFailed's sentence says to check the connection, which cannot help."""
 
 
+class NotWritable(DownloadFailed):
+    """The program's folder refused the download's file: read-only, or not
+    his to change, as /opt or Program Files is. Checking the connection,
+    which DownloadFailed's sentence says, cannot help."""
+
+
+_NOT_WRITABLE = frozenset({errno.EACCES, errno.EPERM, errno.EROFS})
 _FULL = frozenset(code for code in (errno.ENOSPC, getattr(errno, "EDQUOT", None))
                   if code is not None)
 # ERROR_HANDLE_DISK_FULL, which CPython leaves unmapped; ERROR_DISK_FULL (112)
@@ -83,7 +91,7 @@ _FULL = frozenset(code for code in (errno.ENOSPC, getattr(errno, "EDQUOT", None)
 _HANDLE_DISK_FULL = 39
 
 
-def failed(exc: BaseException, what: str) -> DownloadFailed:
+def download_failure(exc: BaseException, what: str) -> DownloadFailed:
     """DiskFull for a full disk, else DownloadFailed, naming `what` and the
     error's reason, never its message, which quotes a path."""
     full = isinstance(exc, OSError) and (
@@ -409,7 +417,10 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
         handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL
                          | getattr(os, "O_BINARY", 0), 0o600)
     except OSError as exc:
-        raise failed(exc, "no room to download beside the program") from exc
+        what = "the download could not be made beside the program"
+        if exc.errno in _NOT_WRITABLE:
+            raise NotWritable(f"{what}: {os_reason.of(exc)}") from exc
+        raise download_failure(exc, what) from exc
     kept = False
     try:
         try:
@@ -417,7 +428,7 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
                 _stream(offer, transport, out)
         except OSError as exc:
             # Closing flushes, and the close sits outside _stream's mapping.
-            raise failed(exc, "the download could not be written") from exc
+            raise download_failure(exc, "the download could not be written") from exc
         kept = True
         return target
     finally:
@@ -460,7 +471,7 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
     except UpdateError:
         raise
     except Exception as exc:  # noqa: BLE001 -- § 4.6: any other error
-        raise failed(exc, "the download failed") from exc
+        raise download_failure(exc, "the download failed") from exc
     finally:
         response.close()
 
@@ -481,25 +492,40 @@ def unpack(archive: Path, beside: Path) -> Path:
     beside the program, checking every member before writing any. The zip is
     removed either way; a refused one leaves nothing."""
     target = Path(beside) / f"{UNPACK_PREFIX}{secrets.token_hex(4)}"
+    # The staging folder makes every path deeper than the installed one, so
+    # on Windows it is written past the 260-character limit, which a long-
+    # paths setting that is off would otherwise hold it to.
+    writing = (Path(_long_form(os.path.abspath(target))) if sys.platform == "win32"
+               else target)
     try:
         with zipfile.ZipFile(archive) as opened:
             members = opened.namelist()
             if not all(_allowed(name) for name in members):
                 raise UpdateRejected("the download holds a file outside Pressless's own")
-            target.mkdir()
-            opened.extractall(target)
+            writing.mkdir()
+            opened.extractall(writing)
     except UpdateError:
-        shutil.rmtree(target, ignore_errors=True)
+        shutil.rmtree(writing, ignore_errors=True)
         raise
     except Exception as exc:  # noqa: BLE001 -- § 4.6: any other error
         # zipfile raises RuntimeError for an encrypted member and
         # NotImplementedError for an unknown method; either left a half-made
         # folder and escaped the route untyped (PRESS-0162).
-        shutil.rmtree(target, ignore_errors=True)
-        raise failed(exc, "the download could not be unpacked") from exc
+        shutil.rmtree(writing, ignore_errors=True)
+        raise download_failure(exc, "the download could not be unpacked") from exc
     finally:
         _forget(Path(archive))
     return target
+
+
+def _long_form(path: str) -> str:
+    """An absolute Windows path in the extended form, which the 260-character
+    limit does not reach: `\\\\?\\C:\\...`, or `\\\\?\\UNC\\server\\...` for a share."""
+    if path.startswith("\\\\?\\"):
+        return path
+    if path.startswith("\\\\"):
+        return "\\\\?\\UNC\\" + path[2:]
+    return "\\\\?\\" + path
 
 
 def _forget(path: Path) -> None:

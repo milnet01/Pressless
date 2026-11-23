@@ -164,13 +164,13 @@ def _setup(face: Face, folder: Path, *, hint: str = "", typed: str | None = None
     if saved is None:
         return shown + f"<h1>{say('youtube.title')}</h1><p>{say('setup.first')}</p>"
     e = html.escape
-    held = _set_up(saved)
-    state = (say("youtube.on", channel=e(saved.youtube_channel)) if held
+    is_on = _set_up(saved)
+    state = (say("youtube.on", channel=e(saved.youtube_channel)) if is_on
              else say("youtube.not_on"))
     channel = typed if typed is not None else (saved.youtube_channel or "")
     steps = "".join(f"<li>{say(key)}</li>" for key in _STEPS)
     off = (f'<form method="post" action="{PAGE}/off"><p><button type="submit">'
-           f'{say("youtube.turn_off")}</button></p></form>') if held else ""
+           f'{say("youtube.turn_off")}</button></p></form>') if is_on else ""
     return (shown + f"<h1>{say('youtube.title')}</h1><p>{state}</p>{off}"
             + f"<p>{say('youtube.about_key')}</p><ol>{steps}</ol>"
             + f'<form method="post" action="{SETUP}">'
@@ -178,7 +178,7 @@ def _setup(face: Face, folder: Path, *, hint: str = "", typed: str | None = None
               f'<input id="channel" name="channel" size="50" value="{e(channel, quote=True)}"></p>'
             + f'<p><label for="key">{say("youtube.box.key")}</label><br>'
               '<input id="key" name="key" type="password" size="50" autocomplete="off"></p>'
-            + (f"<p>{say('youtube.key_kept')}</p>" if held else "")
+            + (f"<p>{say('youtube.key_kept')}</p>" if is_on else "")
             + f'<p id="channel-hint" role="status">{e(hint)}</p>'
             + f'<p><button type="submit">{say("youtube.save")}</button></p></form>'
             + f"<p>{say('youtube.terms', terms=_TERMS, privacy=_PRIVACY)}</p>"

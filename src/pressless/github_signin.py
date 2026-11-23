@@ -34,7 +34,7 @@ INSTALL_URL = "https://github.com/apps/{}/installations/new"
 TYPE_AT = "https://github.com/login/device"   # where a code is typed, whatever GitHub says
 _DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 _DETAIL_LIMIT = 60                # GitHub's error codes are short words
-_PAGES = 10                       # reaches() and sites() read at most this many pages of 100
+_PAGES = 10                       # a list is read at most this many pages of 100
 
 _FORM = {"Accept": "application/json", "User-Agent": "Pressless",
          "Content-Type": "application/x-www-form-urlencoded"}
@@ -134,8 +134,8 @@ def refresh(refresh_token: str, transport: Transport | None = None) -> Tokens:
     return _tokens(answer)
 
 
-def login(token: str, transport: Transport | None = None) -> str:
-    """The signed-in account's name."""
+def account_name(token: str, transport: Transport | None = None) -> str:
+    """The signed-in account's name. Signs nothing in."""
     name = _api(transport, "GET", "/user", token)[1].get("login")
     if not isinstance(name, str) or not name:
         raise PublishError("GitHub's answer does not name the account")
@@ -146,9 +146,8 @@ def installation(token: str, account: str, transport: Transport | None = None
                  ) -> Installation | None:
     """This app's installation on `account`'s own account, or None. An
     organisation's installation of the app is never it."""
-    answer = _api(transport, "GET", "/user/installations?per_page=100", token)[1]
-    for found in answer.get("installations") or ():
-        if not isinstance(found, dict) or found.get("app_slug") != APP_SLUG:
+    for found in _listed(token, "/user/installations", "installations", transport):
+        if found.get("app_slug") != APP_SLUG:
             continue
         holder = found.get("account")
         owner = holder.get("login") if isinstance(holder, dict) else None
@@ -169,10 +168,9 @@ def create_repository(token: str, name: str, transport: Transport | None = None)
 
 def reaches(token: str, found: Installation, repository: str,
             transport: Transport | None = None) -> bool:
-    """Whether the installation reaches `owner/name`. Where it reaches every
-    repository, nothing is sent. GitHub added the repository Pressless made
-    on the 2026-10-05 run; adding one needs a permission the registration
-    form does not offer, so where it has not, the person does (§ 4.1)."""
+    """Whether the installation reaches `repository`, `owner/name`. Where it
+    reaches every repository, nothing is sent. Where it reaches only chosen
+    ones, the person may have to add this one on GitHub (§ 4.1)."""
     if found.all_repositories:
         return True
     wanted = repository.casefold()
@@ -198,14 +196,18 @@ def sites(token: str, found: Installation, account: str,
 
 def _repositories(token: str, found: Installation,
                   transport: Transport | None) -> Iterator[dict]:
-    """The repositories the installation reaches, a page of 100 at a time
-    until a page holds fewer, at most `_PAGES` pages."""
+    """The repositories the installation reaches."""
+    return _listed(token, f"/user/installations/{found.id}/repositories", "repositories",
+                   transport)
+
+
+def _listed(token: str, path: str, field: str, transport: Transport | None) -> Iterator[dict]:
+    """The objects in each answer's `field` list for `path`, a page of 100 at a
+    time until a page holds fewer, at most `_PAGES` pages."""
     for page in range(1, _PAGES + 1):
-        answer = _api(transport, "GET",
-                      f"/user/installations/{found.id}/repositories"
-                      f"?per_page=100&page={page}", token)[1]
-        listed = answer.get("repositories") or ()
-        yield from (repository for repository in listed if isinstance(repository, dict))
+        answer = _api(transport, "GET", f"{path}?per_page=100&page={page}", token)[1]
+        listed = answer.get(field) or ()
+        yield from (item for item in listed if isinstance(item, dict))
         if len(listed) < 100:
             return
 
@@ -214,7 +216,9 @@ def _form(transport: Transport | None, url: str, fields: dict[str, str], *,
           signed_out: bool = False) -> dict:
     """POST a sign-in form to github.com. GitHub answers its device-flow errors
     as JSON carrying `error`, usually with status 200; those are returned for
-    the caller to name. A refused renewal is SignedOut whatever its status."""
+    the caller to name. With `signed_out`, a renewal: an `error` answer, or a
+    400 or 401, is SignedOut. A 403 without an `error` is SignInRefused, as
+    from any request (§ 4.1)."""
     client = transport if transport is not None else publisher._Urllib()
     body = urllib.parse.urlencode(fields).encode("ascii")
     where = urllib.parse.urlsplit(url).path

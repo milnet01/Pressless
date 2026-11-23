@@ -89,11 +89,21 @@ to `STEM_MOST` (60) characters, else `Pressless site`.
 ### 4.2 Saving
 
 `save` holds `editor.LOCK`, so no save or publish lands half in the
-file, and writes `target` as a new zip: the manifest first, then every
-file under each `KEPT` name present, by its path relative to the site,
-with `/` between parts. Members under `photographs/` and `files/` are
+file, and writes `target` as a new zip. Under the lock it lists the
+members, writes all but those under `photographs/` and `files/`, and
+hard-links each of those into a fresh folder beside the site. It packs
+the links after letting the lock go: such a file is never rewritten in
+place, so a link keeps the bytes the lock saw. Where the drive cannot
+link, it packs everything under the lock. The zip holds the manifest
+first, then every file under each `KEPT` name present, by its path
+relative to the site, with `/` between parts. Members under `photographs/` and `files/` are
 stored; the rest are deflated. `settings.json` goes in as read, but with
 `site_folder` set to `""`, so the file names no path on this computer.
+A `settings.json` that is not a JSON object is left out, and the rest
+saved.
+
+`save_part` first adds up the members' sizes. Where they would leave the
+drive less than 1 GiB free, it raises `ENOSPC` and writes nothing.
 
 `GET /sites/save` saves to `<own>/.saving-<random>.zip` and answers with
 it as a download (§ 4.5), named as § 4.1 says. `save_part` writes that
@@ -125,8 +135,9 @@ Nothing is written before `check` passes.
 
 1. `check(source, room)`, where `room` is the free space on the drive
    holding `own`, less 1 GiB.
-2. Unpack every member but `MANIFEST` into `<own>/sites/.opening`,
-   removed first where a stopped open left one.
+2. Unpack every member but `MANIFEST` into a fresh folder under
+   `<own>/sites/` (`.opening` below), whose name is no longer than
+   `site-1`, so no member's path is longer there than in its site.
 3. The target is the open site where that site is unused, else
    `sites.new_site(own)`. **Unused** means it has no `settings.json` and
    `store.holds_a_site` is False for it, as on a fresh install after its
@@ -135,15 +146,22 @@ Nothing is written before `check` passes.
    does not name: `site_folder` becomes `<target>/site`;
    `credentials.store` is `credentials.choose().store`, kept as it was
    where that raises; `github_account` is
-   `sites.account("github", target)`, and `google_account`, where it is
-   not null, `sites.account("google", target)`. Then `settings.load`
-   must accept it, or the open is refused.
-5. The target folder is removed, then `.opening` is renamed to its name.
+   `sites.account("github", target)`, and `google_account` and
+   `youtube_account`, each where it is not null, `sites.account("google",
+   target)` and `sites.account("youtube", target)`. Then `settings.load`
+   must accept it, or the open is refused. A `starter-unpublished` marker
+   is emptied, so consent to replace a site on GitHub (PRESS-0126 § 4.5)
+   never arrives in a file.
+5. The target folder is renamed aside, `.opening` is renamed to its name,
+   and the aside folder is deleted. Where the second rename fails, the
+   target is renamed back.
 6. `sites.choose(own, target.name)`, and PRESS-0223's restart opens it.
 
 A refusal at any step removes `.opening` and any folder `new_site` made,
-and leaves `sites/` as it was. Step 6 fails after the site is in place, so
-its failure is not a refusal.
+and leaves `sites/` as it was. After step 2, an `OSError` is the drive's,
+not a refusal: it gets the same cleanup and reaches the caller with its
+reason. Step 6 fails after the site is in place, so its failure is not a
+refusal.
 
 The site opens with no key. Publishing then says Pressless does not have
 the publishing key yet, and to enter it in Settings
@@ -255,9 +273,9 @@ the Store's own checks, as an entry from disk is today.
 - **The drive fills while unpacking**: the write fails, `.opening` is
   removed, and the screen says the file could not be opened and no site
   changed.
-- **Pressless stops mid-open**: `.opening` is left, never listed (it
-  does not match `site-N`), and removed by the next open. A site
-  `new_site` made is left empty.
+- **Pressless stops mid-open or mid-save**: `.opening`, or a save's
+  links, are left, never listed (they do not match `site-N`), and
+  removed at the next start. A site `new_site` made is left empty.
 - **The browser stops a download**: the `.saving-` file is deleted when
   the send ends, sent or not.
 - **A file from a newer Pressless**: refused, with words to update

@@ -27,7 +27,11 @@ cp -a "$work/dist/Pressless" "$stage/Pressless"
 # The batch file stays (scope decision 6): the program prints a report and
 # finishes, so a double-clicked .exe would close its console before he could
 # read it. Written here with CRLF, which cmd.exe expects.
-printf '@echo off\r\n"%%~dp0Pressless\\Pressless.exe" %%*\r\npause\r\n' \
+# One line, ending the batch itself: cmd.exe reads a running batch file again
+# from its old offset, so the console an update leaves paused would run
+# whatever a changed file holds past it (measured on the Windows box). Never
+# longer than the three-line form before it, so that console reads nothing.
+printf '@"%%~dp0Pressless\\Pressless.exe" %%*&pause&exit /b\r\n' \
     > "$stage/Start Pressless.bat"
 
 out="dist/Pressless-$version-windows.zip"
