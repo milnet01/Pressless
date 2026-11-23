@@ -217,7 +217,8 @@ def test_no_mark_spans_a_newline():
 def test_escaping_text_and_attributes():
     """INV-4: in text, < and > are always escaped and & is escaped only
     where it does not already begin a character reference; in an
-    attribute value, all five of & < > " ' are escaped unconditionally.
+    attribute value, & < > " ' are all escaped, an `&` beginning a reference
+    in a caption or address excepted (§4.6).
 
     Breaks when one escape helper is used for both contexts (spec §5)."""
     # Text context, first half: < and > are always escaped, even where
@@ -268,14 +269,13 @@ def test_escaping_text_and_attributes():
     # attribute writers emit double quotes, so a raw "'" inside one is
     # well formed and decodes back to itself.
 
-    # '&': the fixture has to carry something a parser would decode.
-    # Escaped, 'a&copy;b' reaches alt as the writer typed it; unescaped,
-    # the parser decodes it to 'a\u00a9b' and his text is gone.
-    entity_caption = render("{photo: a.jpg | a&copy;b}", lambda n: n)
-    assert _parsed_attrs(entity_caption).alts == ["a&copy;b"], (
-        f"a caption carrying a character reference must reach alt as it "
-        f"was typed; unescaped, the '&' lets the parser decode it: "
-        f"{entity_caption!r}"
+    # '&': the fixture has to carry something a parser would decode. 'a&copy b'
+    # begins no reference, as it lacks the ';', so the '&' is escaped and it
+    # reaches alt as typed; unescaped, a parser decodes it to 'a\u00a9 b'.
+    entity_caption = render("{photo: a.jpg | a&copy b}", lambda n: n)
+    assert _parsed_attrs(entity_caption).alts == ["a&copy b"], (
+        f"a bare '&' in a caption must be escaped in alt; unescaped, the "
+        f"parser decodes it: {entity_caption!r}"
     )
 
     # "'": unobservable through a parser for good, so this asserts on the
@@ -1156,3 +1156,45 @@ def test_a_body_joins_back_from_its_sources():
     assert tuple(parse(text)[0] for text in texts) == parse(body)
     assert all(len(parse(text)) == 1 for text in texts)
     assert sources("") == (("",), ())
+
+
+# ------------------------------------------------- review 2026-11-23 -------
+
+
+def test_a_reference_reads_the_same_in_alt_and_href_as_in_the_words():
+    """INV-10 with §4.6: a caption carrying a character reference, as an
+    archive's do, reads the same in alt as in its figcaption, and a link's
+    `&amp;` is one `&` in the address.
+
+    Breaks when alt or href escapes an `&` that begins a reference: alt then
+    reads `&amp;` aloud and the address carries `&amp;amp;`."""
+    pictured = render("{photo: a.jpg | Tom &amp; Jerry&#8217;s}", lambda n: n)
+    assert _parsed_attrs(pictured).alts == ["Tom & Jerry’s"], pictured
+    assert "<figcaption>Tom &amp; Jerry&#8217;s</figcaption>" in pictured, pictured
+
+    linked = render("{link: https://example.org/?a=1&amp;b=2}there{/}", _no_photos)
+    assert _parsed_attrs(linked).hrefs == ["https://example.org/?a=1&b=2"], linked
+
+
+def test_an_opener_followed_by_a_space_does_not_count_toward_nesting():
+    """§4.5: an opener that whitespace follows forms no mark, so it raises
+    no depth either, and the first `{/}` closes the outer mark.
+
+    Breaks when the depth counter counts what the scanner refuses to open."""
+    out = _html("{accent}a {accent} b{/} c{/}")
+    assert out == '<p><span style="color:var(--accent)">a {accent} b</span> c{/}</p>', out
+
+
+def test_a_long_run_of_spaces_in_a_caption_parses_in_linear_time():
+    """review 2026-11-23: a caption written `.+?` before `\\s*$` backtracked
+    over a run of spaces inside it. Measured before the fix: 16,000 spaces
+    took 1.6 s and the cost quadrupled as the run doubled; after it, well
+    under a tenth of a second. The bound is as loose as PRESS-0054's."""
+    line = "{photo: a.jpg | x" + " " * 50_000 + "y}"
+
+    started = time.monotonic()
+    doc = parse(line)
+    elapsed = time.monotonic() - started
+
+    assert elapsed < 3.0, f"a caption of 50,000 spaces took {elapsed:.1f}s"
+    assert doc[0].caption == "x" + " " * 50_000 + "y"

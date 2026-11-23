@@ -150,8 +150,9 @@ def _escape_text(value: str) -> str:
 
 
 def _escape_attr(value: str) -> str:
-    """INV-4, attribute half: all five, unconditionally. A caller returning a
-    name with a quote in it cannot break out of the tag."""
+    """INV-4, attribute half, for a photo's `src` and a colour's `style`: all
+    five, unconditionally. A caller returning a name with a quote in it cannot
+    break out of the tag."""
     return (
         value.replace("&", "&amp;")
         .replace("<", "&lt;")
@@ -159,6 +160,13 @@ def _escape_attr(value: str) -> str:
         .replace('"', "&quot;")
         .replace("'", "&#39;")
     )
+
+
+def _escape_attr_as_text(value: str) -> str:
+    """§4.6, a caption's `alt` and a link's `href`: the text rule, so a
+    character reference the archive carries means there what it means in
+    the words, then both quotes, so nothing breaks out of the attribute."""
+    return _escape_text(value).replace('"', "&quot;").replace("'", "&#39;")
 
 
 # ---------------------------------------------------------------- renderers --
@@ -221,11 +229,11 @@ def _figure(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoS
     catch it (§6)."""
     src = _escape_attr(photo_src(node.name))
     # §4.2: the caption is the picture's description. Where none is written
-    # alt is empty, which declares the picture decorative. The caption
-    # reaches two places under two different rules (§4.6) -- the attribute
-    # rule here, the text rule in the figcaption -- so a caption carrying a
-    # quote cannot break out of the tag (INV-10).
-    alt = _escape_attr(node.caption) if node.caption is not None else ""
+    # alt is empty, which declares the picture decorative. The caption reads
+    # the same in both places (§4.6): the text rule, and in alt its quotes
+    # escaped too, so a caption carrying one cannot break out of the tag
+    # (INV-10).
+    alt = _escape_attr_as_text(node.caption) if node.caption is not None else ""
     caption = (
         f"<figcaption>{_escape_text(node.caption)}</figcaption>"
         if node.caption is not None
@@ -238,8 +246,8 @@ def _link(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc
     # INV-11: this argument reached here only by matching the address grammar
     # in full, so once the whitespace it allows either side is stripped it is
     # one http or https address. Escaped as well, because href is a trust
-    # boundary (§4.6).
-    return f'<a href="{_escape_attr((node.arg or "").strip())}">{children}</a>'
+    # boundary (§4.6); an archive's `&amp;` stays one `&` in the address.
+    return f'<a href="{_escape_attr_as_text((node.arg or "").strip())}">{children}</a>'
 
 
 def _as_given(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
@@ -309,7 +317,10 @@ _PHOTO_ARG = (
     r"^\s*(?P<name>(?!\.{1,2}(?:\s|\||$))"
     rf"(?!{_PHOTO_DEVICE} *(?:\.|\s*(?:\||$)))"
     r'[^\s|/\\:<>"?*\x00-\x1f\x7f][^|/\\:<>"?*\x00-\x1f\x7f]*?(?<![.\s]))'
-    r"\s*(?:\|\s*(?P<caption>.+?)\s*)?$"
+    # The caption is its first to its last non-space character, or one space
+    # where it holds nothing else; spelled so, not `.+?`, it does not
+    # backtrack over a long run of spaces inside it.
+    r"\s*(?:\|\s*(?P<caption>\S(?:.*\S)?|[^\S\n])\s*)?$"
 )
 
 # One absolute http or https address, whitespace either side (§4.2). After
@@ -500,7 +511,8 @@ def _opens_at(text: str, i: int, closes: str) -> bool:
     whole line then fell out as literal, losing the mark (PRESS-0054).
 
     Every brace mark is checked, not just this row: '{accent}{muted}x{/}{/}'
-    is nesting the scanning section names as one it must accept.
+    is nesting the scanning section names as one it must accept. One that
+    whitespace follows is not an opener, as _try_inline does not form it.
     """
     for row in _WRAP_MARKS:
         if row.closes != closes:
@@ -511,6 +523,8 @@ def _opens_at(text: str, i: int, closes: str) -> bool:
         if row.arg is not None:
             if not re.fullmatch(row.arg, text[i + len(row.opens) : start - 1]):
                 continue
+        if text[start : start + 1].isspace():
+            continue
         return True
     return False
 
@@ -838,6 +852,8 @@ def sources(body: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
 
     It walks the body as §4.4 does, a line at a time: a blank line, empty
     or whitespace-only, ends a chunk, as a run of blank lines does there.
+    It is `parse`'s twin over offsets: a change to how `parse` splits
+    paragraphs, quotes or block lines changes this too.
     """
     lines = []  # (start, end) of each line, its line ending excluded
     start = 0
@@ -1096,6 +1112,9 @@ def _lines_of(items: list, inside: frozenset[str]) -> list[list[Node]]:
         if item is _BREAK:
             lines.append([])
         elif isinstance(item, str):
+            # A browser's editing box writes some typed spaces as non-breaking
+            # ones (PRESS-0260 INV-9), and a page shows any run of white space
+            # as one space: so the words are kept as they read.
             lines[-1].append(Text(re.sub(r"\s+", " ", item.replace("\xa0", " "))))
         else:
             row, arg, children = item
