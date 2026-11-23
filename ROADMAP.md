@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=489 -->
+<!-- ants-roadmap-id-high-water: PRESS=492 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9495,6 +9495,8 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   PSNR 49.8 dB against the old ones); builds still match. PRESS-0008
   amended. Full suite 2855 passed; ruff clean.
   Ledger: local-archive/reviews/2026-11-23/close-findings/0460.json.
+  User decision 2026-11-23: the photograph workers fit free memory: up to 4,
+  fewer when the computer has little memory free. Filed as PRESS-0491.
   **Layman:** Publishing a site with many photographs takes less time.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9663,6 +9665,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   PRESS-0435 amended. Full suite 2835 passed; ruff clean. Fetches (take-in,
   undo, takeover reads) still fail at once past the allowance.
   Ledger: local-archive/reviews/2026-11-23/close-findings/0471.json.
+  User decision 2026-11-23: fetches (take-in, undo, the takeover read) wait
+  out the hourly reset too, with the same countdown and bound. Filed as
+  PRESS-0490.
   **Layman:** A very large publish no longer fails late and starts again from nothing.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9677,6 +9682,8 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   the 0.5 s pause plus GitHub's reply time. Shortening the pause saves up
   to GitHub's reply time per file, unknown until a real publish is timed
   on a scratch repository, which the user approves. Ledger: 0472.json.
+  User decision 2026-11-23: yes, measure with a real publish to a scratch
+  repository, then delete the test files.
   **Layman:** Publishing many files may get faster once a real publish is timed.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9840,6 +9847,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   points at the old site). PRESS-0125 § 4.5 says the lookups answer
   nothing for a file kept in files/, and marks has no way to address
   files/ relative to an entry, so the spec changes first.
+  User decision 2026-11-23: the misleading import-report wording is fixed
+  now; entries linking a kept file is a new feature, moved to 1.3.0 with its
+  own spec and review (a contract and security boundary: PRESS-0004 INV-11).
   **Layman:** A brought-in post's links to its own files point at the copies Pressless kept.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9909,6 +9919,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   settles it. A refused write cannot harm the site: nothing moves until
   the final branch update. Needs a publish to a scratch repository, which
   the user approves.
+  User decision 2026-11-23: yes, try it on a scratch repository.
   **Layman:** An unusual publish is checked against real GitHub so it cannot fail unexpectedly.
   Kind: investigate.
   Source: review-2026-11-23.
@@ -9942,6 +9953,36 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Setup.
+
+- 📋 [PRESS-0490] **Fetches wait out GitHub's hourly reset as a publish does.**
+  Review type: Codebase. User decision 2026-11-23, following PRESS-0471:
+  take-in, undo's fetch and the takeover read wait for the reset GitHub
+  names, with the same countdown and MAX_RESET_WAIT_SECONDS bound, instead
+  of failing at once. Amend PRESS-0009 § 4.3.
+  **Layman:** Taking a site in, Undo and the takeover page wait for GitHub's limit to reset instead of failing.
+  Kind: review-fix.
+  Source: user-2026-11-23.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0491] **The photograph workers fit the memory the computer has free.**
+  Review type: Codebase. User decision 2026-11-23, following PRESS-0460:
+  up to 4 workers, fewer when free memory is low, so peak memory stays
+  within what the computer has. Measure the bound on Linux and Windows;
+  amend PRESS-0008 § 13.
+  **Layman:** Fast photograph publishing on a big computer, and safe on a small laptop.
+  Kind: perf.
+  Source: user-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0492] **Opening a large page in the visual view is measured and made quicker.**
+  Review type: Codebase. Surfaced by PRESS-0477's measures (2026-11-23,
+  headless Chrome): a 200 KB page takes 486-643 ms to first byte in the
+  visual view, of which the preview is only 25 ms. The cost is elsewhere in
+  page_editor._opening; profile it first.
+  **Layman:** A big page opens faster in the editor.
+  Kind: perf.
+  Source: user-2026-11-23.
+  Lanes: Editor.
 
 ## 1.3.0 — a home other than GitHub
 
