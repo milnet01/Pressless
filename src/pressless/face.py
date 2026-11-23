@@ -320,16 +320,16 @@ def sentence_for(
                           say("failure.unforeseen.next"))
     if entry is None:
         return unforeseen
-    link = (entry.link[0], say(entry.link[1])) if entry.link else None
-    # A failure may carry the words for its sentence's gaps. The secret is the
-    # one the Face names, else the failure's own, else "that secret".
-    slots = dict(getattr(failure, "slots", {}))
-    slots["secret"] = secret or slots.get("secret") or say("failure.unnamed_secret")
     try:
+        link = (entry.link[0], say(entry.link[1])) if entry.link else None
+        # A failure may carry the words for its sentence's gaps. The secret is
+        # the one the Face names, else the failure's own, else "that secret".
+        slots = dict(getattr(failure, "slots", {}))
+        slots["secret"] = secret or slots.get("secret") or say("failure.unnamed_secret")
         return Sentence(say(entry.what, **slots), entry.site, say(entry.next, **slots), link)
-    except KeyError:
-        # A gap the failure left unfilled. This runs in the last-resort
-        # catch, so raising here would leave him with no answer at all.
+    except Exception:  # noqa: BLE001 -- the last-resort catch runs this
+        # A gap the failure left unfilled, or slots of the wrong shape.
+        # Raising here would leave him with no answer at all.
         return unforeseen
 
 
@@ -387,6 +387,17 @@ def progress_said(counted: progress.Counted) -> dict:
     elif counted.total:
         fraction = counted.done / counted.total
     return {"running": True, "said": said, "fraction": fraction}
+
+
+def _bare_failure() -> str:
+    """The unforeseen sentence alone, for where the failure page itself could
+    not be drawn. Nothing here can raise but `say`, and then it is empty."""
+    try:
+        what, then = say("failure.unforeseen.what"), say("failure.unforeseen.next")
+        return (f'<section class="failure"><p class="what">{html.escape(what)}</p>'
+                f'<p class="next">{html.escape(then)}</p></section>')
+    except Exception:  # noqa: BLE001 -- an empty answer still beats none
+        return ""
 
 
 def render_failure(
@@ -1542,12 +1553,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001 -- the bar then stays open
             face.note(f"setup's state could not be read: {type(exc).__name__}")
             setting_up = other_sites = False
-        self._send(status, _page(body, face._theme, name, face._size, "".join(after),
-                                 language=face._language,
-                                 offer_languages=face._offer_languages,
-                                 setting_up=setting_up,
-                                 other_sites=other_sites),
-                   "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
+        try:
+            page = _page(body, face._theme, name, face._size, "".join(after),
+                         language=face._language, offer_languages=face._offer_languages,
+                         setting_up=setting_up, other_sites=other_sites)
+        except Exception as exc:  # noqa: BLE001 -- § Errors: he always gets an answer
+            face.note(f"the page's frame could not be drawn: {type(exc).__name__}")
+            self._send(500, _bare_failure(), "text/html")
+            return
+        self._send(status, page, "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int,
                      too_long: Callable[[], None] | None = None) -> int | None:
@@ -1821,7 +1835,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             # the message, which can hold paths and names.
             usage.report("failure", error=type(exc).__name__, screen=request.path,
                          publishing="yes" if publishing else "no")
-            self._send_page(face, 500, face.fail(exc, publishing=publishing))
+            try:
+                fragment = face.fail(exc, publishing=publishing)
+            except Exception as again:  # noqa: BLE001 -- he always gets an answer
+                face.note(f"the failure could not be worded: {type(again).__name__}")
+                fragment = _bare_failure()
+            self._send_page(face, 500, fragment)
             return
         if isinstance(body, Reply):
             location = (("Location", body.location),) if body.location is not None else ()

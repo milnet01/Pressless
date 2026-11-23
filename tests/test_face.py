@@ -1789,7 +1789,8 @@ const document = {
 const window = {fetch: (to, how = {}) => { fetched.push((how.method || "GET") + " " + to);
                                           return Promise.resolve({}); }};
 const context = vm.createContext({window, document, location: {href: "http://face/"},
-                                  setTimeout: (run, wait) => timers.push(wait), clearTimeout: () => {},
+                                  setTimeout: (run, wait) => timers.push(wait),
+                                  clearTimeout: () => {},
                                   addEventListener: (kind) => listening.push("window " + kind)});
 context.window.addEventListener = context.addEventListener;
 const script = new vm.Script(process.argv[2]);
@@ -1797,7 +1798,11 @@ script.runInContext(context);
 const first = listening.length;
 listening.length = 0;
 let failed = null;
-try { new vm.Script(process.argv[2]).runInContext(context); } catch (error) { failed = String(error); }
+try {
+  new vm.Script(process.argv[2]).runInContext(context);
+} catch (error) {
+  failed = String(error);
+}
 timers.length = 0;
 window.fetch("/theme", {method: "POST"});
 window.fetch("/progress");
@@ -1850,3 +1855,47 @@ def test_every_answer_tells_the_browser_not_to_guess_its_type(tmp_path):
         served.stop()
     for path, (status, headers, _) in answers.items():
         assert headers.get("X-Content-Type-Options") == "nosniff", (path, status)
+
+
+class _OddSlots(Exception):
+    """A failure whose slots are not a mapping."""
+
+    def __init__(self) -> None:
+        super().__init__("made up")
+        self.slots = 5
+
+
+def test_a_sentence_that_cannot_be_worded_says_the_unforeseen_one(monkeypatch) -> None:
+    """PRESS-0440: sentence_for runs in the last-resort catch. Breaks when
+    slots that are not a mapping, a link's words, or a `say` raising other
+    than KeyError escape it."""
+    monkeypatch.setitem(face.SENTENCES, _OddSlots, face.SENTENCES[credentials.NotStored])
+    unforeseen = face.sentence_for(RuntimeError(), publishing=False)
+    assert face.sentence_for(_OddSlots(), publishing=False) == unforeseen
+    monkeypatch.setitem(face.SENTENCES, _LeavesAGap, face.Sentence(
+        "failure.log", face.Site.UNCHANGED, "failure.again", ("/", "no.such.words")))
+    assert face.sentence_for(_LeavesAGap(), publishing=False) == unforeseen
+
+
+def test_a_frame_that_cannot_be_drawn_still_answers(tmp_path, monkeypatch) -> None:
+    """PRESS-0440: Nothing raw ever reaches the screen. Breaks when drawing
+    the page's frame raises, on a failure page or any other, and the
+    connection closes with no answer."""
+    served = face.serve(tmp_path)
+
+    def broken(*args, **kwargs):
+        raise ValueError("the frame's own failure")
+
+    def failing(request):
+        raise RuntimeError("the page's own failure")
+
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/broken", failing)
+        monkeypatch.setattr(face, "_page", broken)
+        client = _Client(served)
+        answers = [client.request("GET", path) for path in ("/words", "/broken")]
+    finally:
+        served.stop()
+    for status, _, body in answers:
+        assert status == 500 and UNFORESEEN_WHAT in body, (status, body)
