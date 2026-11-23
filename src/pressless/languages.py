@@ -48,8 +48,11 @@ def computer() -> str | None:
     for variable in _VARIABLES:
         value = os.environ.get(variable, "")
         if value:
-            # LANGUAGE is a list, best first: af:en.
-            return _code(value.split(":", 1)[0])
+            # LANGUAGE is a list, best first (pt:fr): the first Pressless has
+            # wins, else the first told. The others hold one.
+            told = [code for code in map(_code, value.split(":")) if code]
+            return next((code for code in told if code in words.LANGUAGES),
+                        told[0] if told else None)
     return None
 
 

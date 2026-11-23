@@ -152,10 +152,11 @@ FILE_NAME = "language.json"   # in Pressless's own folder; one of sites.MACHINE_
 FOLLOW = "follow"
 
 def computer() -> str | None: ...
-    # The computer's language as a two-letter code, or None where it
-    # cannot be told. Linux: the first set of LANGUAGE, LC_ALL,
-    # LC_MESSAGES, LANG; "C" and "POSIX", with or without an encoding,
-    # cannot be told. Windows: kernel32's GetUserDefaultUILanguage,
+    # The computer's language as a two- or three-letter code, or None
+    # where it cannot be told. Linux: the first set of LANGUAGE, LC_ALL,
+    # LC_MESSAGES, LANG; from LANGUAGE's list, the first language
+    # Pressless has, else the first told. "C" and "POSIX", with or
+    # without an encoding, cannot be told. Windows: kernel32's GetUserDefaultUILanguage,
     # through locale.windows_locale.
 
 def read_choice(folder: Path) -> str: ...    # a code, or FOLLOW
@@ -257,11 +258,11 @@ The gate is green after every commit.
 - **INV-5** — `computer()` reads the language as § 4.3 says.
   *Test:* `tests/test_languages.py::test_the_computers_language_is_read`
   — a table of environments (`LANG=es_MX.UTF-8` → `es`, `LANGUAGE=af:en`
-  → `af`, `LANG=C.UTF-8` → None, all unset → None) and of Windows
+  → `af`, `LANGUAGE=pt_BR:fr` → `fr`, `LANG=C.UTF-8` → None, all unset → None) and of Windows
   language ids (`0x0436` → `af`, an id `locale.windows_locale` lacks →
   None), the Windows call replaced.
-  *Breaks when:* `LC_ALL` loses to `LANG`, or `C.UTF-8` reads as a
-  language.
+  *Breaks when:* `LC_ALL` loses to `LANG`, `C.UTF-8` reads as a
+  language, or `LANGUAGE`'s later entries are ignored.
 
 - **INV-6** — Where the language cannot be told and none is chosen,
   every screen offers the list; once one is chosen, the screens use it and
