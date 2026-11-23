@@ -156,6 +156,11 @@ git config --add ants.pressless.signingKey <path to the key>
 key file and never prints it. It also publishes, so it runs last, after
 the by-hand checks; `.claude/bump.json` lists it as the final step.
 
+**Sign before the release run's artifacts expire** (the repository's
+Actions settings set how long they are kept). The script signs only files
+matching the SHA-256s that run kept as an artifact, and refuses once GitHub
+has deleted it.
+
 **A new libjxl version runs `scripts/publish-jpeg-xl.py` first**, before
 the Pressless release that pins it (PRESS-0275 § 4.8). It publishes the
 decoder's own pre-release, so a session warns the user before running it.

@@ -252,6 +252,8 @@ release. ADR-0004 requires this from the first release rather than
 later, because there is no other way to produce the Windows file.
 The release it creates is a draft until `scripts/sign-release.py` signs
 and publishes it (`docs/specs/PRESS-0023-self-update.md` § 4.8).
+Before creating it, the publish job keeps each file's SHA-256 with the
+run, and the signer signs only files that match.
 Before its Build step, each job writes the Google client secret into the
 program (`docs/specs/PRESS-0122-google-signin.md` § 4.7).
 

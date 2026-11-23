@@ -7,6 +7,7 @@ and every key is made inside the test.
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import shutil
 import subprocess
@@ -202,11 +203,14 @@ class _GitHub:
 
     `held` is the draft's assets. An upload of a name it already holds fails
     unless --clobber is passed, as gh's does. `runs` is the release workflow's
-    runs, newest first, and --status and --limit are honoured."""
+    runs, newest first, and --status and --limit are honoured; each run's id
+    is its place in that list. `record` is the fingerprints file the release
+    run left, or None where it left none."""
 
     def __init__(self, signer, folder: Path, key: Ed25519PrivateKey, held: set[str],
-                 runs: list[str]) -> None:
-        self.signer, self.held, self.runs = signer, set(held), runs
+                 runs: list[str], record: str | None) -> None:
+        self.signer, self.held, self.runs, self.record = signer, set(held), runs, record
+        self.record_runs: list[str] = []
         self.trusted = f"TRUSTED = ({_public(key)!r},)\n"
         self.uploads: list[tuple[str, ...]] = []
         self.published = False
@@ -222,11 +226,22 @@ class _GitHub:
         if args[:2] == ("gh", "api") or "rev-parse" in args:
             return _SHA + "\n"
         if args[:3] == ("gh", "run", "list"):
-            runs = self.runs
+            runs = list(enumerate(self.runs))
             if "--status" in args:
-                runs = [run for run in runs if run == args[args.index("--status") + 1]]
+                runs = [run for run in runs if run[1] == args[args.index("--status") + 1]]
             runs = runs[:int(args[args.index("--limit") + 1])]
-            return json.dumps([{"headSha": _SHA, "conclusion": run} for run in runs])
+            return json.dumps([{"databaseId": number, "headSha": _SHA, "conclusion": run}
+                               for number, run in runs])
+        if args[:3] == ("gh", "run", "download"):
+            self.record_runs.append(args[3])
+            if self.record is None:
+                raise self.signer.Refused("gh run download failed: no valid artifacts found")
+            folder = Path(args[args.index("--dir") + 1])
+            folder.mkdir(parents=True, exist_ok=True)
+            # One artifact named: gh writes its files straight into --dir.
+            assert args[args.index("--name") + 1] == "fingerprints"
+            (folder / "fingerprints.txt").write_text(self.record, encoding="ascii")
+            return ""
         if "show" in args:
             return self.trusted if args[-1].endswith("update_key.py") else (
                 "# Changelog\n\n## [1.2.3] - d\n\nthree\n")
@@ -249,14 +264,19 @@ class _GitHub:
         raise AssertionError(f"not expected: {args}")
 
 
-def _signing(monkeypatch, tmp_path, held=(), runs=("success",)):
+_BUILT = hashlib.sha256(b"built").hexdigest()
+_RECORD = (f"{_BUILT}  Pressless-1.2.3-windows.zip\n"
+           f"{_BUILT}  Pressless-1.2.3-x86_64.AppImage\n")
+
+
+def _signing(monkeypatch, tmp_path, held=(), runs=("success",), record=_RECORD):
     signer = _signer()
     key = Ed25519PrivateKey.generate()
     monkeypatch.setattr(signer, "ROOT", tmp_path / "repository")
     monkeypatch.setattr(signer, "load_keys", lambda configured: [key])
     monkeypatch.setattr(signer, "_configured", lambda: "")
     built = {"Pressless-1.2.3-x86_64.AppImage", "Pressless-1.2.3-windows.zip"}
-    github = _GitHub(signer, tmp_path, key, built | set(held), list(runs))
+    github = _GitHub(signer, tmp_path, key, built | set(held), list(runs), record)
     monkeypatch.setattr(signer, "_run", github)
     return signer, github
 
@@ -310,3 +330,62 @@ def test_a_success_behind_several_failed_runs_is_found(monkeypatch, tmp_path):
     signer, github = _signing(monkeypatch, tmp_path, runs=["failure"] * 5 + ["success"])
     signer.sign("v1.2.3")
     assert github.published
+    # PRESS-0486: the fingerprints are read from that same run.
+    assert github.record_runs == ["5"]
+
+
+@pytest.mark.parametrize(("record", "refusal"), [
+    (_RECORD.replace(f"{_BUILT}  Pressless-1.2.3-windows.zip",
+                     f"{'0' * 64}  Pressless-1.2.3-windows.zip"),
+     r"Pressless-1\.2\.3-windows\.zip is not the file the release run built"),
+    (f"{_BUILT}  Pressless-1.2.3-x86_64.AppImage\n",
+     r"recorded no fingerprint for Pressless-1\.2\.3-windows\.zip"),
+    (None, r"left no record of its files' fingerprints"),
+    ("not a fingerprint\n", r"cannot be read"),
+], ids=["swapped", "unrecorded", "no-record", "unreadable"])
+def test_a_file_the_release_run_did_not_build_signs_nothing(
+        monkeypatch, tmp_path, record, refusal):
+    """PRESS-0486 (review-code lane 19): the signer proved a successful run
+    built the tag's commit, but nothing tied the draft's files to that run,
+    so a file swapped on the draft after the run was signed. Breaks when any
+    artefact is signed without its bytes matching the run's own record."""
+    signer, github = _signing(monkeypatch, tmp_path, record=record)
+    with pytest.raises(signer.Refused, match=refusal):
+        signer.sign("v1.2.3")
+    assert github.uploads == []
+    assert not github.published
+
+
+@pytest.mark.skipif(os.name == "nt" or None in (shutil.which("bash"), shutil.which("sha256sum")),
+                    reason="the publish job's step runs under bash on Linux")
+def test_the_release_run_records_what_the_signer_reads(tmp_path):
+    """PRESS-0486: release.yml's publish job writes each file's SHA-256 and
+    keeps it with the run, before the draft exists. Its step runs here, and
+    the signer must accept what it wrote. Breaks when the step moves after
+    the draft is made, or its artifact or file name drifts from the signer's."""
+    import re
+
+    signer = _signer()
+    text = (_SCRIPT.parent.parent / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8")
+    job = text[text.index("\n  publish:\n"):]
+    step = re.search(r"- name: Fingerprint the release files\n"
+                     r"        working-directory: dist\n        run: (.+)\n", job)
+    assert step, "the publish job has no Fingerprint step"
+    keep = re.search(r"- uses: actions/upload-artifact@\S+ # \S+\n        with:\n"
+                     r"          name: (\S+)\n          path: \$\{\{ runner\.temp \}\}/(\S+)\n"
+                     r"          if-no-files-found: error\n", job)
+    assert keep, "the fingerprints are not kept with the run"
+    assert (keep[1], keep[2]) == (signer.RECORD, signer.RECORD_FILE)
+    assert step.start() < keep.start() < job.index("gh release create")
+
+    files = {"Pressless-1.2.3-x86_64.AppImage": b"linux", "Pressless-1.2.3-windows.zip": b"win"}
+    (tmp_path / "dist").mkdir()
+    for name, data in files.items():
+        (tmp_path / "dist" / name).write_bytes(data)
+    ran = subprocess.run(  # noqa: S603 -- the workflow's own step
+        [shutil.which("bash") or "bash", "-e", "-c", step[1]], cwd=tmp_path / "dist",
+        capture_output=True, text=True, timeout=60, check=False,
+        env={**os.environ, "RUNNER_TEMP": str(tmp_path)})
+    assert ran.returncode == 0, ran.stderr
+    signer.require_recorded((tmp_path / signer.RECORD_FILE).read_text(encoding="ascii"), files)
