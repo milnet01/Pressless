@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from pressless import manual, words  # noqa: E402 -- after the path is set
+from pressless import manual, safe_write, words  # noqa: E402 -- after the path is set
 
 
 def stamp(path: Path) -> int:
@@ -38,7 +38,10 @@ def stamp(path: Path) -> int:
             held["words"][key] = [words.made_from(words.ENGLISH[key]), value]
             stamped += 1
     held["words"] = dict(sorted(held["words"].items()))
-    path.write_text(json.dumps(held, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    # Whole or not at all, LF on any system: the file holds pasted
+    # translations that are not yet committed anywhere.
+    safe_write.write_whole(path, json.dumps(held, ensure_ascii=False, indent=1) + "\n",
+                           prefix=f".{path.name}.")
     return stamped
 
 
@@ -48,7 +51,8 @@ def report(folder: Path = words.FOLDER, manual_folder: Path = manual.FOLDER,
     lines = []
     videos = sorted(path.name.split(".")[0]
                     for path in (manual_folder / "media").glob(f"*.{manual.FALLBACK}.vtt"))
-    for code in words.LANGUAGES[1:] if codes is None else codes:
+    translated = tuple(code for code in words.LANGUAGES if code != manual.FALLBACK)
+    for code in translated if codes is None else codes:
         path = folder / f"{code}.json"
         held = json.loads(path.read_text(encoding="utf-8"))["words"] if path.is_file() else {}
         for key, english in words.ENGLISH.items():

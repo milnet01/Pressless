@@ -1981,6 +1981,98 @@ def test_a_wait_longer_than_the_bound_is_refused_rather_than_slept(tmp_path):
     )
 
 
+class _CountingDown(_Transport):
+    """Records, at each wait and each request, the seconds the progress record
+    says are left of a wait."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.left: list[int | None] = []        # one per wait
+        self.asked: list[int | None] = []       # one per request
+
+    @staticmethod
+    def _left() -> int | None:
+        counted = progress_module.now()
+        return counted.seconds_left if counted else None
+
+    def request(self, method, url, body, headers):
+        self.asked.append(self._left())
+        return super().request(method, url, body, headers)
+
+    def wait(self, seconds: float) -> None:
+        self.left.append(self._left())
+        super().wait(seconds)
+
+
+def _spent_until(seconds: float) -> tuple[int, dict[str, str], bytes]:
+    """GitHub's answer once the hourly allowance is spent: the reset it names
+    is `seconds` from now."""
+    return (403, {"X-RateLimit-Remaining": "0",
+                  "X-RateLimit-Reset": str(time.time() + seconds)},
+            b'{"message": "API rate limit exceeded"}')
+
+
+def test_a_spent_hourly_allowance_is_waited_out_with_a_countdown(tmp_path):
+    """PRESS-0471: past the hourly allowance a publish waits until the reset
+    GitHub names, counting down on the progress record, then finishes in its
+    one commit. Breaks when the long reset is refused as a short hint's is,
+    when the wait is slept in one piece with nothing counted, or when the
+    count is left standing after the wait."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _CountingDown(reads=_reads(listing), writes=_writes(),
+                              rate_limited_writes=1, rate_limit_answer=_spent_until(600))
+
+    with progress_module.job():
+        outcome = publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+        after = progress_module.now()
+
+    assert outcome.commit, "the publish did not finish after the reset"
+    commits = [url for method, url, _, _ in transport.requests
+               if method == "POST" and url.endswith("/git/commits")]
+    assert len(commits) == 1, f"the publish made {len(commits)} commits, not one"
+    counted = [(left, waited) for left, waited in zip(transport.left, transport.waits, strict=True)
+               if left is not None]
+    lefts = [left for left, _ in counted]
+    waited = sum(seconds for _, seconds in counted)
+    assert 598 <= waited <= 600 and 598 <= lefts[0] <= 600, (
+        f"the reset was not waited out: {waited}s counted down, from {lefts[:1]}")
+    assert max(transport.waits) <= 1.0 and lefts == sorted(lefts, reverse=True), (
+        "the wait did not count down a second at a time")
+    assert not any(transport.asked) and after.seconds_left is None, (
+        "the countdown outlived the wait")
+
+
+def test_a_reset_too_far_off_or_that_does_not_clear_is_refused(tmp_path):
+    """PRESS-0471's bounds: a reset beyond MAX_RESET_WAIT_SECONDS is refused
+    without waiting, and one waited out that GitHub answers with another is
+    refused rather than waited again."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    too_far = _Transport(reads=_reads(listing), rate_limited_writes=-1,
+                         rate_limit_answer=_spent_until(
+                             publisher_module.MAX_RESET_WAIT_SECONDS + 100))
+    with pytest.raises(RateLimited):
+        publish(_settings(), tmp_path, "a-token", "message", transport=too_far)
+    assert not too_far.waits, f"a reset past the bound was waited: {sum(too_far.waits)}s"
+
+    again = _Transport(reads=_reads(listing), writes=_writes(), rate_limited_writes=2,
+                       rate_limit_answer=_spent_until(600))
+    with pytest.raises(RateLimited):
+        publish(_settings(), tmp_path, "a-token", "message", transport=again)
+    assert sum(again.waits) <= 602, f"a reset was waited out twice: {sum(again.waits)}s"
+
+
+def test_only_a_publish_waits_out_the_hourly_reset():
+    """PRESS-0471 is the publish's: any other request past the allowance
+    still fails at once, as before."""
+    transport = _Transport(rate_limited_writes=-1, rate_limit_answer=_spent_until(600))
+    with pytest.raises(RateLimited):
+        publisher_module.request_build("owner/name", "a-token", transport)
+    assert not transport.waits, f"a reset outside a publish was waited: {transport.waits[:3]}"
+
+
 def test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was(tmp_path):
     """fetch_previous wrote each file as it went, so a failure part-way left a
     mixture of the previous state and whatever was already there -- which the

@@ -3,10 +3,12 @@ import json
 import random
 from datetime import date, timedelta
 
-# Made-up figures, one tuple per row of the report insights._fetch asks for:
+# Made-up figures for 28 days, one tuple per row of the report insights._fetch asks for:
 # PAGES (path, views, visitors, engagement seconds); SOURCES (channel, source,
 # sessions, visitors); REGIONS (country, region, visitors); COUNTRIES
 # (country, visitors). Two PAGES paths are instance.ENTRIES' entries.
+# Another period scales them by PERIOD_SCALE; one not listed shows them as they are.
+PERIOD_SCALE = {7: 0.27, 28: 1.0, 365: 11.4}
 PAGES = (("/", 412, 260, 9100.0), ("/journal/first-light-on-the-harbour/", 238, 171, 15400.0),
          ("/about/", 96, 80, 2100.0), ("/journal/a-morning-at-the-market/", 74, 61, 5200.0))
 SOURCES = (("Organic Search", "google", 210, 168), ("Direct", "(direct)", 140, 122),
@@ -41,19 +43,20 @@ class Google:
                 months = sorted({(today - timedelta(n)).strftime("%Y%m")
                                  for n in range(0, start + 1)})
                 strip = [((m,), (rnd.randint(240, 420),)) for m in months]
-            k = {7: 0.27, 28: 1.0, 365: 11.4}.get(start, 1.0)
+            scale = PERIOD_SCALE.get(start, 1.0)
 
-            def sc(n):
-                return max(1, round(n * k))
+            def scaled(n):
+                return max(1, round(n * scale))
 
-            total = sum(sc(n) for _, n in COUNTRIES)
+            total = sum(scaled(n) for _, n in COUNTRIES)
             answer = {"reports": [
-                {"rows": _rows(((c,), (sc(n),)) for c, n in COUNTRIES),
+                {"rows": _rows(((c,), (scaled(n),)) for c, n in COUNTRIES),
                  "totals": [{"metricValues": [{"value": str(total)}]}]},
                 {"rows": _rows(strip)},
-                {"rows": _rows(((p,), (sc(v), sc(u), s * k)) for p, v, u, s in PAGES)},
-                {"rows": _rows(((g, s), (sc(n), sc(u))) for g, s, n, u in SOURCES)},
-                {"rows": _rows(((c, r), (sc(n),)) for c, r, n in REGIONS)},
+                {"rows": _rows(((p,), (scaled(v), scaled(u), s * scale))
+                               for p, v, u, s in PAGES)},
+                {"rows": _rows(((g, s), (scaled(n), scaled(u))) for g, s, n, u in SOURCES)},
+                {"rows": _rows(((c, r), (scaled(n),)) for c, r, n in REGIONS)},
             ]}
             return 200, {}, json.dumps(answer).encode()
         return 404, {}, b""

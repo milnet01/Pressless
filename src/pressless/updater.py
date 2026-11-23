@@ -229,6 +229,8 @@ def _read(transport: Transport, url: str, limit: int) -> bytes:
 
 
 def _names(version: str) -> dict[str, str]:
+    # scripts/sign-release.py's artefacts() and signed_files() spell these too;
+    # tests/test_sign_release.py holds the two equal.
     return {"list": f"Pressless-{version}-release.txt",
             "sig": f"Pressless-{version}-release.txt.sig",
             "changes": f"Pressless-{version}-changes.txt",

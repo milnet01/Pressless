@@ -500,6 +500,7 @@ _WORDS: dict[str, str] = {
     "progress.building": "Building your pages",
     "progress.packing": "Packing the site file",
     "progress.unpacking": "Unpacking the site file",
+    "progress.waiting": "GitHub's hourly allowance is used up; carrying on in {left}.",
     # The box before a press (pressing.py, PRESS-0345).
     "script.press.checking": "Checking what will change on your site…",
     "script.plan.title": "Before your site changes",

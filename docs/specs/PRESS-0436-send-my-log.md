@@ -150,10 +150,10 @@ script can:
    writes the key to `~/.config/pressless/log-relay-app.pem` (mode 600) and
    never prints it.
 4. The user installs the App on `milnet01/pressless-logs` alone.
-5. The script reads the installation id, sets the variables, converts the
-   key to PKCS#8 (`openssl pkcs8 -topk8 -nocrypt`), pipes it into
-   `wrangler secret put APP_KEY`, deploys, and sends a test log whose
-   issue it then closes. It prints the Worker's address, which is
+5. The script reads the installation id, sets the variables, deploys,
+   converts the key to PKCS#8 (`openssl pkcs8 -topk8 -nocrypt`), pipes it
+   into `wrangler secret put APP_KEY`, which needs the deployed Worker, and
+   sends a test log whose issue it then closes. It prints the Worker's address, which is
    committed as `sendlog.RELAY`.
 
 ## 5. Invariants

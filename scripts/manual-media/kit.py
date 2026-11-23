@@ -20,6 +20,9 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 WORK = Path(os.environ.get("PRESSLESS_MANUAL_WORK") or ROOT / "scratch" / "manual-media")
 INSTANCE = WORK / "instance"
+# Written into INSTANCE when it is made: only a folder holding it is ever
+# removed, so a PRESSLESS_MANUAL_WORK naming a real folder loses nothing.
+MADE_HERE = ".made-by-manual-media"
 CHROME = "/usr/bin/google-chrome"
 PHOTOGRAPH = HERE / "harbour-dawn.jpg"
 
@@ -27,15 +30,14 @@ _running: list[subprocess.Popen] = []
 
 
 def stop() -> None:
-    """End the instance and remove its folder."""
+    """End the instance this run started, and remove its folder if this kit
+    made it."""
     while _running:
         process = _running.pop()
         process.terminate()
         process.wait()
-    shutil.rmtree(INSTANCE, ignore_errors=True)
-
-
-atexit.register(stop)
+    if (INSTANCE / MADE_HERE).is_file():
+        shutil.rmtree(INSTANCE, ignore_errors=True)
 
 
 def start(mode: str = "site") -> str:
@@ -46,20 +48,28 @@ def start(mode: str = "site") -> str:
     context without the first one's cookies restarts it.
     """
     stop()
-    WORK.mkdir(parents=True, exist_ok=True)
+    if INSTANCE.exists():
+        raise SystemExit(f"refused: {INSTANCE} was not made by the manual's media scripts; "
+                         "move it, or name another PRESSLESS_MANUAL_WORK")
+    INSTANCE.mkdir(parents=True)
+    (INSTANCE / MADE_HERE).touch()
+    # Here, not at import: frozen_check.py and the instance itself import
+    # this module too, and their exit must not remove a running instance.
+    atexit.unregister(stop)
+    atexit.register(stop)
     log = WORK / "instance.log"
     with log.open("w") as out:
         _running.append(subprocess.Popen(  # noqa: S603 -- our own script, fixed arguments
             [str(ROOT / ".venv" / "bin" / "python"), "-u", str(HERE / "instance.py"), mode],
             stdout=out, stderr=subprocess.STDOUT))
     for _ in range(60):
-        found = re.search(r"LINK (\S+)", log.read_text())
+        found = re.search(r"LINK (\S+)", log.read_text(encoding="utf-8"))
         if found:
             return found.group(1)
         if _running[0].poll() is not None:
             break
         time.sleep(0.5)
-    raise SystemExit(f"the instance did not start:\n{log.read_text()}")
+    raise SystemExit(f"the instance did not start:\n{log.read_text(encoding='utf-8')}")
 
 
 def origin(link: str) -> str:

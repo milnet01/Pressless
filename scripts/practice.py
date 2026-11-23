@@ -45,8 +45,10 @@ FOLDER_NAME = "pressless-practice"
 ACCOUNT = "github"
 NOT_A_KEY = "practice-copy-not-a-real-key"
 REFUSED = "this is a practice copy, which never connects to anything"
-# Network modules disarm leaves alone. The AI helper's bridge is a separate
-# program that reaches only this computer's Face (PRESS-0337 § 4.4).
+# Network modules disarm leaves alone; nothing here reads this. Its reader is
+# tests/test_practice.py, which excuses them from its check that disarm covers
+# every network module. The AI helper's bridge is a separate program that
+# reaches only this computer's Face (PRESS-0337 § 4.4).
 LOCAL_ONLY = ("pressless.bridge",)
 
 HEADER = "<header>{{NAVIGATION}}</header>"

@@ -286,3 +286,33 @@ def test_the_translation_script_stamps_and_reports(tmp_path, monkeypatch) -> Non
     path.write_text(json.dumps({"name": "x", "words": {"no.such.key": "x"}}), encoding="utf-8")
     with pytest.raises(SystemExit):
         script.stamp(path)
+
+
+def test_a_failed_stamp_leaves_the_language_file_as_it_was(tmp_path, monkeypatch) -> None:
+    """review-code: stamp rewrote the file in place, and it holds pasted
+    translations not yet committed anywhere; a failed write lost them."""
+    import os
+
+    script = load_script("translations.py")
+    path = tmp_path / "xx.json"
+    held = json.dumps({"name": "x", "words": {"site.older": "later"}})
+    path.write_text(held, encoding="utf-8")
+
+    def failing(handle):
+        raise OSError("the drive is full")
+
+    monkeypatch.setattr(os, "fsync", failing)
+    with pytest.raises(OSError):
+        script.stamp(path)
+    assert path.read_text(encoding="utf-8") == held
+    assert [p.name for p in tmp_path.iterdir()] == ["xx.json"]
+
+
+def test_the_report_skips_english_by_its_code(tmp_path, monkeypatch) -> None:
+    """review-readability: the report skipped English because it is listed
+    first; a reordered LANGUAGES checked English and skipped a language."""
+    script = load_script("translations.py")
+    monkeypatch.setattr(script.words, "LANGUAGES", ("xx", "en"))
+    found = script.report(tmp_path, tmp_path)
+    assert "xx missing the manual, xx.txt" in found
+    assert not any(line.startswith("en ") for line in found)

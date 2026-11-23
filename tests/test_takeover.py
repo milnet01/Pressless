@@ -16,6 +16,7 @@ import json
 import re
 import shutil
 import subprocess
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -697,6 +698,37 @@ def test_build_files_are_those_naming_the_deploy_action(tmp_path):
     assert takeover.build_files(folder, _settings(folder), KEY, shown, github) == (BUILD,)
     area = folder / undo.FETCH_FOLDER
     assert not area.exists() or not any(area.iterdir())
+
+
+def test_the_takeover_page_never_empties_a_fetch_area_in_use(tmp_path):
+    """PRESS-0474: the takeover page reads the build files from a GET, which
+    holds no editor.LOCK, through the fetch area undo and a take-in fill and
+    read under it. Breaks when the read empties the area while another
+    sequence is in it."""
+    github = _Built(SOURCE)
+    folder = _empty_store(tmp_path)
+    shown = publisher.pages(REPOSITORY_NAME, KEY, github)
+    inside, release, kept = threading.Event(), threading.Event(), []
+
+    def undoing() -> None:
+        with undo.fetch_area(folder) as area:
+            (area / "fetched.txt").write_text("undo's", encoding="utf-8")
+            inside.set()
+            release.wait(10)
+            kept.append((area / "fetched.txt").is_file())
+
+    holder = threading.Thread(target=undoing)
+    holder.start()
+    assert inside.wait(10)
+    page = threading.Thread(
+        target=lambda: takeover.build_files(folder, _settings(folder), KEY, shown, github))
+    page.start()
+    page.join(0.5)
+    waited = page.is_alive()
+    release.set()
+    holder.join(10)
+    page.join(10)
+    assert kept == [True] and waited, "the takeover read emptied a fetch area in use"
 
 
 # ------------------------------------------------------------- PRESS-0336 ---

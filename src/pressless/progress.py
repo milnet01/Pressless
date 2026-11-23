@@ -14,19 +14,21 @@ import contextlib
 import itertools
 import threading
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
 class Counted:
     """A job's last report: the words table key saying what it does, files
     done and of how many, and bytes done and of how many. None where not
-    known."""
+    known. `seconds_left` is what remains of a wait the job is in, None where
+    it is in none (PRESS-0471)."""
     key: str
     done: int = 0
     total: int | None = None
     bytes_done: int = 0
     bytes_total: int | None = None
+    seconds_left: int | None = None
 
 
 # One record per running job, keyed by its thread. _LOCK is held only to read
@@ -58,6 +60,18 @@ def count(key: str, done: int = 0, total: int | None = None,
     with _LOCK:
         if me in _held:
             _held[me] = (next(_ticks), Counted(key, done, total, bytes_done, bytes_total))
+
+
+def waiting(seconds_left: int | None, key: str) -> None:
+    """The calling thread's record keeps its words and numbers and now says
+    `seconds_left` remain of a wait; None ends the wait. A record that has
+    reported nothing yet says `key`. Nothing happens on a thread holding no
+    record."""
+    me = threading.get_ident()
+    with _LOCK:
+        if me in _held:
+            counted = _held[me][1] or Counted(key)
+            _held[me] = (next(_ticks), replace(counted, seconds_left=seconds_left))
 
 
 def now() -> Counted | None:

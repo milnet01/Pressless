@@ -54,9 +54,7 @@ def build_files(folder: Path, settings: Settings, key: str, shown: publisher.Pag
     Empty where Pages is not built elsewhere: there is nothing to take over."""
     if not shown.built_elsewhere:
         return ()
-    fetch_area = Path(folder) / undo.FETCH_FOLDER
-    undo.empty_fetch(fetch_area)
-    try:
+    with undo.fetch_area(folder) as fetch_area:
         fetched = publisher.fetch_state(settings, key, fetch_area, (_WORKFLOWS,),
                                         transport=transport)
         return tuple(sorted(
@@ -64,8 +62,6 @@ def build_files(folder: Path, settings: Settings, key: str, shown: publisher.Pag
             if "/" not in path.removeprefix(_WORKFLOWS) and path.endswith(_SUFFIXES)
             and _builds(shown, (fetch_area / path).read_text(encoding="utf-8",
                                                              errors="replace"))))
-    finally:
-        undo.empty_fetch_quietly(fetch_area)
 
 
 # PRESS-0336: the two common actions that push a built site to a branch, each

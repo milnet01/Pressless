@@ -186,8 +186,14 @@ def main_without_serving(monkeypatch, tmp_path):
     monkeypatch.setattr(face, "serve", face.serve)
     old = signal.getsignal(signal.SIGTERM)
 
+    def unhandled(number, frame):
+        # Without a handler of main's own, SIGTERM's default ends pytest
+        # itself, part way, with no report; this fails one test instead.
+        raise AssertionError("practice.main installed no SIGTERM handler")
+
     def run(serve):
         monkeypatch.setattr(launcher, "_serve", serve)
+        signal.signal(signal.SIGTERM, unhandled)
         try:
             return practice.main()
         finally:

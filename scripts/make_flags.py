@@ -60,7 +60,7 @@ def main(argv: list[str]) -> int:
     out += [f'    "{packed[i:i + PACKED_LINE_LENGTH]}"'
             for i in range(0, len(packed), PACKED_LINE_LENGTH)]
     out += [")", ""]
-    TARGET.write_text("\n".join(out), encoding="utf-8")
+    TARGET.write_text("\n".join(out), encoding="utf-8", newline="\n")
     print(f"Wrote {len(pictures)} flags to {TARGET}.")
     return 0
 

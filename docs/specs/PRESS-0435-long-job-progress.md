@@ -67,12 +67,17 @@ def count(key: str, done: int, total: int | None = None,
     """The calling thread's record now says `key` with these numbers.
     Does nothing on a thread holding no record."""
 
+def waiting(seconds_left: int | None, key: str) -> None:
+    """The calling thread's record keeps its words and numbers and says how
+    long is left of a wait; None ends it. A record with no report says `key`."""
+
 def now() -> Counted | None:
     """The record updated last among those running, or None."""
 
 @dataclass(frozen=True)
 class Counted:
     key: str; done: int; total: int | None; bytes_done: int; bytes_total: int | None
+    seconds_left: int | None   # PRESS-0471
 ```
 
 Records are kept per thread under one lock, held only to read or change
@@ -94,6 +99,10 @@ none: it runs in a thread of its own and its screen already counts it.
 `publishing` reports `progress.building`, with no numbers, before it calls
 the Builder.
 
+A publish waiting out GitHub's hourly reset (PRESS-0009 § 4.3) calls
+`waiting` before each second of the wait, and `waiting(None, ...)` when it
+ends (PRESS-0471).
+
 ### 4.3 `GET /progress`
 
 Registered by the Face. Takes no `editor.LOCK`. Answers JSON:
@@ -104,7 +113,8 @@ Registered by the Face. Takes no `editor.LOCK`. Answers JSON:
 ```
 
 `said` is `say(key)` filled with the numbers; a number not known leaves its
-part out. Sizes are one decimal, in KB, MB or GB. `fraction` is
+part out. Where `seconds_left` is not None, `progress.waiting` follows,
+holding the time left as minutes and seconds. Sizes are one decimal, in KB, MB or GB. `fraction` is
 `bytes_done / bytes_total` where `bytes_total` is known and above 0, else
 `done / total`, else null. Where `now()` is None: `{"running": false, "said": "",
 "fraction": null}`.
@@ -220,6 +230,7 @@ fail before the code it covers exists.
 | INV-5 | `tests/test_progress.py::test_progress_answers_during_a_press` |
 | INV-6 | **Partial:** `scripts/by-hand-browser-checks.py`, run by hand; nothing in CI |
 | INV-7 | **Partial:** `scripts/by-hand-browser-checks.py`, run by hand; nothing in CI |
+| § 4.2's countdown during a publish's wait | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown`, and `tests/test_progress.py::test_the_count_is_said_in_words` for its words |
 | § 4.2's crawl and site-file counts | **nothing** — no test reads them |
 
 ## 11. Cross-doc impact
