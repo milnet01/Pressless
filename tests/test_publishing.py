@@ -347,6 +347,9 @@ def test_nothing_moves_without_a_key(tmp_path, monkeypatch):
                                        folder=folder)
     assert status == 200, text
     assert json.loads(text)["published"] is False
+    # press_failure names the secret: "that secret" sends him looking for one.
+    assert "Pressless does not have your publishing key yet." in html.unescape(
+        json.loads(text)["failure"])
     assert store.list_slugs(folder, draft=True) == ("seaside",)
     assert store.read(store.path_for(folder, "seaside", draft=True)).date == datetime(
         2014, 11, 9, 21, 32)

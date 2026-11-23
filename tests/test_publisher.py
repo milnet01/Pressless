@@ -1483,6 +1483,49 @@ def test_a_path_windows_cannot_hold_is_named(tmp_path, monkeypatch, paths, named
     assert not [p for p in into.rglob("*") if p.is_file()]
 
 
+@pytest.mark.parametrize("refusal", [OSError(2, "No such file or directory"),
+                                     ValueError("path too long for Windows")])
+def test_a_path_too_long_for_windows_is_named(tmp_path, monkeypatch, refusal):
+    """INV-11, review-code 2026-11-23: past MAX_PATH where long paths are off,
+    Windows refuses the write as an OSError, and past 32,767 characters Python
+    raises ValueError first. Either is UnfetchablePath, never FetchNotWritten's
+    free space, and nothing lands. Breaks when either reaches the disk-space
+    answer, or escapes untyped."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", True)
+    into = tmp_path / "into"
+    deep = "content/" + "/".join(["d" * 60] * 4) + "/post.txt"
+    transport = _Transport(reads=_reads(_listing([("content/short.txt", "a"), (deep, "b")]),
+                                        blob=b"x"))
+    real_write = Path.write_bytes
+
+    def write(self, data):
+        if len(str(self)) >= 248:
+            raise refusal
+        return real_write(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", write)
+    with pytest.raises(UnfetchablePath) as raised:
+        fetch_previous(_settings(), "a-token", into, "content", transport=transport)
+    assert repr(deep) in str(raised.value)
+    assert not [p for p in into.rglob("*") if p.is_file()]
+
+
+def test_a_short_path_refused_on_windows_is_still_not_written(tmp_path, monkeypatch):
+    """The other side: a write refused on a path Windows can hold is the
+    disk's, so FetchNotWritten. Breaks when every refusal reads as a path
+    this computer cannot hold."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", True)
+    transport = _Transport(reads=_reads(_listing([("content/short.txt", "a")]), blob=b"x"))
+
+    def full(self, data):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(Path, "write_bytes", full)
+    with pytest.raises(FetchNotWritten):
+        fetch_previous(_settings(), "a-token", tmp_path / "into", "content",
+                       transport=transport)
+
+
 @pytest.mark.skipif(os.name == "nt", reason="`con.txt` is a device on Windows itself")
 def test_a_path_windows_cannot_hold_fetches_elsewhere(tmp_path, monkeypatch):
     """INV-11's other half: off Windows the same listing fetches, so Linux
@@ -2539,7 +2582,8 @@ def test_a_redirected_write_names_the_move(tmp_path):
     (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
     listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
     moved = {"Location": f"{publisher_module.API}/repositories/1/x"}
-    for where, status in (("/git/blobs", 307), ("/git/refs", 308)):
+    for where, status in (("/git/blobs", 307), ("/git/refs", 308), ("/git/blobs", 301),
+                          ("/git/trees", 302), ("/git/commits", 303)):
         transport = _Transport(reads=_reads(listing),
                                writes=[(where, (status, moved, b""))] + _writes())
         with pytest.raises(publisher_module.RepositoryMoved):
@@ -2575,7 +2619,8 @@ def test_the_client_follows_no_redirected_write():
     threading.Thread(target=server.serve_forever, args=(0.02,), daemon=True).start()
     try:
         client = publisher_module._Urllib()
-        for status in (307, 308):
+        # urllib's own handler follows a POST answered 301, 302 or 303 as a GET.
+        for status in (301, 302, 303, 307, 308):
             server.status = status
             for method in ("POST", "PATCH", "PUT"):
                 seen.clear()
@@ -2811,6 +2856,38 @@ def test_an_unreadable_folder_in_the_site_is_a_typed_failure(tmp_path):
     assert _no_writes(transport)
 
 
+def test_an_unreadable_site_folder_is_a_typed_failure(tmp_path, monkeypatch):
+    """§4.1 and §6, the walk's other two refusals: the site folder itself
+    cannot be listed, or an entry in it cannot be asked whether it is a
+    folder. Each is a PublishError naming what failed, and nothing is sent.
+    Breaks when either lets the bare OSError out."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (tmp_path / "stuck").mkdir()
+    real_iterdir, real_is_dir = Path.iterdir, Path.is_dir
+
+    def refused(self):
+        if self == tmp_path:
+            raise PermissionError(13, "Permission denied")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", refused)
+    transport = _Transport(reads=_reads(_listing([])), writes=_writes())
+    with pytest.raises(PublishError, match="the site folder could not be read"):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    assert _no_writes(transport)
+
+    def unknown(self):
+        if self.name == "stuck":
+            raise PermissionError(13, "Permission denied")
+        return real_is_dir(self)
+
+    monkeypatch.setattr(Path, "iterdir", real_iterdir)
+    monkeypatch.setattr(Path, "is_dir", unknown)
+    with pytest.raises(PublishError, match="stuck is in the site folder but could not be read"):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    assert _no_writes(transport)
+
+
 def test_nothing_on_the_untouchable_list_is_read(tmp_path):
     """§4.4: an entry there is neither written nor removed, so it is not read.
     Breaks when a protected file or folder is hashed, so one the writer cannot
@@ -2880,6 +2957,8 @@ def test_a_refused_pages_change_is_not_a_moved_branch():
         publisher_module.set_domain("owner/name", "a-token", "www.example.org",
                                     transport=transport)
     assert not isinstance(caught.value, Conflict), caught.value
+    assert any(method == "PUT" and url.endswith("/pages")
+               for method, url, _, _ in transport.requests), "the 422 was never reached"
 
 
 def test_a_rename_a_scanner_holds_is_tried_again(tmp_path, monkeypatch):

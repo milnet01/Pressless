@@ -289,7 +289,12 @@ window.presslessPlan = window.presslessPlan || ((plan, options = {}) => new Prom
   wait.addEventListener("click", () => done(false));
   box.addEventListener("cancel", (event) => { event.preventDefault(); done(false); });
   document.body.append(box);
-  box.showModal();
+  try {
+    box.showModal();
+  } catch (error) {   // a box that cannot open is Not yet, not a dropped press
+    done(false);
+    return;
+  }
   go.focus();
 }));
 """

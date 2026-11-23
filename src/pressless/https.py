@@ -36,13 +36,15 @@ class NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     would hand the Authorization header to whoever answered (PRESS-0052).
     No service this client reaches is expected to redirect across origins;
     a same-origin redirect keeps the header, so a renamed
-    repository still resolves for a read. A write is not followed: GitHub
-    redirects one with 307, which urllib does not follow for POST or PATCH,
-    so it returns as status 307 and the Publisher reads it as RepositoryMoved
-    (PRESS-0009 § 6, PRESS-0167).
+    repository still resolves for a read. A write is never followed, whatever
+    the status: urllib would follow a POST answered 301, 302 or 303 as a GET,
+    dropping its body. It returns as its status, which the Publisher reads as
+    RepositoryMoved (PRESS-0009 § 6, PRESS-0167).
     """
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if req.get_method() not in ("GET", "HEAD"):
+            return None
         redirected = super().redirect_request(req, fp, code, msg, headers,
                                               newurl)
         if redirected is None:

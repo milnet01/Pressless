@@ -743,6 +743,16 @@ def _fetch(session: _Session, repository: str, commit: str,
         return FetchNotWritten(
             f"the fetched state could not be written to the fetch area: {os_reason.of(exc)}")
 
+    def cannot_hold(path: str, target: Path, exc: OSError | ValueError) -> PublishError:
+        # A path too long for Windows is no reason to free space (PRESS-0160):
+        # past MAX_PATH where long paths are off, an OSError; past 32,767
+        # characters, a ValueError before the system is asked.
+        if isinstance(exc, ValueError) or (_ON_WINDOWS
+                                           and len(str(target)) >= _WINDOWS_LONGEST):
+            return UnfetchablePath(
+                f"the fetched state names {path!r}, which this computer cannot hold")
+        return not_written(exc)
+
     try:
         # Staged inside `into` rather than beside it, so the move at the end
         # is a rename on one filesystem rather than a copy that can fail
@@ -766,16 +776,18 @@ def _fetch(session: _Session, repository: str, commit: str,
                 _repo_url(repository, f"git/blobs/{_segment(sha)}")
             )
             target = staging / path
-            if not _within_folder(target, staging):
+            try:
+                inside = _within_folder(target, staging)
+                if inside:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(_content_of(blob))
+            except (OSError, ValueError) as exc:
+                raise cannot_hold(path, target, exc) from exc
+            if not inside:
                 raise PublishError(
                     f"the repository listing names {path!r}, which would be "
                     f"written outside the folder asked for"
                 )
-            try:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(_content_of(blob))
-            except OSError as exc:
-                raise not_written(exc) from exc
             written.append(path)
             size += entry["size"] if isinstance(entry.get("size"), int) else 0
             progress.count("progress.downloading", len(written), len(wanted), size, whole)
@@ -905,9 +917,9 @@ class _Session:
                 )
                 continue
 
-            if status in (307, 308) and method != "GET":
+            if status in (301, 302, 303, 307, 308) and method != "GET":
                 # GitHub's answer to a write for a renamed or moved
-                # repository. urllib follows neither for a write, and
+                # repository. https.Client follows none for a write, and
                 # following would publish where Settings does not point
                 # (§6, PRESS-0167).
                 raise RepositoryMoved(
@@ -1239,6 +1251,9 @@ _WINDOWS_DEVICES = frozenset(
     ["con", "prn", "aux", "nul", "conin$", "conout$"]
     + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789¹²³"])
 _WINDOWS_FORBIDDEN = set('<>:"|?*\\') | {chr(n) for n in range(32)}
+# MAX_PATH less the 12 characters Windows keeps for a name inside a folder:
+# with long paths off, a fetched path this long or longer fails as an OSError.
+_WINDOWS_LONGEST = 260 - 12
 
 
 def _refuse_what_windows_cannot_hold(listing: dict, prefixes: tuple[str, ...]) -> None:
