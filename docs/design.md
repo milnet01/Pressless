@@ -218,7 +218,7 @@ Builder's site folder gets the published version (rule 4).
 — a slideshow, questions that fold open — is a section in Blocks' table
 whose HTML uses a script Pressless ships, and the Builder copies each
 script the site uses into the site folder. Each works with the look and
-needs no outside service. **The user's own script** goes in a code
+needs no outside service. **The user's own script** goes in a script
 section on one page, or in the Store's site-wide script, which the
 Builder includes on every page.
 
