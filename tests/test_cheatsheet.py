@@ -69,3 +69,30 @@ def test_the_printable_page_is_served(tmp_path):
 
 def test_the_panel_links_to_the_printable_page():
     assert f'href="{PRINTABLE}"' in cheatsheet.panel()
+
+
+def _marks_in(nodes) -> set[str]:
+    found: set[str] = set()
+    for node in nodes:
+        if isinstance(node, marks.Paragraph):
+            found |= _marks_in(child for line in node.lines for child in line.children)
+        elif isinstance(node, marks.Quote):
+            found.add(node.mark)
+            found |= _marks_in(node.paragraphs)
+        elif isinstance(node, (marks.Span, marks.Photo, marks.Value)):
+            found.add(node.mark)
+            found |= _marks_in(getattr(node, "children", ()))
+    return found
+
+
+def test_every_language_teaches_a_mark_that_works():
+    """docs/design.md § Where the cheat sheet comes from: the sheet cannot
+    teach a mark that does not work. Its examples are words a translator may
+    change, so each language's example must still form its row's mark.
+
+    Breaks when a translation changes a mark's syntax, say `{accent}` to
+    `{akzent}`, and the sheet in that language teaches a mark that is text."""
+    for code in words.LANGUAGES:
+        for row in marks.MARKS:
+            example = words.say_in(code, f"mark.{row.name}.example")
+            assert row.name in _marks_in(marks.parse(example)), (code, row.name, example)

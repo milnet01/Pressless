@@ -212,7 +212,8 @@ tag chips, excerpt, pagination links and comment list are what
 these differences: the body is `marks.render(entry.body, photo_src,
 today)` (PRESS-0123 §4.2); a
 listing's excerpt, and an untitled entry's teaser, are cut from the
-entry's text and written through `marks.to_html` as one `Text`; the site's
+entry's decoded text and written through `marks.to_html` as one `Text`,
+each `&` written `&amp;` first; the site's
 name comes from
 `settings.site_name`; decision 8's stamps are gone; and a listing's lead
 describes no one's journal (INV-17). INV-15's run

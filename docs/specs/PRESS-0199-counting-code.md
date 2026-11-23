@@ -113,8 +113,9 @@ The id has passed `check`'s pattern, so it needs no escaping.
   `<body…>` tag; where there is neither, at its end.
 - **A forward** carries none: it sends the reader on at once, and the page
   it sends them to counts the visit.
-- **A page whose finished text already holds `googletagmanager.com/gtag/js`**
-  — its own, or a header or footer filled into it — gets no second tag.
+- **A page whose finished text already holds a `<script>` tag loading
+  `googletagmanager.com/gtag/js`** — its own, or a header or footer filled
+  into it — gets no second tag. Words naming the address are not one.
   Its markers are filled as usual.
 - **`content/` holds the Store's bytes unchanged** (PRESS-0008 § 4.7), so
   no tag is added there.

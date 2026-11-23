@@ -162,7 +162,8 @@ the name and description are both `""`.
   empty, and the page's own title alone where it is.
 - **The furniture** (`_Furniture.fill`) fills two more placeholders, in the
   header and in the footer, after `{{NAVIGATION}}` so they are filled
-  inside it too:
+  inside it too. Every placeholder but `{{NAVIGATION}}` is filled in one
+  pass, so a name holding a placeholder's spelling shows as typed:
 
   | Placeholder | Becomes |
   |---|---|
