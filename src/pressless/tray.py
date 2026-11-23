@@ -30,7 +30,9 @@ else:
 if TYPE_CHECKING:
     from pressless.face import Face
 
-# The menu's ids. The action table below and both menus are keyed by them.
+# The menu's ids: `_ENTRIES` gives each its words and `Tray.run` its action,
+# and both menus are keyed by them. Never 0: Windows' menu answers 0 for
+# nothing chosen, and dbusmenu's root is 0.
 OPEN, RESTART, STOP = 1, 2, 3
 _ENTRIES = ((OPEN, "tray.open"), (RESTART, "tray.restart"), (STOP, "tray.stop"))
 
@@ -132,9 +134,13 @@ def _left_to_the_manager() -> bool:
 
 
 def _open(face: Face) -> None:
-    """Open a fresh link (§ 4.3); where no browser opens, print it, as the
-    launch does (PRESS-0013 § 4.5 step 5)."""
-    link = face.fresh_link()
+    """Open a fresh link (§ 4.3)."""
+    open_link(face.fresh_link())
+
+
+def open_link(link: str) -> None:
+    """Open `link` in the browser; where none opens, print it (PRESS-0013
+    § 4.5 step 5). The launch and the tray's Open both use it."""
     try:
         opened = webbrowser.open(link)
     except Exception:  # noqa: BLE001 -- no browser is a case, not a failure

@@ -28,7 +28,6 @@ import sys
 import threading
 import time
 import urllib.parse
-import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 from typing import BinaryIO
@@ -516,15 +515,9 @@ def _came_back(served: face.Face) -> bool:
 
 def _open_tab(served: face.Face, first: str) -> None:
     """Open `first` through the Face's link, or print the link where no
-    browser opens (PRESS-0013 § 4.5 step 6)."""
-    link = urllib.parse.urlunsplit(
-        urllib.parse.urlsplit(served.url)._replace(path=first))
-    try:
-        opened = webbrowser.open(link)
-    except Exception:  # noqa: BLE001 -- no browser is a case, not a failure
-        opened = False
-    if not opened:
-        print(say("main.open_link", link=link))
+    browser opens (PRESS-0013 § 4.5 step 5)."""
+    tray.open_link(urllib.parse.urlunsplit(
+        urllib.parse.urlsplit(served.url)._replace(path=first)))
 
 
 def _refresh_shortcuts(served: face.Face) -> None:

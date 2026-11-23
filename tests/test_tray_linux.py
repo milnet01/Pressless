@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,7 @@ if sys.platform != "linux":
     pytest.skip("the Linux tray runs on Linux", allow_module_level=True)
 
 from jeepney import DBusAddress, MessageType, new_method_call, new_method_return  # noqa: E402
+from jeepney.io.blocking import DBusConnection  # noqa: E402
 from jeepney.bus_messages import message_bus  # noqa: E402
 from jeepney.io.blocking import open_dbus_connection  # noqa: E402
 
@@ -96,6 +98,13 @@ class _Client:
             new_method_call(address, member, signature, body), timeout=_WAIT)
         assert reply.header.message_type is MessageType.method_return, reply.body
         return reply.body
+
+    def ask(self, path: str, interface: str, member: str, signature: str = "",
+            body: tuple = ()) -> MessageType:
+        """The reply's type, an error included."""
+        address = DBusAddress(path, bus_name=self.name, interface=interface)
+        return self._conn.send_and_get_reply(
+            new_method_call(address, member, signature, body), timeout=_WAIT).header.message_type
 
     def owner(self) -> bool:
         reply = self._conn.send_and_get_reply(message_bus.NameHasOwner(self.name),
@@ -184,3 +193,88 @@ def test_no_session_bus_or_no_icon_file_raises(bus, monkeypatch, tmp_path: Path)
     monkeypatch.delenv("DBUS_SESSION_BUS_ADDRESS")
     with pytest.raises(KeyError):
         _icon(queue.Queue()).start()
+
+
+def test_an_odd_message_is_refused_and_the_menu_still_works(bus) -> None:
+    """A Get with one argument and an Event with one are refused, and the
+    item still answers. Breaks when such a message ends the tray's thread."""
+    watcher = _Watcher()
+    chosen: queue.Queue[int] = queue.Queue()
+    icon = _icon(chosen)
+    icon.start()
+    client = None
+    try:
+        client = _Client(watcher.registered.get(timeout=_WAIT))
+        assert client.ask("/StatusNotifierItem", "org.freedesktop.DBus.Properties", "Get",
+                          "s", ("org.kde.StatusNotifierItem",)) is MessageType.error
+        assert client.ask("/MenuBar", "com.canonical.dbusmenu", "Event", "i",
+                          (1,)) is MessageType.error
+        client.call("/MenuBar", "com.canonical.dbusmenu", "Event", "isvu",
+                    (2, "clicked", ("s", ""), 0))
+        assert chosen.get(timeout=_WAIT) == 2
+    finally:
+        icon.close()
+        if client is not None:
+            client.close()
+        watcher.close()
+
+
+def test_an_idle_tray_does_not_wake_and_closes_at_once(bus, monkeypatch) -> None:
+    """With nothing to answer, the thread waits in one receive; close()
+    still ends it at once. Breaks when it polls on a timer."""
+    calls: list[float | None] = []
+    real = DBusConnection.receive
+
+    def receive(self, *, timeout=None):
+        if threading.current_thread().name == "pressless-tray":
+            calls.append(timeout)
+        return real(self, timeout=timeout)
+
+    monkeypatch.setattr(DBusConnection, "receive", receive)
+    icon = _icon(queue.Queue())
+    icon.start()
+    try:
+        time.sleep(0.1)                 # the bus's answer to registering
+        settled = len(calls)
+        time.sleep(0.3)
+        assert len(calls) == settled
+        assert set(calls) == {None}
+    finally:
+        began = time.monotonic()
+        icon.close()
+        assert time.monotonic() - began < 1.0
+    assert not icon._thread.is_alive()
+
+
+def test_a_failed_start_leaves_no_name_on_the_bus(bus, monkeypatch) -> None:
+    """Registration failing in start() closes the connection. Breaks when
+    the connection, and the name it holds, outlive the failed start."""
+    def refuse(self, conn):
+        raise OSError("registration refused")
+
+    monkeypatch.setattr(_tray_linux.Icon, "_register", refuse)
+    with pytest.raises(OSError):
+        _icon(queue.Queue()).start()
+    client = _Client(f"org.kde.StatusNotifierItem-{os.getpid()}-1")
+    try:
+        assert not client.owner()
+    finally:
+        client.close()
+
+
+def test_start_calls_wait_a_bounded_time(bus, monkeypatch) -> None:
+    """A bus that stalls cannot hang the launch. Breaks when a start call
+    waits for its reply with no time limit."""
+    limits: list[float | None] = []
+    real = DBusConnection.send_and_get_reply
+
+    def send_and_get_reply(self, message, *, timeout=None):
+        limits.append(timeout)
+        return real(self, message, timeout=timeout)
+
+    monkeypatch.setattr(DBusConnection, "send_and_get_reply", send_and_get_reply)
+    icon = _icon(queue.Queue())
+    icon.start()
+    icon.close()
+    tray_calls = limits[-2:]       # the Hello before them is jeepney's own
+    assert len(tray_calls) == 2 and all(limit is not None for limit in tray_calls)

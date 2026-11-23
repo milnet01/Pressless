@@ -151,9 +151,11 @@ connection:
 - **No watcher yet** (Plasma starting late, or restarted): watch
   `NameOwnerChanged` for `org.kde.StatusNotifierWatcher` and register when
   it appears. `start()` still returns True.
-- The thread waits in short spells (`receive` with a timeout), so
-  `close()` ends it without a second connection. Closing the connection
-  releases the name, and the watcher drops the item.
+- The thread sleeps in `receive` until a message comes; `close()` shuts
+  the socket to wake it, so it needs no second connection and no timed
+  wake-ups. Closing the connection releases the name, and the watcher
+  drops the item. A message the item cannot read is answered
+  `InvalidArgs`, and the thread carries on.
 
 Measured 2026-11-18 on Plasma 6 under Wayland, with `jeepney` 0.9.0 alone
 and a throwaway probe: the watcher listed the item, and the tray called

@@ -15,6 +15,7 @@ import socket
 import sys
 import threading
 import urllib.parse
+import webbrowser
 
 import pytest
 from _face_session import session_cookie
@@ -76,7 +77,7 @@ class _Opened:
             return served
 
         monkeypatch.setattr(main_module.face, "serve", serve)
-        monkeypatch.setattr(main_module.webbrowser, "open",
+        monkeypatch.setattr(webbrowser, "open",
                             lambda url: self.links.append(url) or True)
         monkeypatch.setattr(main_module, "_wait", lambda restart: False)
         # PRESS-0183: the launch refreshes his shortcuts. Recorded, never run,
@@ -642,7 +643,7 @@ def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys
         monkeypatch.setattr(getattr(main_module, name), "register",
                             lambda served, folder, *args, _name=name, **kwargs:
                             calls.append((_name, folder, kwargs)))
-    monkeypatch.setattr(main_module.webbrowser, "open", lambda url: True)
+    monkeypatch.setattr(webbrowser, "open", lambda url: True)
     monkeypatch.setattr(main_module, "_refresh_shortcuts", lambda served: None)
     started: list[tuple] = []
     monkeypatch.setattr(main_module.backups, "start",
