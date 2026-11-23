@@ -650,7 +650,7 @@ or sign-in started again.
 
 ### Logging
 
-One rolling plain-English log beside the settings. **It rolls by size and
+One rolling plain-English log in Pressless's own folder. **It rolls by size and
 keeps exactly one old copy**, so the disk is bounded and the recent past
 survives; the spec sets the size. **No credential is ever written to it,
 not even shortened** — neither the publishing key nor the Google

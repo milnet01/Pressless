@@ -17,11 +17,11 @@ import io
 import os
 import re
 import stat
-import sys
 import threading
 from pathlib import Path
 
 import pytest
+from _mode_support import _require_posix_modes
 
 from pressless import log as log_module
 
@@ -254,6 +254,19 @@ def test_a_line_survives_a_character_utf8_cannot_hold(tmp_path):
     assert "bad path:" in lines[1]
 
 
+def test_a_note_after_close_writes_nothing(tmp_path):
+    """PRESS-0440: Face.stop does not wait for request threads, so one can
+    note after the log is closed. Breaks when that note reopens the file,
+    whose handle then stays open and, on Windows, stops the next Face's log
+    rolling."""
+    handle = log_module.open_log(tmp_path)
+    handle.note("before")
+    handle.close()
+    handle.note("after close")
+    handle.close()
+    assert "after close" not in log_module.path_for(tmp_path).read_text(encoding="utf-8")
+
+
 # --- INV-4 -----------------------------------------------------------------
 
 
@@ -348,16 +361,42 @@ def test_note_waits_for_the_handlers_lock(tmp_path):
     decided = []
     original = handler.shouldRollover
 
+    reached = threading.Event()
+
     def deciding(record):
         decided.append(record)
+        reached.set()
         return original(record)
+
+    class _Watched:
+        """The handler's own lock, saying when a thread asks for it."""
+
+        def __init__(self, lock):
+            self._lock = lock
+
+        def acquire(self, *args, **kwargs):
+            return self._lock.acquire(*args, **kwargs)
+
+        def release(self):
+            self._lock.release()
+
+        def __enter__(self):
+            reached.set()
+            self._lock.acquire()
+            return self
+
+        def __exit__(self, *raised):
+            self._lock.release()
+
+    handler.lock = _Watched(handler.lock)
 
     handler.shouldRollover = deciding
     handler.acquire()
     try:
         writer = threading.Thread(target=handle.note, args=("held back",))
         writer.start()
-        writer.join(0.5)
+        # Reached the lock, or skipped it and decided: either ends the wait.
+        assert reached.wait(5), "note neither took the lock nor decided"
         assert not decided, "note decided whether to roll while another thread held the lock"
     finally:
         handler.release()
@@ -366,12 +405,13 @@ def test_note_waits_for_the_handlers_lock(tmp_path):
     assert "held back" in log_module.path_for(tmp_path).read_text(encoding="utf-8")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="SECURITY.md: Windows has no owner-only mode")
 def test_the_log_and_its_old_copy_are_owner_only(tmp_path):
     """SECURITY.md: on Linux every file Pressless writes is readable by its
     owner alone. Breaks when the log, or the fresh one a roll starts, is
     created at the umask's mode, or a log an older Pressless left readable
-    to all stays that way."""
+    to all stays that way. Skipped where the drive keeps no modes, Windows
+    included."""
+    _require_posix_modes(tmp_path)
     (tmp_path / "pressless.log").write_text("from before\n", encoding="utf-8")
     os.chmod(tmp_path / "pressless.log", 0o644)
     old = os.umask(0o022)

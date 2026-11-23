@@ -7,14 +7,14 @@
 **Blocked by:** PRESS-0001, which is shipped.
 **Blocker for:** PRESS-0011.
 
-*Layman:* a plain diary of what the app did, kept beside the settings, that
+*Layman:* a plain diary of what the app did, kept in the app's own folder, that
 never grows without limit and never contains anything that could identify the
 writer or unlock his account.
 
 ## 1. Goal
 
 After this ships, one small module writes a plain-English record of what
-Pressless did, beside the settings file. The Face holds it open and calls it;
+Pressless did, in Pressless's own folder. The Face holds it open and calls it;
 nothing else does (`docs/design.md` § Logging).
 
 Two properties are the whole point. **It is bounded**: it rolls by size and
@@ -27,8 +27,8 @@ It reads no other part of Pressless, holds no secret, and touches no network.
 
 ## 2. Problem
 
-`docs/design.md` § Logging says there is one rolling plain-English log beside
-the settings, that the Face writes it, and that nothing shown or written down
+`docs/design.md` § Logging says there is one rolling plain-English log in
+Pressless's own folder, that the Face writes it, and that nothing shown or written down
 carries a credential, an account name any secret is filed under, or a full
 filesystem path. It does not say how large the log may grow, what the file is
 called, or what happens when the disk refuses the write.
