@@ -221,7 +221,10 @@ succeeded.
    assuming otherwise. Undo therefore never reads a fetch area it did not
    just create. **Anything left in it raises `FetchAreaInUse`**, the Store
    untouched: on Windows, a file another program holds open survives the
-   removal.
+   removal. From here to step 7 the area is held from every other sequence
+   that uses it (`undo.fetch_area`): the takeover page's read runs from a
+   GET outside `editor.LOCK`, and emptied the area under an undo in it
+   (PRESS-0474).
 2. **Fetch.** `publisher.fetch_previous(settings, key, folder / FETCH_FOLDER,
    CONTENT, transport)`. `NoPreviousState` where the current commit has no
    parent. Any `publisher.PublishError` here is raised with the Store
@@ -708,6 +711,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-16 | `tests/test_undo.py::test_a_second_undo_keeps_no_waiting_copy_of_the_page_it_puts_back` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | A fetch area that cannot be emptied stops the undo (§ 4.3 step 1) | `tests/test_undo.py::test_a_fetch_area_that_cannot_be_emptied_stops_the_undo` |
+| The fetch area held from every other sequence until step 7 (§ 4.3 step 1) | `tests/test_takeover.py::test_the_takeover_page_never_empties_a_fetch_area_in_use` |
 | A kept address is none the fetched state writes (§ 4.4) | `tests/test_undo.py::test_a_kept_address_is_not_one_the_fetched_state_publishes` and `::test_a_kept_address_is_not_one_the_fetched_forwards_send_on` |
 | A reversal never bins the options file it puts back (§ 4.3) | `tests/test_undo.py::test_an_options_file_written_over_is_written_back_not_binned` |
 | The buttons, and that neither page reloads (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |

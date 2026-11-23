@@ -20,3 +20,4 @@
 | amend | 2026-11-17 | none — the user's decision; no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0399: § 4.4 a page the fetched state lacks comes off the site as its waiting copy; a second undo bins the copy it made. INV-7 amended, INV-16 added. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0416: § 4.1 `Undone` gains `waiting`, the pages undo took off the site; § 4.2's summary says them in a clause. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0445: § 4.4 a demotion is marked while published, then moved, so one cut short is settled by the next press; § 4.3's reversal follows; INV-6: a published entry's kept version carries no `Replaces`. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0474: § 4.3 step 1 the fetch area is held from every other sequence until step 7; § 10 row. |

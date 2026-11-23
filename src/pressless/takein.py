@@ -86,12 +86,8 @@ def look(folder: Path, settings: Settings, key: str, commit: str = "",
          transport: publisher.Transport | None = None) -> Found:
     """§ 4.2: what the state at `commit`, or the branch's current one, holds.
     Writes nothing to the Store; the fetch area is emptied before and after."""
-    fetch_area = Path(folder) / undo.FETCH_FOLDER
-    undo.empty_fetch(fetch_area)
-    try:
+    with undo.fetch_area(folder) as fetch_area:
         return _fetch_and_read(fetch_area, settings, key, commit, transport).found
-    finally:
-        undo.empty_fetch_quietly(fetch_area)
 
 
 def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
@@ -108,21 +104,17 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
     captured = gatherer(capture, gathered)
     _refuse_a_site(folder, captured)
 
-    fetch_area = folder / undo.FETCH_FOLDER
-    undo.empty_fetch(fetch_area)
     reversals: list[Callable[[], None]] = []
-    try:
+    with undo.fetch_area(folder) as fetch_area:
         read = _fetch_and_read(fetch_area, settings, key, commit, transport, captured)
         try:
             # Asked again under the writes' own capture: the fetch held no
-            # lock, and anything may have filled the Store meanwhile (INV-3).
+            # capture, and anything may have filled the Store meanwhile (INV-3).
             captured(lambda: (_refuse_a_site(folder), _write(folder, fetch_area, read,
                                                               reversals)))
         except BaseException:
             captured(lambda: undo.reverse(reversals))
             raise
-    finally:
-        undo.empty_fetch_quietly(fetch_area)
     return TakenIn(read.found, lambda: captured(lambda: undo.reverse(reversals)))
 
 
