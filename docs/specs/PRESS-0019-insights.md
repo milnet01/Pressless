@@ -90,7 +90,7 @@ does not reopen them.
 
 ### 4.1 The public surface
 
-`src/pressless/insights.py` exports `read`, `kept`, `cache_path`, `forget`, the `Report`,
+`src/pressless/insights.py` exports `read`, `kept`, `fresh`, `cache_path`, `forget`, the `Report`,
 `Country`, `Day`, `Page` and `Source` results, `UNKNOWN_COUNTRY`, the
 `Transport` seam, and the failure types
 `InsightsError`, `NotConfigured`, `Unreachable`, `Refused` and `RateLimited`.
@@ -101,12 +101,16 @@ def read(settings: Settings, token: str, folder: Path, *,
          max_age_seconds: float = DEFAULT_MAX_AGE,
          client: Transport | None = None) -> Report
 def kept(folder: Path, days: int) -> Report | None
+def fresh(folder: Path, days: int, *, client: Transport | None = None,
+          max_age_seconds: float = DEFAULT_MAX_AGE) -> Report | None
 def cache_path(folder: Path) -> Path
 def forget(folder: Path) -> None
 ```
 
 `kept` answers the window's last kept reply from the cache alone, or `None`,
 and never asks Google: the way in for the pages that must not wait on it.
+`fresh` answers that reply only where `read` would answer with it unasked
+(§ 4.4's age test), so the dashboard asks for no token for numbers it holds.
 
 `forget` removes the cache file for Turn off (PRESS-0122 §3 decision 5).
 
@@ -163,7 +167,9 @@ kind of key.
 **A file of another version reads as absent** (INV-18). Nothing migrates:
 the cache is a copy of something Google can be asked for again, so a version
 bump costs one request per window and no migration code that must then be kept
-correct forever.
+correct forever. A field renamed, retyped or dropped takes a bump; a table
+added is read with an empty default instead, so an entry kept before it still
+serves § 4.4's fallback.
 
 **Nothing prunes, and the bound is a requirement on the caller rather than a
 rule this module enforces.** `days` is not writer-supplied — it comes from
@@ -253,7 +259,9 @@ them stale.
 window**, returned whole with `stale` set rather than raised — a refusal and a rate
 limit as much as an unreachable host, since a dashboard showing yesterday's
 numbers, labelled, beats one showing an error. With nothing cached for the
-window, the failure is raised. §4.5's table is therefore what a caller sees
+window, the failure is raised. **After a rate limit, the stale reply answers
+without asking until `max_age_seconds` has passed again**, held in memory per
+window; no other failure holds asking off. §4.5's table is therefore what a caller sees
 when nothing is cached.
 
 **`max_age_seconds` is what makes the cache a quota guard, and the caller

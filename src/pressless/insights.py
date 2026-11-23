@@ -49,7 +49,9 @@ CACHE_NAME = "insights.json"
 # A file of another version reads as absent and nothing migrates: the cache is a
 # copy of something Google can be asked for again, so a bump costs one request
 # per window and no migration code that must then be kept correct forever
-# (PRESS-0019 § 4.2).
+# (PRESS-0019 § 4.2). Bump it where a field is renamed, retyped or dropped. A
+# table ADDED is read with an empty default instead: a bump would throw away
+# every window's stale fallback (§ 4.4) for one that differs only by a table.
 CACHE_VERSION = 3
 # Orders `_store`'s read and write of the cache across the Face's threads.
 _CACHE_LOCK = threading.Lock()
@@ -86,7 +88,7 @@ DEFAULT_MAX_AGE = 3600.0
 # such a row can also appear among the country rows, where it is not a
 # country. Which of the two Google does is not settled here (PRESS-0074).
 AGGREGATE_PREFIX = "RESERVED_"
-_NOT_SET = "(not set)"             # Google's word where it could not tell
+NOT_SET = "(not set)"              # Google's word where it could not tell
 
 # Every other value that is not an ISO 3166-1 alpha-2 code -- GA4's "(not set)"
 # is the documented one -- is folded into one entry under this code. Lower
@@ -180,9 +182,9 @@ class RateLimited(InsightsError):
 
 
 class Transport(Protocol):
-    """The one seam to Google. google_signin, google_setup and youtube take
-    it too, and `usage._Opener` and the tests' doubles implement it, so a
-    change here reaches all of them.
+    """The one seam to Google. Every module naming `insights.Transport`
+    takes it and the tests' doubles implement it, so a change here reaches
+    all of them.
 
     Two things about it are part of the contract, because a test double must
     supply both. It returns the response HEADERS alongside the status, and it
@@ -280,10 +282,13 @@ def read(settings: Settings, token: str, folder: Path, *,
     """How the site was read over the last `days` days.
 
     Answers from the cache while it is younger than `max_age_seconds` and was
-    fetched for this same window; otherwise asks Google. Where Google cannot
-    answer and a cached reply for this window exists, that reply is returned
-    with `stale` set rather than raising — a dashboard showing yesterday's
-    numbers, labelled, beats one showing an error.
+    fetched for this same window; otherwise asks Google. Where the fetch fails
+    in any typed way -- a refusal and a rate limit as much as no answer -- and
+    a cached reply for this window exists, that reply is returned with `stale`
+    set rather than raising: a dashboard showing yesterday's numbers, labelled,
+    beats one showing an error (PRESS-0019 § 4.4). `youtube.read` differs on
+    purpose, and its docstring says why. After a rate limit the stale reply
+    answers without asking until `max_age_seconds` has passed again.
     """
     property_id = settings.analytics_property_id
     if not property_id:
@@ -313,22 +318,22 @@ def read(settings: Settings, token: str, folder: Path, *,
     cached = _cached(target, days)
 
     if cached is not None:
-        # Both ends of the window. A one-sided test let a NEGATIVE age pass,
-        # so after an NTP correction, a manual clock change or a restored
-        # backup the cache read FRESH forever and showed old numbers labelled
-        # current -- worse than showing them stale (PRESS-0056).
-        # Pressless's own client tells time.time(); building it costs a TLS
-        # context, which a fresh cache never needs.
-        age = (client.now() if client is not None else time.time()) - cached.fetched_at
-        if 0.0 <= age < max_age_seconds:
+        if _young(cached, client, max_age_seconds):
             return cached
+        if _now(client) < _held_off.get((target, days), 0.0):
+            return dataclasses.replace(cached, stale=True)
 
     transport = client if client is not None else own_client()
 
     try:
         report = _fetch(transport, property_id, token, days)
-    except InsightsError:
+    except InsightsError as exc:
         if cached is not None:
+            if isinstance(exc, RateLimited):
+                # Asking again while Google is rate-limiting is the opposite
+                # of what the cache is for (§ 8); in memory, so a restart
+                # asks once more.
+                _held_off[(target, days)] = _now(client) + max_age_seconds
             # Whole, tables included: the page keeps its strip and cards
             # while Google is away (INV-31).
             return dataclasses.replace(cached, stale=True)
@@ -336,6 +341,34 @@ def read(settings: Settings, token: str, folder: Path, *,
 
     _store(target, report)
     return report
+
+
+def fresh(folder: Path, days: int, *, client: Transport | None = None,
+          max_age_seconds: float = DEFAULT_MAX_AGE) -> Report | None:
+    """The kept reply for this window where `read` would answer with it
+    without asking Google, else None. So a caller can skip fetching a token
+    for numbers already held (§ 4.1)."""
+    cached = kept(folder, days)
+    return cached if cached is not None and _young(cached, client, max_age_seconds) else None
+
+
+# When Google may next be asked for a window it answered with a rate limit,
+# keyed by (cache file, days). Read and written whole, so the GIL orders it.
+_held_off: dict[tuple[Path, int], float] = {}
+
+
+def _now(client: Transport | None) -> float:
+    # Pressless's own client tells time.time(); building it costs a TLS
+    # context, which a fresh cache never needs.
+    return client.now() if client is not None else time.time()
+
+
+def _young(cached: Report, client: Transport | None, max_age_seconds: float) -> bool:
+    # Both ends of the window. A one-sided test let a NEGATIVE age pass, so
+    # after an NTP correction, a manual clock change or a restored backup the
+    # cache read FRESH forever and showed old numbers labelled current --
+    # worse than showing them stale (PRESS-0056).
+    return 0.0 <= _now(client) - cached.fetched_at < max_age_seconds
 
 
 def _fetch(transport: Transport, property_id: str, token: str,
@@ -356,7 +389,8 @@ def _fetch(transport: Transport, property_id: str, token: str,
     window = [{"startDate": f"{days}daysAgo", "endDate": "today"}]
     period = "yearMonth" if days > MONTHLY_ABOVE else "date"
     # Google answers in this order, and the answer is unpacked by position
-    # below: reorder both together.
+    # below: reorder both together. A new table also touches `Report`,
+    # `_cached`, `_store` and the policy beside CACHE_VERSION.
     requests = [
         {
             "dateRanges": window,
@@ -411,18 +445,9 @@ def _fetch(transport: Transport, property_id: str, token: str,
     try:
         status, _, data = transport.request("POST", url, body, headers)
     except OSError as exc:
-        # The TYPE is named and the message is not, and `from None` rather
-        # than `from exc`. Transport is a published seam and this call handed
-        # it the token in an Authorization header, so nothing constrains what
-        # a substituted client's OSError says. A traceback prints __cause__
-        # beneath the message, which would carry it there while str() and
-        # repr() stayed clean -- and INV-7 is stated
-        # absolutely, not "absolutely, for the shipped client". The module's
-        # own _Urllib never leaks: its OSError arm writes a fixed message
-        # naming only the host, and an HTTPError is returned as a status
-        # rather than raised. This is the seam, not a live leak. The same
-        # rule credentials.py applies at its own backend seam (PRESS-0051,
-        # PRESS-0100).
+        # The type and not the message, and `from None`: a substituted
+        # client's OSError may quote the token it was handed, and a traceback
+        # prints __cause__ (INV-7).
         raise Unreachable(
             "no answer from Google", type(exc).__name__
         ) from None
@@ -514,7 +539,7 @@ def _regions(answer: dict) -> tuple[Region, ...]:
     found = []
     for row in _rows(answer, "provinces"):
         country, name = _values(row, 2, "province")
-        if _is_iso(country) and name and name != _NOT_SET:
+        if _is_iso(country) and name and name != NOT_SET:
             found.append(Region(country, name, _number(row, f"the count for {name}")))
     return tuple(sorted(found, key=lambda each: (-each.people, each.country, each.name)))
 
@@ -707,8 +732,7 @@ def _cached(target: Path, days: int) -> Report | None:
         sources = tuple(Source(str(each["channel"]), str(each["source"]),
                                int(each["visits"]), int(each["people"]))
                         for each in entry["sources"])
-        # A reply kept before provinces were asked for has none, and is replaced within
-        # the hour; refusing it would lose the only numbers Google may not give again.
+        # An added table, so read with a default: CACHE_VERSION's comment.
         regions = tuple(Region(str(each["country"]), str(each["name"]), int(each["people"]))
                         for each in entry.get("regions", ()))
         fetched_at = float(entry["fetched_at"])
@@ -716,9 +740,10 @@ def _cached(target: Path, days: int) -> Report | None:
             # NaN fails every age comparison, so it would pass as a stale
             # fallback and fail where its time is drawn (INV-14).
             return None
+        datetime.datetime.fromtimestamp(fetched_at)   # one no clock can show fails the same way
         return Report(int(entry["people"]), countries, days,
                       fetched_at, False, daily, pages, sources, regions)
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except (KeyError, TypeError, ValueError, OverflowError, OSError):
         return None
 
 
