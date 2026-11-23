@@ -1383,6 +1383,74 @@ def test_the_menu_view_keeps_a_link_the_save_will_post(tmp_path):
     assert 'remove.disabled = lastSent(item.link);' in script
 
 
+# PRESS-0373: the panel's caption field, filled for each caption given. A
+# parsed document's text stands in for DOMParser's; only a browser reads the
+# character references (scripts/by-hand-browser-checks.py).
+_CAPTION_HARNESS = """
+class DOMParser {
+  parseFromString(text) { return {body: {textContent: text.replace(/<[^>]*>/g, "")}}; }
+}
+const said = {textContent: ""};
+const document = {getElementById: () => said};
+const say = (key) => key;
+const input = {dataset: {field: "caption"}, value: "", readOnly: false};
+const panel = {querySelectorAll: () => [input]};
+%s
+const seen = {};
+for (const caption of JSON.parse(process.argv[2])) {
+  said.textContent = "";
+  const picked = {kind: "photo", fields: {caption}};
+  const fields = picked.fields;
+%s
+  seen[caption] = {readOnly: input.readOnly, said: said.textContent, value: input.value};
+}
+process.stdout.write(JSON.stringify(seen));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_caption_holding_a_tag_is_read_only(tmp_path):
+    """PRESS-0373: typing in the caption field writes words alone, so a
+    caption holding a link or any other tag is shown read-only, with a note
+    pointing at the code view. Breaks when such a caption can be typed over,
+    which would drop its link, or a plain one cannot."""
+    script = page_editor._VISUAL_SCRIPT
+    start = script.index("  const captionWords = ")
+    end = script.index("\n  const act = ", start)
+    fill = script.index('      panel.querySelectorAll("[data-for]:not([hidden]) [data-field]")')
+    filled = script.index("\n      // The box in the panel alone", fill)
+    harness = tmp_path / "caption.js"
+    harness.write_text(_CAPTION_HARNESS % (script[start:end], script[fill:filled]),
+                       encoding="utf-8")
+    captions = ['<a href="https://example.org/">Pier</a> at dusk', "<em>Pier</em>",
+                "Pier at dusk", "1 < 2", ""]
+    run = subprocess.run([_NODE, str(harness), json.dumps(captions)],  # noqa: S603
+                         capture_output=True, check=True, timeout=30)
+    seen = json.loads(run.stdout)
+    linked = {"readOnly": True, "said": "script.visual.caption_linked"}
+    assert seen[captions[0]] == {**linked, "value": "Pier at dusk"}
+    assert seen[captions[1]] == {**linked, "value": "Pier"}
+    for plain in captions[2:]:
+        assert seen[plain] == {"readOnly": False, "said": "", "value": plain}, plain
+
+
+def test_both_editors_type_through_one_script(tmp_path):
+    """PRESS-0373, PRESS-0346 § 4.4: typing in pages and in entries behaves
+    the same, because both visual views load editor.TYPING_SCRIPT and take
+    their keys and formatting from it. Breaks when either editor stops
+    loading it, or handles a key or a format of its own."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        shown = {address: browser.request("GET", address)[2]
+                 for address in ("/edit?slug=seaside", "/page?kind=pages&name=about")}
+    for address, page in shown.items():
+        assert page.count(f"<script>{editor.TYPING_SCRIPT}</script>") == 1, address
+    for visual in (editor._VISUAL_SCRIPT, page_editor._VISUAL_SCRIPT):
+        assert "const typing = window.presslessTyping;" in visual
+        assert "typing.keyed(event, frame.contentDocument" in visual
+        assert "typing.format(frame.contentDocument" in visual
+
+
 # Pressless does not answer a Remove or Rename at all.
 _UNANSWERED_HARNESS = _STAND_IN + """
 globalThis.fetch = () => Promise.reject(new TypeError("Failed to fetch"));

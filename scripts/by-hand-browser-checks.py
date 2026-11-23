@@ -485,6 +485,8 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         helper_publish(page, origin, folder, helper_own)
         progress_note(page, origin)
         send_log(page, origin)
+        captions(page, origin, folder)
+        setup_bar(browser, folder)
         layout_colours(page, origin, folder)    # these two last: they save a look
         layouts_and_styles(page, origin, folder)
 
@@ -664,6 +666,73 @@ VISUAL_PAGE = (
     "<div>code part</div><!-- /pressless:code -->\n"
     "<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
     "</body></html>\n")
+
+
+# PRESS-0373: one caption with a character reference, one holding a link.
+CAPTION_PAGE = (
+    "<!doctype html><html><head><title>Captions</title></head><body>\n"
+    "<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main><!-- pressless:page -->\n"
+    '<!-- pressless:picture --><figure><img src="../photographs/a.jpg" alt="">'
+    "<figcaption>Fish &amp; chips</figcaption></figure><!-- /pressless:picture -->\n"
+    '<!-- pressless:picture --><figure><img src="../photographs/b.jpg" alt="">'
+    '<figcaption><a href="https://example.org/">Pier</a> at dusk</figcaption></figure>'
+    "<!-- /pressless:picture -->\n"
+    "<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
+    "</body></html>\n")
+
+
+def captions(page, origin: str, folder: Path) -> None:
+    """PRESS-0373: the caption field shows a caption's words with its
+    character references read, which takes a browser's DOMParser, and a
+    caption holding a link is read-only, with a note."""
+    store.write_html(folder, store.PAGES_FOLDER, "captions", CAPTION_PAGE)
+    page.goto(f"{origin}/page?kind=pages&name=captions&view=visual", wait_until="networkidle")
+    figures = page.frame_locator("#preview").locator("figure")
+    field = page.locator("[data-field=caption]")
+    seen = []
+    for at in (0, 1):
+        figures.nth(at).click()
+        seen.append((field.input_value(), field.evaluate("input => input.readOnly"),
+                     page.locator("#panel-said").text_content()))
+    linked = words.say("script.visual.caption_linked")
+    check("PRESS-0373: a caption shows its words, and one holding a link is read-only",
+          seen == [("Fish & chips", False, ""), ("Pier at dusk", True, linked)], str(seen))
+
+
+def setup_bar(browser, folder: Path) -> None:
+    """PRESS-0429: while a site is being set up, the top bar's locked buttons
+    look greyed out and lead nowhere, and Help opens in a new tab. It needs a
+    site with no settings, so it runs on a Face of its own, in a context of
+    its own for that Face's cookie."""
+    if OPTIONS.cdp:
+        print("  PRESS-0429: not run over --cdp; the tunnel forwards one Face's port")
+        return
+    empty = folder.parent / "setup-site"
+    empty.mkdir()
+    served = face.serve(empty, 0)
+    served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+    context = browser.new_context()
+    try:
+        page = context.new_page()
+        page.goto(served.url, wait_until="networkidle")
+        page.goto(served.url.split("?")[0].rstrip("/") + "/words", wait_until="networkidle")
+        looks = page.evaluate("""() => [...document.querySelectorAll('.bar > a[aria-disabled]')]
+          .map(link => ({opacity: Number(getComputedStyle(link).opacity),
+                         cursor: getComputedStyle(link).cursor}))""")
+        before = page.url
+        page.locator(".bar > a[aria-disabled]").first.click()
+        page.wait_for_timeout(300)
+        with context.expect_page() as opened:
+            page.locator('.bar > a[href="/manual"]').click()
+        opened.value.close()
+        check("PRESS-0429: during setup the locked buttons look greyed out and lead "
+              "nowhere, and Help opens in a new tab",
+              bool(looks) and page.url == before
+              and all(look["opacity"] < 1 and look["cursor"] == "not-allowed" for look in looks),
+              f"{looks} {page.url}")
+    finally:
+        context.close()
+        served.stop()
 
 
 def kept_files(page, origin: str, folder: Path) -> None:
