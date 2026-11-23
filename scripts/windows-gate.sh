@@ -111,12 +111,33 @@ with zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED) as out:
             out.write(name)
 ' "$scratch/$run.zip"
 
+# PRESS-0475: a run cut short, by a dropped connection say, never reaches its
+# own finally below. So each run first clears what such runs left a day or
+# more ago: only names $run takes, in the two folders a run writes to. A
+# failure here only says so; it never fails the gate.
+sweep=$(cat <<'EOF'
+try {
+    $stale = (Get-Date).AddDays(-1)
+    Get-ChildItem -LiteralPath $gate -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^run-\d+-\d+$' -and $_.LastWriteTime -lt $stale } |
+        ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+    Get-ChildItem -LiteralPath $userHome -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^run-\d+-\d+\.(zip|bundle|ps1)$' -and $_.LastWriteTime -lt $stale } |
+        ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
+} catch {
+    Write-Output "windows gate: old runs were not cleared: $_"
+}
+EOF
+)
+
 cat > "$scratch/$run.ps1" <<EOF
 \$ErrorActionPreference = "Stop"
-\$gate = "\$env:USERPROFILE\\pressless-gate"
+\$userHome = \$env:USERPROFILE
+\$gate = "\$userHome\\pressless-gate"
 \$python = "\$gate\\python\\python.exe"
 \$work = "\$gate\\$run"
 \$code = 1
+$sweep
 try {
     if (-not (Test-Path \$python)) { throw "no portable Python at \$python" }
     git clone --quiet --no-checkout "\$env:USERPROFILE\\$run.bundle" \$work
