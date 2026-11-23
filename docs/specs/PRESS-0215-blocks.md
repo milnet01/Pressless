@@ -194,6 +194,11 @@ writes it. Attributes are written in the table's order, each value in
 double quotes. Nothing separates the parts inside a pictures or columns
 section, so a hand-spaced one reads as `CODE` (§4.3 step 2).
 
+The site's look (PRESS-0196) lays a columns section's columns side by
+side on a wide screen and one above the other on a narrow one, and draws
+a button's link as a button (`look._BLOCK_RULES`). A site keeping its own
+stylesheets (PRESS-0276) styles both itself.
+
 **`section_html` raises `SectionRefused`** for a kind outside `KINDS`
 and `CODE`, a missing field, an `html` or `caption` that is not
 `<inline>`, a `level` outside `1`–`6`, a `youtube` id outside

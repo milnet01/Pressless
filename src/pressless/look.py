@@ -460,7 +460,7 @@ def _pieces(choices: Choices, extra: str) -> list[str]:
         f":root {{ --body-font: {FONTS[choices.body_font]};\n"
         f"  --heading-font: {FONTS[choices.heading_font]};\n"
         f"  --text-size: {TEXT_SIZES[choices.text_size]}; --width: {width}; }}\n",
-        _LAYOUT_RULES[choices.layout], _FOOT_FOCUS, "\n",
+        _LAYOUT_RULES[choices.layout], _FOOT_FOCUS, _BLOCK_RULES, "\n",
         _Note("look.journal_note"), _JOURNAL_RULES,
     ]
     parts += [_EFFECT_RULES[effect] for effect in EFFECTS if effect in choices.effects]
@@ -474,6 +474,18 @@ def _pieces(choices: Choices, extra: str) -> list[str]:
 # PRESS-0239's focus ring on a footer link, in a colour TEXT_PAIRS holds to
 # contrast with the footer: `ink`, the ring's own, is some footers' colour.
 _FOOT_FOCUS = _Added("footer.site a:focus-visible { outline-color: var(--foot-link); }\n")
+
+# PRESS-0215 § 4.4: a columns section's columns side by side where the screen
+# has room for them, one above the other where it has not, and a button
+# section's link drawn as a button. Its border is the link's own colour.
+_BLOCK_RULES = _Added("""\
+.pressless-columns { display: grid; gap: 0 2rem; }
+@media (min-width: 40rem) {
+  .pressless-columns { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+}
+.pressless-button a { display: inline-block; padding: 0.5em 1.25em; border: 2px solid currentColor;
+  border-radius: 0.5rem; font-weight: 600; text-decoration: none; }
+""")
 
 # Rules every layout holds, the same in each (PRESS-0239's underlined links
 # and visible focus ring among them), joined into each layout's rules below.
@@ -531,6 +543,25 @@ _NAME_LEFT_MENU_RIGHT = """/* Wide screens: the name on the left, the menu on th
 }
 """
 
+# The main column of Harbour, Studio, Stage and Commons. Sunrise, Meadow,
+# Market and Letter write their own.
+_MAIN_COLUMN = """
+main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: var(--width);
+  margin: 0 auto; padding: 2.5rem 1.25rem; }
+"""
+# The footer of Sunrise, Studio, Market, Stage and Commons. Meadow, Letter and
+# Harbour write their own; Harbour's differs only in its padding and order.
+_FOOT_RULES = """
+footer.site {
+  background: var(--foot);
+  color: var(--on-foot);
+  padding: 1.25rem max(1.25rem, calc((100% - var(--width) + 2.5rem) / 2));
+  font-size: 0.95rem;
+}
+footer.site p { margin: 0; }
+footer.site a { color: var(--foot-link); }
+"""
+
 # Sunrise: a warm band across the top, one centred column.
 _SUNRISE = _COLUMN_BODY + """header.site {
   background: var(--band);
@@ -553,16 +584,7 @@ main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: va
 h1, h2, h3 { font-family: var(--heading-font); line-height: 1.25;
   color: var(--heading); }
 h1 { font-size: 2.2rem; margin-top: 0.5rem; }
-""" + _PICTURE_RULE + """
-footer.site {
-  background: var(--foot);
-  color: var(--on-foot);
-  padding: 1.25rem max(1.25rem, calc((100% - var(--width) + 2.5rem) / 2));
-  font-size: 0.95rem;
-}
-footer.site p { margin: 0; }
-footer.site a { color: var(--foot-link); }
-"""
+""" + _PICTURE_RULE + _FOOT_RULES
 
 # Meadow: the name and menu in a green panel, beside the page on a wide
 # screen and above it on a narrow one.
@@ -630,9 +652,7 @@ _HARBOUR = _COLUMN_BODY + """header.site {
 """ + _NO_EMPTY_DESCRIPTION + """\
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.75rem; }
 """ + _NAV_LINK_RULES + """
-""" + _NAME_LEFT_MENU_RIGHT + """
-main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: var(--width);
-  margin: 0 auto; padding: 2.5rem 1.25rem; }
+""" + _NAME_LEFT_MENU_RIGHT + _MAIN_COLUMN + """\
 h1, h2, h3 { font-family: var(--heading-font); line-height: 1.2;
   color: var(--heading); }
 h1 { font-size: clamp(2rem, 7vw, 2.6rem); font-weight: 800; margin-top: 0.5rem; }
@@ -654,24 +674,6 @@ footer.site {
 }
 footer.site a { color: var(--foot-link); }
 footer.site p { margin: 0; }
-"""
-
-# The main column of Studio, Stage and Commons. Market and Letter write
-# their own.
-_MAIN_COLUMN = """
-main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: var(--width);
-  margin: 0 auto; padding: 2.5rem 1.25rem; }
-"""
-# The footer of Studio, Market, Stage and Commons. Letter writes its own.
-_FOOT_RULES = """
-footer.site {
-  background: var(--foot);
-  color: var(--on-foot);
-  padding: 1.25rem max(1.25rem, calc((100% - var(--width) + 2.5rem) / 2));
-  font-size: 0.95rem;
-}
-footer.site p { margin: 0; }
-footer.site a { color: var(--foot-link); }
 """
 
 # Studio, for a portfolio: no band; the name and the menu on one line above a
