@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=439 -->
+<!-- ants-roadmap-id-high-water: PRESS=466 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9074,6 +9074,292 @@ starts the way the local web-server manager asks.
   Kind: review-fix.
   Source: review-contract-2026-11-22.
   Lanes: gate.
+
+## 1.2.1 — the 2026-11-23 review's fixes
+
+Every valid finding of the review of the code changed since 1.0.0-4: review-code, review-code --performance, review-tests, review-readability and verify-delivery. Filed by subject, and fixed before 1.3.0's work starts. The review records stay outside this public repository, in the gitignored local-archive/reviews/.
+
+- 📋 [PRESS-0440] **Second-round review fixes: the Face core (server, log, themes, progress).**
+  Subject 01. Review types: Codebase, Test.
+  Findings: review-code lane-01, review-readability lane-01, and the
+  performance and test reviews' findings on these files and their tests.
+  Worst: a page written over itself with document.write declares the
+  page script's top-level const and let twice, so its controls may
+  stop (review-code HIGH, read not run: prove it in a browser first).
+  Untested: Face.setting_up's site_folder branch, after_restart.
+  **Layman:** Bug fixes and tidy-ups in the part of Pressless that serves its screens to your browser.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Face.
+
+- 📋 [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
+  Subject 02. Review types: Codebase, Test.
+  Findings: review-code lane-02, review-readability lane-02, and the
+  performance and test reviews' findings on these files and their tests.
+  Worst: tests/test_editor.py's press test asserts a bare string in its
+  go case, so that case checks nothing (review-tests HIGH).
+  **Layman:** Bug fixes and tidy-ups in the screen where you write an entry, and in the Files screen.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0442] **Second-round review fixes: the page editor and the menu.**
+  Subject 03. Review types: Codebase, Test.
+  Findings: review-code lane-03, review-readability lane-03, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in the editor for pages, the header, the footer and the menu.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0443] **Second-round review fixes: blocks, the look and templates.**
+  Subject 04. Review types: Codebase, Test.
+  Findings: review-code lane-04, review-readability lane-04, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in ready-made sections, the site's look and the entry templates.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0444] **Second-round review fixes: marks and the builder.**
+  Subject 05. Review types: Codebase, Test.
+  Findings: review-code lane-05, review-readability lane-05, and the
+  performance and test reviews' findings on these files and their tests.
+  Among them: GIF frames held in memory without a bound.
+  **Layman:** Bug fixes and tidy-ups in how your writing becomes the finished website.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0445] **Second-round review fixes: the Store and Undo.**
+  Subject 06. Review types: Codebase, Test.
+  Findings: review-code lane-06, review-readability lane-06, and the
+  performance and test reviews' findings on these files and their tests.
+  Among them: copy_to_bin never syncs the bin folder (a gap in
+  PRESS-0376's fix).
+  **Layman:** Bug fixes and tidy-ups in how Pressless keeps your site's files and steps back a publish.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Store.
+
+- 📋 [PRESS-0446] **Second-round review fixes: publishing.**
+  Subject 07. Review types: Codebase, Test.
+  Findings: review-code lane-07, review-readability lane-07, and the
+  performance and test reviews' findings on these files and their tests.
+  Among them: tests that make symlinks without _require_symlinks.
+  **Layman:** Bug fixes and tidy-ups in sending your site to GitHub.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0447] **Second-round review fixes: setup, settings and the key store.**
+  Subject 08. Review types: Codebase, Test.
+  Findings: review-code lane-08, review-readability lane-08, and the
+  performance and test reviews' findings on these files and their tests.
+  Worst: the versioned-JSON reader exists twice, in settings and in
+  credentials, and past fixes had to land in each (readability HIGH).
+  **Layman:** Bug fixes and tidy-ups in first-run setup, Settings and where the publishing key is kept.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Setup.
+
+- 📋 [PRESS-0448] **Second-round review fixes: sign-in, take-in and your own address.**
+  Subject 09. Review types: Codebase, Test.
+  Findings: review-code lane-09, review-readability lane-09, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in signing in to GitHub and Google, bringing a GitHub site in, and custom addresses.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Setup.
+
+- 📋 [PRESS-0449] **Second-round review fixes: Insights, Your site and usage reports.**
+  Subject 10. Review types: Codebase, Test.
+  Findings: review-code lane-10, review-readability lane-10, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in visitor figures, the Your site screen and usage reports.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Insights.
+
+- 📋 [PRESS-0450] **Second-round review fixes: updating and starting Pressless.**
+  Subject 11. Review types: Codebase, Test.
+  Findings: review-code lane-11, review-readability lane-11, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in how Pressless starts, restarts and updates itself.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Updater.
+
+- 📋 [PRESS-0451] **Second-round review fixes: the AI helper.**
+  Subject 12. Review types: Codebase, Test.
+  Findings: review-code lane-12, review-readability lane-12, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in the connection that lets an AI app work on your site.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Assistant.
+
+- 📋 [PRESS-0452] **Second-round review fixes: several sites, site files and backups.**
+  Subject 13. Review types: Codebase, Test.
+  Findings: review-code lane-13, review-readability lane-13, and the
+  performance and test reviews' findings on these files and their tests.
+  Among them: a site file is zipped while a process-wide lock is held.
+  **Layman:** Bug fixes and tidy-ups in keeping several sites, saving a site as one file, and backups.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Sites.
+
+- 📋 [PRESS-0453] **Second-round review fixes: the WordPress import.**
+  Subject 14. Review types: Codebase, Test.
+  Findings: review-code lane-14, review-readability lane-14, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in bringing a WordPress site in.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Import.
+
+- 📋 [PRESS-0454] **Second-round review fixes: the folder import and downloads.**
+  Subject 15. Review types: Codebase, Test.
+  Findings: review-code lane-15, review-readability lane-15, and the
+  performance and test reviews' findings on these files and their tests.
+  Among them: a slow-dripping download is not bounded in time.
+  **Layman:** Bug fixes and tidy-ups in bringing a folder of pages in, and copying an old site from the web.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Import.
+
+- 📋 [PRESS-0455] **Second-round review fixes: likes and JPEG XL.**
+  Subject 16. Review types: Codebase, Test.
+  Findings: review-code lane-16, review-readability lane-16, and the
+  performance and test reviews' findings on these files and their tests.
+  **Layman:** Bug fixes and tidy-ups in Like buttons and JPEG XL photographs.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0456] **Second-round review fixes: screen words, the manual and languages.**
+  Subject 17. Review types: Codebase, Test.
+  Findings: review-code lane-17, review-readability lane-17, and the
+  performance and test reviews' findings on these files and their tests.
+  Worst: French shows "1 brouillon" for no drafts, because the English
+  one-forms hard-code 1 and French uses the one form for 0 (review-code
+  and readability HIGH, confirmed by running say_count).
+  **Layman:** Bug fixes and tidy-ups in the screens' words, the manual and the other languages.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Words.
+
+- 📋 [PRESS-0457] **Second-round review fixes: the gate, CI and packaging scripts.**
+  Subject 18. Review types: Codebase, Test, Document.
+  Findings: review-code lane-18, review-readability lane-18, and the test
+  review's findings on test_local_ci, test_pre_commit and test_windows_gate.
+  Worst: local-ci.sh and CLAUDE.md say no test reads a document, but
+  test_sign_release reads CHANGELOG.md, so a CHANGELOG-only push skips
+  the test that reads it (readability HIGH).
+  **Layman:** Fixes to the checks that run before every push and the scripts that build the downloads.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Pipeline.
+
+- 📋 [PRESS-0458] **Second-round review fixes: the maintainer's scripts and by-hand checks.**
+  Subject 19. Review types: Codebase, Test.
+  Findings: review-code lane-19, review-readability lanes 19 and 19b, and
+  the test review's findings on these scripts' tests.
+  **Layman:** Fixes to the tools the maintainer runs by hand, such as release signing and the browser checks.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Pipeline.
+
+- 📋 [PRESS-0459] **Second-round review fixes: the tray icon, Send my log and the relay.**
+  Subject 20. Review types: Codebase, Test, Document.
+  Findings: review-code lanes 20 and 21, review-readability lane-20, and
+  the test review's findings on these files' tests and relay/test.
+  Worst: a sendlog test stays green when the note carries raw log text
+  (review-tests, HIGH by mutation). PRIVACY.md still says Pressless sends
+  its makers nothing unless you say yes to usage reports; Send my log
+  sends both logs when you press Send (verify-delivery, not true).
+  **Layman:** Fixes to the tray icon and Send my log, and the privacy policy now mentions Send my log.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Tray.
+
+- 📋 [PRESS-0460] **Photographs build faster: decode at the size needed, on several cores.**
+  Review type: Codebase. From review-code --performance, two HIGHs.
+  builder.py decodes every JPEG at full size before shrinking it (no
+  draft()), and re-encodes photographs one at a time on one core.
+  Measure a press of a photograph-heavy site before and after.
+  **Layman:** Publishing a site with many photographs takes less time.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Builder.
+
+- 📋 [PRESS-0461] **Network work runs in parallel over reused connections.**
+  Review type: Codebase. From review-code --performance, theme 5.
+  One GitHub blob per request in series (publisher.py, setup step 5,
+  where PRESS-0435 records a user giving up); import attachments fetched
+  one by one on new connections (fetch.py); take-in downloads the same
+  commit three times (takein.py); https.py and youtube.py the same shape.
+  Measure each before and after.
+  **Layman:** Publishing, taking a site in and importing take less waiting.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0462] **The same data is read once per request or job.**
+  Review type: Codebase. From review-code --performance, themes 2 and 3.
+  The header, footer and menu preview reads every published entry to
+  find the newest; an autosave parses the body about six times; a build
+  parses each entry three or more times; Your site, the importer and the
+  AI helper read the same files twice or more.
+  **Layman:** Screens and saves answer a little faster.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0463] **Slow work stops holding locks, and usage reports wait until after the page.**
+  Review type: Codebase. From review-code --performance, themes 1 and 4.
+  With usage reports on, every screen load writes and fsyncs a file
+  before the page is sent (face.py, usage.py). Process-wide locks are
+  held across long work in face.py, assistant.py and backups.py
+  (sitefile's case is subject 13's).
+  **Layman:** One slow job no longer holds up the rest of Pressless.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Face.
+
+- 📋 [PRESS-0464] **Every long job shows a count.**
+  Review type: Codebase. From review-code --performance, theme 6, under
+  the 2026-11-21 ruling that every action shows progress.
+  publisher.py, importing.py, updating.py and builder.py report no count;
+  GET /sites/save's counts go nowhere.
+  **Layman:** Long jobs such as publishing and importing show how far they have got.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Face.
+
+- 📋 [PRESS-0465] **The test suite runs faster and lighter.**
+  Review type: Test. From review-tests dimension 12.
+  Four test_main tests wait out RETURN_SECONDS: about 24 s of an 80 s
+  suite, measured at 1.26 s with it patched. Nine fixed negative waits
+  cost about 5 s; test_words re-parses the source tree; test_log writes
+  about 8.8 MB; test_dashboard starts a server it never uses;
+  test_publish_jpeg_xl makes a folder above the repository.
+  **Layman:** The checks that run before every push finish sooner.
+  Kind: optimize.
+  Source: review-2026-11-23.
+  Lanes: Tests.
+
+- 📋 [PRESS-0466] **Tests for the shipped promises that have none.**
+  Review type: Test. From verify-delivery and review-tests U3.
+  No test found for: PRESS-0372's empty-body save, PRESS-0373's three
+  sentences, PRESS-0381's stricter unpacking, PRESS-0382's answer,
+  PRESS-0414's failure pages, PRESS-0415's footer name and PRESS-0429's
+  setup top bar. Also the untested branches review-tests lists by lane,
+  where the owning subject item does not take them.
+  **Layman:** Promises made in the release notes get a check that runs every time.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Tests.
 
 ## 1.3.0 — a home other than GitHub
 
