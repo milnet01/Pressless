@@ -132,28 +132,38 @@ class _Paths:
         self._files: set[str] = set()
         self._folders: dict[str, str] = {}   # folded: as first written
 
-    def take(self, path: str) -> str | None:
-        """None where `path` is taken; else the words key saying why not."""
+    @staticmethod
+    def _split(path: str) -> tuple[str, dict[str, str]]:
+        """`path` folded, and each folder above it: folded, as written."""
         written = path.split("/")
         folded = path.casefold().split("/")
-        above = {"/".join(folded[:n]): "/".join(written[:n]) for n in range(1, len(folded))}
-        whole = "/".join(folded)
+        return "/".join(folded), {"/".join(folded[:n]): "/".join(written[:n])
+                                  for n in range(1, len(folded))}
+
+    def refused(self, path: str) -> str | None:
+        """The words key saying why `path` cannot be taken; None where it can."""
+        whole, above = self._split(path)
         if whole in self._files or whole in self._folders or above.keys() & self._files:
             return "import.folder.why.twin"
         # `A/` and `a/` are one folder on Windows and two elsewhere.
         if any(self._folders.get(key, spelled) != spelled for key, spelled in above.items()):
             return "import.folder.why.twin_folder"
+        return None
+
+    def take(self, path: str) -> None:
+        """`path` taken, once it is kept."""
+        whole, above = self._split(path)
         self._files.add(whole)
         for key, spelled in above.items():
             self._folders.setdefault(key, spelled)
-        return None
 
 
 _NAME_LONGEST = 255     # bytes of UTF-8: Linux's limit, never looser than Windows' 255 UTF-16 units
 
 
 def _why_not_kept(path: str, size: int, taken: _Paths) -> str | None:
-    """§ 4.1's tests, which § 4.3 makes again for a repository's paths."""
+    """§ 4.1's tests, which § 4.3 makes again for a repository's paths. It
+    only asks: the caller takes each path it keeps (`taken.take`)."""
     if size > builder.FILE_LARGEST:
         return say("import.folder.why.large", **builder.largest_slots())
     try:
@@ -164,7 +174,7 @@ def _why_not_kept(path: str, size: int, taken: _Paths) -> str | None:
     if any(len(segment.encode("utf-8", "surrogatepass")) > _NAME_LONGEST
            for segment in path.split("/")):
         return say("import.folder.why.long")
-    twin = taken.take(path)
+    twin = taken.refused(path)
     return say(twin) if twin else None
 
 
@@ -214,7 +224,7 @@ def unpack_folder(source: Path, into: Path, room: Callable[[], int]
     writes nothing. What is left out is returned with why, a member whose place
     this computer cannot make among them. `into` is replaced."""
     into = Path(into)
-    staged = into.with_name(f".{into.name}.part")
+    part_folder = into.with_name(f".{into.name}.part")
     try:
         with zipfile.ZipFile(source) as held:
             infos = held.infolist()
@@ -234,25 +244,26 @@ def unpack_folder(source: Path, into: Path, room: Callable[[], int]
                 path = info.filename.removeprefix(top)
                 why = _why_not_kept(path, info.file_size, taken)
                 if why is None:
+                    taken.take(path)
                     kept.append((path, info))
                 else:
                     left.append((path, why))
             if sum(info.file_size for _path, info in kept) > room():
                 raise ImportStopped("the ZIP's files are larger than the room on this drive")
-            _written(held, kept, staged, left)
+            _write_members(held, kept, part_folder, left)
         with _writing_here():
             if into.exists():
                 shutil.rmtree(into)
-            os.replace(staged, into)
+            os.replace(part_folder, into)
     except _NotWritten as exc:
-        shutil.rmtree(staged, ignore_errors=True)
+        shutil.rmtree(part_folder, ignore_errors=True)
         raise ImportStopped(f"the ZIP's files could not be written on this computer ({exc})"
                             ) from None
     except _UNREADABLE as exc:
-        shutil.rmtree(staged, ignore_errors=True)
+        shutil.rmtree(part_folder, ignore_errors=True)
         raise ImportStopped(f"the ZIP could not be read ({type(exc).__name__})") from None
     except ImportStopped:
-        shutil.rmtree(staged, ignore_errors=True)
+        shutil.rmtree(part_folder, ignore_errors=True)
         raise
     return tuple(left)
 
@@ -266,14 +277,14 @@ def _writing_here() -> Iterator[None]:
         raise _NotWritten(os_reason.of(exc)) from None
 
 
-def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> None:
-    """Each kept member under `staged`. One whose place this computer cannot
-    make, as a path too long for Windows, joins `left`."""
+def _write_members(held: zipfile.ZipFile, kept: list, part_folder: Path, left: list) -> None:
+    """Each kept member under `part_folder`. One whose place this computer
+    cannot make, as a path too long for Windows, joins `left`."""
     with _writing_here():
-        shutil.rmtree(staged, ignore_errors=True)
-        staged.mkdir(parents=True)
+        shutil.rmtree(part_folder, ignore_errors=True)
+        part_folder.mkdir(parents=True)
     for path, info in kept:
-        target = staged / path
+        target = part_folder / path
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             out = open(target, "wb")  # noqa: SIM115 -- closed below
@@ -286,7 +297,9 @@ def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> Non
             left.append((path, say("import.folder.why.unwritable",
                                    why=os_reason.of(exc))))
             continue
-        with held.open(info) as unpacked, out:
+        # `out` first, so a member the ZIP cannot open still closes it, and
+        # Windows can remove the part folder.
+        with out, held.open(info) as unpacked:
             while piece := unpacked.read(_PIECE):     # a read failure is the ZIP's
                 with _writing_here():
                     out.write(piece)
@@ -301,7 +314,9 @@ def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> Non
 _WEB_LABELS = {"windows-874": "cp874", "x-mac-cyrillic": "mac-cyrillic",
                "iso-8859-8-i": "iso8859-8", "x-sjis": "cp932", "x-cp1252": "cp1252"}
 _WEB_MEANS = {"iso8859-9": "cp1254", "iso8859-11": "cp874", "tis-620": "cp874",
-              "shift_jis": "cp932", "euc_kr": "cp949", "gb2312": "gbk", "big5": "big5hkscs"}
+              "shift_jis": "cp932", "euc_kr": "cp949", "gb2312": "gbk", "big5": "big5hkscs",
+              # A UTF-16 label in a page's own bytes cannot be true, and means UTF-8.
+              "utf-16": "utf-8", "utf-16-le": "utf-8", "utf-16-be": "utf-8"}
 # The standard's single- and multi-byte encodings, by Python's name. A label
 # naming anything else names none, and the page reads as windows-1252: so do
 # `iso-8859-1` and `us-ascii`, as the standard says, and `unicode_escape`.
@@ -309,7 +324,7 @@ _WEB_ENCODINGS = frozenset((
     "cp866", "cp874", "cp932", "cp949", *(f"cp{number}" for number in range(1250, 1259)),
     *(f"iso8859-{number}" for number in (2, 3, 4, 5, 6, 7, 8, 10, 13, 14, 15, 16)),
     "koi8-r", "koi8-u", "mac-roman", "mac-cyrillic", "gbk", "gb18030", "big5hkscs",
-    "euc_jp", "iso2022_jp"))
+    "euc_jp", "iso2022_jp", "utf-8"))
 
 
 def _web_encoding(label: str) -> str:
@@ -324,22 +339,37 @@ def _web_encoding(label: str) -> str:
     return name if name in _WEB_ENCODINGS else "cp1252"
 
 
-def _decoded(data: bytes, declared: str = "") -> tuple[str, bool] | None:
-    """The text, and whether it was in an older encoding; None where nothing
-    decodes it."""
+def _c1_controls(error: UnicodeError) -> tuple[str, int]:
+    """The standard's windows-1252 reads the five bytes Python's cp1252 leaves
+    undefined as the C1 controls of the same number."""
+    return chr(error.object[error.start]), error.start + 1
+
+
+codecs.register_error("pressless-c1-controls", _c1_controls)
+
+
+def _decoded(data: bytes, declared: str = "") -> tuple[str, bool]:
+    """The text, and whether it was in another encoding than UTF-8. Every
+    file decodes, as in a browser: windows-1252 reads any byte."""
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return data.decode("utf-16", "replace"), True
     try:
         return data.removeprefix(b"\xef\xbb\xbf").decode("utf-8"), False
     except UnicodeDecodeError:
         pass
-    for encoding in dict.fromkeys((_web_encoding(declared), "cp1252")):
+    encoding = _web_encoding(declared)
+    if encoding == "utf-8":
+        # A page saying UTF-8 is UTF-8, a wrong byte shown as a browser shows it.
+        return data.removeprefix(b"\xef\xbb\xbf").decode("utf-8", "replace"), False
+    if encoding != "cp1252":
         try:
             return data.decode(encoding), True
         except UnicodeDecodeError:
-            continue
-    return None
+            pass
+    return data.decode("cp1252", "pressless-c1-controls"), True
 
 
-def _page_text(data: bytes) -> tuple[str, bool] | None:
+def _page_text(data: bytes) -> tuple[str, bool]:
     found = _CHARSET.search(data[:4096].decode("latin-1"))
     return _decoded(data, found.group(1) if found else "")
 
@@ -635,11 +665,14 @@ class _Read:
     left: dict[str, str]
     left_links: list[tuple[str, str]] = field(default_factory=list)
     built_by_a_tool: bool = False
+    # Each carried file's text, read once however many pages carry it.
+    _texts: dict[str, str] = field(default_factory=dict, repr=False)
 
     def text_of(self, path: str) -> str:
-        """The text of a stylesheet or script, which reading found decodes."""
-        decoded = _decoded((self.root / path).read_bytes())
-        return decoded[0] if decoded else ""
+        """The text of a stylesheet or script."""
+        if path not in self._texts:
+            self._texts[path] = _decoded((self.root / path).read_bytes())[0]
+        return self._texts[path]
 
 
 def _names(folder: Path) -> list[str]:
@@ -673,17 +706,18 @@ def _sort_files(folder: Path, names: list[str]):
         where = folder / path
         if any(segment.startswith(".") for segment in path.split("/")):
             left[path] = say("import.folder.why.dot")
-        elif (why := _why_not_kept(path, where.stat().st_size, taken)) is not None:
+            continue
+        if (why := _why_not_kept(path, where.stat().st_size, taken)) is not None:
             left[path] = why
-        elif path == "CNAME":
+            continue
+        taken.take(path)
+        if path == "CNAME":
             left[path] = say("import.folder.why.cname")
         elif path.casefold() == "404.html":
             left[path] = say("import.folder.why.lost")
         elif path.casefold().endswith(_PAGE_SUFFIXES):
             decoded = _page_text(where.read_bytes())
-            if decoded is None:
-                left[path] = say("import.folder.why.undecodable")
-            elif _verification(path, decoded[0]):
+            if _verification(path, decoded[0]):
                 left[path] = say("import.folder.why.verification")
             else:
                 pages[path] = decoded
@@ -699,9 +733,9 @@ def _sort_files(folder: Path, names: list[str]):
 def _can_carry_script(folder: Path, path: str) -> bool:
     """§ 4.6's test of a file's text; `<!--` followed by `<script` changes where
     a browser reads the element's end, and a Builder mark would be filled."""
-    decoded = _decoded((folder / path).read_bytes())
-    return (decoded is not None and not _SCRIPT_CLOSES.search(decoded[0])
-            and not _BUILDER_MARK.search(decoded[0]) and _UP not in decoded[0])
+    text = _decoded((folder / path).read_bytes())[0]
+    return (not _SCRIPT_CLOSES.search(text) and not _BUILDER_MARK.search(text)
+            and _UP not in text)
 
 
 def read_folder(folder: Path) -> Found:
@@ -738,6 +772,8 @@ def _survey(root: Path, folder: _Folder, pages: dict[str, tuple[str, bool]],
 
     for path, (text, _older) in pages.items():
         if _holds_base(text):
+            # Its addresses resolve against the `<base>`, so they stay as
+            # written and carry nothing (§ 4.5).
             continue
 
         def noted(address: str, image: bool, path: str = path) -> None:
@@ -838,9 +874,9 @@ def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> l
 
     def walk(path: str, seen: set[str], pages: set[str], depth: int) -> None:
         uses.sheet_pages.setdefault(path, set()).update(pages)
-        decoded = _decoded((root / path).read_bytes())
-        if path in seen or decoded is None:
+        if path in seen:
             return
+        decoded = _decoded((root / path).read_bytes())
         seen.add(path)
         if path not in reached:
             reached.append(path)
@@ -873,6 +909,21 @@ def _without_suffix(path: str) -> str:
     return path.rpartition(".")[0]
 
 
+# A name made by joining a path's folders, in bytes: each part fits a name,
+# the whole may not, and Windows' whole-path limit wants room beside it.
+_JOINED_LONGEST = 120
+
+
+def _shortened(name: str, whole: str) -> str:
+    """`name`, made from the path `whole`, cut to _JOINED_LONGEST bytes where
+    it is longer, ending in a hash of `whole` so two cut alike stay two."""
+    if len(name.encode("utf-8", "surrogatepass")) <= _JOINED_LONGEST:
+        return name
+    tag = f"{zlib.crc32(whole.encode('utf-8', 'surrogatepass')):08x}"
+    cut = name.encode("utf-8", "surrogatepass")[:_JOINED_LONGEST - len(tag) - 1]
+    return f"{cut.decode('utf-8', 'ignore').rstrip('-')}-{tag}"
+
+
 def _front_page(pages: list[str]) -> tuple[str, bool]:
     """The front page's path, and whether it was chosen rather than found."""
     index = _index_pages(pages).get("")
@@ -897,7 +948,7 @@ def _name_pages(pages: list[str]) -> tuple[dict[str, str], list[tuple[str, str]]
         if path == front:
             continue
         stem = _without_suffix(path)
-        wanted = resolve_slug(stem.removesuffix("/index"), "page")
+        wanted = _shortened(resolve_slug(stem.removesuffix("/index"), "page"), path)
         name, number = wanted, 1
         while name in taken or _page_refused(name):
             number += 1
@@ -906,7 +957,7 @@ def _name_pages(pages: list[str]) -> tuple[dict[str, str], list[tuple[str, str]]
             renamed.append((wanted, name))
         names[path] = name
         taken.add(name)
-    listed = [Dropped(f"{store.PAGES_FOLDER}/{_FRONT}", say("import.folder.front", path=front))
+    listed = [Dropped(_page_label(_FRONT), say("import.folder.front", path=front))
               ] if chosen else []
     return names, renamed, listed
 
@@ -932,9 +983,11 @@ def _name_held(paths: list[str], path_for: Callable[[Path, str], Path]
         own = path.rsplit("/", 1)[-1]
         name = own
         if not free(name):
-            joined = path.replace("/", "-")
-            stem, dot, suffix = joined.rpartition(".")
-            name, number = joined, 1
+            stem, dot, suffix = path.replace("/", "-").rpartition(".")
+            if not dot:
+                stem, suffix = suffix, ""
+            stem = _shortened(stem, path)
+            name, number = f"{stem}{dot}{suffix}", 1
             while not free(name):
                 number += 1
                 name = f"{stem}-{number}{dot}{suffix}"
@@ -946,6 +999,11 @@ def _name_held(paths: list[str], path_for: Callable[[Path, str], Path]
 
 def _page_place(name: str) -> str:
     return builder.page_file(name)
+
+
+def _nav_name(name: str) -> str:
+    """The name the menu knows a page by: `Home` for the front page."""
+    return builder.HOME_NAV if name == _FRONT else name
 
 
 # -------------------------------------------- writing a page's addresses ----
@@ -961,6 +1019,7 @@ class _Writer:
         self.places |= {path: builder.web_photograph(name) for path, name in photographs.items()}
         self.places |= {path: builder.web_file(name) for path, name in files.items()}
         self.named: set[str] = set()     # what some address reached
+        self.svgs: dict[str, str] = {}   # a carried SVG's base64, made once
 
     def address(self, address: str, own: str, up: str, listed: list[str], image: bool
                 ) -> str | None:
@@ -973,8 +1032,10 @@ class _Writer:
         target = self.held.folder.resolved(path, own)
         if target is not None and target in self.held.carried and image and (
                 target.casefold().endswith(".svg")):
-            data = base64.b64encode((self.held.root / target).read_bytes()).decode("ascii")
-            return f"data:image/svg+xml;base64,{data}"
+            if target not in self.svgs:     # its bytes, which may declare their encoding
+                self.svgs[target] = base64.b64encode(
+                    (self.held.root / target).read_bytes()).decode("ascii")
+            return f"data:image/svg+xml;base64,{self.svgs[target]}"
         if target is not None and target in self.places:
             self.named.add(target)
             return up + self.places[target] + tail
@@ -986,8 +1047,8 @@ class _Writer:
 
     def page(self, text: str, own: str) -> tuple[str, list[str], list[str]]:
         """The page's addresses written with `{{UP}}`, its stylesheet links
-        down to one, and its scripts inside it. With each script moved to the
-        end of the body, and what to list."""
+        down to one, and its scripts inside it; each `defer` script returned,
+        to go at the body's end; and what to list."""
         listed: list[str] = []
         edits: list[tuple[int, int, str]] = []
         deferred: list[str] = []
@@ -1079,6 +1140,7 @@ def _style_code(held: _Read, writer: _Writer) -> tuple[str, list[str]]:
     seen: set[str] = set()
     top: list[str] = []
     listed: list[str] = []
+    later: list[tuple[str, str]] = []    # sheets of the code reached too deep here
     up = "../" * builder.STYLE_CODE.count("/")
 
     def joined(path: str, condition: str, depth: int) -> str:
@@ -1103,22 +1165,54 @@ def _style_code(held: _Read, writer: _Writer) -> tuple[str, list[str]]:
         address = _token_address(found)
         target = held.folder.target(address, own)
         its_own = found.group("condition").strip()
-        both = " and ".join(part for part in (condition, its_own) if part)
-        if target in held.style and depth < _IMPORTS_DEEPEST:
-            # Here the outer @media already wraps this text, so the wrap adds
-            # its own condition alone. `both` goes down for an @import deeper
-            # that leaves the folder: hoisted to the top, it needs them all.
-            return _wrapped(joined(target, both, depth + 1), its_own)
+        both = _both(condition, its_own)
+        if target in held.style:
+            if depth < _IMPORTS_DEEPEST:
+                # Here the outer @media already wraps this text, so the wrap adds
+                # its own condition alone. `both` goes down for an @import deeper
+                # that leaves the folder: hoisted to the top, it needs them all.
+                return _wrapped(joined(target, both, depth + 1), its_own)
+            # Another way reaches it shallower, so it is the code's, joined once:
+            # at the end, if no way here has joined it by then.
+            later.append((target, both))
+            return ""
         new = write(address, False)
         rule = (found.group(0) if new is None else _token_with(found, new)).rstrip()[:-1].rstrip()
-        if condition:
-            rule = f"{rule} and {condition}" if its_own else f"{rule} {condition}"
-        top.append(f"{rule};\n")
+        rule = rule.removesuffix(its_own).rstrip()
+        top.append(f"{rule} {both};\n" if both else f"{rule};\n")
         return ""
 
     bodies = [_wrapped(joined(path, held.links[path], 0), held.links[path])
               for path in held.style if path in held.links]
+    while later:
+        path, condition = later.pop(0)
+        bodies.append(_wrapped(joined(path, condition, 0), condition))
     return "".join(top) + "\n".join(body for body in bodies if body), listed
+
+
+def _queries(media: str) -> list[str]:
+    """A media query list's queries, split at the commas outside brackets."""
+    queries, depth, start = [], 0, 0
+    for at, char in enumerate(media):
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if char == "," and depth == 0:
+            queries.append(media[start:at].strip())
+            start = at + 1
+    return [*queries, media[start:].strip()]
+
+
+def _both(outer: str, inner: str) -> str:
+    """One media query list true where both are: each query of one joined to
+    each of the other, as a list's comma means or. A query naming a media type
+    goes first, which the syntax asks."""
+    if not outer or not inner:
+        return outer or inner
+    pairs = []
+    for one in _queries(outer):
+        for other in _queries(inner):
+            first, second = (other, one) if one.startswith("(") else (one, other)
+            pairs.append(f"{first} and {second}")
+    return ", ".join(pairs)
 
 
 def _wrapped(css: str, media: str) -> str:
@@ -1213,8 +1307,7 @@ def _marker(kind: str, page: str = "", nonav: bool = False) -> str:
 def _data_nav(navigation: str, names: dict[str, str]) -> str:
     """§ 4.8: each link to a page gains `data-nav="<name>"`, which
     `builder._current` matches; `Home` for the front page."""
-    fronts = {_page_place(name): (builder.HOME_NAV if name == _FRONT else name)
-              for name in names.values()}
+    nav_names = {_page_place(name): _nav_name(name) for name in names.values()}
 
     def link(found: re.Match) -> str:
         tag = found.group(0)
@@ -1224,7 +1317,7 @@ def _data_nav(navigation: str, names: dict[str, str]) -> str:
             return tag
         address, _quote = _unquoted(value)
         place = re.split(r"[?#]", address.removeprefix(_UP), maxsplit=1)[0]
-        nav = fronts.get(place) if address.startswith(_UP) else None
+        nav = nav_names.get(place) if address.startswith(_UP) else None
         if nav is None or re.search(r"\bdata-nav\s*=", tag, re.I):
             return tag
         return f'{tag[:2]} data-nav="{html.escape(nav, quote=True)}"{tag[2:]}'
@@ -1366,8 +1459,8 @@ def _part_out(texts: dict[str, str], names: dict[str, str]
     for path, text in texts.items():
         name = names[path]
         pages[path], said, marked = _parted_page(
-            text, found[path], shared, builder.HOME_NAV if name == _FRONT else name,
-            f"{store.PAGES_FOLDER}/{name}")
+            text, found[path], shared, _nav_name(name),
+            _page_label(name))
         listed += said
         any_marked = any_marked or marked
     navigation = _data_nav(shared.nav, names) if shared.menu_goes else starter.navigation()
@@ -1466,10 +1559,10 @@ def _deferred_placed(text: str, deferred: list[str]) -> str:
 def _shaped(text: str, name: str, deferred: list[str], where: str, listed: list[Dropped]) -> str:
     """The page as it is written: {{UP}} filled, an area made where it can be."""
     front = name == _FRONT
-    up = "" if front else "../"
+    up = "../" * _page_place(name).count("/")
     if not _has_body(text):
         title = _title_of(text, name)
-        text = starter.new_page(builder.HOME_NAV if front else name, title, (builder.STYLE_CODE,),
+        text = starter.new_page(_nav_name(name), title, (builder.STYLE_CODE,),
                                 main=text + "".join(deferred), root=front)
         return _adopted(text.replace(_UP, up), name)
     text, made = _with_main(text)
@@ -1525,18 +1618,20 @@ class _Written:
     roots: tuple[str, ...]
 
 
-def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
-    pages = list(held.pages)
-    names, renamed, listed = _name_pages(pages)
-    photographs, renamed_photographs = _name_held(held.photographs, store.photograph_path_for)
-    files, renamed_files = _name_held(held.files, store.file_path_for)
-    writer = _Writer(held, names, photographs, files)
+def _page_label(name: str) -> str:
+    """How the Report names the page `name`."""
+    return f"{store.PAGES_FOLDER}/{name}"
 
+
+def _pages_written(held: _Read, writer: _Writer, names: dict[str, str],
+                   listed: list[Dropped]) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """§ 4.5 to § 4.9 for each page: its text with addresses written and marks
+    removed, and its `defer` scripts. A page's own {{UP}} is held apart as
+    _KEPT_UP until `_furnished` has filled the Builder's."""
     texts: dict[str, str] = {}
     deferred: dict[str, list[str]] = {}
-    furniture_able: dict[str, str] = {}
     for path, (raw, older) in held.pages.items():
-        where = f"{store.PAGES_FOLDER}/{names[path]}"
+        where = _page_label(names[path])
         text = _BUILDER_MARK.sub("", raw)
         if text != raw:
             listed.append(Dropped(where, say("import.folder.marks")))
@@ -1551,18 +1646,20 @@ def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
             written, deferred[path], said = writer.page(text, path)
             texts[path] = written
             listed += [Dropped(where, what) for what in dict.fromkeys(said)]
-        if _has_body(texts[path]):
-            furniture_able[path] = texts[path]
+    return texts, deferred
 
-    style_code, said = _style_code(held, writer)
-    listed += [Dropped(store.LOOK_FOLDER, what) for what in dict.fromkeys(said)]
-    parted, parting = _part_out(furniture_able, names) if furniture_able else ({}, _parting(
+
+def _furnished(texts: dict[str, str], deferred: dict[str, list[str]], names: dict[str, str],
+               listed: list[Dropped]) -> tuple[dict[str, str], dict[str, str]]:
+    """§ 4.8: each page by its name, its shared blocks parted out and shaped,
+    and the three furniture files. Only now is a page's own {{UP}} put back."""
+    able = {path: text for path, text in texts.items() if _has_body(text)}
+    parted, parting = _part_out(able, names) if able else ({}, _parting(
         starter.header(), starter.footer(), starter.navigation(), []))
     listed += parting.listed
-    texts.update(parted)
+    texts = {**texts, **parted}
     shaped = {names[path]: _shaped(text, names[path], deferred[path],
-                                   f"{store.PAGES_FOLDER}/{names[path]}", listed
-                                   ).replace(_KEPT_UP, _UP)
+                                   _page_label(names[path]), listed).replace(_KEPT_UP, _UP)
               for path, text in texts.items()}
     furniture = {}
     for name, text in (("header", parting.header), ("footer", parting.footer),
@@ -1570,6 +1667,21 @@ def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
         if _KEPT_UP in text:
             listed.append(Dropped(name, say("import.folder.up")))
         furniture[name] = text.replace(_KEPT_UP, _UP)
+    return shaped, furniture
+
+
+def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
+    """Everything `bring_in_folder` writes: the names, then the pages, the
+    style code and the furniture, then the Report, which adds `Found.left`."""
+    pages = list(held.pages)
+    names, renamed, listed = _name_pages(pages)
+    photographs, renamed_photographs = _name_held(held.photographs, store.photograph_path_for)
+    files, renamed_files = _name_held(held.files, store.file_path_for)
+    writer = _Writer(held, names, photographs, files)
+    texts, deferred = _pages_written(held, writer, names, listed)
+    style_code, said = _style_code(held, writer)
+    listed += [Dropped(store.LOOK_FOLDER, what) for what in dict.fromkeys(said)]
+    shaped, furniture = _furnished(texts, deferred, names, listed)
 
     for path in (*held.photographs, *held.files):
         if path not in writer.named:
@@ -1641,6 +1753,8 @@ def _write_all(work: Path, into: Path, folder: Path, written: _Written,
     with _writing("the journal switch"):
         store.write_journal(work, False)
     with _writing("the site's name"):
+        # Setup names the site before a take-over brings one in, and holding a
+        # site counts only its folders, so a name already there stands.
         if written.identity is not None and store.read_identity(into) is None:
             store.write_identity(work, written.identity)
 
@@ -1655,9 +1769,12 @@ def _write_brought(into: Path, brought: Brought, commit: str) -> None:
                            prefix=".brought-")
 
 
-_REPORT_PAIRS = ("renamed_slugs", "renamed_photographs", "waiting", "unfetched", "other_types",
-                 "moved")
-_REPORT_NAMES = ("pages", "menus", "inside_pages", "sheets_for_some")
+# Report's fields that JSON reads back as lists: of pairs, and of names. Read
+# from Report itself, so a field added there is read back as it was written.
+_REPORT_PAIRS = tuple(one.name for one in dataclasses.fields(Report)
+                      if str(one.type).startswith("tuple[tuple["))
+_REPORT_NAMES = tuple(one.name for one in dataclasses.fields(Report)
+                      if str(one.type) == "tuple[str, ...]")
 
 
 def read_brought(into: Path, commit: str) -> Brought | None:

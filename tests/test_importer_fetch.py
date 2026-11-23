@@ -17,6 +17,7 @@ import pytest
 from _mode_support import TOO_DEEP
 
 from pressless import __version__, builder
+from pressless.words import say
 from pressless_import import fetch
 
 GLOBAL = "8.8.4.4"
@@ -147,7 +148,7 @@ def test_a_failed_write_here_is_not_called_a_failed_connection(tmp_path):
     target = tmp_path / "not-made" / "a.jpg"
     why = fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12,
                       resolve=network.resolve, connect=network.connect)
-    assert why is not None and why.startswith("it could not be written here"), why
+    assert why is not None and why.startswith("this computer could not write it there"), why
 
 
 def test_a_full_drive_mid_file_stops_the_rest(tmp_path, monkeypatch):
@@ -182,7 +183,7 @@ def test_a_full_drive_mid_file_stops_the_rest(tmp_path, monkeypatch):
     missing = fetch.fetch_all(pressless_import.read(export), tmp_path / "media",
                               lambda: 10**12, resolve=network.resolve,
                               connect=network.connect)
-    assert missing == {"2012/05/a.jpg": fetch.NO_ROOM, "2012/05/b.jpg": fetch.NO_ROOM}
+    assert missing == {"2012/05/a.jpg": say(fetch.NO_ROOM), "2012/05/b.jpg": say(fetch.NO_ROOM)}
     assert len(network.connected) == 1, "nothing is fetched once the drive is full"
 
 
@@ -194,7 +195,7 @@ def test_a_fetch_that_dribbles_stops(tmp_path, monkeypatch):
     network = _Network({"old.example.org": [GLOBAL]},
                        {"old.example.org/a.jpg": _Answer(200, b"x" * (fetch._PIECE * 8))})
     why, target = _fetch(network, "http://old.example.org/a.jpg", tmp_path)
-    assert why == fetch.TOO_SLOW and not target.exists()
+    assert why == say(fetch.TOO_SLOW, minutes="30") and not target.exists()
 
 
 def test_a_stand_in_for_the_network_reaches_every_fetch(tmp_path, monkeypatch):
@@ -207,6 +208,18 @@ def test_a_stand_in_for_the_network_reaches_every_fetch(tmp_path, monkeypatch):
     target = tmp_path / "a.jpg"
     assert fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12) is None
     assert network.connected
+
+    from test_importer import _export, _item
+
+    import pressless_import
+
+    network.answers["old.example.org/wp-content/uploads/2012/05/b.jpg"] = _Answer(200, b"b")
+    network.connected.clear()
+    export = tmp_path / "export.xml"
+    export.write_text(_export(_item(1, kind="attachment", status="inherit",
+                                    attachment="2012/05/b.jpg")), encoding="utf-8")
+    missing = fetch.fetch_all(pressless_import.read(export), tmp_path / "media", lambda: 10**12)
+    assert missing == {} and network.connected
 
 
 def test_an_attachment_address_no_parser_can_read_is_listed(tmp_path):
@@ -299,7 +312,7 @@ def test_no_fetch_starts_without_room(tmp_path):
     network = _Network({"old.example.org": [GLOBAL]},
                        {"old.example.org/a.jpg": _Answer(200, b"jpeg")})
     why, target = _fetch(network, "http://old.example.org/a.jpg", tmp_path, room=lambda: -1)
-    assert why == fetch.NO_ROOM and network.connected == [] and not target.exists()
+    assert why == say(fetch.NO_ROOM) and network.connected == [] and not target.exists()
 
 
 def test_fetching_an_export_resumes_and_lists_what_failed(tmp_path):
@@ -362,15 +375,19 @@ def test_a_checked_connection_wraps_with_its_own_verifying_context(monkeypatch):
     import socket
     import ssl
 
-    wrapped: list[tuple[ssl.SSLContext, str]] = []
+    class Socket:
+        def do_handshake(self):
+            wrapped.append("handshake")
+
+    wrapped: list = []
     monkeypatch.setattr(ssl.SSLContext, "wrap_socket",
-                        lambda context, sock, server_hostname: wrapped.append(
+                        lambda context, sock, server_hostname, **_options: wrapped.append(
                             (context, server_hostname)) or sock)
-    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: object())
+    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: Socket())
     connection = fetch._Checked(GLOBAL, "old.example.org", 443)
     connection._context = None    # what a Python keeping it elsewhere leaves
     connection.connect()
-    assert len(wrapped) == 1, wrapped
+    assert len(wrapped) == 2 and wrapped[1] == "handshake", wrapped
     context, name = wrapped[0]
     assert name == "old.example.org"
     assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
@@ -643,3 +660,186 @@ def test_a_redirect_no_parser_can_read_is_a_reason_not_a_crash(tmp_path):
     into = tmp_path / "folder"
     crawled = _download(network, "https://sites.example.org/", into)
     assert _landed(into) == {"index.html"} and [path for path, _why in crawled.left] == ["gone"]
+
+
+# ------------------------------------------------- review 2026-11-23, fetch ----
+
+
+def _served(steps: list) -> fetch.Connect:
+    """A server on this computer answering one connection by `steps`, each
+    bytes to send or a pause in seconds; the connection maker reaching it."""
+    import http.client
+    import socket
+    import threading
+    import time
+
+    listener = socket.create_server(("127.0.0.1", 0))
+    port = listener.getsockname()[1]
+
+    def serve():
+        with listener:
+            held, _from = listener.accept()
+            with held:
+                held.recv(65536)
+                for step in steps:
+                    if isinstance(step, float):
+                        time.sleep(step)
+                        continue
+                    try:
+                        held.sendall(step)
+                    except OSError:
+                        return
+
+    threading.Thread(target=serve, daemon=True).start()
+    return lambda _address, _host, _port, _secure: http.client.HTTPConnection(
+        "127.0.0.1", port, timeout=fetch.SECONDS)
+
+
+@pytest.mark.parametrize("steps", [
+    [b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\n\r\n", *[0.1, b"x"] * 40],
+    [b"HTTP/1.1 200 OK\r\n", *[0.1, b"X"] * 40]], ids=["body", "headers"])
+def test_a_server_sending_a_byte_now_and_then_is_stopped_in_all(tmp_path, monkeypatch, steps):
+    """PRESS-0125 § 4.4: a fetch stops at LONGEST in all. A socket's timeout
+    counts only silence, so this server, never silent for SECONDS, would hold
+    a blocking read for as long as it liked, its headers included.
+
+    Breaks when only the clock between pieces bounds a fetch."""
+    import time
+
+    monkeypatch.setattr(fetch, "LONGEST", 0.5)
+    target = tmp_path / "a.jpg"
+    began = time.monotonic()
+    why = fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12,
+                      resolve=lambda host, port: [GLOBAL], connect=_served(steps))
+    # The server drips for four seconds, so stopping well before it is the deadline.
+    assert time.monotonic() - began < 2.5
+    assert why == fetch._too_slow() and not target.exists()
+
+
+def test_a_server_dripping_its_handshake_is_stopped_in_all(tmp_path, monkeypatch):
+    """As above, for HTTPS: `_Checked` holds the socket before its handshake,
+    so the deadline reaches a server that drips that too."""
+    import time
+
+    monkeypatch.setattr(fetch, "LONGEST", 0.5)
+    # A handshake record of 64 bytes, then its bytes one at a time.
+    plain = _served([b"\x16\x03\x03\x00\x40", *[0.1, b"\x02"] * 40])
+    port = plain("", "", 0, False).port
+
+    began = time.monotonic()
+    why = fetch.fetch("https://old.example.org/a.jpg", tmp_path / "a.jpg", lambda: 10**12,
+                      resolve=lambda host, port: [GLOBAL],
+                      connect=lambda _a, host, _p, _s: fetch._Checked("127.0.0.1", host, port))
+    assert time.monotonic() - began < 2.5
+    assert why == fetch._too_slow()
+
+
+def test_a_body_cut_short_is_not_kept_as_whole(tmp_path):
+    """http.client ends a body the server stops sending early as if it were
+    whole. Breaks when `_keep` keeps what arrived."""
+    target = tmp_path / "a.jpg"
+    why = fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12,
+                      resolve=lambda host, port: [GLOBAL], connect=_served(
+                          [b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n", b"x" * 10]))
+    assert why == say("import.fetch.why.cut_short") and not target.exists()
+
+
+def test_a_connection_that_cannot_be_made_stops_only_its_file(tmp_path):
+    """§ 4.4: a failure never stops Import. Making a TLS connection reads the
+    certificate bundle, and a missing one raised out of `fetch_all`."""
+    def connect(address, host, port, secure):
+        raise FileNotFoundError(2, "No such file or directory")
+
+    why = fetch.fetch("https://old.example.org/a.jpg", tmp_path / "a.jpg", lambda: 10**12,
+                      resolve=lambda host, port: [GLOBAL], connect=connect)
+    assert why == say("import.fetch.why.connection", what="FileNotFoundError")
+
+
+def test_a_part_file_python_refuses_is_a_reason_here(tmp_path):
+    """§ 4.4: a write that fails here says so. Python refuses a path past
+    Windows's limit with ValueError, as it does a NUL byte, which stands in."""
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {"old.example.org/a.jpg": _Answer(200, b"jpeg")})
+    why = fetch.fetch("http://old.example.org/a.jpg", tmp_path / "a\x00.jpg", lambda: 10**12,
+                      resolve=network.resolve, connect=network.connect)
+    assert why == say("import.folder.why.too_long")
+
+
+def test_a_page_s_base_address_is_what_its_addresses_are_read_against(tmp_path):
+    """The HTML standard reads a page's addresses against its first `<base
+    href>`. Breaks when the crawl reads them against the page's own address."""
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/site/": _html('<html><head><base href="/site/sub/"></head>'
+                                         '<body><a href="x.html">X</a></body></html>'),
+        "sites.example.org/site/sub/x.html": _html("<p>X</p>"),
+    })
+    into = tmp_path / "folder"
+    _download(network, "https://sites.example.org/site/", into)
+    assert "sub/x.html" in _landed(into)
+    # The base itself lands as the folder lays the site out, and its pages beside it.
+    assert '<base href="/sub/">' in (into / "index.html").read_text(encoding="utf-8")
+
+
+def test_a_download_reports_before_its_first_file(tmp_path, monkeypatch):
+    """PRESS-0435 § 4.2: each loop reports before its first file (0 done)."""
+    network = _live({"sites.example.org": [GLOBAL]},
+                    {"sites.example.org/": _html("<p>H</p>")})
+    said = []
+    monkeypatch.setattr(fetch, "count_progress",
+                        lambda key, done, *rest: said.append((done, len(network.requests))))
+    _download(network, "https://sites.example.org/", tmp_path / "folder")
+    assert said[0] == (0, 0), said
+
+
+def test_addresses_that_fail_still_count_towards_the_most_asked(tmp_path, monkeypatch):
+    """A site of broken links could keep the crawl asking without end, as only
+    landed files counted. Breaks when a failed fetch is not counted."""
+    monkeypatch.setattr(fetch, "_ASKED_MOST", 3, raising=False)
+    links = "".join(f'<a href="gone-{n}.html">{n}</a>' for n in range(6))
+    network = _live({"sites.example.org": [GLOBAL]},
+                    {"sites.example.org/": _html(f"<p>{links}</p>")})
+    crawled = _download(network, "https://sites.example.org/", tmp_path / "folder")
+    pages = [path for _m, path, _h in network.requests if path != "/sitemap.xml"]
+    assert len(pages) == 3, pages
+    assert [why for _path, why in crawled.left].count(say(fetch._TOO_MANY)) == 4
+
+
+def test_a_rewrite_this_computer_cannot_write_is_left_whole_or_not_at_all(tmp_path,
+                                                                          monkeypatch):
+    """PRESS-0333 § 6: no room is a `left` entry. The rewrite wrote over each
+    page in place, unguarded, so a full drive emptied the page and raised."""
+    import errno
+
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html('<a href="https://sites.example.org/a.html">A</a>'),
+        "sites.example.org/a.html": _html("<p>A</p>"),
+    })
+    real = Path.write_text
+
+    def write_text(self, *args, **kwargs):
+        if self.name.endswith(".rewrite"):
+            real(self, "half", encoding="utf-8")
+            raise OSError(errno.ENOSPC, "No space left on device")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", write_text)
+    into = tmp_path / "folder"
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert ("index.html", say(fetch.NO_ROOM)) in crawled.left
+    assert _landed(into) == {"a.html"}, "nothing half-written stays"
+
+
+def test_a_landing_that_could_not_be_made_does_not_take_its_name(tmp_path):
+    """A path is taken only once it lands, so a failed one never refuses
+    another as its twin. Breaks when `_why_not_kept` records what it asks."""
+    into = tmp_path / "folder"
+    into.mkdir()
+    (into / "Dir").write_text("in the way", encoding="utf-8")
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html('<a href="Dir/a.html">A</a> <a href="dir/b.html">B</a>'),
+        "sites.example.org/Dir/a.html": _html("<p>A</p>"),
+        "sites.example.org/dir/b.html": _html("<p>B</p>"),
+    })
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert "Dir/a.html" in dict(crawled.left)
+    assert "dir/b.html" in _landed(into), crawled.left

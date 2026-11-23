@@ -1849,7 +1849,6 @@ _WORDS: dict[str, str] = {
         "would reload for ever"
     ),
     "import.folder.why.verification": "it proves to a search engine that the site is yours",
-    "import.folder.why.undecodable": "Pressless could not read its words",
     "import.folder.why.sheet": "no page links this stylesheet",
     "import.folder.why.deep": (
         "it is reached only through more than {most} stylesheets, each importing the next"),
@@ -1860,6 +1859,21 @@ _WORDS: dict[str, str] = {
         "Pressless keeps an SVG only as a small picture a page shows, and this is not one"
     ),
     "import.folder.why.kind": "it is not a kind of file Pressless keeps",
+    "import.fetch.why.no_room": "there was no room left on this drive",
+    "import.fetch.why.too_slow": "it was still arriving after {minutes} minutes",
+    "import.fetch.why.not_found": "the old site's name could not be found",
+    "import.fetch.why.not_web": "its address is not a web address",
+    "import.fetch.why.out_of_the_site": "it redirected out of the site",
+    "import.fetch.why.parent": "its address climbs out of the site",
+    "import.fetch.why.too_many": "the site holds too many files to bring in whole",
+    "import.fetch.why.port": "its address names no port Pressless can use",
+    "import.fetch.why.inside": "its address leads inside this computer or its network",
+    "import.fetch.why.moved_nowhere": "the old site answered {status} and named no address",
+    "import.fetch.why.answered": "the old site answered {status}",
+    "import.fetch.why.silent": "the old site sent nothing for {seconds} seconds",
+    "import.fetch.why.connection": "the connection failed ({what})",
+    "import.fetch.why.cut_short": "the old site stopped sending before the end",
+    "import.fetch.why.redirects": "the old site redirected it more than {most} times",
     "import.folder.front": "with no index page, {path} became the front page",
     "import.folder.not_carried": "a link to {path}, which did not come across",
     "import.folder.carried_link": (
