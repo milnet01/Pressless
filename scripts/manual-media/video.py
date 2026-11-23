@@ -114,7 +114,7 @@ def clip(browser, state, base, name, path, act):
          "-t", f"{end:.2f}", "-an", "-vf", "fps=12", "-c:v", "libvpx-vp9", "-crf", "40",
          "-b:v", "0", "-row-mt", "1", str(made)], check=True)
     shutil.rmtree(raw_folder)
-    (OUT / f"{name}.en.vtt").write_text(captions(cues, end))
+    (OUT / f"{name}.en.vtt").write_text(captions(cues, end), encoding="utf-8")
     print("clip", name, f"{end:.1f}s", made.stat().st_size, "bytes")
 
 

@@ -6,9 +6,10 @@ script:
 
     python3 scripts/by-hand-editor-races.py
 
-It drives a throwaway instance -- temp folder, the Publisher tests' recording
-transport double slowed so a publish lasts a few seconds -- and reaches no
-network, no keyring and none of the writer's own files.
+It drives a throwaway instance -- a folder beside the repository, the
+Publisher tests' recording transport double slowed so a publish lasts a few
+seconds -- and reaches no network, no keyring and none of the writer's own
+files.
 
 #14 (Change address waiting for a save in flight) has no row: a local save
 finishes before the click lands, so no timing here reaches the race.
@@ -78,7 +79,9 @@ def typing_during_publish(page, url: str, box: str, name: str) -> None:
 
 
 def main() -> int:
-    tmp = Path(tempfile.mkdtemp(prefix="pressless-editor-races-"))
+    # Beside the repository, never the system temporary folder, which is
+    # memory on the maintainer's machine.
+    tmp = Path(tempfile.mkdtemp(prefix="pressless-editor-races-", dir=ROOT.parent))
     folder = tp._folder(tmp)
     store.write(folder, tp._entry("seaside", body="Words."), draft=True)
     store.write_html(folder, store.PAGES_FOLDER, "about",

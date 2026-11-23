@@ -72,7 +72,7 @@ def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "site"
     if mode not in ("site", "fresh"):
         raise SystemExit(f"the mode is site or fresh, not {mode!r}")
-    kit.INSTANCE.mkdir(parents=True)
+    kit.INSTANCE.mkdir(parents=True, exist_ok=True)   # kit.start has made it
     sites.move_in(kit.INSTANCE)
     if mode == "site":
         seed(sites.current_site(kit.INSTANCE))

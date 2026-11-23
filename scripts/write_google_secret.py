@@ -47,7 +47,7 @@ def _asks() -> bool:
     return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
 
 
-def _value(variable: str, prompt: str) -> str:
+def from_environment_or_terminal(variable: str, prompt: str) -> str:
     """The environment variable, else what is typed at a terminal, else ''.
 
     Shared with write_usage_key.py. A value pasted into GitHub's secret box
@@ -68,7 +68,7 @@ def write_module(target: Path, text: str) -> None:
 
 def main(argv: list[str]) -> int:
     target = Path(argv[0]) if argv else DEFAULT
-    value = _value("GOOGLE_CLIENT_SECRET", "Google client secret: ")
+    value = from_environment_or_terminal("GOOGLE_CLIENT_SECRET", "Google client secret: ")
     if not _SHAPE.fullmatch(value):
         print("No usable client secret: it must be non-empty and hold only letters, "
               "digits, '-' and '_'. Nothing was written.", file=sys.stderr)
