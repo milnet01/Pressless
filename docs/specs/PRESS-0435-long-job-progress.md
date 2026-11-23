@@ -75,6 +75,10 @@ def waiting(seconds_left: int | None, key: str) -> None:
     """The calling thread's record keeps its words and numbers and says how
     long is left of a wait; None ends it. A record with no report says `key`."""
 
+def waiter() -> Callable[[int | None, str], None]:
+    """`waiting` into the calling thread's record, from any thread: a fetch's
+    reader threads count a wait down on its job's record (PRESS-0490)."""
+
 def now() -> Counted | None:
     """The record updated last among those running, or None."""
 
@@ -110,9 +114,11 @@ none: it runs in a thread of its own and its screen already counts it.
 `publishing` reports `progress.building`, with no numbers, before it calls
 the Builder.
 
-A publish waiting out GitHub's hourly reset (PRESS-0009 § 4.3) calls
-`waiting` before each second of the wait, and `waiting(None, ...)` when it
-ends (PRESS-0471).
+A publish or a fetch waiting out GitHub's hourly reset (PRESS-0009 § 4.3)
+reports through a `waiter()` taken on the job's thread, before each second
+of the wait, and with None when it ends (PRESS-0471, PRESS-0490). Where
+nothing was counted yet, the key is `progress.sending` for a publish and
+`progress.downloading` for a fetch.
 
 ### 4.3 `GET /progress`
 
@@ -244,7 +250,7 @@ fail before the code it covers exists.
 | INV-5 | `tests/test_progress.py::test_progress_answers_during_a_press` |
 | INV-6 | **Partial:** `scripts/by-hand-browser-checks.py`, run by hand; nothing in CI |
 | INV-7 | **Partial:** `scripts/by-hand-browser-checks.py`, run by hand; nothing in CI |
-| § 4.2's countdown during a publish's wait | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown`, and `tests/test_progress.py::test_the_count_is_said_in_words` for its words |
+| § 4.2's countdown during a publish's or a fetch's wait | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown` and `::test_a_fetch_waits_out_the_hourly_reset_with_a_countdown`, and `tests/test_progress.py::test_the_count_is_said_in_words` for its words |
 | § 4.2's crawl and site-file counts | **nothing** — no test reads them |
 
 ## 11. Cross-doc impact

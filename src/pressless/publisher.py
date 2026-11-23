@@ -71,11 +71,13 @@ RATE_LIMIT_SECONDS = 60.0
 # instead, which §6 already gives the Face a row for (PRESS-0046).
 MAX_WAIT_SECONDS = 120.0
 
-# A publish is the exception, once per request: past the hourly allowance it
-# waits for the reset GitHub names, counting down on the progress record, so
-# a large publish finishes in its one commit rather than failing late and
-# sending every file again (PRESS-0471). The allowance is hourly, so a reset
-# further off than this is a clock or an answer gone wrong, and is refused.
+# A publish and a fetch are the exception, once per request: past the hourly
+# allowance they wait for the reset GitHub names, counting down on the progress
+# record, so a large publish finishes in its one commit rather than failing
+# late and sending every file again (PRESS-0471), and a take-in, undo or
+# takeover read finishes rather than failing (PRESS-0490). The allowance is
+# hourly, so a reset further off than this is a clock or an answer gone
+# wrong, and is refused.
 MAX_RESET_WAIT_SECONDS = 3900.0
 COUNTDOWN_SECONDS = 1.0
 
@@ -259,7 +261,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     precedes the blobs; there is no earlier site for it to damage.
     """
     folder = _site_folder(folder)
-    session = _Session(transport or _Urllib(), token, waits_for_reset=True)
+    session = _Session(transport or _Urllib(), token, waits_for_reset="progress.sending")
     branch = _default_branch(session, settings.repository)
     untouchable = settings.untouchable
     started: _Started | None = None
@@ -712,7 +714,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     complete fetch -- and undo is the feature that must not produce one
     (PRESS-0046).
     """
-    session = _Session(transport or _Urllib(), token)
+    session = _Session(transport or _Urllib(), token, waits_for_reset="progress.downloading")
     current = _head(session, settings.repository)
     if current is None:
         raise NoPreviousState(
@@ -739,7 +741,7 @@ def fetch_state(settings: Settings, token: str, into: Path,
     been fetched, and a path outside `into` is refused. A repository with no
     commits, or a commit it no longer holds, raises RemoteStateMissing.
     """
-    session = _Session(transport or _Urllib(), token)
+    session = _Session(transport or _Urllib(), token, waits_for_reset="progress.downloading")
     if not commit:
         current = _head(session, settings.repository)
         if current is None:
@@ -876,11 +878,16 @@ class _Session:
     """
 
     def __init__(self, client: Transport, token: str | None, *,
-                 waits_for_reset: bool = False) -> None:
+                 waits_for_reset: str = "") -> None:
         self._client = client
         self._token = token     # None for the wizard's reads before there is a key
         self._written = False
-        self._waits_for_reset = waits_for_reset     # a publish's (PRESS-0471)
+        # A publish's and a fetch's (PRESS-0471, PRESS-0490): the progress key
+        # its wait for the hourly reset says where nothing was counted yet; ""
+        # where a spent allowance fails at once. Made on the job's thread, so
+        # a reader thread's countdown reaches the job's record.
+        self._waits_for_reset = waits_for_reset
+        self._waiting = progress.waiter()
         self._pace = threading.Lock()
         self._last_read = -math.inf     # when the latest paced read may start
         self._hold_until = -math.inf    # a slow-down one reader was told of
@@ -918,12 +925,12 @@ class _Session:
         left = seconds
         try:
             while left > 0:
-                progress.waiting(math.ceil(left), "progress.sending")
+                self._waiting(math.ceil(left), self._waits_for_reset)
                 step = min(COUNTDOWN_SECONDS, left)
                 self._client.wait(step)
                 left -= step
         finally:
-            progress.waiting(None, "progress.sending")
+            self._waiting(None, self._waits_for_reset)
 
     def write(self, method: str, url: str, payload: dict, *,
               outcome_unknown: bool = False, no_content: bool = False,

@@ -83,7 +83,18 @@ def waiting(seconds_left: int | None, key: str) -> None:
     `seconds_left` remain of a wait; None ends the wait. A record that has
     reported nothing yet says `key`. Nothing happens on a thread holding no
     record."""
+    _waiting(threading.get_ident(), seconds_left, key)
+
+
+def waiter() -> Callable[[int | None, str], None]:
+    """`waiting` into the calling thread's record, callable from any thread,
+    so a fetch's reader threads count a wait down on the job's record
+    (PRESS-0490)."""
     me = threading.get_ident()
+    return lambda seconds_left, key: _waiting(me, seconds_left, key)
+
+
+def _waiting(me: int, seconds_left: int | None, key: str) -> None:
     with _LOCK:
         if me in _held:
             counted = _held[me][1] or Counted(key)

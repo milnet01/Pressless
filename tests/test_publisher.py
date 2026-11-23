@@ -2065,9 +2065,81 @@ def test_a_reset_too_far_off_or_that_does_not_clear_is_refused(tmp_path):
     assert sum(again.waits) <= 602, f"a reset was waited out twice: {sum(again.waits)}s"
 
 
-def test_only_a_publish_waits_out_the_hourly_reset():
-    """PRESS-0471 is the publish's: any other request past the allowance
-    still fails at once, as before."""
+class _SpentOnce(_CountingDown):
+    """Answers the first request whose URL holds `spent_at` with a spent
+    hourly allowance whose reset is `seconds` off, and records at each wait
+    the key the progress record says."""
+
+    def __init__(self, spent_at: str, seconds: float = 600.0, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._spent_at = spent_at
+        self._seconds = seconds
+        self._spent = False
+        self.keys: list[str | None] = []    # one per wait
+
+    def request(self, method, url, body, headers):
+        if not self._spent and self._spent_at in url:
+            self._spent = True
+            self.requests.append((method, url, body, headers))
+            return _spent_until(self._seconds)
+        return super().request(method, url, body, headers)
+
+    def wait(self, seconds: float) -> None:
+        counted = progress_module.now()
+        self.keys.append(counted.key if counted else None)
+        super().wait(seconds)
+
+
+def _fetch_with(how: str, into: Path, transport) -> Fetched:
+    if how == "previous":
+        return fetch_previous(_settings(), "a-token", into, "content/", transport=transport)
+    return fetch_state(_settings(), "a-token", into, ("content/",), "chosen-sha",
+                       transport=transport)
+
+
+@pytest.mark.parametrize(("how", "spent_at"), [
+    ("previous", "/commits/"),      # undo's, on the job's own thread, before any count
+    ("state", "/git/blobs/"),       # take-in's and the takeover's, on a reader thread
+])
+def test_a_fetch_waits_out_the_hourly_reset_with_a_countdown(tmp_path, how, spent_at):
+    """PRESS-0490: a fetch past the hourly allowance waits for the reset
+    GitHub names, as a publish does, counting down on the job's record under
+    `progress.downloading`, then lands every file. Breaks when a fetch
+    refuses the reset, or when a reader thread's countdown misses the job's
+    record."""
+    transport = _SpentOnce(spent_at, reads=_reads(_listing([("content/a.txt", "a-sha")]),
+                                                  blob=b"words"))
+    with progress_module.job():
+        fetched = _fetch_with(how, tmp_path / "into", transport)
+        after = progress_module.now()
+
+    assert fetched.paths == ("content/a.txt",)
+    assert (tmp_path / "into" / "content" / "a.txt").read_bytes() == b"words"
+    counted = [(left, waited, key) for left, waited, key
+               in zip(transport.left, transport.waits, transport.keys, strict=True)
+               if left is not None]
+    lefts = [left for left, _, _ in counted]
+    assert counted and 598 <= sum(waited for _, waited, _ in counted) <= 600 \
+        and 598 <= lefts[0] <= 600, f"the reset was not waited out: {counted[:2]}"
+    assert {key for _, _, key in counted} == {"progress.downloading"}, (
+        "the countdown did not say the site is downloading")
+    assert max(transport.waits) <= 1.0 and after.seconds_left is None, (
+        "the wait did not count down a second at a time, or outlived itself")
+
+
+@pytest.mark.parametrize("how", ["previous", "state"])
+def test_a_fetch_s_reset_too_far_off_is_refused(tmp_path, how):
+    """PRESS-0490: a fetch keeps the publish's bound, MAX_RESET_WAIT_SECONDS."""
+    transport = _SpentOnce("/git/blobs/", publisher_module.MAX_RESET_WAIT_SECONDS + 100,
+                           reads=_reads(_listing([("content/a.txt", "a-sha")]), blob=b"w"))
+    with pytest.raises(RateLimited):
+        _fetch_with(how, tmp_path / "into", transport)
+    assert not transport.waits, f"a reset past the bound was waited: {sum(transport.waits)}s"
+
+
+def test_other_requests_fail_at_once_past_the_hourly_allowance():
+    """PRESS-0471 and PRESS-0490 are a publish's and a fetch's: any other
+    request past the allowance still fails at once, as before."""
     transport = _Transport(rate_limited_writes=-1, rate_limit_answer=_spent_until(600))
     with pytest.raises(RateLimited):
         publisher_module.request_build("owner/name", "a-token", transport)
