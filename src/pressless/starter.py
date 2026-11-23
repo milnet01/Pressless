@@ -61,17 +61,14 @@ def header(code: str = "en") -> str:
 
 
 def navigation(code: str = "en") -> str:
-    primary = html.escape(say_in(code, "starter.menu"), quote=True)
-    return (f'  <nav class="primary" aria-label="{primary}">\n'
-            + f'    <a href="{{{{UP}}}}index.html" data-nav="{builder.HOME_NAV}">'
-            + say_in(code, "starter.home") + "</a>\n"
-            + '    <a href="{{UP}}pages/about.html" data-nav="about">'
-            + say_in(code, "starter.about") + "</a>\n  </nav>")
+    """The starter's menu: Home and About."""
+    return menu_linking([("index", say_in(code, "starter.home")),
+                         ("about", say_in(code, "starter.about"))], code)
 
 
 def menu_linking(pages: list[tuple[str, str]], code: str = "en") -> str:
-    """PRESS-0423: a menu in navigation's shape, linking each (page, words)
-    in order, for a site that holds none."""
+    """PRESS-0423: the starter's menu shape, linking each (page, words) in
+    order; navigation's, and a menu for a site that holds none."""
     primary = html.escape(say_in(code, "starter.menu"), quote=True)
     links = "".join(
         f'    <a href="{menu.address(page)}" data-nav="'

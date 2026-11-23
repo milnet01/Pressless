@@ -113,7 +113,7 @@ In this order, and the order does not change with the site's state:
    | Look | the layout's name | `/look` |
    | Menu, header and footer | — | each part's editor |
    | Files | how many files | `/files` |
-   | Visitors | the cached figure, or "Not set up yet" | `/visitors` |
+   | Visitors | the cached figure and when it was fetched, or "Not set up yet" | `/visitors` |
 
    Then the place `site-tiles`, for a part that adds a tile of its own.
    A tile's figures come from the Store and from caches. No tile reaches

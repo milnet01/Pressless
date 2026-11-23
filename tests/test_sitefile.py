@@ -4,6 +4,7 @@
 # is built in the test with zipfile.
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
@@ -71,9 +72,16 @@ def _a_file_store(monkeypatch: pytest.MonkeyPatch) -> None:
                         lambda: credentials.Choice("file", "file double"))
 
 
+def _work_left(own: Path) -> list[str]:
+    """What an open left under sites/ that is no site."""
+    held = own / "sites"
+    return sorted(path.name for path in held.iterdir()
+                  if not path.name.startswith("site-")) if held.is_dir() else []
+
+
 def _saved(tmp_path: Path) -> tuple[Path, Path]:
     own = _own(tmp_path, "from")
-    site = sites.open_site(own)
+    site = sites.current_site(own)
     _site(site)
     target = tmp_path / "saved.zip"
     sitefile.save(site, target)
@@ -194,9 +202,11 @@ def test_a_bad_file_writes_nothing(tmp_path: Path, members, manifest, link) -> N
     or one escapes the site's folder. Every bad file carries a good member
     too, so an unpacking that ran first would leave it behind."""
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
     before = _files(own)
     bad = _zip(tmp_path / "bad.zip", {"published/good.txt": b"good", **members}, manifest, link)
+    with pytest.raises(sitefile.Refused):   # the check itself, before any unpacking
+        sitefile.check(bad, 10**9)
     with pytest.raises(sitefile.Refused) as refused:
         sitefile.open_into(bad, own)
     assert str(tmp_path) not in str(refused.value)
@@ -229,7 +239,7 @@ def test_a_member_zipfile_cannot_unpack_is_refused_first(tmp_path: Path) -> None
     """§ 4.3. Breaks when a locked or oddly packed member reaches the unpack,
     where it fails as no refusal and leaves the open half done."""
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
     before = _files(own)
     packed = tmp_path / "packed.zip"
     with zipfile.ZipFile(packed, "w") as made:
@@ -248,7 +258,7 @@ def test_settings_nested_past_reading_are_refused(tmp_path: Path) -> None:
     """§ 4.4: a refusal removes the folder new_site made. Breaks when JSON
     nested past Python's depth escapes as no refusal and leaves that site."""
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
     deep = _zip(tmp_path / "deep.zip", {"settings.json": b"[" * 200_000}, GOOD)
     with pytest.raises(sitefile.Refused):
         sitefile.open_into(deep, own)
@@ -282,9 +292,11 @@ def test_a_file_with_too_many_members_is_refused(
     monkeypatch.setattr(sitefile, "MEMBERS_MOST", 2)
     own = _own(tmp_path)
     bad = _zip(tmp_path / "bad.zip", {"drafts/a": b"", "drafts/b": b""}, GOOD)
+    with pytest.raises(sitefile.Refused, match="more files than a site"):
+        sitefile.check(bad, 10**9)
     with pytest.raises(sitefile.Refused):
         sitefile.open_into(bad, own)
-    assert not (own / "sites" / ".opening").exists()
+    assert _work_left(own) == []
 
 
 def test_a_site_in_place_that_cannot_be_named_is_no_refusal(
@@ -293,7 +305,7 @@ def test_a_site_in_place_that_cannot_be_named_is_no_refusal(
     not be opened, although the site is already in place."""
     _, target = _saved(tmp_path)
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
 
     def full(own: Path, name: str) -> None:
         raise OSError(28, "No space left on device")
@@ -343,7 +355,7 @@ def test_a_file_too_big_for_the_drive_is_refused(tmp_path: Path,
                         lambda path: usage(0, 0, 1024 * 1024 * 1024 + 100))
     with pytest.raises(sitefile.Refused):
         sitefile.open_into(target, own)
-    assert not (own / "sites" / ".opening").exists()
+    assert _work_left(own) == []
 
 
 # ------------------------------------------------------------------ INV-5 ---
@@ -353,7 +365,7 @@ def test_an_opened_site_is_set_up_for_this_computer(tmp_path: Path) -> None:
     """INV-5. Breaks when the opened site reads or writes another site's key."""
     _, target = _saved(tmp_path)
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
     opened = sitefile.open_into(target, own)
     assert opened == own / "sites" / "site-2"
     loaded = settings.load(opened)
@@ -371,7 +383,7 @@ def test_opening_never_writes_over_a_site(tmp_path: Path) -> None:
     """INV-6. Breaks when a site with settings or writing is removed."""
     _, target = _saved(tmp_path)
     fresh = _own(tmp_path, "fresh")
-    unused = sites.open_site(fresh)
+    unused = sites.current_site(fresh)
     (unused / "templates").mkdir()
     (unused / "templates" / "poem.txt").write_text("seeded at launch", encoding="utf-8")
     (unused / "wizards").mkdir()
@@ -382,14 +394,14 @@ def test_opening_never_writes_over_a_site(tmp_path: Path) -> None:
     assert [path.name for path in (fresh / "sites").iterdir()] == ["site-1"]
 
     busy = _own(tmp_path, "busy")
-    first = sites.open_site(busy)
+    first = sites.current_site(busy)
     store.write(first, _entry(), draft=True)
     before = _files(first)
     assert sitefile.open_into(target, busy) == busy / "sites" / "site-2"
     assert _files(first) == before
 
     set_up = _own(tmp_path, "set-up")
-    _site(sites.open_site(set_up))
+    _site(sites.current_site(set_up))
     before = _files(set_up / "sites" / "site-1")
     assert sitefile.open_into(target, set_up) == set_up / "sites" / "site-2"
     assert _files(set_up / "sites" / "site-1") == before
@@ -402,19 +414,20 @@ def test_a_failed_rename_keeps_the_open_site(tmp_path: Path,
     the opened one is safely in its place."""
     _, target = _saved(tmp_path)
     own = _own(tmp_path)
-    current = sites.open_site(own)
+    current = sites.current_site(own)
     (current / "kept.txt").write_text("still here", encoding="utf-8")
     before = _files(current)
     real = Path.rename
 
     def fails_for_opening(self: Path, to: Path) -> Path:
-        if self.name == ".opening":
+        if self.name.startswith(".o"):   # the file, unpacked
             raise OSError("the drive went away")
         return real(self, to)
 
     monkeypatch.setattr(Path, "rename", fails_for_opening)
-    with pytest.raises(sitefile.Refused):
+    with pytest.raises(OSError) as raised:   # the drive's failure, never a refusal
         sitefile.open_into(target, own)
+    assert not isinstance(raised.value, sitefile.Refused)
     assert [path.name for path in sites.all_sites(own)] == ["site-1"]
     assert _files(current) == before
     assert sorted(path.name for path in (own / "sites").iterdir()) == ["site-1"]
@@ -426,7 +439,7 @@ def test_a_refused_open_leaves_no_new_site(tmp_path: Path,
     made. Breaks when an empty site is left in the list."""
     _, target = _saved(tmp_path)
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
 
     def refuses(folder: Path) -> settings.Settings:
         raise settings.SettingsError("made up", "repository")
@@ -435,7 +448,7 @@ def test_a_refused_open_leaves_no_new_site(tmp_path: Path,
     with pytest.raises(sitefile.Refused):
         sitefile.open_into(target, own)
     assert [path.name for path in sites.all_sites(own)] == ["site-1"]
-    assert not (own / "sites" / ".opening").exists()
+    assert _work_left(own) == []
 
 
 def test_an_unforeseen_failure_still_cleans_up(tmp_path: Path,
@@ -444,7 +457,7 @@ def test_an_unforeseen_failure_still_cleans_up(tmp_path: Path,
     the site new_site made."""
     _, target = _saved(tmp_path)
     own = _own(tmp_path)
-    store.write(sites.open_site(own), _entry(), draft=True)
+    store.write(sites.current_site(own), _entry(), draft=True)
 
     def unforeseen(folder: Path) -> settings.Settings:
         raise LookupError("made up")
@@ -453,7 +466,7 @@ def test_an_unforeseen_failure_still_cleans_up(tmp_path: Path,
     with pytest.raises(LookupError):
         sitefile.open_into(target, own)
     assert [path.name for path in sites.all_sites(own)] == ["site-1"]
-    assert not (own / "sites" / ".opening").exists()
+    assert _work_left(own) == []
 
 
 def test_a_file_dated_before_1980_is_saved(tmp_path: Path) -> None:
@@ -466,3 +479,172 @@ def test_a_file_dated_before_1980_is_saved(tmp_path: Path) -> None:
     sitefile.save(site, target)
     with zipfile.ZipFile(target) as saved:
         assert "photographs/sea.jpg" in saved.namelist()
+
+
+# ------------------------------------------------- 2026-11-23 review fixes ---
+
+
+def test_consent_to_replace_a_site_never_travels(tmp_path: Path) -> None:
+    """PRESS-0126 § 4.5. Breaks when a file from anyone arrives with the
+    starter's agreement to replace the site already on GitHub."""
+    from pressless import starter
+    site, _ = _saved(tmp_path)
+    starter.agree_to_replace(site)
+    target = tmp_path / "agreed.zip"
+    sitefile.save(site, target)
+    opened = sitefile.open_into(target, _own(tmp_path))
+    assert starter.unpublished(opened)
+    assert not starter.replace_agreed(opened)
+
+
+def test_consent_is_dropped_from_a_site_saved_before_setup(tmp_path: Path) -> None:
+    """Breaks when the consent is dropped only where the file holds settings."""
+    from pressless import starter
+    agreed = _zip(tmp_path / "agreed.zip", {"starter-unpublished": b"replace\n",
+                                             "drafts/x.txt": b"x"}, GOOD)
+    opened = sitefile.open_into(agreed, _own(tmp_path))
+    assert starter.unpublished(opened) and not starter.replace_agreed(opened)
+
+
+@pytest.mark.parametrize("held", ["not json {", "[]"])
+def test_a_site_whose_settings_are_unreadable_still_saves(tmp_path: Path, held: str) -> None:
+    """Breaks when a damaged settings file stops the site being saved or
+    backed up at all, just when something on disk is already wrong."""
+    site = tmp_path / "site"
+    _site(site)
+    (site / "settings.json").write_text(held, encoding="utf-8")
+    target = tmp_path / "saved.zip"
+    sitefile.save(site, target)
+    with zipfile.ZipFile(target) as saved:
+        assert "settings.json" not in saved.namelist()
+        assert "drafts/half-a-thought.txt" in saved.namelist()
+
+
+def test_a_drive_failure_while_opening_is_no_refusal(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when the drive failing after the file is unpacked is reported
+    as the file being refused, and the reason lost."""
+    _, target = _saved(tmp_path)
+    own = _own(tmp_path)
+    store.write(sites.current_site(own), _entry(), draft=True)
+
+    def full(own: Path) -> Path:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(sites, "new_site", full)
+    with pytest.raises(OSError) as raised:
+        sitefile.open_into(target, own)
+    assert not isinstance(raised.value, sitefile.Refused)
+    assert sorted(path.name for path in (own / "sites").iterdir()) == ["site-1"]
+
+
+def test_a_save_with_no_room_writes_nothing(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when a save fills the drive to nothing before it fails, so every
+    other write in that moment fails too."""
+    site = tmp_path / "site"
+    _site(site)
+    folder = tmp_path / "out"
+    folder.mkdir()
+    usage = namedtuple("usage", "total used free")
+    monkeypatch.setattr(shutil, "disk_usage", lambda path: usage(0, 0, 1024 * 1024 * 1024 + 10))
+    written: list[Path] = []
+    monkeypatch.setattr(sitefile, "save", lambda site, target: written.append(target))
+    with pytest.raises(OSError) as raised:
+        sitefile.save_part(site, folder)
+    assert raised.value.errno == errno.ENOSPC
+    assert written == [] and list(folder.iterdir()) == []
+
+
+def test_a_save_whose_rename_fails_leaves_nothing(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when a save that cannot take its name leaves the whole site,
+    drafts included, in a half-made file."""
+    site = tmp_path / "site"
+    _site(site)
+    folder = tmp_path / "out"
+    folder.mkdir()
+
+    def refuses(self: Path, to: Path) -> Path:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(Path, "rename", refuses)
+    with pytest.raises(PermissionError):
+        sitefile.save_as(site, folder / "kept.zip")
+    assert list(folder.iterdir()) == []
+
+
+def test_photographs_and_files_are_packed_after_the_lock_is_let_go(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """PRESS-0224 § 4.2. Breaks when the editor's lock is held while the
+    photographs are packed, so every save and publish waits for the whole
+    zip; or when what is packed then is not what the lock saw."""
+    from pressless import editor
+    site = tmp_path / "sites" / "site-1"
+    _site(site)
+    locked: dict[str, bool] = {}
+    write = zipfile.ZipFile.write
+
+    def noting(made: zipfile.ZipFile, filename: object, arcname: str | None = None,
+               *args: object, **kwargs: object) -> None:
+        locked[arcname] = editor.LOCK.locked()
+        if arcname == "photographs/sea.jpg":   # moved away once the lock is free
+            (site / "photographs" / "sea.jpg").unlink()
+        write(made, filename, arcname, *args, **kwargs)
+
+    monkeypatch.setattr(zipfile.ZipFile, "write", noting)
+    target = tmp_path / "saved.zip"
+    sitefile.save(site, target)
+    assert locked["photographs/sea.jpg"] is False and locked["files/notes.pdf"] is False
+    assert locked["drafts/half-a-thought.txt"] is True
+    with zipfile.ZipFile(target) as saved:
+        assert saved.read("photographs/sea.jpg") == "\xff\xd8 not really a photograph".encode()
+    assert sorted(path.name for path in (tmp_path / "sites").iterdir()) == ["site-1"]
+
+
+def test_a_drive_that_cannot_link_packs_everything_under_the_lock(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when a drive with no hard links, such as exFAT, stops a save,
+    or leaves the links' folder behind."""
+    from pressless import editor
+    site = tmp_path / "sites" / "site-1"
+    _site(site)
+
+    def no_links(source: object, link: object) -> None:
+        raise OSError(1, "Operation not permitted")
+
+    monkeypatch.setattr(os, "link", no_links)
+    locked: dict[str, bool] = {}
+    write = zipfile.ZipFile.write
+
+    def noting(made: zipfile.ZipFile, filename: object, arcname: str | None = None,
+               *args: object, **kwargs: object) -> None:
+        locked[arcname] = editor.LOCK.locked()
+        write(made, filename, arcname, *args, **kwargs)
+
+    monkeypatch.setattr(zipfile.ZipFile, "write", noting)
+    target = tmp_path / "saved.zip"
+    sitefile.save(site, target)
+    assert locked["photographs/sea.jpg"] is True
+    with zipfile.ZipFile(target) as saved:
+        assert "photographs/sea.jpg" in saved.namelist()
+    assert sorted(path.name for path in (tmp_path / "sites").iterdir()) == ["site-1"]
+
+
+def test_a_file_unpacks_under_a_name_no_longer_than_a_site(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when the unpacking folder's name is longer than site-1's, so a
+    file whose deepest member fits on Windows is refused there."""
+    _, target = _saved(tmp_path)
+    own = _own(tmp_path)
+    unpack = sitefile._unpack
+    into: list[str] = []
+
+    def noting(source: Path, opening: Path) -> None:
+        into.append(opening.name)
+        unpack(source, opening)
+
+    monkeypatch.setattr(sitefile, "_unpack", noting)
+    sitefile.open_into(target, own)
+    assert len(into) == 1 and len(into[0]) <= len("site-1")
+    assert _work_left(own) == []

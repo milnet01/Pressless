@@ -185,7 +185,7 @@ def main() -> int:
     # PRESS-0223: the practice site is site-1, like any other; an older
     # practice copy's is moved in first, so it is not seeded twice.
     sites.move_in(folder)
-    site = sites.open_site(folder)
+    site = sites.current_site(folder)
     if not (site / settings.FILE_NAME).exists():
         seed(site)
     disarm()

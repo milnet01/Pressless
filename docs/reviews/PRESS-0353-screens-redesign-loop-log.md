@@ -8,3 +8,4 @@
 |------|------|-------|----|----|----|----|---------|
 | amend | 2026-11-17 | none: PRESS-0383 and PRESS-0366; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: `overview._site_line`; the count line and Publish's nothing answer say where waiting changes go. |
 | amend | 2026-11-17 | none — PRESS-0372; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: `editor.undo_row`, now public. |
+| amend | 2026-11-23 | none — PRESS-0449; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: the Visitors tile says when its figure was fetched. |

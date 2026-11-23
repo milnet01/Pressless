@@ -25,7 +25,8 @@ CACHE_VERSION = 1
 MAX_KEPT = 30 * 24 * 3600.0     # YouTube's limit on keeping statistics
 _CLOCK_SLIP = 24 * 3600.0       # a kept reply this far ahead has no honest age
 PAGE_SIZE = 50                  # the most playlistItems.list gives at once
-# Ten pages of ids and ten of figures: 21 of a default 10,000 units a day.
+# One unit per call: the channel, then a page of ids and a page of figures per
+# PAGE_SIZE videos, against a default 10,000 units a day.
 VIDEO_LIMIT = 500
 
 _HANDLE = r"@[^\s/?#&<>\"']{1,100}"
@@ -263,7 +264,7 @@ def _failure(status: int, data: bytes) -> YouTubeError:
     detail = insights.detail(data)
     if status == 429 or (status == 403 and b"quotaExceeded" in data):
         return RateLimited("YouTube's allowance for the day is used up", detail)
-    if status in (400, 401, 403):
+    if status in (400, 401, 403):   # YouTube answers a bad key with 400 (PRESS-0081)
         return Refused(f"YouTube refused the key ({status})", detail)
     return YouTubeError(f"YouTube answered {status}", detail)
 

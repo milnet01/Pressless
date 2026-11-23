@@ -79,21 +79,23 @@ OPEN_FILE = "sites.json"
 SITE_NAMES = frozenset({...})     # § 4.2: what belongs to a site
 MACHINE_NAMES = frozenset({...})  # § 4.2: what belongs to the machine
 
-def open_site(own: Path) -> Path: ...      # the open site's folder, created
+def current_site(own: Path) -> Path: ...      # the open site's folder, created
 def all_sites(own: Path) -> list[Path]: ... # site-1, site-2, ... in number order
 def new_site(own: Path) -> Path: ...       # creates site-<highest ever made + 1>
 def choose(own: Path, site: str) -> None:  # writes OPEN_FILE
 def move_in(own: Path) -> OSError | None: ...  # § 4.3
 ```
 
-`open_site` reads `OPEN_FILE`. Where it is missing, not JSON, or names
+`current_site` reads `OPEN_FILE`. Where it is missing, not JSON, or names
 a folder that is not under `sites/`, it opens the lowest-numbered site,
 creating `site-1` where there is none, and writes `OPEN_FILE`. Where it
 cannot be read now (an `OSError`), the lowest site opens and the file is
 left as it is.
 
-`new_site` keeps the highest number it made as `made`, so a removed
-site's number, and with it its keys and backups, never goes to another. A name
+`new_site` keeps the highest number it made as `made`, and `remove`
+leaves an empty `sites/.gone-site-N` file for good, so a removed site's
+number, and with it its keys and backups, never goes to another, even
+where `sites.json` is damaged. A name
 is accepted only where it matches `site-[1-9][0-9]*`, so no value in the
 file can reach outside `sites/`.
 
@@ -130,7 +132,7 @@ only, prints it and stops with exit code 1.
 
 ### 4.4 Handing folders to the parts
 
-`_serve_once` takes `site = sites.open_site(own)` at the top of each
+`_serve_once` takes `site = sites.current_site(own)` at the top of each
 pass, so a restart opens whichever site `OPEN_FILE` now names.
 
 - **`own`** goes to `face.serve` (the log and the theme),
@@ -198,7 +200,7 @@ again with a hint, and nothing changes.
 
 ## 5. Invariants
 
-- **INV-1** — `sites.open_site` returns `<own>/sites/site-1`, creating
+- **INV-1** — `sites.current_site` returns `<own>/sites/site-1`, creating
   it, for an empty folder; returns `site-2` where `OPEN_FILE` names it
   and it exists; and returns the lowest site for an `OPEN_FILE` naming
   `../x`, `site-0`, `site-9` where absent, or holding bytes that are not
@@ -259,7 +261,7 @@ INV-1 and INV-8 hold it to `site-N` under `sites/`.
   opens setup. Nothing is lost: the site is in `sites/site-1`, and
   moving its contents back to the top restores it. The README's
   upgrading section says so.
-- **A site folder deleted by hand** while another is open: `open_site`
+- **A site folder deleted by hand** while another is open: `current_site`
   opens the lowest remaining one, or makes `site-1`.
 - **A switch while a publish runs**: the restart already waits on
   `editor.LOCK` before stopping the Face (PRESS-0203).

@@ -673,7 +673,7 @@ def test_site_file_renames_the_account(tmp_path: Path) -> None:
     site would read the first site's key."""
     own = tmp_path / "from"
     own.mkdir()
-    site = sites.open_site(own)
+    site = sites.current_site(own)
     plain = _saved(site)
     settings.save(site, dataclasses.replace(
         plain, youtube_channel=HANDLE,

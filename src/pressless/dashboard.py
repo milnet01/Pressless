@@ -1,8 +1,8 @@
 """The dashboard (PRESS-0020): how many people read the site, and from where.
 
-A Face page. It asks `google_setup.token` for an access token and
-`insights.read` for the numbers, and turns every failure into the Face's
-sentence. Nothing about writing or publishing depends on it (ADR-0005): the
+A Face page. It answers from a fresh cache, else asks `google_setup.token`
+for an access token and `insights.read` for the numbers, and turns every
+failure into the Face's sentence. Nothing about writing or publishing depends on it (ADR-0005): the
 Visitors tile on Your site, drawn by `overview.py`, reads only the cache, so
 Your site never waits on Google.
 
@@ -131,22 +131,29 @@ def figures(folder: Path, days: int, *, client: insights.Transport | None = None
     """The figures `_show` shows, for the AI door (PRESS-0337 § 4.5), with the
     Google token fetched here so it never reaches the caller. A `days` value
     outside WINDOWS is answered as the default, as the page does. Raises
-    NotConfigured where the dashboard was never set up."""
+    NotConfigured where the dashboard was never set up; what `settings.load`,
+    the token and `insights.read` raise passes through, and the door says
+    each."""
     days = _days(str(days))
     saved = settings.load(folder)
     if not set_up(saved):
         raise insights.NotConfigured(
             "no Analytics property id or no Google sign-in in Settings")
-    token = _token(folder, days)
-    if isinstance(token, insights.Report):
-        return token
-    return insights.read(saved, token, folder, days=days, client=client)
+    got = _kept_or_token(folder, days, client)
+    if isinstance(got, insights.Report):
+        return got
+    return insights.read(saved, got, folder, days=days, client=client)
 
 
-def _token(folder: Path, days: int) -> str | insights.Report:
-    """A Google token, or, where Google cannot be reached for one, the last
-    reply kept for the window. Raises Unreachable where none is kept. The page
-    and `figures` both start here, so they fall back alike."""
+def _kept_or_token(folder: Path, days: int,
+                   client: insights.Transport | None) -> insights.Report | str:
+    """The reply kept for the window where it is fresh, so no token is asked
+    for; else a Google token; else, where Google cannot be reached for one,
+    the last reply kept, marked stale. Raises Unreachable where none is kept.
+    The page and `figures` both start here, so they answer alike."""
+    held = insights.fresh(folder, days, client=client)
+    if held is not None:
+        return held
     try:
         return google_setup.token(folder)
     except insights.Unreachable:
@@ -181,18 +188,18 @@ def _show(face: Face, folder: Path, request: Request,
         return shown + head + f'<p>{say("dashboard.off", page=google_setup.PAGE)}</p>'
     head += _windows(days)
     try:
-        token = _token(folder, days)
+        got = _kept_or_token(folder, days, client)
     except insights.Unreachable as exc:
         return shown + head + face.fail(exc, publishing=False)
     except (insights.InsightsError, *credentials.FAILURES) as exc:
         return (shown + head
                 + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
                 + _sign_in_again())
-    if isinstance(token, insights.Report):
-        report = token
+    if isinstance(got, insights.Report):
+        report = got
     else:
         try:
-            report = insights.read(saved, token, folder, days=days, client=client)
+            report = insights.read(saved, got, folder, days=days, client=client)
         except insights.Refused as exc:
             return (shown + head
                     + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
@@ -216,7 +223,8 @@ def _windows(days: int) -> str:
 def _report(report: insights.Report, address: str = "") -> str:
     fetched = when(report.fetched_at)
     if report.stale:
-        updated = f'<p>{say("dashboard.stale", when=fetched)}</p>'
+        # Stale after a refusal too (PRESS-0019 § 4.4), so the way back shows.
+        updated = f'<p>{say("dashboard.stale", when=fetched)}</p>' + _sign_in_again()
     else:
         updated = f'<p>{say("dashboard.updated", when=fetched)}</p>'
     window = sentence(report.days)
@@ -247,8 +255,8 @@ def _strip(days: tuple[insights.Day, ...]) -> str:
     by = say("dashboard.each_month" if len(days[0].label) == 7 else "dashboard.each_day")
     by = html.escape(by, quote=True)
     return (f'<ol class="strip" aria-label="{by}">{"".join(bars)}</ol>'
-            f'<p class="strip-ends"><span>{_day_name(days[0].label)}</span>'
-            f"<span>{_day_name(days[-1].label)}</span></p>")
+            f'<p class="strip-ends"><span>{html.escape(_day_name(days[0].label))}</span>'
+            f"<span>{html.escape(_day_name(days[-1].label))}</span></p>")
 
 
 def _day_name(label: str) -> str:
@@ -326,7 +334,7 @@ def _sources(sources: tuple[insights.Source, ...]) -> str:
     for source in sources:
         key = _CHANNELS.get(source.channel)
         how = html.escape(say(key) if key else source.channel)
-        where = "" if source.source in ("(direct)", "(not set)", "") else source.source
+        where = "" if source.source in ("(direct)", insights.NOT_SET, "") else source.source
         if source.channel.endswith("Search") and "." not in where:
             where = where.title()   # "google" is an engine's name, so "Google"
         detail = f"<small>{html.escape(where)}</small>" if where else ""
