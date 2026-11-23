@@ -90,7 +90,10 @@ The request: `POST RELAY`, `Content-Type: application/json`, body
 ```
 
 `log` and `old` are each file read as UTF-8 with `errors="replace"`, "" where
-absent. `system` is `usage.system()`, cut to 128 characters. A body over `LARGEST` sends the newest
+absent, with known secret shapes (GitHub and Google tokens, bearer
+tokens, private-key blocks) replaced by `[removed]`: a guard behind
+PRESS-0003 § 10, which keeps them out of the log in the first place.
+`system` is `usage.system()`, cut to 128 characters. A body over `LARGEST` sends the newest
 part of each file that fits. The answer `200 {"reference": "K7Q2MX"}` gives
 the reference; any other answer, or none, raises `LogNotSent`. Its words
 say the log was not sent and to try again later. The press is logged with
@@ -104,28 +107,35 @@ repository: `APP_KEY` (the App's private key as PKCS#8 PEM; GitHub issues
 PKCS#1, which Web Crypto refuses). Plain variables:
 `APP_ID`, `INSTALLATION_ID`, `REPOSITORY`.
 
-`POST /log` only; anything else answers 404. In order:
+`POST /log` only; anything else answers 404. A `Content-Type` other than
+`application/json` answers 415, before the rate limit: a page on another
+site can post `text/plain` with no preflight, and a refusal then uses no
+visitor's send. In order:
 
 1. **Rate limit**: Cloudflare's rate-limiting binding, keyed by the
-   `CF-Connecting-IP` header, one send per 60 seconds. The binding's period
+   `CF-Connecting-IP` header, an IPv6 address by its /64, one send per 60 seconds. The binding's period
    is 10 or 60 seconds, and its counts are approximate and per Cloudflare
    location. Over → 429.
 2. **Size**: a body over 2.2 MiB → 413, read no further.
 3. **Shape**: JSON with string `version` (at most 32 characters, digits,
-   dots, letters and `-`), string `system` (at most 128), strings `log` and
+   dots, letters and `-`), string `system` (at most 128 code points, as
+   Python counts them), strings `log` and
    `old` → else 400.
 4. **Token**: a JWT signed RS256 with `APP_KEY` (Web Crypto), exchanged at
    `POST /app/installations/{INSTALLATION_ID}/access_tokens` for a token
    limited to `contents: write, issues: write`.
 5. **Files**: the reference is six characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
    `PUT /repos/{REPOSITORY}/contents/logs/{reference}/pressless.log` and
-   `.../pressless.log.1`, each base64.
+   `.../pressless.log.1`, each base64. A 422 on the first means the path
+   exists: one new reference, once.
 6. **Issue**: `POST /repos/{REPOSITORY}/issues`, title
    `Log {reference}: Pressless {version} on {system}`, body naming both
    files' paths and the last 100 lines of `log`, cut to their last 60,000
-   characters, in a fenced block.
+   characters, in a fenced block. Where the fences would push it past
+   60,000, it keeps its newest half until it fits.
 7. Answer `200 {"reference"}`. A GitHub failure at 4 to 6 → 502, logging
-   the status and never the body.
+   the status and never the body. Files step 5 wrote are deleted first; a
+   file that cannot be is named by its folder in that log line.
 
 ### 4.4 Setting the relay up once
 

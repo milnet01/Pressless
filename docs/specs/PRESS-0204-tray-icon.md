@@ -126,9 +126,10 @@ the old process's bus connection and the new process makes its own.
   `packaging/icons/pressless.ico`), a tooltip, and a callback message.
 - Left click: Open. Right click: a popup menu with the three entries,
   after `SetForegroundWindow`, so the menu closes on a click elsewhere.
-- `close()` posts `WM_CLOSE`: `NIM_DELETE`, then the window and its
-  thread end. Without `NIM_DELETE` a stale icon stays until the pointer
-  passes over it.
+- `close()` posts a private message (`WM_APP + 2`): `NIM_DELETE`, then
+  the window and its thread end. Without `NIM_DELETE` a stale icon stays
+  until the pointer passes over it. A `WM_CLOSE` from another program is
+  ignored, so it cannot take the icon from a Pressless still running.
 
 ### 4.6 Linux
 
@@ -151,9 +152,11 @@ connection:
 - **No watcher yet** (Plasma starting late, or restarted): watch
   `NameOwnerChanged` for `org.kde.StatusNotifierWatcher` and register when
   it appears. `start()` still returns True.
-- The thread waits in short spells (`receive` with a timeout), so
-  `close()` ends it without a second connection. Closing the connection
-  releases the name, and the watcher drops the item.
+- The thread sleeps in `receive` until a message comes; `close()` shuts
+  the socket to wake it, so it needs no second connection and no timed
+  wake-ups. Closing the connection releases the name, and the watcher
+  drops the item. A message the item cannot read is answered
+  `InvalidArgs`, and the thread carries on.
 
 Measured 2026-11-18 on Plasma 6 under Wayland, with `jeepney` 0.9.0 alone
 and a throwaway probe: the watcher listed the item, and the tray called

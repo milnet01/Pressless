@@ -24,10 +24,24 @@ if TYPE_CHECKING:
 ADDRESS = "/log/send"
 # Public, not a secret: anyone may post a log to it, within its limits.
 RELAY = "https://pressless-logs.pressless-logs.workers.dev/log"
+# Never above the relay's own LARGEST (relay/src/index.js), or every large
+# log is refused; tests/test_sendlog.py reads that file to check it.
 LARGEST = 2 * log.MAX_BYTES + 65_536
 TIMEOUT_SECONDS = 60.0
 _SYSTEM_LONGEST = 128               # the relay refuses a longer one
+# The relay's ALPHABET and length; tests/test_sendlog.py checks they agree.
 _REFERENCE = re.compile(r"[A-HJ-NP-Z2-9]{6}")
+# Secret shapes no log line should hold (design.md § Logging), removed in
+# case one slipped through: GitHub and Google tokens, bearer tokens, keys.
+_KEY = "PRI" + "VATE KEY"    # spelt apart: no file here holds a key header
+_SECRETS = re.compile(
+    rf"-----BEGIN [A-Z ]*{_KEY}-----.*?-----END [A-Z ]*{_KEY}-----"
+    r"|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"
+    r"|AIza[0-9A-Za-z_-]{30,}|ya29\.[0-9A-Za-z._-]{10,}|1//[0-9A-Za-z_-]{20,}"
+    r"|sk-[A-Za-z0-9_-]{20,})"
+    r"|(?<=Bearer )[A-Za-z0-9._~+/=-]{8,}",
+    re.DOTALL | re.IGNORECASE)
+REMOVED = "[removed]"
 
 
 class LogNotSent(PublishError):
@@ -42,10 +56,12 @@ class Transport(Protocol):
 
 
 def _read(path: Path) -> str:
+    """The file's text with any secret shape removed; "" where unreadable."""
     try:
-        return path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
+    return _SECRETS.sub(REMOVED, text)
 
 
 def _newest(text: str, drop: int) -> str:

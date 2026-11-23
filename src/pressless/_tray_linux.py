@@ -11,7 +11,9 @@ https://docs.rs/crate/ksni/0.3.3/source/spec/DBusMenu.xml
 """
 from __future__ import annotations
 
+import contextlib
 import os
+import socket
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -39,9 +41,10 @@ _WATCHER = DBusAddress("/StatusNotifierWatcher", bus_name=_WATCHER_NAME,
                        interface=_WATCHER_NAME)
 _UNKNOWN_METHOD = "org.freedesktop.DBus.Error.UnknownMethod"
 _UNKNOWN_PROPERTY = "org.freedesktop.DBus.Error.UnknownProperty"
+_INVALID_ARGS = "org.freedesktop.DBus.Error.InvalidArgs"
 _PRIMARY_OWNER = 1          # RequestName's reply when the name is ours
 _SIZES = (22, 44)           # measured on Plasma 6: the panel's size and twice it
-_SPELL = 0.25               # seconds per wait, so close() is seen promptly
+_START_WAIT = 10.0          # seconds for the bus to answer a start call
 _ICON = "pressless.png"     # inside the AppImage, as shortcuts._ICON
 _SOURCE_ICON = Path(__file__).resolve().parents[2] / "packaging" / "icons" / _ICON
 
@@ -73,6 +76,7 @@ class Icon:
         self._thread: threading.Thread | None = None
         self._name = f"{_ITEM}-{os.getpid()}-1"
         self._properties: dict[str, tuple[str, object]] = {}
+        self._conn: DBusConnection | None = None
 
     def start(self) -> None:
         """Register the item, or wait for a watcher to appear. Raises where
@@ -82,18 +86,27 @@ class Icon:
         pixmaps = [_pixmap(image, size) for size in _SIZES]
         conn = open_dbus_connection(bus="SESSION")
         try:
-            reply = conn.send_and_get_reply(message_bus.RequestName(self._name))
+            reply = conn.send_and_get_reply(message_bus.RequestName(self._name),
+                                            timeout=_START_WAIT)
             if reply.header.message_type is MessageType.error or reply.body[0] != _PRIMARY_OWNER:
                 raise OSError(f"the bus name was refused: {reply.body!r}")
             # Plasma starting late, or restarted: register when a watcher appears.
             rule = MatchRule(type="signal", sender="org.freedesktop.DBus",
                              interface="org.freedesktop.DBus", member="NameOwnerChanged")
             rule.add_arg_condition(0, _WATCHER_NAME)
-            conn.send_and_get_reply(message_bus.AddMatch(rule))
+            conn.send_and_get_reply(message_bus.AddMatch(rule), timeout=_START_WAIT)
+            self._properties = self._table(pixmaps)
+            self._register(conn)
         except BaseException:
             conn.close()
             raise
-        self._properties = {
+        self._conn = conn
+        self._thread = threading.Thread(target=self._serve, args=(conn,),
+                                        name="pressless-tray", daemon=True)
+        self._thread.start()
+
+    def _table(self, pixmaps: list[tuple[int, int, bytes]]) -> dict[str, tuple[str, object]]:
+        return {
             "Category": ("s", "ApplicationStatus"),
             "Id": ("s", "pressless"),
             "Title": ("s", "Pressless"),
@@ -105,15 +118,15 @@ class Icon:
             "ItemIsMenu": ("b", False),     # so a left click sends Activate
             "Menu": ("o", _MENU_PATH),
         }
-        self._register(conn)
-        self._thread = threading.Thread(target=self._serve, args=(conn,),
-                                        name="pressless-tray", daemon=True)
-        self._thread.start()
 
     def close(self) -> None:
         """End the thread, which closes the connection: the bus then
-        releases the name and the watcher drops the item."""
+        releases the name and the watcher drops the item. Shutting the
+        socket wakes the thread, which otherwise sleeps until a call."""
         self._closing.set()
+        if self._conn is not None:
+            with contextlib.suppress(OSError):
+                self._conn.sock.shutdown(socket.SHUT_RDWR)
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=5)
@@ -128,13 +141,16 @@ class Icon:
     def _serve(self, conn: DBusConnection) -> None:
         try:
             while not self._closing.is_set():
+                message = conn.receive()
                 try:
-                    message = conn.receive(timeout=_SPELL)
-                except TimeoutError:
-                    continue
-                self._take(conn, message)
+                    self._take(conn, message)
+                except OSError:
+                    raise
+                except Exception:  # noqa: BLE001 -- one odd message never ends the tray
+                    if message.header.message_type is MessageType.method_call:
+                        conn.send(new_error(message, _INVALID_ARGS))
         except OSError:
-            pass    # the bus went away: there is no tray to serve
+            pass    # the bus went away, or close(): there is no tray to serve
         finally:
             conn.close()
 
