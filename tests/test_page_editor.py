@@ -326,6 +326,9 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
         assert reply["waiting"] is True, (name, reply)
         if name == "unknown":
             assert "Your changes were published" not in html.unescape(reply["notices"]), reply
+        # Why it was left is in the log, for Send my log.
+        log = (folder / "pressless.log").read_text(encoding="utf-8")
+        assert "the bin is not writable" in log, name
 
 
 # ----------------------------------------------------------------- INV-12 ---
@@ -1424,3 +1427,19 @@ def test_what_changes_on_a_choice_sits_below_the_controls(tmp_path):
     for control in ('data-act="up"', 'data-act="down"', 'data-act="remove"',
                     'data-act="move-to"', 'id="panel-said"'):
         assert panel.index(control) < fields, control
+
+
+def test_a_refused_post_is_not_quoted_into_the_log():
+    """What a refused save says goes to Show details and the log, which Send
+    my log sends; it names what was wrong, never the posted words. Breaks
+    when a refusal quotes the post, unbounded."""
+    words = "words typed into the page " * 50
+    for posted, removed in (([words], []), ([{"kind": "text", "fields": words}], []),
+                            ([{"keep": [words]}], [])):
+        with pytest.raises(page_editor.SectionsUnreadable) as refused:
+            page_editor.put_sections("coded", CODED, posted, removed)
+        assert "words typed" not in str(refused.value)
+    for posted in ([words], [{"at": words, "words": "a", "href": "#"}]):
+        with pytest.raises(menu.Refused) as refused:
+            menu.arranged(starter.navigation(), posted)
+        assert "words typed" not in str(refused.value)

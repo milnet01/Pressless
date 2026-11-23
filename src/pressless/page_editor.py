@@ -48,6 +48,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    details_for,
     gatherer,
     message_box,
     nothing_captured,
@@ -160,7 +161,7 @@ def _path(value: object, held: dict) -> tuple[int, ...]:
     if (not isinstance(value, list) or len(value) not in (1, 3)
             or not all(isinstance(at, int) and not isinstance(at, bool) for at in value)
             or tuple(value) not in held):
-        raise SectionsUnreadable(f"{value!r} names no section of the page")
+        raise SectionsUnreadable("a kept section's path names no section of the page")
     return tuple(value)
 
 
@@ -175,7 +176,7 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
 
     def built(item: object) -> blocks.Section:
         if not isinstance(item, dict):
-            raise SectionsUnreadable(f"{item!r} is not a section")
+            raise SectionsUnreadable(f"a posted {type(item).__name__} is not a section")
         if "keep" in item:
             path = _path(item["keep"], held)
             kept.append(path)
@@ -188,7 +189,7 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
         fields, parts = item.get("fields", {}), item.get("parts", [])
         if (not isinstance(fields, dict) or not isinstance(parts, list)
                 or not all(isinstance(part, list) for part in parts)):
-            raise SectionsUnreadable(f"{item!r} is not a section")
+            raise SectionsUnreadable("a posted section's fields or parts are not a section's")
         fields = dict(fields)
         for field in ("html", "caption"):
             if field in fields:
@@ -874,7 +875,8 @@ def press_page(folder: Path, form: dict[str, str], *,
 
 def _press_written(folder: Path, kind: str, name: str, new: str, *,
                    capture: Callable[[], AbstractContextManager[list[str]]],
-                   notices: list, transport: publisher.Transport | None
+                   notices: list, transport: publisher.Transport | None,
+                   noted: Callable[[str], None] = lambda _line: None
                    ) -> publishing.Published:
     """`press_page` after its write, which the screen's press splits from the
     write to answer each failure differently. Adds the menu's notices, and the
@@ -882,7 +884,8 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
 
     The waiting copy goes to the bin when the publish succeeds, and when its
     outcome is unknown (through `unknown`), since the site may hold it. On any
-    other failure everything is put back and the copy stays (§ 4.7 step 5)."""
+    other failure everything is put back and the copy stays (§ 4.7 step 5).
+    Why a copy could not be binned goes to `noted`, the Face's log."""
     said: list[str] = []
     gathered = gatherer(capture, notices)
     copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -892,7 +895,8 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
         binned and is left behind."""
         try:
             gathered(lambda: store.move_to_bin(folder, copy))
-        except Exception:  # noqa: BLE001 -- never replaces the publish's result
+        except Exception as exc:  # noqa: BLE001 -- never replaces the publish's result
+            noted(details_for(exc))
             return True
         return False
 
@@ -947,7 +951,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             return editor.failed(face, notices, exc)
         try:
             _press_written(folder, kind, name, new, capture=face.capture, notices=notices,
-                           transport=transport)
+                           transport=transport, noted=face.note)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = publishing.press_failure(face, exc)
             published = False

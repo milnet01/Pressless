@@ -238,14 +238,14 @@ def arranged(text: str, posted: object) -> str:
     pieces, seen = [], set()
     for entry in posted:
         if not isinstance(entry, dict):
-            raise Refused(f"{entry!r} is not a menu link")
+            raise Refused(f"a posted {type(entry).__name__} is not a menu link")
         at, words, address = entry.get("at"), entry.get("words"), entry.get("href")
         if not isinstance(words, str) or not isinstance(address, str):
             raise Refused("a menu link needs words and an address")
         words = words.strip()
         if at is not None and (not isinstance(at, int) or isinstance(at, bool)
                                or not 0 <= at < len(held) or at in seen):
-            raise Refused(f"the menu save names link {at!r} wrongly")
+            raise Refused("the menu save names a link wrongly")
         # Only what the save changes is checked: a kept link, such as a logo
         # with no words, passes as it was given.
         given = read[at] if at is not None else None
