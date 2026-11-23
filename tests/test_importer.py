@@ -1059,6 +1059,62 @@ def test_an_export_of_tiny_elements_is_refused_as_it_is_read(tmp_path, monkeypat
         pressless_import.read(export)
 
 
+def test_an_export_dense_in_attributes_is_refused_as_it_is_read(tmp_path):
+    """PRESS-0125 § 4.3: each attribute counts against the bound as an
+    element does, since each costs the tree an entry of its own.
+
+    Breaks when only elements are counted, so one element holding a great
+    many attributes builds a tree many times the file's size."""
+    valid = _export(_item(1, slug="one"))
+    attributes = " ".join(f'a{n}=""' for n in range(200_000))
+    export = tmp_path / "export.xml"
+    export.write_text(valid.replace("</channel>", f"<x {attributes}/></channel>", 1),
+                      encoding="utf-8")
+
+    with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
+        pressless_import.read(export)
+
+
+@pytest.mark.parametrize("encoding", ["Shift_JIS", "no-such-encoding"])
+def test_an_export_in_an_encoding_the_reader_lacks_is_refused(tmp_path, encoding):
+    """PRESS-0125 § 4.3: an export declaring an encoding the XML reader
+    cannot read, a multi-byte one or an unknown name, is refused with the
+    sentence every unreadable export gets.
+
+    Breaks when `read` catches only ParseError, so the reader's ValueError or
+    LookupError escapes every caller as an unexplained failure."""
+    rest = _export(_item(1, slug="one")).split("\n", 1)[1]
+    export = tmp_path / "export.xml"
+    export.write_text(f'<?xml version="1.0" encoding="{encoding}"?>\n' + rest,
+                      encoding="utf-8")
+
+    with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
+        pressless_import.read(export)
+
+
+def test_reading_an_export_never_holds_the_whole_file(tmp_path):
+    """PRESS-0125 § 4.3: the export is fed to the parser a piece at a time
+    from the file, so reading it takes its tree and one piece, not its tree
+    and the whole file besides.
+
+    Breaks when `read` reads the file whole before parsing it."""
+    import tracemalloc
+
+    body = "<p>" + "word " * (4 * 1024 * 1024) + "</p>"
+    export = tmp_path / "export.xml"
+    export.write_text(_export(_item(1, slug="one", body=body)), encoding="utf-8")
+    size = export.stat().st_size
+
+    tracemalloc.start()
+    try:
+        pressless_import.read(export)
+        _now, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    # The body's text is in the tree once; the whole file again would double it.
+    assert peak < size * 1.5, f"reading a {size}-byte export peaked at {peak} bytes"
+
+
 def test_a_post_body_naming_a_doctype_is_still_read(tmp_path):
     """The refusal reads the prolog, not the body: a post quoting an HTML
     page's `<!DOCTYPE html>` inside its CDATA is still an export."""

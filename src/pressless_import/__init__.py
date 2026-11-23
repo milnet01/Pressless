@@ -175,11 +175,14 @@ class Export:
 
 # Before the root element: space, the XML declaration, and comments.
 _PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->", re.S)
-# An export may hold one element for each of these bytes, and a few more.
+# An export may hold one element for each of these bytes, and a few more;
+# each attribute counts as an element, since each costs the tree an entry.
 # The test suite's exports take about twice as many bytes for each, and
 # each element read takes some ninety bytes of memory (measured
-# 2026-11-17). So a tree is never many times what a real export of its size
-# takes, as a file of empty elements would build (PRESS-0125 § 4.3).
+# 2026-11-17); a real export takes over fifty bytes for each element or
+# attribute (measured 2026-11-23). So a tree is never many times what a
+# real export of its size takes, as a file of empty elements, or of one
+# element with endless attributes, would build (PRESS-0125 § 4.3).
 _BYTES_PER_ELEMENT = 24
 _FEW_ELEMENTS = 10_000
 _PIECE = 1 << 20
@@ -198,32 +201,37 @@ def _declares(data: bytes) -> bool:
 
 def read(export: Path) -> Export:
     """The export, refused before parsing where it declares anything
-    (PRESS-0125 § 4.3)."""
+    (PRESS-0125 § 4.3). It is fed to the parser a piece at a time from the
+    file, so only its tree is ever held whole."""
     export = Path(export)
-    try:
-        data = export.read_bytes()
-    except OSError as exc:
-        raise ImportStopped(
-            f"the export {export.name} cannot be read ({type(exc).__name__})") from None
     refused = ImportStopped(f"{export.name} is not a WordPress export Pressless can read")
-    if _declares(data):
-        raise refused
-    room = len(data) // _BYTES_PER_ELEMENT + _FEW_ELEMENTS
     root, count = None, 0
     try:
-        # _declares refused every declaration first.
-        parser = ET.XMLPullParser(events=("start",))
-        for at in range(0, len(data), _PIECE):
-            parser.feed(data[at:at + _PIECE])
-            for _event, element in parser.read_events():
-                root = element if root is None else root
-                count += 1
-            if count > room:
+        with export.open("rb") as file:
+            room = os.fstat(file.fileno()).st_size // _BYTES_PER_ELEMENT + _FEW_ELEMENTS
+            piece = file.read(_PIECE)
+            # The prolog is read in the first piece; one longer than that,
+            # which WordPress never writes, is refused with it.
+            if _declares(piece):
                 raise refused
-        parser.close()
-    except ET.ParseError as exc:
+            # _declares refused every declaration first.
+            parser = ET.XMLPullParser(events=("start",))
+            while piece:
+                parser.feed(piece)
+                for _event, element in parser.read_events():
+                    root = element if root is None else root
+                    count += 1 + len(element.attrib)
+                if count > room:
+                    raise refused
+                piece = file.read(_PIECE)
+            parser.close()
+    except (OSError, ET.ParseError) as exc:
         raise ImportStopped(
             f"the export {export.name} cannot be read ({type(exc).__name__})") from None
+    except (ValueError, LookupError):
+        # The encoding it declares is one the parser cannot read: a
+        # multi-byte one, or a name Python does not know.
+        raise refused from None
     if root is None:
         raise ImportStopped(f"the export {export.name} cannot be read (ParseError)")
     # Read off the document, never pinned: WXR has shipped several.

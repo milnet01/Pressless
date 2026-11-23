@@ -129,9 +129,13 @@ Pressless can read"): WordPress writes neither, and both are how an XML
 file expands past its size. A post's body quoting one is not in the
 prolog, and reads. An export over `EXPORT_LARGEST = 256 MiB` is
 refused at upload. One denser in elements than one for every
-`_BYTES_PER_ELEMENT` bytes, and a few more, is refused as it is read:
-a file of empty elements builds a tree many times its own size, and no
-WordPress export is that dense. The S314 exemption in `pyproject.toml` stays, now
+`_BYTES_PER_ELEMENT` bytes, and a few more, is refused as it is read,
+each attribute counting as an element:
+a file of empty elements, or of attributes, builds a tree many times its own size, and no
+WordPress export is that dense. The file is fed to the parser a piece at
+a time, never held whole, and the prolog is read in the first piece. An
+export declaring an encoding the parser cannot read, a multi-byte one or
+a name Python does not know, is refused with the same sentence. The S314 exemption in `pyproject.toml` stays, now
 resting on that refusal.
 
 What is carried, by `wp:post_type`:
