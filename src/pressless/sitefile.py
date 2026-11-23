@@ -8,7 +8,9 @@ member is checked before a byte is written, and a refused file writes nothing.
 """
 from __future__ import annotations
 
+import errno
 import json
+import os
 import secrets
 import shutil
 import stat
@@ -16,32 +18,39 @@ import zipfile
 import zlib
 from pathlib import Path, PurePosixPath
 
-from pressless import credentials, editor, progress, settings, sites, store, zip_member
+from pressless import credentials, editor, progress, settings, sites, starter, store, zip_member
 from pressless.safe_write import write_whole
 from pressless.words import say
 
 MANIFEST = "pressless-site.json"
 FORMAT = "pressless-site"
 VERSION = 1
-# § 4.1: a key, what is rebuilt on demand, and where he was last stay out;
-# and Import's own folder, so a saved site never carries the export
-# (PRESS-0125 § 4.2).
-LEFT_OUT = frozenset({"credentials.json", "site", "preview", "fetch", "insights.json",
-                      "youtube.json", "wizards", "choices.json", "import", "jpeg-xl-views"})
+# § 4.1: what stays out of every site file. Anything not named here travels.
+LEFT_OUT = frozenset({
+    "credentials.json",                    # a key
+    "site", "preview", "jpeg-xl-views",    # rebuilt on demand from what travels
+    "fetch",                               # a fetch area, emptied after each use
+    "insights.json", "youtube.json",       # caches, fetched again
+    "wizards", "choices.json",             # where he was last
+    "import",                              # Import's export (PRESS-0125 § 4.2)
+})
 KEPT = sites.SITE_NAMES - LEFT_OUT
 # Kept as they are: photographs and added files are compressed already.
 _STORED = frozenset({"photographs", "files"})
-_OPENING = ".opening"
 SAVING = ".saving-"   # a site file being written; whole once renamed or handed over
 _SPARE = 1024 * 1024 * 1024   # the drive keeps this much free after an open
 MEMBERS_MOST = 100_000        # § 4.3: a file holding more members is refused
 STEM_MOST = 60                # § 4.1: characters of the site's name in a file's name
 _MANIFEST_MOST = 64 * 1024    # bytes; the manifest is two short fields
-# What reading a member can raise beyond OSError and ValueError: a bad
-# checksum, a locked or oddly packed member, a cut-short file, and JSON nested
-# past Python's depth, whose RecursionError is a RuntimeError.
+# What reading the zip or a member can raise, as check and the unpack do: a
+# bad checksum, a locked or oddly packed member, a cut-short file, and JSON
+# nested past Python's depth, whose RecursionError is a RuntimeError. Each is
+# a refusal.
 _UNREADABLE = (OSError, ValueError, zipfile.BadZipFile, RuntimeError, NotImplementedError,
-               EOFError, zlib.error, settings.SettingsError, store.StoreError)
+               EOFError, zlib.error)
+# What the opened settings can raise in _settle, a refusal too. Its OSError
+# is the drive's, so it is not here.
+_BAD_SETTINGS = (ValueError, RuntimeError, settings.SettingsError, store.StoreError)
 
 
 class Refused(Exception):
@@ -92,32 +101,95 @@ def _members(site: Path) -> list[tuple[str, Path]]:
 
 def save(site: Path, target: Path) -> None:
     """§ 4.2: write the site to `target`, a new zip. Holds the editor's lock,
-    so no save or publish lands half in the file."""
+    so no save or publish lands half in the file, but not while it packs the
+    photographs and added files: those it links under the lock instead."""
     site = Path(site)
+    linked: tuple[Path, list[tuple[str, Path]]] | None = None
     # A file dated before 1980 is ordinary in a hand-editable folder; zip
     # cannot record it, and strict timestamps would refuse the whole save.
-    with editor.LOCK, zipfile.ZipFile(target, "w", strict_timestamps=False) as made:
+    with zipfile.ZipFile(target, "w", strict_timestamps=False) as made:
         made.writestr(MANIFEST, json.dumps({"format": FORMAT, "version": VERSION}))
-        members = _members(site)
-        for done, (name, path) in enumerate(members):
-            progress.count("progress.packing", done, len(members))
-            if name == settings.FILE_NAME:
-                held = json.loads(path.read_text(encoding="utf-8"))
-                held["site_folder"] = ""   # no path on this computer travels
-                made.writestr(name, json.dumps(held, indent=2) + "\n",
-                              compress_type=zipfile.ZIP_DEFLATED)
-                continue
-            kind = (zipfile.ZIP_STORED if name.split("/")[0] in _STORED
-                    else zipfile.ZIP_DEFLATED)
-            made.write(path, name, compress_type=kind)
+        try:
+            with editor.LOCK:
+                members = _members(site)
+                linked = _link_stored(site, members)
+                later = linked[1] if linked is not None else []
+                waiting = {name for name, _ in later}
+                now = [member for member in members if member[0] not in waiting]
+                for done, (name, path) in enumerate(now):
+                    progress.count("progress.packing", done, len(members))
+                    _write_member(made, name, path)
+            for done, (name, link) in enumerate(later, start=len(now)):
+                progress.count("progress.packing", done, len(members))
+                _write_member(made, name, link)
+        finally:
+            if linked is not None:
+                shutil.rmtree(linked[0], ignore_errors=True)
         progress.count("progress.packing", len(members), len(members))
+
+
+def _write_member(made: zipfile.ZipFile, name: str, path: Path) -> None:
+    if name == settings.FILE_NAME:
+        _write_settings(made, path)
+        return
+    kind = zipfile.ZIP_STORED if name.split("/")[0] in _STORED else zipfile.ZIP_DEFLATED
+    made.write(path, name, compress_type=kind)
+
+
+def _link_stored(site: Path, members: list[tuple[str, Path]]
+                 ) -> tuple[Path, list[tuple[str, Path]]] | None:
+    """§ 4.2: a hard link to each photograph and added file, in a fresh folder
+    beside the site, so they are packed once the lock is let go. None is ever
+    written in place -- a new one takes a new name -- so a link keeps the
+    bytes the lock saw, even where the file is moved to the bin meanwhile.
+    None where there are none, or the drive cannot link them, and then
+    nothing is left."""
+    stored = [(name, path) for name, path in members if name.split("/")[0] in _STORED]
+    if not stored:
+        return None
+    folder = sites.throwaway(site.parent, sites.LINKED)
+    try:
+        folder.mkdir()   # never one another save is using
+    except OSError:
+        return None
+    try:
+        linked = []
+        for number, (name, path) in enumerate(stored):
+            link = folder / str(number)
+            os.link(path, link)
+            linked.append((name, link))
+    except OSError:
+        shutil.rmtree(folder, ignore_errors=True)
+        return None
+    return folder, linked
+
+
+def _write_settings(made: zipfile.ZipFile, path: Path) -> None:
+    """§ 4.2: settings.json with no path on this computer in it. One that is
+    not a JSON object is left out, so a damaged file never stops the rest
+    being saved; the opened site then goes to setup."""
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, RecursionError):
+        return
+    if not isinstance(held, dict):
+        return
+    held["site_folder"] = ""
+    made.writestr(settings.FILE_NAME, json.dumps(held, indent=2) + "\n",
+                  compress_type=zipfile.ZIP_DEFLATED)
 
 
 def save_part(site: Path, folder: Path) -> Path:
     """Save the site to a fresh `.saving-<random>.zip` in `folder`, whole, and
     return it for the caller to rename or hand over. Nothing is left where
-    the save fails (§ 4.2)."""
-    part = Path(folder) / f"{SAVING}{secrets.token_hex(8)}.zip"
+    the save fails (§ 4.2). Where the site would leave the drive less than
+    _SPARE free, it raises ENOSPC and writes nothing, so a save never fills
+    the drive other writes need."""
+    folder = Path(folder)
+    if sum(path.stat().st_size for _, path in _members(Path(site))) \
+            > shutil.disk_usage(folder).free - _SPARE:
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+    part = folder / f"{SAVING}{secrets.token_hex(8)}.zip"
     try:
         save(site, part)
     except BaseException:
@@ -207,7 +279,11 @@ def unused(site: Path) -> bool:
 
 def _settle(opened: Path, target: Path) -> None:
     """§ 4.4 step 4: point the site's settings at this computer, keeping every
-    key it does not name."""
+    key it does not name. The starter's marker stays, but empty: consent to
+    replace a site on GitHub is never taken from a file (PRESS-0126 § 4.5)."""
+    marker = opened / starter.MARKER
+    if marker.is_file():
+        write_whole(marker, "", prefix=f".{starter.MARKER}.")
     path = opened / settings.FILE_NAME
     if not path.exists():
         return   # saved before setup: the opened site goes to setup
@@ -221,6 +297,8 @@ def _settle(opened: Path, target: Path) -> None:
             kept["store"] = credentials.choose().store
         except (credentials.NoStore, credentials.CredentialError):
             pass   # Settings asks for the key as for any missing one
+        # Every set-up site has a GitHub account name; Google's and
+        # YouTube's are null until signed in, and stay so.
         kept["github_account"] = sites.account("github", target)
         if kept.get("google_account") is not None:
             kept["google_account"] = sites.account("google", target)
@@ -234,25 +312,29 @@ def open_into(source: Path, own: Path) -> Path:
     """§ 4.4: open the file as a site in Pressless's own folder `own`, and
     name it the site the next start opens. Returns its folder. A refusal at
     any step leaves sites/ as it was, apart from an empty site-1 made where
-    there was no site. Naming it is the last step, after the site is in
-    place, so its OSError is no refusal and reaches the caller as it is."""
+    there was no site. Once the file is unpacked, an OSError is the drive's,
+    no refusal, and reaches the caller as it is after the same cleanup; so
+    does naming the site, the last step, after it is in place."""
     own = Path(own)
     check(source, _room(own))
-    current = sites.open_site(own)
-    opening = own / sites.SITES_FOLDER / _OPENING
-    shutil.rmtree(opening, ignore_errors=True)
+    current = sites.current_site(own)
+    opening = sites.throwaway(own / sites.SITES_FOLDER, sites.OPENING)
+    opening.mkdir()   # never one another open is using
     made: Path | None = None
     try:
         try:
             _unpack(source, opening)
-            target = current if unused(current) else sites.new_site(own)
-            if target != current:
-                made = target
-            _settle(opening, target)
-            _replace(target, opening)
-            made = None
         except _UNREADABLE as exc:
             raise Refused("the file could not be opened as a site") from exc
+        target = current if unused(current) else sites.new_site(own)
+        if target != current:
+            made = target
+        try:
+            _settle(opening, target)
+        except _BAD_SETTINGS as exc:
+            raise Refused("the file's settings are not readable") from exc
+        _replace(target, opening)
+        made = None
     except BaseException:
         _clean(opening, made)
         raise

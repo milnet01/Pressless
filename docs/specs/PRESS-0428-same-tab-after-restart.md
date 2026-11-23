@@ -88,7 +88,7 @@ different cookie name, so no tab could present it there.
 `__main__._serve_held` keeps the last Face's `hand_over()` and gives it to
 the next `_serve_once`. This covers Settings' Restart and the tray's
 Restart. Where the next pass opens a different site folder from the last
-Face's (`sites.open_site`, PRESS-0223 § 4.4), it gets no hand-over.
+Face's (`sites.current_site`, PRESS-0223 § 4.4), it gets no hand-over.
 
 ### 4.3 Across an update
 

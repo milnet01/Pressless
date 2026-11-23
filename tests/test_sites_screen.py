@@ -25,10 +25,10 @@ def _own(tmp_path: Path) -> Path:
     return own
 
 
-def _settled(restarts: list[int], count: int) -> list[int]:
+def _settled(restarts: list[int], count: int, within: float = 5) -> list[int]:
     """The restart is asked for after the answer is sent, on the server's own
-    thread, so the answer can arrive first. Waits up to five seconds."""
-    deadline = time.monotonic() + 5
+    thread, so the answer can arrive first. Waits up to `within` seconds."""
+    deadline = time.monotonic() + within
     while len(restarts) < count and time.monotonic() < deadline:
         time.sleep(0.01)
     return restarts
@@ -37,7 +37,7 @@ def _settled(restarts: list[int], count: int) -> list[int]:
 def _serve(own: Path, restarts: list[int]) -> tuple[face.Face, Browser]:
     """One pass of the launcher, as __main__._serve_once makes it: the open
     site's editor, and the Sites screen over Pressless's own folder."""
-    site = sites.open_site(own)
+    site = sites.current_site(own)
     served = face.serve(own, site=site)
     editor.register(served, site)
     sites_screen.register(served, own, lambda: restarts.append(1))
@@ -79,7 +79,7 @@ def test_a_bad_site_changes_nothing(tmp_path: Path) -> None:
     finally:
         served.stop()
     assert (own / OPEN).read_bytes() == before
-    assert restarts == []
+    assert _settled(restarts, 1, within=0.2) == []
 
 
 def test_the_screen_lists_each_site_by_name_and_starts_a_new_one(tmp_path: Path) -> None:
@@ -114,13 +114,14 @@ def test_save_downloads_the_site(tmp_path: Path) -> None:
     restarts: list[int] = []
     served, browser = _serve(own, restarts)
     try:
+        before = datetime.date.today().isoformat()
         status, headers, data = browser.raw("GET", "/sites/save")
+        after = datetime.date.today().isoformat()
     finally:
         served.stop()
     assert status == 200
-    stamp = datetime.date.today().isoformat()
-    assert headers["Content-Disposition"].startswith(
-        f'attachment; filename="Sea Sky {stamp}.zip"')
+    assert headers["Content-Disposition"].startswith(tuple(   # either side of midnight
+        f'attachment; filename="Sea Sky {stamp}.zip"' for stamp in (before, after)))
     with zipfile.ZipFile(io.BytesIO(data)) as saved:
         assert "drafts/seaside-walk.txt" in saved.namelist()
     assert not list(own.glob(".saving-*"))
@@ -174,7 +175,7 @@ def test_the_screen_sets_where_backups_go_and_says_what_went_wrong(tmp_path: Pat
         assert "The last backup could not be made" in page
     finally:
         served.stop()
-    assert backups.folder_of(own) == chosen and restarts == []
+    assert backups.folder_of(own) == chosen and _settled(restarts, 1, within=0.2) == []
 
 
 # ------------------------------------------------------------ PRESS-0221 ----
@@ -250,7 +251,8 @@ def test_removing_a_site_asks_then_keeps_a_copy_and_lists_it_no_more(tmp_path: P
     finally:
         served.stop()
     assert f'value="{other.name}"' not in page
-    assert sorted(path.name for path in other.parent.iterdir()) == ["site-1", "site-2"]
+    assert sorted(path.name for path in other.parent.iterdir()) == [
+        f".gone-{other.name}", "site-1", "site-2"]
     held = list((tmp_path / "kept-here").glob("*.zip"))
     assert len(held) == 1 and held[0].name in page
     with zipfile.ZipFile(held[0]) as copy:
@@ -259,7 +261,7 @@ def test_removing_a_site_asks_then_keeps_a_copy_and_lists_it_no_more(tmp_path: P
 
 def test_the_open_site_and_a_stranger_cannot_be_removed(tmp_path: Path) -> None:
     own = _own(tmp_path)
-    open_now = sites.open_site(own)
+    open_now = sites.current_site(own)
     served, browser = _serve(own, [])
     try:
         for name in (open_now.name, "site-99", "../site-1", ""):
@@ -318,7 +320,7 @@ def test_the_site_this_face_serves_cannot_be_removed(tmp_path: Path) -> None:
     """Breaks when the check reads sites.json alone: once another site is
     chosen, the site still served until the restart could be removed."""
     own = _own(tmp_path)
-    open_now = sites.open_site(own)
+    open_now = sites.current_site(own)
     other = _other_site(own)
     served, browser = _serve(own, [])
     try:
@@ -328,3 +330,20 @@ def test_the_site_this_face_serves_cannot_be_removed(tmp_path: Path) -> None:
     finally:
         served.stop()
     assert open_now.is_dir() and other.is_dir()
+
+
+def test_the_screen_reads_each_sites_name_once(tmp_path: Path, monkeypatch) -> None:
+    """Breaks when one render of the Sites screen reads each site's name
+    more than once, which it does again for the move wizard's links."""
+    own = _own(tmp_path)
+    named: list[str] = []
+    name_of = sitefile.name_of
+
+    def counting(site: Path) -> str:
+        named.append(site.name)
+        return name_of(site)
+
+    monkeypatch.setattr(sitefile, "name_of", counting)
+    page = sites_screen._screen(own)
+    assert sorted(named) == ["site-1", "site-2"]
+    assert page.count("/sites/save?site=") == 2

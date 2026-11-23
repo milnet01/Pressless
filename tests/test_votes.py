@@ -630,7 +630,7 @@ def test_site_file_carries_votes(tmp_path: Path) -> None:
     """INV-12. Breaks when `sitefile`'s rewrite of the settings names its keys."""
     own = tmp_path / "from"
     own.mkdir()
-    site = sites.open_site(own)
+    site = sites.current_site(own)
     _saved(site, votes=VOTES)
     target = tmp_path / "saved.zip"
     sitefile.save(site, target)

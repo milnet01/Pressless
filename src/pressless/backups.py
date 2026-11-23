@@ -1,10 +1,12 @@
 """A backup of every site, made by itself each day (PRESS-0225).
 
 Each backup is the file PRESS-0224 saves (sitefile.save), named for the site
-and the day: `<name> (site-N) <YYYY-MM-DD>.zip`. The site's folder in the
-name, not its name, is what tells one site's backups from another's, since a
-name can change. Each site keeps its last KEEP; nothing else in the folder is
-ever removed, so a folder he also uses for other things is safe.
+and the day: `<name> (site-N <install>) <YYYY-MM-DD>.zip`. The site's folder
+in the name, not its name, is what tells one site's backups from another's,
+since a name can change; `<install>` tells this Pressless's from another's
+sharing the folder, whose sites are numbered the same. Each site keeps its
+last KEEP. Nothing else in the folder is ever removed but half-written files
+a save left, so a folder he also uses for other things is safe.
 
 They go to a folder he chose, or to DEFAULT_FOLDER beside Pressless's own
 folder: away from Pressless-data, so deleting that folder does not take the
@@ -18,6 +20,7 @@ import datetime
 import errno
 import os
 import re
+import secrets
 import threading
 import time
 from pathlib import Path
@@ -29,7 +32,8 @@ FILE_NAME = "backups.json"
 DEFAULT_FOLDER = "Pressless-backups"
 KEEP = 7
 _EVERY = 60 * 60   # seconds between looks while Pressless is open
-_DAY = re.compile(r" \((site-[1-9][0-9]*)\) (\d{4}-\d{2}-\d{2})\.zip$")
+_DAY = re.compile(r" \((site-[1-9][0-9]*) ([0-9a-f]{6})\) (\d{4}-\d{2}-\d{2})\.zip$")
+_INSTALL = re.compile(r"[0-9a-f]{6}")
 _LOCK = threading.Lock()          # one round of backups at a time
 _RECORD_LOCK = threading.Lock()   # one read-merge-write of the record at a time
 _OLD_PART = ".pressless-backup-"  # what a backup was written to before PRESS-0383
@@ -54,10 +58,14 @@ def _chosen(record: dict) -> Path | None:
         else None
 
 
+def default_folder(own: Path) -> Path:
+    """DEFAULT_FOLDER beside Pressless's own folder."""
+    return Path(own).parent / DEFAULT_FOLDER
+
+
 def folder_of(own: Path) -> Path:
-    """Where backups go: the folder he chose, else DEFAULT_FOLDER beside
-    Pressless's own folder."""
-    return _chosen(_record(own)) or Path(own).parent / DEFAULT_FOLDER
+    """Where backups go: the folder he chose, else default_folder."""
+    return _chosen(_record(own)) or default_folder(own)
 
 
 def ready_folder(own: Path) -> Path:
@@ -66,7 +74,7 @@ def ready_folder(own: Path) -> Path:
     as making it again would hide the backups on the disk under the drive."""
     chosen = _chosen(_record(own, strict=True))
     if chosen is None:
-        folder = Path(own).parent / DEFAULT_FOLDER
+        folder = default_folder(own)
         folder.mkdir(parents=True, exist_ok=True)
         return folder
     if not chosen.is_dir():
@@ -93,17 +101,31 @@ def trouble(own: Path) -> str | None:
     return said if isinstance(said, str) and said else None
 
 
-def _backup_name(site: Path, day: datetime.date) -> str:
-    return f"{sitefile.stem(site)} ({site.name}) {day.isoformat()}.zip"
+def _install(own: Path) -> str:
+    """This Pressless's mark in its backups' names, made at its first backup
+    and kept in the record. A backup made before there was one, or by
+    another Pressless, is never counted or removed."""
+    with _RECORD_LOCK:
+        record = _record(own, strict=True)
+        held = record.get("install")
+        if isinstance(held, str) and _INSTALL.fullmatch(held):
+            return held
+        made = secrets.token_hex(3)
+        json_record.write(Path(own) / FILE_NAME, {**record, "install": made})
+        return made
 
 
-def _held(folder: Path, site: Path) -> list[tuple[str, Path]]:
+def _backup_name(site: Path, install: str, day: datetime.date) -> str:
+    return f"{sitefile.stem(site)} ({site.name} {install}) {day.isoformat()}.zip"
+
+
+def _held(folder: Path, site: Path, install: str) -> list[tuple[str, Path]]:
     """This site's backups in `folder`, oldest first, by the day in the name."""
     found = []
     for path in folder.iterdir():
         matched = _DAY.search(path.name)
-        if matched and matched.group(1) == site.name and path.is_file():
-            found.append((matched.group(2), path))
+        if matched and matched.group(1, 2) == (site.name, install) and path.is_file():
+            found.append((matched.group(3), path))
     return sorted(found)
 
 
@@ -112,11 +134,12 @@ def _back_up(own: Path, site: Path, today: datetime.date) -> None:
     The backup made now is never the one rotated out, even where the clock
     has gone back and older backups carry later days."""
     folder = ready_folder(own)
-    held = _held(folder, site)
+    install = _install(own)
+    held = _held(folder, site, install)
     day = today.isoformat()
     if not any(when == day for when, _ in held):
-        sitefile.save_as(site, folder / _backup_name(site, today))
-        held = _held(folder, site)
+        sitefile.save_as(site, folder / _backup_name(site, install, today))
+        held = _held(folder, site, install)
     others = [path for when, path in held if when != day]
     for old in others[:max(0, len(held) - KEEP)]:
         old.unlink()
@@ -133,8 +156,7 @@ def make_due(own: Path, today: datetime.date) -> str | None:
         except OSError as exc:
             held_sites, failed = [], exc
         # One site that cannot be read or saved never stops the others, and
-        # nothing a site holds ends the round: a settings file that is JSON but
-        # no object raises TypeError from sitefile.save.
+        # nothing a site holds ends the round, whatever it raises.
         for site in held_sites:
             try:
                 if not sitefile.unused(site):
