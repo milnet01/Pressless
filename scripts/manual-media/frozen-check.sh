@@ -12,10 +12,21 @@ W=$PRESSLESS_MANUAL_WORK
 mkdir -p "$W"
 cd "$ROOT"
 
-[ -d "$W/venv" ] || python3 -m venv "$W/venv"
+# The lock is resolved for the release's Python, so the venv is made from the
+# version release.yml installs, never whichever python3 comes first.
+want=$(sed -n "s/^ *python-version: '\(.*\)'\$/\1/p" .github/workflows/release.yml | head -n 1)
+[[ -n $want ]] || { echo "release.yml names no python-version" >&2; exit 1; }
+command -v "python$want" >/dev/null || { echo "frozen check needs python$want" >&2; exit 1; }
+if [[ -d $W/venv ]]; then
+    have=$("$W/venv/bin/python" -c 'import sys; print("%d.%d" % sys.version_info[:2])' || true)
+    [[ $have == "$want" ]] || rm -rf "$W/venv"
+fi
+[ -d "$W/venv" ] || "python$want" -m venv "$W/venv"
 "$W/venv/bin/pip" install -q --require-hashes -r packaging/release-requirements.txt
 rm -rf "$W/freeze" "$W/frozen-home" "$W/frozen-link.txt"
-mapfile -t args < <("$W/venv/bin/python" scripts/freeze_flags.py args "$W/freeze")
+# Assigned first, so set -e sees a failure, as build-linux.sh says.
+flags=$("$W/venv/bin/python" scripts/freeze_flags.py args "$W/freeze")
+mapfile -t args <<<"$flags"
 "$W/venv/bin/python" -m PyInstaller --log-level WARN "${args[@]}"
 
 # The program keeps its folder beside the file $APPIMAGE names, so naming one
