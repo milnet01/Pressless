@@ -88,6 +88,29 @@ def test_a_whole_flag_list_reaches_pyinstaller(tmp_path, script):
     assert (repository / "pyinstaller-ran.txt").read_text() == "--name=Pressless --onedir"
 
 
+# The batch file every release before this one shipped: an update's helper
+# replaces it while the old console is paused at its end.
+_THREE_LINE_BATCH = b'@echo off\r\n"%~dp0Pressless\\Pressless.exe" %*\r\npause\r\n'
+
+
+def test_the_batch_file_ends_itself_on_one_line(tmp_path):
+    """review-code 2026-11-23 lane 11: cmd.exe reads a running batch file
+    again from its old offset. A Windows update leaves the old console paused
+    in the old batch file and moves the new one over it, so a keypress ran
+    whatever the new file held past that offset (measured on the Windows box:
+    two lines added after `pause` both ran). One line that ends the batch
+    never reads on, and a file no longer than the three-line form gives the
+    console paused in that one nothing to read.
+
+    Breaks when the batch file spans lines, does not end itself, or grows
+    past the form before it."""
+    ran, repository = _build(tmp_path, "build-windows.sh")
+    assert ran.returncode == 0, ran.stderr
+    batch = (repository / "build" / "zip" / "Start Pressless.bat").read_bytes()
+    assert batch == b'@"%~dp0Pressless\\Pressless.exe" %*&pause&exit /b\r\n', batch
+    assert len(batch) <= len(_THREE_LINE_BATCH)
+
+
 def test_the_appimage_menu_text_is_in_every_language(tmp_path):
     """PRESS-0241: a desktop that reads the AppImage's own entry shows its
     menu text in the user's language, the words setup's shortcut uses.
