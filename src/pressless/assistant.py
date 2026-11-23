@@ -584,16 +584,16 @@ class _Door:
                 slug, draft = _entry_file(folder, entry)
                 # § 4.5: an entry with nothing waiting publishes the site as it
                 # stands; `_press` makes the same choice.
-                shown = publishing.plan(folder, entry=slug if draft else None,
-                                        transport=self.transport)
+                shown = publishing.press_preview(folder, entry=slug if draft else None,
+                                                 transport=self.transport)
             elif page is not None:
                 page_editor.current_file(folder, _kind(page), page)     # it exists
-                # A page with nothing waiting: publishing.plan falls back to
+                # A page with nothing waiting: publishing.press_preview falls back to
                 # the whole site, as `_press` does.
-                shown = publishing.plan(folder, page=(_kind(page), page),
-                                        transport=self.transport)
+                shown = publishing.press_preview(folder, page=(_kind(page), page),
+                                                 transport=self.transport)
             else:
-                shown = publishing.plan(folder, transport=self.transport)
+                shown = publishing.press_preview(folder, transport=self.transport)
             return {"pages": sorted(shown.pages.values()), "added": shown.added,
                     "removed": shown.removed, "lines": lines}
         if tool == "undo_last_publish":

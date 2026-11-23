@@ -304,7 +304,7 @@ the time, the plan, and the **Store's mark**. The plan is what the box lists:
 
 | Ask | Plan |
 |---|---|
-| `publish` | `publishing.plan`'s answer: the pages it writes, and how many other files it adds and removes |
+| `publish` | `publishing.press_preview`'s answer: the pages it writes, and how many other files it adds and removes |
 | `undo_last_publish` | `assistant.box.undo`: the site goes back to how it was before the last publish |
 | `remove_page`, `rename_page` | the page's name, and `assistant.box.remove` or `assistant.box.rename` with the new name; both go live at once, as on screen |
 | `remove_entry`, `discard_changes`, `remove_file` | each entry, page or file that goes to the bin, by name |
@@ -378,7 +378,7 @@ takes a lock; its caller holds `editor.LOCK`. Each press function also takes
 | `publishing.press_entry` | `publishing._pressed` | `(folder, form, *, capture, notices) -> tuple[store.Entry, Published]` |
 | `files_screen.remove` | `files_screen._remove` | `(folder, name) -> None`, raising `FileInUse` |
 | `look_screen.save` | `look_screen._save` | `(folder, form) -> None`: the route check, the base check and the copy to the bin, then `look.save` |
-| `publishing.plan` | `publishing._plan` | `(folder, *, entry, page) -> Preview` |
+| `publishing.press_preview` | `publishing._plan` | `(folder, *, entry, page) -> Preview` |
 | `publishing.press_site` | `page_editor._publish_or_put_back`'s call | `(folder, *, capture, notices) -> Published`: `publish(entry=None)` |
 | `undo.press_undo` | `undo._pressed` | `(folder, *, capture, notices) -> Undone` |
 | `dashboard.figures` | `dashboard._show` | `(folder, days) -> insights.Report`, the Google token fetched inside |

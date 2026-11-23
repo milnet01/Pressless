@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=470 -->
+<!-- ants-roadmap-id-high-water: PRESS=480 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9102,18 +9102,27 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
+- ✅ [PRESS-0441] **Second-round review fixes: the entry editor and the Files screen.**
   Subject 02. Review types: Codebase, Test.
   Findings: review-code lane-02, review-readability lane-02, and the
   performance and test reviews' findings on these files and their tests.
   Worst: tests/test_editor.py's press test asserts a bare string in its
   go case, so that case checks nothing (review-tests HIGH).
+  Shipped 2026-11-23, ec75e5c..c539ae7 (merged a2bd19b). 31 findings: 25
+  fixed, 3 queued (PRESS-0476 to PRESS-0478), 3 dismissed. The press
+  test's go case now checks what it posts (the review-tests HIGH), red
+  with the path changed. The visual view keeps saving after a removal, an
+  Add on a failed preview, or a marks box saved as several blocks. Files
+  sizes read 1.0 MB at 999,500 bytes, with the language's decimal mark;
+  a half-written photograph is not listed; uploads say what they add.
+  PRESS-0346 § 4.5 amended. Full suite 2630 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/02.json.
   **Layman:** Bug fixes and tidy-ups in the screen where you write an entry, and in the Files screen.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0442] **Second-round review fixes: the page editor and the menu.**
+- 🚧 [PRESS-0442] **Second-round review fixes: the page editor and the menu.**
   Subject 03. Review types: Codebase, Test.
   Findings: review-code lane-03, review-readability lane-03, and the
   performance and test reviews' findings on these files and their tests.
@@ -9141,18 +9150,27 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0445] **Second-round review fixes: the Store and Undo.**
+- ✅ [PRESS-0445] **Second-round review fixes: the Store and Undo.**
   Subject 06. Review types: Codebase, Test.
   Findings: review-code lane-06, review-readability lane-06, and the
   performance and test reviews' findings on these files and their tests.
   Among them: copy_to_bin never syncs the bin folder (a gap in
   PRESS-0376's fix).
+  Shipped 2026-11-23, ca00bf0..fd1152e (merged 0db32e7). 26 findings: 19
+  fixed, 0 queued, 7 dismissed (duplicates, a lock PRESS-0023 § 4.11
+  already holds, PRESS-0196 § 4.7's binning, two measured-small scans,
+  one kept test). The bin syncs the folders it creates; a write finishes a
+  cut-short move; Undo marks a demotion first, so a second Undo settles an
+  interrupted one; a kept version drops Replaces; an empty description is
+  allowed. PRESS-0005 and PRESS-0015 amended. Full suite 2638 passed, no
+  warning; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/06.json.
   **Layman:** Bug fixes and tidy-ups in how Pressless keeps your site's files and steps back a publish.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Store.
 
-- 📋 [PRESS-0446] **Second-round review fixes: publishing.**
+- ✅ [PRESS-0446] **Second-round review fixes: publishing.**
   Subject 07. Review types: Codebase, Test.
   Findings: review-code lane-07, review-readability lane-07, and the
   performance and test reviews' findings on these files and their tests.
@@ -9163,17 +9181,35 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   with NothingToPublish: the journal stays on after a blank setup, no
   entry exists, and the site folder was never built into. The suite
   misses it because test_pages' blank-site test seeds a published entry.
+  Shipped 2026-11-23, 8dca784..4f77eec (merged 6197766). 33 findings: 25
+  fixed, 2 queued (PRESS-0471, PRESS-0472), 6 dismissed; review-code
+  lane-07's open questions are PRESS-0474. A site started blank publishes
+  its first page: _guard reads the repository when the site folder was
+  never built into, and still refuses where an entry page is there. A lost
+  takeover build is asked for again; a stuck marker is a notice; redirected
+  writes are reported as a moved repository. design.md, PRESS-0009, 0013,
+  0235, 0333, 0337, 0345 and 0001 amended. Full suite 2604 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/07.json.
   **Layman:** Bug fixes and tidy-ups in sending your site to GitHub.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 🚧 [PRESS-0447] **Second-round review fixes: setup, settings and the key store.**
+- ✅ [PRESS-0447] **Second-round review fixes: setup, settings and the key store.**
   Subject 08. Review types: Codebase, Test.
   Findings: review-code lane-08, review-readability lane-08, and the
   performance and test reviews' findings on these files and their tests.
   Worst: the versioned-JSON reader exists twice, in settings and in
   credentials, and past fixes had to land in each (readability HIGH).
+  Shipped 2026-11-23, bcf04f6..de8bbd6 (merged b06c1f1), plus a0b53e5.
+  23 findings: 22 fixed, 0 queued, 1 dismissed (continue_as's keyring
+  round trip is its designed check). Settings and Credentials read through
+  one shared reader in safe_write, keeping every earlier refusal; a test
+  checks each at all five reads and writes. A Settings save keeps what
+  other screens saved meanwhile; a foreign settings file opens setup from
+  any section; a file that is not an ordinary file is refused. PRESS-0001,
+  PRESS-0002 and PRESS-0021 amended. Full suite 2594 passed, 28 skipped.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/08.json.
   **Layman:** Bug fixes and tidy-ups in first-run setup, Settings and where the publishing key is kept.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9273,13 +9309,22 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Words.
 
-- 📋 [PRESS-0457] **Second-round review fixes: the gate, CI and packaging scripts.**
+- ✅ [PRESS-0457] **Second-round review fixes: the gate, CI and packaging scripts.**
   Subject 18. Review types: Codebase, Test, Document.
   Findings: review-code lane-18, review-readability lane-18, and the test
   review's findings on test_local_ci, test_pre_commit and test_windows_gate.
   Worst: local-ci.sh and CLAUDE.md say no test reads a document, but
   test_sign_release reads CHANGELOG.md, so a CHANGELOG-only push skips
   the test that reads it (readability HIGH).
+  Shipped 2026-11-23, 4cd728f..2cba94c (merged f1c079a). 24 findings: 21
+  fixed, 1 queued (PRESS-0475), 2 dismissed as duplicates. docsGlob no
+  longer matches CHANGELOG.md, so a push changing it runs the whole gate
+  and the test that reads it; local-ci.sh's comments and CLAUDE.md say so.
+  The leak sweep reads merge-only paths; the build stops on a cut-short
+  flag list; hooks check renamed documents and blank-led messages; the
+  Windows gate fails a box that never greets; ruff targets the required
+  Python. PRESS-0022 amended. Full suite 2616 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/18.json.
   **Layman:** Fixes to the checks that run before every push and the scripts that build the downloads.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9294,7 +9339,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0459] **Second-round review fixes: the tray icon, Send my log and the relay.**
+- ✅ [PRESS-0459] **Second-round review fixes: the tray icon, Send my log and the relay.**
   Subject 20. Review types: Codebase, Test, Document.
   Findings: review-code lanes 20 and 21, review-readability lane-20, and
   the test review's findings on these files' tests and relay/test.
@@ -9302,6 +9347,17 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   (review-tests, HIGH by mutation). PRIVACY.md still says Pressless sends
   its makers nothing unless you say yes to usage reports; Send my log
   sends both logs when you press Send (verify-delivery, not true).
+  Shipped 2026-11-23, 28a8d58..4c696ad (merged 7eeed9a, 3d38a78).
+  37 findings: 32 fixed, 1 queued (relay CPU near the size cap needs a
+  send to the deployed Worker), 4 dismissed. INV-5's test now fails when
+  the note logs the log's text. Send my log removes key and token shapes
+  before sending. PRIVACY.md describes Send my log. The relay refuses
+  non-JSON first, limits IPv6 per /64 and withdraws written files on a
+  failure. The trays survive odd messages and outside close requests.
+  PRESS-0436 and PRESS-0204 amended. Full suite 2594 passed; relay 23
+  passed. The Windows tray tests first run at the box gate; the relay
+  changes are live only once it is redeployed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/20.json.
   **Layman:** Fixes to the tray icon and Send my log, and the privacy policy now mentions Send my log.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9423,6 +9479,107 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: perf.
   Source: review-2026-11-23.
   Lanes: Face.
+
+- 📋 [PRESS-0471] **A publish too large for GitHub's hourly allowance is handled before it fails.**
+  Review type: Codebase. Queued by PRESS-0446 from review-code lane-07
+  (publisher.py: past the hourly request allowance a publish fails late and
+  resends everything). Needs the user's choice: wait out the reset with
+  progress, refuse before the first upload, or split into several commits
+  and lose the one-commit guarantee. Measure a large publish on a scratch
+  repository first.
+  **Layman:** A very large publish no longer fails late and starts again from nothing.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0472] **Blob spacing is measured on a real publish before the pause is shortened.**
+  Review type: Codebase. Queued by PRESS-0446 from review-code
+  --performance lane-05 (publisher.py's pause between uploads). Needs real
+  GitHub, and a clock on the Transport seam PRESS-0009 § 4.1 pins.
+  **Layman:** Publishing many files may get faster once a real publish is timed.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0473] **Relay CPU near the size cap is measured on the deployed Worker.**
+  Review type: Codebase. Queued by PRESS-0459 from review-code lane-21
+  (relay/src/index.js: a body near the 2.2 MiB cap took 92 ms of CPU
+  locally). Settle with one near-limit test send to the deployed relay;
+  then a cheaper base64 pass or the paid plan's allowance, the user's call.
+  **Layman:** A big log sent with Send my log is checked to fit the relay's free limits.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Tray.
+
+- 📋 [PRESS-0474] **Review-code lane-07's four open questions are answered.**
+  Review type: Codebase. From review-code lane-07's open questions, left
+  open by PRESS-0446: the takeover fetch-area race; a file becoming a
+  folder within one tree write; English commit messages; repository names
+  unquoted in URLs. Each ends fixed, filed or dismissed with evidence.
+  **Layman:** Four possible publishing problems the review could not settle are checked.
+  Kind: investigate.
+  Source: review-2026-11-23.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0475] **The Windows gate clears run folders an interrupted run left on the box.**
+  Review type: Codebase. Queued by PRESS-0457 from review-code lane-18
+  (windows-gate.sh). The clean-up is PowerShell that runs only on the box,
+  and a mistake there fails every gated push, so it is tried on the box.
+  **Layman:** The Windows check before a push tidies up after a run that was cut short.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Pipeline.
+
+- 📋 [PRESS-0476] **The editors' shared scripts move out of editor.py into their own module.**
+  Review type: Codebase. Queued by PRESS-0441 from review-readability
+  (editor.py holds scripts shared with the page editor). Done after the
+  subjects merge: it renames symbols PRESS-0346, 0353, 0195 and 0242 name,
+  so those specs are amended in the same change.
+  **Layman:** The browser scripts both editors share get their own file.
+  Kind: refactor.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0477] **Opening an editor shows the page before its preview is built.**
+  Review type: Codebase. Queued by PRESS-0441 from review-code
+  --performance (editor.py builds the preview before sending the page).
+  Changes PRESS-0012 § 4.7 for both editors; measure in a browser first.
+  **Layman:** The editor opens at once instead of waiting for the preview.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0478] **A save's preview reload reuses the originals it already fetched.**
+  Review type: Codebase. Queued by PRESS-0441 from review-code
+  --performance (every answer, /originals/ included, is sent no-store).
+  Measure in a browser first; a re-used name must never show the old
+  picture.
+  **Layman:** Saving in the visual editor stops re-downloading every full-size photograph.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0479] **The code view recolours only what changed while typing.**
+  Review type: Codebase. Queued by PRESS-0442 from review-code
+  --performance lane-02 (page_editor.py's code view recolours the whole
+  page on each repaint). The colouring step measured 8.6 ms per repaint on
+  a 200 KB page after 842bc89; rebuilding the coloured text needs a
+  browser profiler to measure first.
+  **Layman:** Typing in the code view of a very big page stays smooth.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
+  Review type: Codebase. Surfaced by PRESS-0442's sweep, in subjects
+  already shipped: editor.py's SAVING_SCRIPT clears #failure on every
+  successful save, so a refused Remove or Rename's failure box closes as
+  soon as the held save answers; publishing.py's bin_the_copy drops the
+  reason the copy stayed, the defect fixed at page_editor.py:893.
+  **Layman:** Two messages that vanished too soon now stay until they are read.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Editor.
 
 ## 1.3.0 — a home other than GitHub
 

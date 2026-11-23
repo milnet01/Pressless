@@ -7,12 +7,10 @@ name = "pressless"
 version = "1.2.0"
 description = "The desktop app that lets a writer manage and publish their own static site, without needing anyone else to do it for them."
 readme = "README.md"
-# The floor is what CI actually exercises, and deliberately not wider: below
-# it nothing has ever run, so a lower floor is a claim with nothing behind it
-# (PRESS-0104). The previous floor was 3.10, which stops receiving security
-# fixes on 2026-10-31. A matrix over floor-and-newest was rejected rather
-# than merely deferred -- it would spend per-push minutes proving support for
-# a runtime that goes end-of-life before the work lands.
+# The floor is the Python CI runs (ci.yml and both release.yml jobs), and
+# deliberately not wider: below it nothing has ever run, so a lower floor is a
+# claim with nothing behind it (PRESS-0104). Move them together. Ruff reads
+# its target from here.
 #
 # S4 packages an interpreter with the app, so this binds contributors and the
 # gate, never the writer.
@@ -68,10 +66,7 @@ packaging = ["pyinstaller>=6.20"]
 where = ["src"]
 
 [tool.pytest.ini_options]
-# Held at the dev floor above, not below it. Two settings naming a minimum
-# pytest disagreed: this said 7.0 while `dev` requires 9. Harmless, since 9
-# clears 7 -- but a reader has to pick one, and the looser number is the
-# wrong one to pick. Bump both together or neither.
+# Equal to `dev`'s pytest floor above: bump both together or neither.
 minversion = "9"
 testpaths = ["tests"]
 pythonpath = ["src"]
@@ -86,7 +81,6 @@ markers = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
 
 # Without an explicit `select`, ruff runs E4/E7/E9 + F only -- so the
 # line-length above was declared and never enforced, and the bug and
@@ -99,7 +93,7 @@ select = [
     "I",    # import order
     "B",    # bugbear -- the mutable-default and loop-variable classes
     "S",    # bandit -- this project handles a publishing key
-    "UP",   # pyupgrade, held to target-version
+    "UP",   # pyupgrade, held to requires-python
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -121,6 +115,5 @@ select = [
 # the scheme is never attacker-chosen. Suppressed rather than guarded because
 # the guard would be a second place to keep the scheme true; if a caller ever
 # takes a URL from outside, this ignore must go. The rule fires on
-# `urllib.request.Request`; PRESS-0052 replaced the `urlopen` call this
-# comment used to name with an opener carrying a redirect handler.
+# `urllib.request.Request`.
 "src/pressless/https.py" = ["S310"]

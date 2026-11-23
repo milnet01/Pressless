@@ -5,7 +5,7 @@ Each part once held its own copy, and a fix to one was owed to the others
 against all three. The Publisher and Insights subclass it as their own
 `_Urllib`, adding the clock their seam promises, so a test double still
 replaces that one name; the GitHub sign-in borrows the Publisher's. Usage
-reports and the votes setup make a `Client` directly. The Updater keeps its
+reports, the votes setup and Send my log make a `Client` directly. The Updater keeps its
 own: it refuses any redirect off https, and its seam streams a body rather
 than returning one (PRESS-0023 § 4.5).
 
@@ -36,13 +36,15 @@ class NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     would hand the Authorization header to whoever answered (PRESS-0052).
     No service this client reaches is expected to redirect across origins;
     a same-origin redirect keeps the header, so a renamed
-    repository still resolves for a read. A write is not followed: GitHub
-    redirects one with 307, which urllib does not follow for POST or PATCH,
-    so it returns as status 307 and the Publisher reads it as RepositoryMoved
-    (PRESS-0009 § 6, PRESS-0167).
+    repository still resolves for a read. A write is never followed, whatever
+    the status: urllib would follow a POST answered 301, 302 or 303 as a GET,
+    dropping its body. It returns as its status, which the Publisher reads as
+    RepositoryMoved (PRESS-0009 § 6, PRESS-0167).
     """
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if req.get_method() not in ("GET", "HEAD"):
+            return None
         redirected = super().redirect_request(req, fp, code, msg, headers,
                                               newurl)
         if redirected is None:

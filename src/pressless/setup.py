@@ -154,8 +154,8 @@ def untouchable(root: Iterable[str], kept: Iterable[str] = (),
     § 4.10)."""
     made = builder.ROOT_OUTPUT if folder is None else builder.roots_produced(folder)
     produced = {name.casefold() for name in made}
-    keep = {name.rstrip("/").casefold() for name in kept}
-    return tuple(sorted(e for e in root if e.rstrip("/").casefold() not in produced - keep))
+    keep = {settings.root_key(name) for name in kept}
+    return tuple(sorted(e for e in root if settings.root_key(e) not in produced - keep))
 
 
 def register(face: Face, folder: Path, *,
@@ -463,7 +463,7 @@ def _carried_in(folder: Path, reading: settings.Settings, key: str,
             return wizard.Hint("", say("setup.hint.site_unreadable"))
         return {"bring_in_commit": commit, "take_over": "yes"}
     entries = publisher.root_entries(reading, key, transport)
-    if not any(entry.rstrip("/").casefold() in _HOLDS_A_SITE for entry in entries):
+    if not any(settings.root_key(entry) in _HOLDS_A_SITE for entry in entries):
         return {}
     found = takein.look(folder, reading, key, transport=transport)
     if found.made_here:
@@ -983,7 +983,7 @@ def _without_roots(entries: Iterable[str], roots: Iterable[str]) -> tuple[str, .
     """PRESS-0210 § 4.11's list: what a site's own files came from is the
     Builder's to replace, compared with casefold, as `untouchable` compares."""
     carried = {root.casefold() for root in roots}
-    return tuple(entry for entry in entries if entry.rstrip("/").casefold() not in carried)
+    return tuple(entry for entry in entries if settings.root_key(entry) not in carried)
 
 
 def _brought_report(face: Face, folder: Path, brought: pressless_import.Brought) -> str:
@@ -1736,9 +1736,9 @@ def _show_bring_in(found: pressless_import.Found, entries: Iterable[str],
     § 4.11, INV-15): what came, what Finish does, what the next publish changes
     on GitHub, and what stays there, each path that will not come across named."""
     stays = _without_roots(untouchable(entries), found.roots)
-    stay_set = {entry.rstrip("/").casefold() for entry in stays}
-    changes = [entry for entry in entries if entry.rstrip("/").casefold() not in stay_set]
-    in_change = {entry.rstrip("/").casefold() for entry in changes}
+    stay_set = {settings.root_key(entry) for entry in stays}
+    changes = [entry for entry in entries if settings.root_key(entry) not in stay_set]
+    in_change = {settings.root_key(entry) for entry in changes}
     gone = [path for path, _why in found.left if path.split("/")[0].casefold() in in_change]
     kept = [path for path, _why in found.left if path.split("/")[0].casefold() not in in_change]
     links = [say("setup.bringin.link", page=html.escape(page), path=html.escape(path))

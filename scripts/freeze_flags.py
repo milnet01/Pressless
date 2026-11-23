@@ -16,9 +16,8 @@ would notice; running the bundle is the check instead (INV-6).
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "Pressless"

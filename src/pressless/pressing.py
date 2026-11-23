@@ -1,7 +1,8 @@
 """The running press and how it ended, known to Pressless itself (PRESS-0235).
 
-A press is Press to site in either editor, or Undo the last press. It still runs
-inside the request that started it; this module only records it beside that
+A press is anything run through `run`: Press to site in either editor, Your
+site's Publish, the takeover's first publish, and Undo the last press. It still
+runs inside the request that started it; this module only records it beside that
 request, so any page opened during it can say it is running, and then how it
 ended (docs/specs/PRESS-0235-press-status.md § 4). Its page script, SCRIPT,
 also carries the box that says what a press would change, which every
@@ -20,6 +21,10 @@ from pressless.face import Face, Reply, Request
 from pressless.words import say
 
 PUBLISH, UNDO = "publish", "undo"
+
+# The route that answers what a press would change. publishing serves it, and
+# cannot be imported here (it imports this module), so it reads it from here.
+PLAN_ADDRESS = "/publish/plan"
 
 # Every press-row line has one home, the words table's `script.press.` keys,
 # which Python and the scripts both read (§ 4.3, PRESS-0242).
@@ -78,12 +83,11 @@ def end(outcome: Outcome) -> None:
 
 def forget() -> None:
     """An ended outcome stops being shown (§ 3 decision 6); each screen whose
-    action ends it calls this. Nothing while a press runs, since every
-    publish saves first."""
+    action ends it calls this. While a press runs there is none to forget:
+    `start` cleared it."""
     global _outcome
     with _LOCK:
-        if _running is None:
-            _outcome = None
+        _outcome = None
 
 
 def state() -> dict:
@@ -220,7 +224,7 @@ window.presslessPress = window.presslessPress || (() => {
 // go in the failure box. A dropped connection throws, as a fetch does.
 // `options` are presslessPlan's.
 window.presslessCheck = window.presslessCheck || (async (body, options = {}) => {
-  const plan = await (await fetch("/publish/plan", {method: "POST", body: body})).json();
+  const plan = await (await fetch(PLAN_ADDRESS, {method: "POST", body: body})).json();
   if (plan.failure) {
     document.getElementById("failure").innerHTML = plan.failure;
     return false;
@@ -289,7 +293,12 @@ window.presslessPlan = window.presslessPlan || ((plan, options = {}) => new Prom
   wait.addEventListener("click", () => done(false));
   box.addEventListener("cancel", (event) => { event.preventDefault(); done(false); });
   document.body.append(box);
-  box.showModal();
+  try {
+    box.showModal();
+  } catch (error) {   // a box that cannot open is Not yet, not a dropped press
+    done(false);
+    return;
+  }
   go.focus();
 }));
-"""
+""".replace("PLAN_ADDRESS", json.dumps(PLAN_ADDRESS))

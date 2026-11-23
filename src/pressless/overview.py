@@ -166,10 +166,8 @@ def _parts(folder: Path) -> str:
     except store.StoreError:
         return _tile("overview.parts", "", "")
     links = " ".join(
-        _link(editor.page_address(store.FURNITURE_FOLDER, name), key)
-        for name, key in (("navigation", "editor.pages.navigation"),
-                          ("header", "editor.pages.header"), ("footer", "editor.pages.footer"))
-        if name in held)
+        _link(editor.page_address(store.FURNITURE_FOLDER, name), editor.PART_WORDS[name])
+        for name in ("navigation", "header", "footer") if name in held)
     return _tile("overview.parts", "" if held else say("overview.parts.none"), links)
 
 

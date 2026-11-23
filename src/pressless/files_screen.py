@@ -13,7 +13,16 @@ import threading
 from pathlib import Path
 
 from pressless import builder, editor, files, store
-from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
+from pressless.face import (
+    SENTENCES,
+    Face,
+    Reply,
+    Request,
+    Sentence,
+    Site,
+    render_notices,
+    said_decimal,
+)
 from pressless.words import say
 
 ADDRESS = "/files"
@@ -66,9 +75,10 @@ def _page_words(users: tuple[builder.FileUser, ...]) -> str:
 def _size(size: int) -> str:
     if size < 1000:
         return say("files_screen.bytes", n=str(size))
-    if size < 1000 * 1000:
+    # From 999,500 bytes the kilobytes would round to 1000.
+    if size < 999_500:
         return say("files_screen.kb", n=f"{size / 1000:.0f}")
-    return say("files_screen.mb", n=f"{size / 1000 / 1000:.1f}")
+    return say("files_screen.mb", n=said_decimal(size / 1000 / 1000))
 
 
 def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:

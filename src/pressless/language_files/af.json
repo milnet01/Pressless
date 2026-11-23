@@ -4157,6 +4157,10 @@
    "448962aa",
    "Pressless kon nie aanteken dat jou beginwerf nou gepubliseer is nie, so jou volgende publisering sal nog een keer vra voordat dit 'n werf vervang."
   ],
+  "notice.publishing.takeover_kept": [
+   "ab9b83b0",
+   "Pressless kon nie aanteken dat die oorskakeling weg van GitHub Actions klaar is nie, so jou volgende publisering stuur jou terug daarheen. Druk dit daar nog een keer om klaar te maak."
+  ],
   "notice.settings.not_private": [
    "9827a6cb",
    "die instellingslêer kon nie privaat gemaak word nie: hierdie lêerstelsel het modus {mode} toegestaan in plaas van net vir die eienaar, so ander met 'n rekening op hierdie rekenaar kan dit lees"

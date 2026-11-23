@@ -91,10 +91,6 @@ SENTENCES[menu.Refused] = Sentence(
     "failure.menu.Refused.next",
 )
 
-_LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
-           "navigation": "editor.pages.navigation"}
-
-
 # ------------------------------------------- the sections (PRESS-0260 § 4.5) ---
 
 
@@ -500,7 +496,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         else:
             failure = None
     if failure is not None:
-        return render_notices(notices) + face.fail(failure, publishing=False)
+        return editor.failed_page(face, notices, failure)
     _remember(folder, kind, name, request)
     return render_notices(notices) + _page(
         kind, name, opened, builder.stylesheets(folder), face.view_site(),
@@ -561,7 +557,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
     if kind == store.PAGES_FOLDER:
         title = say("editor.pages.home") if name == HOME else name
     else:
-        title = say(_LABELS[name]) if name in _LABELS else name
+        title = say(editor.PART_WORDS[name]) if name in editor.PART_WORDS else name
     # PRESS-0341: a part of every page says so under its name.
     every_page = (f"<p>{say('editor.list.parts_note')}</p>"
                   if kind == store.FURNITURE_FOLDER else "")
@@ -1406,11 +1402,7 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
   const standing = () => say(form.dataset.offSite === "1" ? "script.standing.off_site"
     : state.waiting === "1" ? "script.standing.changes" : "script.standing.on_site");
   window.presslessPress.standing(standing);
-  const stop = (text) => {
-    stopped = true;
-    status.textContent = say("script.editor.not_saved");
-    document.getElementById("failure").innerHTML = text;
-  };
+  const stop = window.presslessStop(() => { stopped = true; });
 
   const send = window.presslessSend({
     address: "/page/save", posting, fields, stop,
@@ -2595,13 +2587,17 @@ _VISUAL_SCRIPT = r"""
   chooser.addEventListener("change", async () => {
     const file = chooser.files[0];
     if (!file || !picked || !["picture", "enlarge"].includes(picked.kind)) return;
-    const reply = await window.presslessUpload("/photograph", file, window.presslessPage.stop);
+    const reply = await window.presslessUpload("/photograph", file, window.presslessPage.stop,
+                                               document.getElementById("panel-said"));
     if (!reply) return;
     const {name, address: published} = reply;
     const address = up + published;
-    const option = document.createElement("option");
-    option.value = address; option.textContent = name;
-    document.getElementById("photograph-list").append(option);
+    const list = document.getElementById("photograph-list");
+    if (![...list.options].some((option) => option.value === address)) {
+      const option = document.createElement("option");
+      option.value = address; option.textContent = name;
+      list.append(option);
+    }
     picked.fields.src = address;
     field("src").value = address;
     touch(picked);
@@ -2628,7 +2624,7 @@ _VISUAL_SCRIPT = r"""
       said.textContent = say("script.visual.file_too_large", given.largest_slots);
       return;
     }
-    const reply = await window.presslessUpload("/file", file, window.presslessPage.stop);
+    const reply = await window.presslessUpload("/file", file, window.presslessPage.stop, said);
     if (!reply) return;
     const {name, address: published} = reply;
     const address = up + published;

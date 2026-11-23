@@ -96,6 +96,18 @@ def test_the_same_photograph_twice_is_kept_once(tmp_path):
     assert sorted(_originals(tmp_path)) == ["dusk-2.jpg", "dusk.jpg"]
 
 
+def test_a_staged_copy_a_crash_left_is_cleared(tmp_path):
+    """photographs.keep: a staged copy left by a crash mid-upload is not
+    listed as a photograph once the next one is kept. Breaks when the
+    leftover stays in the photographs folder, offered as a choice the
+    Builder refuses."""
+    left = tmp_path / store.PHOTOGRAPHS_FOLDER / ".photograph-left"
+    left.parent.mkdir()
+    left.write_bytes(b"half a picture")
+    photographs.add(tmp_path, "dusk.jpg", _picture())
+    assert store.list_photographs(tmp_path) == ("dusk.jpg",)
+
+
 # ----------------------------------------------------------- what it takes ---
 
 def _animated(fmt: str) -> bytes:

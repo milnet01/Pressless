@@ -423,15 +423,21 @@ def test_a_blank_site_gains_pages_a_menu_and_home(tmp_path, monkeypatch):
     presses with no header, menu or footer; Add a menu waits until a page is on
     the site, then links it; Add a Home page writes the starter's Home, whose
     first press puts Home first in the menu; and with no header, the menu
-    shows in one of its own. Breaks when a missing part stops the build,
+    shows in one of its own. Breaks when a missing part stops the build, the
+    no-entries guard refuses a site that never had an entry (PRESS-0446),
     either button writes live, Home's link goes under pages/ or after About,
     or the menu shows nowhere."""
     _key(monkeypatch)
     folder = _folder(tmp_path)
+    # Setup without the starter: identity and settings, and no entry at all,
+    # so the journal is on with nothing published and no site folder built.
+    for slug in store.list_slugs(folder, draft=False):
+        store.path_for(folder, slug, draft=False).unlink()
     for kind in (store.FURNITURE_FOLDER, store.PAGES_FOLDER):
         for path in (folder / kind).iterdir():
             path.unlink()
     store.write_identity(folder, store.Identity("Field Notes"))
+    assert store.journal_on(folder) and not (folder / "site").exists()
     github = _github()
     with _pages(folder, github) as browser:
         listed = browser.request("GET", "/pages")[2]

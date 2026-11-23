@@ -115,7 +115,7 @@ def test_a_moment_locked_progress_file_is_read_again(tmp_path, monkeypatch):
     Breaks when that refusal reads as no progress, which starts the wizard
     again at its first step and runs every check a second time."""
     monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
-    monkeypatch.setattr(safe_write, "_WINDOWS_PAUSE", 0)
+    monkeypatch.setattr(safe_write, "WINDOWS_PAUSE", 0)
     with _served(tmp_path, _steps()) as browser:
         _go(browser, "first", "next", one="a")
         _go(browser, "second", "next", two="b")

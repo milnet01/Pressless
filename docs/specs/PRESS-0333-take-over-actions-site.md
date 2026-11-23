@@ -262,7 +262,7 @@ def publish(folder, settings, key, *, entry, emptying=False, taking_over=False,
 
 `guard_and_build` raises `TakeoverOwed` first, where `takeover.owed(folder)` and not
 `taking_over`. `publish` is the one way out for `_pressed`, `undo` and `page_editor`,
-so none of them skips it. `replace_link` also answers the link to `TAKEOVER_ADDRESS`
+so none of them skips it. `way_on` also answers the link to `TAKEOVER_ADDRESS`
 for this failure.
 
 **GET `/publish/takeover`**, with no marker: `publishing.nothing`. With one, after
@@ -284,15 +284,20 @@ for this failure.
 3. Settings saved with `.nojekyll`, and `CNAME` where there is a domain, joined to
    `untouchable`, where absent. With no domain, `CNAME` is taken off it, so step 4's
    publish removes a stale one, which a branch build would read as the domain. Pages
-   no longer `built_elsewhere`: the marker is removed, the answer says Pages has
-   already been changed and what it now serves, and the POST ends here.
+   no longer `built_elsewhere`: where it serves the default branch's root, a build
+   is asked for (`publisher.request_build`), since step 5 may have switched Pages
+   and stopped before its own request; a failure stops here, the marker kept. Then
+   the marker is removed, the answer says Pages has already been changed and what
+   it now serves, and the POST ends here.
 4. `publish(..., entry=None, taking_over=True)`. A failure stops here, and is shown
    as a press's is. The old site is still up, and the page can be pressed again.
 5. `publisher.switch_pages_to_branch(repository, key, domain)`. A failure stops here,
    and the page says the new site is on GitHub, not yet on the web, and to press
    again. A second press's publish finds nothing differing and writes nothing
    (PRESS-0009 INV-4), then this step runs.
-6. `takeover.unmark`, then the report page: Pages switched, the workflow files
+6. `takeover.unmark`, then the report page. A marker that cannot be removed is a
+   notice beside the report, `notice.publishing.takeover_kept`, since the site has
+   changed; the next press finishes at step 3. The report page: Pages switched, the workflow files
    named, the branch no longer served, the domain kept, the files added and removed, the root entries replaced,
    with `publisher.Outcome`'s counts, and that a first build takes GitHub a few minutes.
    Where `Outcome.commit` is empty, it says an earlier press published the site, in
@@ -367,6 +372,8 @@ and `words.py`.
   `tests/test_takeover.py::test_a_failure_can_be_pressed_again`: a refused publish
   sends no `PUT pages`, and the marker stays; a refused `PUT pages` leaves the marker,
   and the next POST makes no new commit and sends `PUT pages`.
+  `::test_a_lost_build_request_is_asked_again`: a refused build request leaves the
+  marker, and the next POST asks for the build before removing it.
   *Breaks when:* the marker goes before the switch.
 - **INV-9** — Pressless writes no path under `.github`, and another workflow file
   stays. *Test:* `tests/test_takeover.py::test_nothing_writes_a_workflow_file`: `test.yml`

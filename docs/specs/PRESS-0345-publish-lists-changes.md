@@ -50,7 +50,8 @@ def plan(settings: Settings, folder: Path, token: str,
 
 `plan` makes the reads `publish` makes before its first write, and no write.
 It compares as `publish` does (PRESS-0009 § 4.2, INV-4), so both share one
-function for the comparison and neither copies it. A repository with no
+function for the comparison and neither copies it. That function also raises
+`SiteWouldBeEmptied`, so `plan` refuses as `publish` does. A repository with no
 commits plans every unprotected file as uploaded.
 
 `named` holds paths whose bytes the folder does not carry (§ 4.2). Each is

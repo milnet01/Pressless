@@ -31,6 +31,7 @@ from _mode_support import _require_symlinks
 
 import pressless.progress as progress_module
 import pressless.publisher as publisher_module
+import pressless.safe_write as safe_write_module
 from pressless import https
 from pressless.publisher import (
     Conflict,
@@ -54,6 +55,7 @@ from pressless.publisher import (
     fetch_state,
     plan,
     publish,
+    remote_paths,
 )
 from pressless.settings import Credentials, Settings
 
@@ -287,8 +289,9 @@ class _Transport:
 def test_publisher_imports_no_forbidden_sibling():
     """INV-1: publisher.py imports no pressless module other than
     pressless.settings, pressless.https, pressless.os_reason, which
-    imports nothing (PRESS-0401), and pressless.progress, which imports
-    nothing either (PRESS-0435 INV-4).
+    imports nothing (PRESS-0401), pressless.progress, which imports
+    nothing either (PRESS-0435 INV-4), and pressless.safe_write, which
+    imports no pressless module (PRESS-0141).
 
     Walks the module's AST, as test_settings_imports_nothing_forbidden
     does.
@@ -309,7 +312,11 @@ def test_publisher_imports_no_forbidden_sibling():
         f"it must import no part of Pressless (PRESS-0435 INV-4)")
 
     forbidden = pressless_imports - {"pressless.settings", "pressless.https",
-                                     "pressless.os_reason", "pressless.progress"}
+                                     "pressless.os_reason", "pressless.progress",
+                                     "pressless.safe_write"}
+    assert _pressless_imports(safe_write_module) == (set(), []), (
+        "safe_write.py imports a part of Pressless, which the Publisher would "
+        "then reach through it")
     assert not forbidden, (
         f"publisher.py imports {sorted(forbidden)!r}, not just "
         f"pressless.settings -- this is the breach of docs/design.md "
@@ -1482,6 +1489,49 @@ def test_a_path_windows_cannot_hold_is_named(tmp_path, monkeypatch, paths, named
     assert not [p for p in into.rglob("*") if p.is_file()]
 
 
+@pytest.mark.parametrize("refusal", [OSError(2, "No such file or directory"),
+                                     ValueError("path too long for Windows")])
+def test_a_path_too_long_for_windows_is_named(tmp_path, monkeypatch, refusal):
+    """INV-11, review-code 2026-11-23: past MAX_PATH where long paths are off,
+    Windows refuses the write as an OSError, and past 32,767 characters Python
+    raises ValueError first. Either is UnfetchablePath, never FetchNotWritten's
+    free space, and nothing lands. Breaks when either reaches the disk-space
+    answer, or escapes untyped."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", True)
+    into = tmp_path / "into"
+    deep = "content/" + "/".join(["d" * 60] * 4) + "/post.txt"
+    transport = _Transport(reads=_reads(_listing([("content/short.txt", "a"), (deep, "b")]),
+                                        blob=b"x"))
+    real_write = Path.write_bytes
+
+    def write(self, data):
+        if len(str(self)) >= 248:
+            raise refusal
+        return real_write(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", write)
+    with pytest.raises(UnfetchablePath) as raised:
+        fetch_previous(_settings(), "a-token", into, "content", transport=transport)
+    assert repr(deep) in str(raised.value)
+    assert not [p for p in into.rglob("*") if p.is_file()]
+
+
+def test_a_short_path_refused_on_windows_is_still_not_written(tmp_path, monkeypatch):
+    """The other side: a write refused on a path Windows can hold is the
+    disk's, so FetchNotWritten. Breaks when every refusal reads as a path
+    this computer cannot hold."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", True)
+    transport = _Transport(reads=_reads(_listing([("content/short.txt", "a")]), blob=b"x"))
+
+    def full(self, data):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(Path, "write_bytes", full)
+    with pytest.raises(FetchNotWritten):
+        fetch_previous(_settings(), "a-token", tmp_path / "into", "content",
+                       transport=transport)
+
+
 @pytest.mark.skipif(os.name == "nt", reason="`con.txt` is a device on Windows itself")
 def test_a_path_windows_cannot_hold_fetches_elsewhere(tmp_path, monkeypatch):
     """INV-11's other half: off Windows the same listing fetches, so Linux
@@ -1672,6 +1722,7 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
     the symlink case shipped as until PRESS-0089.
     """
     def plant_symlink(folder):
+        _require_symlinks(folder)
         (folder / "linked").symlink_to(folder / "index.html")
 
     def plant_symlinked_directory(folder):
@@ -1681,6 +1732,7 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
         outside = folder.parent / "outside-the-site"
         outside.mkdir(exist_ok=True)
         (outside / "not-for-publication.txt").write_text("x", encoding="utf-8")
+        _require_symlinks(folder)
         (folder / "linkdir").symlink_to(outside, target_is_directory=True)
 
     def plant_root_dot_name(folder):
@@ -1784,6 +1836,7 @@ def test_an_untouchable_symlink_does_not_refuse(tmp_path):
     folder.mkdir()
     (tmp_path / "domain.txt").write_text("writer.example.test\n", encoding="utf-8")
     (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    _require_symlinks(folder)
     (folder / "CNAME").symlink_to(tmp_path / "domain.txt")
 
     listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
@@ -2473,6 +2526,7 @@ def test_a_windows_junction_is_refused_and_not_walked(tmp_path, monkeypatch):
     folder.mkdir()
     (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
     junction = folder / "joined"
+    _require_symlinks(folder)
     junction.symlink_to(outside, target_is_directory=True)
     real_is_symlink = Path.is_symlink
     monkeypatch.setattr(Path, "is_symlink",
@@ -2534,7 +2588,8 @@ def test_a_redirected_write_names_the_move(tmp_path):
     (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
     listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
     moved = {"Location": f"{publisher_module.API}/repositories/1/x"}
-    for where, status in (("/git/blobs", 307), ("/git/refs", 308)):
+    for where, status in (("/git/blobs", 307), ("/git/refs", 308), ("/git/blobs", 301),
+                          ("/git/trees", 302), ("/git/commits", 303)):
         transport = _Transport(reads=_reads(listing),
                                writes=[(where, (status, moved, b""))] + _writes())
         with pytest.raises(publisher_module.RepositoryMoved):
@@ -2570,7 +2625,8 @@ def test_the_client_follows_no_redirected_write():
     threading.Thread(target=server.serve_forever, args=(0.02,), daemon=True).start()
     try:
         client = publisher_module._Urllib()
-        for status in (307, 308):
+        # urllib's own handler follows a POST answered 301, 302 or 303 as a GET.
+        for status in (301, 302, 303, 307, 308):
             server.status = status
             for method in ("POST", "PATCH", "PUT"):
                 seen.clear()
@@ -2733,6 +2789,33 @@ def test_a_plan_names_what_a_publish_sends(tmp_path):
     assert planned.uploaded == ("index.html", "new.html") and planned.removed == ("gone.html",)
 
 
+def test_a_plan_refuses_as_a_publish_does(tmp_path):
+    """PRESS-0345 § 4.1: plan shares publish's comparison, refusal included,
+    so a preview never lists a press that then refuses. Breaks when plan
+    answers a whole-site deletion rather than raising SiteWouldBeEmptied."""
+    listing = _listing([("CNAME", _blob_hash(b"example.org\n")),
+                        ("index.html", _blob_hash(b"<p>old</p>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+    with pytest.raises(SiteWouldBeEmptied):
+        plan(_settings(), tmp_path, "a-token", transport=transport)
+    assert _no_writes(transport)
+
+
+def test_remote_paths_lists_the_default_branch(tmp_path):
+    """PRESS-0446: what the guard reads where no build shows what was lost.
+    Breaks when it reads another ref than the one a publish replaces, or an
+    empty repository is an error rather than nothing."""
+    listing = _listing([("index.html", "a"), ("blog/2014/11/09/x/index.html", "b")])
+    transport = _Transport(reads=_reads(listing, default_branch="pages"))
+    assert remote_paths(_settings(), "a-token", transport) == (
+        "blog/2014/11/09/x/index.html", "index.html")
+    assert any(url.endswith("/commits/pages") for _, url, _, _ in transport.requests)
+    assert _no_writes(transport)
+    empty = _Transport(reads=[("/commits/", (409, {}, b'{"message": "Git Repository is empty."}')),
+                              *_reads(listing)])
+    assert remote_paths(_settings(), "a-token", empty) == ()
+
+
 def test_a_named_path_is_compared_by_presence(tmp_path):
     """PRESS-0345 INV-3. Breaks when a named path is read from the folder, or
     planned as removed."""
@@ -2776,6 +2859,38 @@ def test_an_unreadable_folder_in_the_site_is_a_typed_failure(tmp_path):
     finally:
         locked.chmod(0o755)
     assert "locked" in str(caught.value)
+    assert _no_writes(transport)
+
+
+def test_an_unreadable_site_folder_is_a_typed_failure(tmp_path, monkeypatch):
+    """§4.1 and §6, the walk's other two refusals: the site folder itself
+    cannot be listed, or an entry in it cannot be asked whether it is a
+    folder. Each is a PublishError naming what failed, and nothing is sent.
+    Breaks when either lets the bare OSError out."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (tmp_path / "stuck").mkdir()
+    real_iterdir, real_is_dir = Path.iterdir, Path.is_dir
+
+    def refused(self):
+        if self == tmp_path:
+            raise PermissionError(13, "Permission denied")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", refused)
+    transport = _Transport(reads=_reads(_listing([])), writes=_writes())
+    with pytest.raises(PublishError, match="the site folder could not be read"):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    assert _no_writes(transport)
+
+    def unknown(self):
+        if self.name == "stuck":
+            raise PermissionError(13, "Permission denied")
+        return real_is_dir(self)
+
+    monkeypatch.setattr(Path, "iterdir", real_iterdir)
+    monkeypatch.setattr(Path, "is_dir", unknown)
+    with pytest.raises(PublishError, match="stuck is in the site folder but could not be read"):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
     assert _no_writes(transport)
 
 
@@ -2848,6 +2963,8 @@ def test_a_refused_pages_change_is_not_a_moved_branch():
         publisher_module.set_domain("owner/name", "a-token", "www.example.org",
                                     transport=transport)
     assert not isinstance(caught.value, Conflict), caught.value
+    assert any(method == "PUT" and url.endswith("/pages")
+               for method, url, _, _ in transport.requests), "the 422 was never reached"
 
 
 def test_a_rename_a_scanner_holds_is_tried_again(tmp_path, monkeypatch):

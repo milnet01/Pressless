@@ -439,6 +439,10 @@ _WORDS: dict[str, str] = {
         "Pressless could not note that your starter site is now published, so your next "
         "publish will ask once more before it replaces a site."
     ),
+    "notice.publishing.takeover_kept": (
+        "Pressless could not note that the change away from GitHub Actions is done, so "
+        "your next publish sends you back to it. Press it there once more to finish."
+    ),
     "notice.publishing.import_kept": (
         "Pressless could not note that your site is now published, so Finish setting up "
         "still lists putting it on the web until your next publish."
@@ -680,6 +684,7 @@ _WORDS: dict[str, str] = {
         " them."
     ),
     "script.editor.adding_photograph": "Adding the photograph\u2026",
+    "script.editor.adding_file": "Adding the file\u2026",
     "script.editor.photograph_added": "Added {name}.",
     "script.editor.confirm_address": (
         "Change this entry's address? It moves now in your Pressless-data folder, and on "

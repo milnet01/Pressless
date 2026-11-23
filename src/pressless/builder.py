@@ -27,7 +27,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from datetime import date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageOps, ImageSequence
@@ -1558,13 +1558,25 @@ def entry_path(entry: store.Entry) -> str:
     return f"blog/{when.year:04d}/{when.month:02d}/{when.day:02d}/{entry.slug}"
 
 
+# Where an entry page or forward sits: an `entry_path` and its `index.html`.
+ENTRY_PAGES = "blog/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/*/index.html"
+
+
+def built_into(site: Path) -> bool:
+    """Whether a build has written `site`: the sitemap every build writes."""
+    return (Path(site) / "sitemap.xml").is_file()
+
+
 def built_without_entries(site: Path) -> bool:
-    """Whether `site` holds a built site with no entry page or forward: the
-    sitemap every build writes, and nothing at an `entry_path`. False for a
-    folder never built into, which shows nothing either way (PRESS-0358)."""
-    site = Path(site)
-    return (site / "sitemap.xml").is_file() and not any(
-        site.glob("blog/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/*/index.html"))
+    """Whether `site` holds a built site with no entry page or forward. False
+    for a folder never built into, which shows nothing either way (PRESS-0358)."""
+    return built_into(site) and not any(Path(site).glob(ENTRY_PAGES))
+
+
+def is_entry_page(path: str) -> bool:
+    """Whether `path`, from a site's root, is where an entry page or forward
+    sits (PRESS-0446)."""
+    return PurePosixPath(path).full_match(ENTRY_PAGES)
 
 
 def label(category: str) -> str:

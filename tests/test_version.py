@@ -6,9 +6,8 @@ offer itself to itself, or never offer the next.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 import pressless
 

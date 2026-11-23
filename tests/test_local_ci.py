@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 import pytest
@@ -216,6 +217,47 @@ def test_a_path_naming_the_writer_fails(tmp_path):
     assert "names the writer" in ran.stderr
 
 
+def test_a_path_only_a_merge_adds_fails(tmp_path):
+    """Breaks when the commit log lists no paths for a merge, as `git log`
+    does by default: a file added while resolving one, with clean contents,
+    then passes every surface."""
+    scratch = _Scratch(tmp_path)
+    scratch.git("checkout", "-q", "-b", "side")
+    (scratch.root / "side.txt").write_text("plain words\n", encoding="utf-8")
+    scratch.commit("side")
+    scratch.git("checkout", "-q", "-")
+    (scratch.root / "main.txt").write_text("plain words\n", encoding="utf-8")
+    scratch.commit("main")
+    scratch.git("-c", "user.name=gate", "-c", "user.email=gate@example.invalid",
+                "merge", "-q", "--no-ff", "--no-commit", "side")
+    (scratch.root / f"{_STAND_IN}.txt").write_text("plain words\n", encoding="utf-8")
+    scratch.commit("merge")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "commits: messages, authors and paths names the writer" in ran.stderr
+
+
+def test_on_github_a_location_naming_the_writer_is_not_printed(tmp_path):
+    """Breaks when a ref whose own name matches is printed as the place of the
+    hit: GitHub's log is public, so that repeats the name there."""
+    scratch = _Scratch(tmp_path)
+    scratch.git("branch", f"notes-{_STAND_IN}")
+    scratch.env["CI"] = "true"
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "refs and tag messages names the writer" in ran.stderr
+    assert _STAND_IN not in ran.stderr + ran.stdout
+
+
+def test_off_github_the_location_is_printed(tmp_path):
+    """The control: on the maintainer's machine the hit names its ref."""
+    scratch = _Scratch(tmp_path)
+    scratch.git("branch", f"notes-{_STAND_IN}")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert f"refs/heads/notes-{_STAND_IN}" in ran.stderr
+
+
 def test_a_clean_scratch_repository_passes(tmp_path):
     """The control for the cases above: a binary file, a tag and the gate
     script's own spelling of the pattern, the stand-in nowhere, and the sweep
@@ -246,12 +288,14 @@ def test_a_malformed_pattern_key_fails_rather_than_matching_nothing(tmp_path):
 def test_the_patterns_never_reach_a_command_line(tmp_path):
     """Breaks when the pattern is passed as an argument, where any process on
     the machine can read it in /proc/<pid>/cmdline. Every program the sweep
-    starts is a stand-in on PATH that records its arguments."""
+    starts is found on PATH, and each is a stand-in that records its
+    arguments. A program called by its full path would escape the record."""
     scratch = _Scratch(tmp_path)
     record = tmp_path / "arguments.txt"
     stand_ins = tmp_path / "bin"
     stand_ins.mkdir()
-    for name in ("git", "grep", "sh", "xargs", "awk", "sed", "tr", "cut"):
+    for name in ("git", "grep", "sh", "xargs", "awk", "sed", "tr", "cut",
+                 "cat", "dirname", "mktemp", "rm"):
         real = shutil.which(name, path="/usr/bin:/bin")
         recorder = f'#!/bin/bash\nprintf "%s\\n" "$*" >> "{record}"\nexec {real} "$@"\n'
         (stand_ins / name).write_text(recorder, encoding="utf-8")
@@ -383,10 +427,21 @@ def test_setup_hooks_turns_the_hooks_on_in_a_fresh_clone(tmp_path):
 
 def test_the_committed_docs_glob_leaves_out_what_a_test_reads():
     """PRESS-0362: a test reads the manual's en.txt and the release build reads
-    a .txt lock, so `*.txt` must not make a push documentation-only."""
+    a .txt lock, so `*.txt` must not make a push documentation-only.
+    test_sign_release reads CHANGELOG.md, so a push changing it runs the
+    whole gate (PRESS-0457). The hook matches a path as bash's `==` does,
+    where `*` crosses a `/`, as fnmatch's does."""
     conf = _SCRIPT.parent.parent / ".ants" / "gate.conf"
     glob = subprocess.run([_GIT, "config", "-f", str(conf), "--get", "ants.gate.docsGlob"],  # noqa: S603
                           capture_output=True, text=True, check=True).stdout.strip()
     patterns = glob.split("|")
-    assert "*.md" in patterns
-    assert not any(pattern.endswith(".txt") or pattern in {"*", "*.*"} for pattern in patterns)
+
+    def documentation(path: str) -> bool:
+        return any(fnmatchcase(path, pattern) for pattern in patterns)
+
+    for path in ("README.md", "CLAUDE.md", "ROADMAP.md", "docs/design.md", "relay/README.md"):
+        assert documentation(path), path
+    for path in ("CHANGELOG.md", "src/pressless/manual_files/en.txt",
+                 "packaging/release-requirements.txt"):
+        assert not documentation(path), path
+    assert not any(pattern in {"*", "*.*"} for pattern in patterns)

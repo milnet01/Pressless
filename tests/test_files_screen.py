@@ -16,11 +16,12 @@ import warnings
 from collections.abc import Iterator
 from pathlib import Path
 
+import pytest
 from test_editor import _binned, _Browser, _folder
 from test_face import FILES_POLICY_WORDS
 from test_photographs import _post
 
-from pressless import builder, editor, face, files, files_screen, store
+from pressless import builder, editor, face, files, files_screen, store, words
 
 PDF = b"%PDF- made up"   # thirteen bytes
 SONG = b"ID3 a made-up song"
@@ -173,3 +174,17 @@ def test_an_upload_is_kept_or_refused_in_words(tmp_path):
     said = face.sentence_for(files.NotAllowed("x"), publishing=False).what
     assert html.escape(said) in text
     assert _kept(folder) == ["my-song.mp3"]
+
+
+@pytest.mark.parametrize(("size", "language", "said"), [
+    (999, "en", "999 bytes"), (999_499, "en", "999 KB"), (999_500, "en", "1.0 MB"),
+    (1_500_000, "en", "1.5 MB"), (1_500_000, "de", "1,5 MB"),
+])
+def test_a_size_reads_as_the_language_writes_it(size, language, said):
+    """PRESS-0241 INV-8 and § 4.4: a size never reads 1000 KB, and a decimal
+    takes the language's mark. Breaks when 999,500 bytes round up to 1000
+    KB, or German shows 1.5 MB, which it reads as fifteen hundred."""
+    words.choose(language)
+    with words.use({"files_screen.bytes": "{n} bytes", "files_screen.kb": "{n} KB",
+                    "files_screen.mb": "{n} MB"}):
+        assert files_screen._size(size) == said

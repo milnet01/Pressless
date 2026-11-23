@@ -16,10 +16,7 @@
 #
 # The survivor class is the one worth understanding. It needs no convention to
 # detect, because the text just deleted is ground truth about what its author
-# believes is wrong; everything else is a search. Measured on the repository
-# this skeleton comes from, over its 35 most recent document commits: it fires
-# on three, and its first real catch was a code snippet a standard had just
-# relabelled as unsafe while two other files went on prescribing it.
+# believes is wrong; everything else is a search.
 #
 # ONE EXCLUSION, and it is not optional: text the same change re-adds
 # elsewhere is a MOVE, not a survivor. It is asked of each copy found, so a
@@ -28,13 +25,10 @@
 # `docs/` is out of scope throughout — a dated record describes the tree as it
 # was, and is not a claim about now.
 #
-# NOT PORTED: the source repository also extracts backticked repo-relative
-# paths and checks those. That form was never measured outside it, and an
-# unmeasured check is how the advisory channel above died. Add it here only
-# after running it over your own corpus and counting what it finds.
-#
 # Install: ./scripts/setup-hooks.sh, once in every clone.
 
+# -u alone: grep's exit 1 is the normal no-match result inside the pipelines
+# below, so -e or pipefail would stop the hook on every clean document.
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 0
 
@@ -42,7 +36,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 0
 # `| while` loops below run in subshells, so a counter set inside them would
 # be lost. Inside .git, never /tmp: that is RAM on the maintainer's machine,
 # and a fixed name there can be planted.
-blocks=$(mktemp "$(git rev-parse --git-dir)/pre-commit.XXXXXX") || exit 1
+blocks=$(mktemp "$(git rev-parse --path-format=absolute --git-common-dir)/pre-commit.XXXXXX") || exit 1
 trap 'rm -f "$blocks"' EXIT
 
 # One side of a document's staged diff, `+` or `-`, without its marker, its
@@ -55,19 +49,28 @@ trap 'rm -f "$blocks"' EXIT
 # and a rule stated twice is usually a bullet both times, which is the exact
 # case this check is for. The added side is excluded the same way for
 # symmetry.
+#
+# A renamed document passes its old name as $3: diffed under its new name
+# alone, the whole file reads as added and nothing it deleted is seen.
 side() {
-    git diff --cached -- "$2" | grep -e "^$1" | grep -v -e "^$1$1$1 " |
+    git diff --cached -M -- ${3:+"$3"} "$2" | grep -e "^$1" | grep -v -e "^$1$1$1 " |
         sed "s/^$1//; s/^[[:space:]]*//; s/[[:space:]]*\$//"
 }
 
 fails=0
+# The shortest deleted line the survivor check asks about, in characters:
+# shorter fragments match everywhere and say nothing.
+shortest=45
 
 # -z, so a name holding a space arrives whole. R, so a document renamed and
-# edited in one commit is checked too. D is left out on purpose: deleting a
+# edited in one commit is checked too: it arrives as status, old name, new
+# name. D is left out on purpose: deleting a
 # whole document, or merging two into one, is not fixing one copy of a rule.
 # Every read below is of the staged content (`:path`), which is what the
 # commit will hold, not of the working tree.
-while IFS= read -r -d '' f; do
+while IFS= read -r -d '' status && IFS= read -r -d '' f; do
+    old=
+    case "$status" in R*) old=$f; IFS= read -r -d '' f ;; esac
     case "$f" in *.md) ;; *) continue ;; esac
     case "$f" in docs/*) continue ;; esac
     dir=$(dirname "$f")
@@ -105,21 +108,20 @@ while IFS= read -r -d '' f; do
     done >>"$blocks"
 
     # --- surviving copies of deleted text --------------------------------
-    # 45 characters: shorter fragments match everywhere and say nothing.
-    added=$(side + "$f")
-    side - "$f" |
+    added=$(side + "$f" "$old")
+    side - "$f" "$old" |
     while IFS= read -r gone; do
         # Characters, not bytes: under LC_ALL=C `${#gone}` counts bytes, so
         # check it again the way commit-msg counts its subject.
-        [ ${#gone} -ge 45 ] || continue
-        [ "$(printf '%s' "$gone" | LC_ALL=C tr -d '\200-\277' | LC_ALL=C wc -c)" -ge 45 ] || continue
+        [ ${#gone} -ge "$shortest" ] || continue
+        [ "$(printf '%s' "$gone" | LC_ALL=C tr -d '\200-\277' | LC_ALL=C wc -c)" -ge "$shortest" ] || continue
         grep -qF -- "$gone" <<<"$added" && continue
         git grep --cached -n -F -- "$gone" -- '*.md' ':!docs/' |
         while IFS= read -r hit; do
             hf=${hit%%:*}
             [ "$hf" = "$f" ] && continue
             # A copy in a file this same change ADDED the text to is where
-            # the text went (CFG-0733). Asked per copy, not of the whole
+            # the text went. Asked per copy, not of the whole
             # change: a move would otherwise clear every other copy too.
             side + "$hf" | grep -qF -- "$gone" && continue
             printf 'BLOCK survivor %s -> %s\n' "$f" "$hit"
@@ -130,7 +132,7 @@ while IFS= read -r -d '' f; do
         cut -c1-200 "$blocks" >&2
         fails=$((fails + $(wc -l <"$blocks")))
     fi
-done < <(git diff --cached --name-only -z --diff-filter=ACMR)
+done < <(git diff --cached -M --name-status -z --diff-filter=ACMR)
 
 if [ "$fails" -gt 0 ]; then
     cat >&2 <<'MSG'

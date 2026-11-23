@@ -21,15 +21,23 @@ import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
 
 # Windows refuses to replace a file another program holds open -- its own
 # scanners open what was just written for a moment -- where Linux does not
 # (measured on the Windows box: error 5). A short wait clears that; a file
 # marked read-only is refused throughout and fails as before (PRESS-0159).
-_WINDOWS_TRIES = 10
-_WINDOWS_PAUSE = 0.1
-_T = TypeVar("_T")
+# The Publisher's fetch retries its renames on the same terms, on its own clock.
+WINDOWS_TRIES = 10
+WINDOWS_PAUSE = 0.1
+
+# Windows reads these names as devices whatever the extension, so opening
+# `nul.txt` there reaches the null device rather than failing (PRESS-0067).
+# Measured on a Windows 10 box with CreateFileW (PRESS-0164): `com0`, `lpt0`
+# and `clock$` are ordinary files. The Store refuses them on every system and
+# the Publisher's fetch on Windows; a newly measured device goes in here.
+WINDOWS_DEVICES = frozenset(
+    ["con", "prn", "aux", "nul", "conin$", "conout$"]
+    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789\u00b9\u00b2\u00b3"])
 
 
 def write_whole(
@@ -98,17 +106,17 @@ def sync_folder(folder: Path) -> None:
         os.close(handle)
 
 
-def patiently(step: Callable[[], _T]) -> _T:
+def patiently[T](step: Callable[[], T]) -> T:
     """Run `step` and return what it returns, retrying a PermissionError for a
     moment on Windows only, where a scanner briefly refuses a file just
     written (PRESS-0135 #2). PRESS-0001 § 11 names its callers."""
-    for attempt in range(_WINDOWS_TRIES):
+    for attempt in range(WINDOWS_TRIES):
         try:
             return step()
         except PermissionError:
-            if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
+            if not _is_windows() or attempt == WINDOWS_TRIES - 1:
                 raise
-            time.sleep(_WINDOWS_PAUSE)
+            time.sleep(WINDOWS_PAUSE)
 
 
 def read_ordinary(target: Path, *, follow: bool = True,
@@ -210,6 +218,9 @@ def wider_than_owner(handle: int) -> int:
 
 def _is_windows() -> bool:
     """Read at call time, so the platform is what a test patches (§ 4.4).
+    Underscored, but the platform test the whole program shares: other
+    modules call it and tests patch it by this name, which PRESS-0001 and
+    PRESS-0005 cite, so search them before changing it.
 
     `os.name` would be the obvious signal and cannot be patched in a test:
     `pathlib` branches on it to choose a path class, so setting it strands
@@ -227,3 +238,11 @@ def _discard(temporary: str) -> None:
         # way up, and a temporary that cannot be removed must not replace the
         # error saying what actually went wrong. What is left is inert.
         pass
+
+
+def windows_device(name: str) -> bool:
+    """Whether Windows reads the file name `name` as a device: the part before
+    its first dot, trailing spaces removed, case ignored, so `nul .jpg` is one.
+    `str.casefold` agrees with an A-Z fold here: no other letter folds into a
+    device name's."""
+    return name.split(".")[0].rstrip(" ").casefold() in WINDOWS_DEVICES

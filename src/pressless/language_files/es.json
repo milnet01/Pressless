@@ -4157,6 +4157,10 @@
    "448962aa",
    "Pressless no pudo anotar que tu sitio de inicio ya está publicado, así que la próxima vez que publiques te preguntará una vez más antes de reemplazar un sitio."
   ],
+  "notice.publishing.takeover_kept": [
+   "ab9b83b0",
+   "Pressless no pudo anotar que el cambio para dejar GitHub Actions está hecho, así que tu próxima publicación te llevará de nuevo allí. Púlsalo allí una vez más para terminar."
+  ],
   "notice.settings.not_private": [
    "9827a6cb",
    "No se pudo hacer privado el archivo de ajustes: este sistema de archivos dio el modo {mode} en lugar de solo para el propietario, así que otras personas con una cuenta en esta máquina pueden leerlo"

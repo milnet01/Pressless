@@ -21,8 +21,9 @@ import hashlib
 import json
 import os
 import re
+import stat
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
@@ -84,16 +85,9 @@ def vote_key(entry: Entry) -> str | None:
 # gone, which is worse than a refusal. One rule rather than one per system is
 # what makes an entry that saves on one machine save on the other (PRESS-0067).
 #
-# The list was measured on a Windows 10 box with CreateFileW (PRESS-0164). A
-# device is judged on the part before the first dot with trailing spaces
-# removed, case ignored, so `nul .jpg` reaches one; `com0`, `lpt0` and
-# `clock$` are ordinary files. A slug is tested against it whole: _LEGAL_SLUG
-# has already refused dots, capitals, `$` and the superscripts.
-# publisher.py keeps its own copy, because PRESS-0009 INV-1 lets it import
-# only settings; a newly measured device goes into both.
-_WINDOWS_DEVICES = frozenset(
-    ["con", "prn", "aux", "nul", "conin$", "conout$"]
-    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789\u00b9\u00b2\u00b3"])
+# The list and its rule are safe_write's, which the Publisher shares. A slug
+# is tested against the list whole: _LEGAL_SLUG has already refused dots,
+# capitals, `$` and the superscripts.
 
 
 class StoreError(Exception):
@@ -239,7 +233,7 @@ def read(path: Path) -> Entry:
     # Notepad offers to save UTF-8 with a byte-order mark. Kept, it becomes
     # part of the first field's name and the title moves to extra in silence.
     # One is dropped; write never emits one (§4.2, INV-16).
-    text = text.removeprefix("﻿")
+    text = text.removeprefix("\ufeff")
 
     # A blank line ends the header, and a Windows editor spells that line
     # "\r\n\r\n" -- which contains no "\n\n" at all, so looking only for the
@@ -336,9 +330,9 @@ def write(folder: Path, entry: Entry, *, draft: bool) -> Path:
 
     Create-or-replace within its own folder: the slug identifies the entry,
     so writing a slug that folder already holds replaces that entry, and
-    this consults no other folder (§4.1). Store-wide uniqueness is a rule
-    callers keep -- Import writes both folders in one pass, and a write
-    that consulted the other could not.
+    this consults no other folder (§4.1) but to finish a move cut short.
+    Store-wide uniqueness is a rule callers keep -- Import writes both
+    folders in one pass, and a write that consulted the other could not.
 
     A temporary file in the destination folder, then os.replace, which is
     atomic on both systems: an interrupted save leaves the previous file
@@ -346,6 +340,12 @@ def write(folder: Path, entry: Entry, *, draft: bool) -> Path:
     """
     target = path_for(folder, entry.slug, draft=draft)
     _refuse_what_the_format_cannot_carry(entry)
+    other = path_for(folder, entry.slug, draft=not draft)
+    if _same_file(other, target):
+        # A move killed between its link and its unlink: one file under both
+        # names. Replacing this name alone would leave the other as a stale
+        # second entry with this slug, so the move ends in this folder first.
+        _finish_a_cut_short_move(other, entry.slug)
     _write_atomically(folder, target, _entry_text(entry), prefix=".entry-", newline="\n")
     return target
 
@@ -389,8 +389,10 @@ def move_to_bin(folder: Path, path: Path) -> Path:
     """
     source, target, relative = _bin_target(folder, path, "moved")
     try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        _move_without_overwriting(source, target)
+        holders = _make_bin_folders(target)
+        _move_without_overwriting(source, target)   # syncs target's folder
+        for holder in holders:
+            safe_write.sync_folder(holder)
     except FileExistsError as exc:
         raise StoreError(
             f"the bin already holds {relative.as_posix()} from this second; "
@@ -410,12 +412,13 @@ def copy_to_bin(folder: Path, path: Path) -> Path:
     source, target, relative = _bin_target(folder, path, "copied")
     try:
         data = source.read_bytes()
-        target.parent.mkdir(parents=True, exist_ok=True)
+        holders = _make_bin_folders(target)
         try:
             with open(target, "xb") as copy:
                 copy.write(data)
-                # Synced before the caller writes the replacement, or a power
-                # loss can keep the replacement and lose this copy (PRESS-0376).
+                # Synced, with the folders naming it below, before the caller
+                # writes the replacement, or a power loss can keep the
+                # replacement and lose this copy (PRESS-0376).
                 copy.flush()
                 os.fsync(copy.fileno())
         except FileExistsError:
@@ -428,6 +431,8 @@ def copy_to_bin(folder: Path, path: Path) -> Path:
             with contextlib.suppress(OSError):
                 target.unlink()
             raise
+        for holder in (target.parent, *holders):
+            safe_write.sync_folder(holder)
     except FileExistsError as exc:
         raise StoreError(
             f"the bin already holds {relative.as_posix()} from this second; "
@@ -438,6 +443,20 @@ def copy_to_bin(folder: Path, path: Path) -> Path:
             f"{source.name} could not be copied to the bin: {_why(exc)}"
         ) from exc
     return target
+
+
+def _make_bin_folders(target: Path) -> list[Path]:
+    """Create the bin folders `target` goes in, and return each folder that
+    gained one, deepest first. A file's own sync covers its blocks, not the
+    entry naming it (safe_write.sync_folder), so each of these is synced too
+    once the file is in place."""
+    holders = []
+    level = target.parent
+    while not level.exists():
+        holders.append(level.parent)
+        level = level.parent
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return holders
 
 
 def _bin_target(folder: Path, path: Path, verb: str) -> tuple[Path, Path, Path]:
@@ -1216,12 +1235,21 @@ def _photograph_name(name: str) -> bool:
     return True
 
 
+# The fields an identity file always carries, as the first Pressless to write
+# one did; any other is written only where it is set (PRESS-0227 § 4.1).
+_IDENTITY_ALWAYS = ("name", "description")
+
+
 def _refuse_identity(target: Path, problem: str) -> NoReturn:
-    if problem == "language":
-        raise StoreError(f"{target.name}: the language is not a language's code")
-    raise StoreError(f"{target.name}: the {problem} is not a photograph's name"
-                     if problem in ("icon", "picture") else
-                     f"{target.name}: the {problem} is empty or holds a line break")
+    """Why identity_problem refused `problem`: one reason per field of
+    Identity, written inside the raise as every Store message is."""
+    raise StoreError(f"{target.name}: " + {
+        "name": "the name is empty or holds a line break",
+        "description": "the description holds a line break",
+        "icon": "the icon is not a photograph's name",
+        "picture": "the picture is not a photograph's name",
+        "language": "the language is not a language's code",
+    }[problem])
 
 
 def read_identity(folder: Path) -> Identity | None:
@@ -1232,12 +1260,14 @@ def read_identity(folder: Path) -> Identity | None:
         return None
     if not isinstance(carried, dict):
         raise StoreError(f"{target.name} is not an object")
-    name = carried.get("name")
-    rest = [carried.get(key, "") for key in ("description", "icon", "picture", "language")]
-    if not all(isinstance(value, str) for value in (name, *rest)):
+    # By name, each absent field taking its default. The name has none, so a
+    # file without one reads as dataclasses.MISSING, not text, and is refused.
+    values = {field.name: carried.get(field.name, field.default)
+              for field in fields(Identity)}
+    if not all(isinstance(value, str) for value in values.values()):
         raise StoreError(
             f"{target.name}: the name, description, pictures and language must be text")
-    identity = Identity(name, *rest)
+    identity = Identity(**values)
     problem = identity_problem(identity)
     if problem is not None:
         _refuse_identity(target, problem)
@@ -1253,10 +1283,9 @@ def write_identity(folder: Path, identity: Identity) -> Path:
     # PRESS-0227 § 4.1: a picture not chosen is left out, so an identity
     # without one is written as an older Pressless wrote it; so is a language
     # (PRESS-0241 § 4.4).
-    held = {"description": identity.description, "name": identity.name,
-            **{key: value for key, value in (("icon", identity.icon),
-                                             ("picture", identity.picture),
-                                             ("language", identity.language)) if value}}
+    held = {field.name: getattr(identity, field.name)
+            for field in fields(Identity)
+            if field.name in _IDENTITY_ALWAYS or getattr(identity, field.name)}
     text = json.dumps(held, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     _write_atomically(folder, target, text, prefix=".identity-", newline="\n")
     return target
@@ -1268,8 +1297,7 @@ def style_code_path(folder: Path) -> Path:
 
 
 def look_path_for(folder: Path, name: str) -> Path:
-    """Where one of the look's files sits: STYLE_CODE_NAME, LOOK_CHOICES_NAME
-    or EXTRA_CSS_NAME (PRESS-0196 § 4.1)."""
+    """Where one of LOOK_FILES sits (PRESS-0196 § 4.1)."""
     if name not in LOOK_FILES:
         raise StoreError(f"{name!r} is not one of the look's files")
     return Path(folder) / LOOK_FOLDER / name
@@ -1314,12 +1342,17 @@ def mark(folder: Path, *others: Path) -> str:
     handed = Path(folder)
     rows: list[str] = []
     try:
-        for name in sorted({*_BINNABLE, PHOTOGRAPHS_FOLDER}):
-            for path in sorted((handed / name).rglob("*")):
-                if path.is_file():
-                    found = path.stat()
-                    rows.append(f"{path.relative_to(handed).as_posix()}\t{found.st_size}"
-                                f"\t{found.st_mtime_ns}")
+        # One walk and one status read per file: this runs per AI-helper
+        # request, under the lock, over every photograph.
+        for name in {*_BINNABLE, PHOTOGRAPHS_FOLDER}:
+            for top, _, names in os.walk(handed / name, onerror=_raise_unless_gone):
+                relative = Path(top).relative_to(handed).as_posix()
+                for each in names:
+                    found = _status_of_a_file(os.path.join(top, each))
+                    if found is not None:
+                        rows.append(f"{relative}/{each}\t{found.st_size}"
+                                    f"\t{found.st_mtime_ns}")
+        rows.sort()
         for other in others:
             if other.is_file():
                 found = other.stat()
@@ -1327,6 +1360,23 @@ def mark(folder: Path, *others: Path) -> str:
     except OSError as exc:
         raise StoreError(f"the Store's folders could not be read: {_why(exc)}") from exc
     return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()
+
+
+def _raise_unless_gone(error: OSError) -> None:
+    """os.walk's error hook for `mark`: a folder that is not there holds
+    nothing, and any other failure to list one is the Store's to report."""
+    if not isinstance(error, FileNotFoundError):
+        raise error
+
+
+def _status_of_a_file(path: str) -> os.stat_result | None:
+    """`path`'s status where it is a file, following a link; else None. A
+    link to nothing, and a name gone since the listing, are no file."""
+    try:
+        found = os.stat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    return found if stat.S_ISREG(found.st_mode) else None
 
 
 def _is_a_temporary(name: str) -> bool:
@@ -1418,7 +1468,7 @@ def _single_name(name: str, what: str) -> str:
     return name
 
 
-# §3 decision 10's refusals, beside _WINDOWS_DEVICES. No backslash here, unlike
+# §3 decision 10's refusals, beside safe_write.WINDOWS_DEVICES. No backslash here, unlike
 # publisher.py's set: _single_name has already refused every separator.
 _WINDOWS_FORBIDDEN = frozenset('<>:"|?*') | {chr(n) for n in range(32)}
 
@@ -1432,9 +1482,9 @@ def _windows_keeps(name: str) -> bool:
 
 
 def windows_device(name: str) -> bool:
-    """Whether Windows reads the file name `name` as a device, on the rule
-    beside _WINDOWS_DEVICES. sitefile refuses a member naming one."""
-    return name.split(".")[0].rstrip(" ").casefold() in _WINDOWS_DEVICES
+    """Whether Windows reads the file name `name` as a device, on
+    safe_write's rule. sitefile refuses a member naming one."""
+    return safe_write.windows_device(name)
 
 
 def list_photographs(folder: Path) -> tuple[str, ...]:
@@ -1485,7 +1535,7 @@ def _refuse_illegal_slug(name: str, what: str) -> None:
             f"{name!r} is not {what}: one or more of a-z, 0-9 and '-', "
             f"and nothing else"
         )
-    if name in _WINDOWS_DEVICES:
+    if name in safe_write.WINDOWS_DEVICES:
         raise StoreError(
             f"{name!r} is not {what}: Windows reserves it as a device name, "
             f"so a file called {name}{FILE_SUFFIX} there is not a file. It is "
@@ -1765,9 +1815,9 @@ def _write_atomically(
     folder is not a folder to start filling (§6).
 
     `newline` is named by every caller rather than defaulted: Python's default
-    is the platform's, so an unnamed write produces CRLF on Windows. Entries,
-    templates and comments pass "\\n"; a page passes "" to turn translation off
-    and keep the bytes it was given (§4.2).
+    is the platform's, so an unnamed write produces CRLF on Windows. A file
+    shown to the writer as he wrote it -- a page, a look file -- passes "" to
+    turn translation off and keep its bytes; every other passes "\\n" (§4.2).
     """
     _handed(folder)
     destination = Path(target).parent

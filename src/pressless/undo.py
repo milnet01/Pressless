@@ -17,7 +17,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import NamedTuple, TypeVar
+from typing import NamedTuple
 
 from pressless import (
     builder,
@@ -33,7 +33,6 @@ from pressless.face import (
     SENTENCES,
     Face,
     Reply,
-    Request,
     Sentence,
     Site,
     gatherer,
@@ -45,8 +44,6 @@ from pressless.words import say, say_count
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
 CONTENT = builder.SOURCE_COPY   # the prefix fetched (PRESS-0008 § 4.7)
 KEPT_SUFFIX = "-before-undo"
-
-_T = TypeVar("_T")
 
 
 class NothingToUndo(Exception):
@@ -319,7 +316,7 @@ def _restore_over_published(folder: Path, slug: str, fetched: store.Entry,
     remembered = store.read(store.path_for(folder, slug, draft=False))
     if remembered == fetched:
         return
-    kept = _keep(folder, remembered, slug, reserved)
+    kept = _keep(folder, remembered, slug, reserved, published=True)
     reversals.append(_bin_later(folder, kept, draft=True))
     store.write(folder, fetched, draft=False)
     reversals.append(lambda: store.write(folder, remembered, draft=False))
@@ -339,7 +336,7 @@ def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
     demoted = (any(name == publishing.UNDONE for name, _ in his.extra)
                and dataclasses.replace(his, extra=_without(his.extra, publishing.UNDONE))
                == fetched)
-    kept = None if demoted else _keep(folder, his, slug, reserved)
+    kept = None if demoted else _keep(folder, his, slug, reserved, published=False)
     if kept:
         reversals.append(_bin_later(folder, kept, draft=True))
     store.move_to_bin(folder, store.path_for(folder, slug, draft=True))
@@ -357,21 +354,25 @@ def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
 def _demote(folder: Path, slug: str, reversals: list[Callable[[], None]],
             changed: _Changed) -> None:
     """An entry the Store publishes and the fetched state does not hold is turned
-    back into a draft carrying the mark (§ 4.4, § 4.5). It is never deleted."""
+    back into a draft carrying the mark (§ 4.4, § 4.5). It is never deleted.
+
+    Marked while still published, then moved: cut short between the two, it is
+    still published, and the next press demotes it. Moved first, it would be a
+    draft without the mark, which no press settles (§ 6)."""
     remembered = store.read(store.path_for(folder, slug, draft=False))
-    store.unpublish(folder, slug)
-    reversals.append(lambda: store.publish(folder, slug))
     marked = dataclasses.replace(
         remembered, extra=_without(remembered.extra, publishing.UNDONE)
         + ((publishing.UNDONE, publishing.undone_stamp()),))
-    store.write(folder, marked, draft=True)
-    reversals.append(lambda: store.write(folder, remembered, draft=True))
+    store.write(folder, marked, draft=False)
+    reversals.append(lambda: store.write(folder, remembered, draft=False))
+    store.unpublish(folder, slug)
+    reversals.append(lambda: store.publish(folder, slug))
     changed.demoted.append(slug)
 
 
 def _restore_look(folder: Path, fetched: dict[str, str],
                   reversals: list[Callable[[], None]]) -> None:
-    """PRESS-0196 § 4.7: the look's three files as one unit. A fetched state
+    """PRESS-0196 § 4.7: the look's files, `store.LOOK_FILES`, as one unit. A fetched state
     holding none keeps the Store's look, as one without an identity keeps the
     Store's; so does one whose choices.json cannot be read, and it says so.
     Otherwise each Store file that differs from its fetched version, or that
@@ -486,8 +487,8 @@ def _bin_demoted_page(folder: Path, name: str, html: str,
         lambda: store.write_html(folder, store.PAGES_FOLDER, name, html, waiting=True))
 
 
-def _restore_one(folder: Path, path: Path, remembered: _T | None, wanted: _T | None,
-                 write: Callable[[_T], None],
+def _restore_one[T](folder: Path, path: Path, remembered: T | None, wanted: T | None,
+                 write: Callable[[T], None],
                  reversals: list[Callable[[], None]]) -> None:
     """One file of one kind (§ 4.4): nothing where `remembered` (the Store's
     version, None where it has none) equals `wanted` (the fetched one).
@@ -506,18 +507,21 @@ def _restore_one(folder: Path, path: Path, remembered: _T | None, wanted: _T | N
             reversals.append(lambda: store.move_to_bin(folder, path))
 
 
-def _keep(folder: Path, entry: store.Entry, restored: str, reserved: set[str]) -> str:
+def _keep(folder: Path, entry: store.Entry, restored: str, reserved: set[str], *,
+          published: bool) -> str:
     """His version, as a draft under a free address none of `reserved` names
     (§ 4.4). It keeps its own fields, so a draft that was a working copy of
     some OTHER entry stays one —
     but never a `Replaces` naming the entry just put back, which § 3 decision 7
     rules out and `editor.TooManyCopies` would then refuse, and never the
     `Undone` mark, or the list calls an entry back on the site taken off it,
-    and never a vote key, since it becomes another entry (PRESS-0211 § 4.2)."""
+    and never a vote key, since it becomes another entry (PRESS-0211 § 4.2).
+    A `published` entry is nobody's working copy, so its kept draft carries
+    no `Replaces` at all (§ 4.4)."""
     wanted = editor.free_address(folder, restored + KEPT_SUFFIX, reserved=reserved)
     extra = tuple(pair for pair in _without(_without(entry.extra, publishing.UNDONE),
                                             store.VOTE_KEY)
-                  if not (pair[0] == editor.REPLACES and pair[1] == restored))
+                  if not (pair[0] == editor.REPLACES and (published or pair[1] == restored)))
     store.write(folder, dataclasses.replace(entry, slug=wanted, extra=extra), draft=True)
     return wanted
 
@@ -544,11 +548,10 @@ def register(face: Face, folder: Path, *,
     """Add `POST /undo` to `face` (§ 4.2)."""
     folder = Path(folder)
     face.add_page("POST", "/undo",
-                  lambda request: _undo(face, folder, request, transport))
+                  lambda request: _undo(face, folder, transport))
 
 
-def _undo(face: Face, folder: Path, request: Request,
-          transport: publisher.Transport | None) -> Reply:
+def _undo(face: Face, folder: Path, transport: publisher.Transport | None) -> Reply:
     """§ 4.2, run as a press (PRESS-0235 § 4.4). A failure at any step answers
     200 rather than an error status, so the page can render it beside what it
     already shows."""
