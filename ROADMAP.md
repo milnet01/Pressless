@@ -9730,6 +9730,10 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   words, subject 08, shipped).
   Also, passed on by PRESS-0449: publisher.py's docstring says "Tests are its
   only other caller", which is false because github_signin.py uses it.
+  Also, surfaced by PRESS-0465: scripts/by-hand-browser-checks.py cannot
+  run as documented here: system python3 has Playwright but no pytest, so
+  its import of test_publisher fails, and .venv has no Playwright. Make the
+  documented way run, and say it in docs/working-here.md.
   **Layman:** Two messages that vanished too soon now stay until they are read.
   Kind: review-fix.
   Source: review-2026-11-23.
