@@ -3851,6 +3851,14 @@ it decides how pages, the menu and the look are held.
   publish to pressless-test-3 (page live), vault count 3 before and after,
   the tray check, and German on the bar. Then signed and published; the
   real 1.0.2 to 1.1.0 update on Linux passed (PRESS-0408 note).
+  1.2.0, 2026-11-23: every by-hand check passed on the draft, by a
+  helper on the Windows box. The zip starts from a desktop task; the
+  console reports WinVaultKeyring; a real publish put draft-1-2-0-check
+  live on pressless-test-3; Send my log names Google's error message and
+  sent (its issue closed); Chrome renders; the tray's Restart keeps the
+  tab working, and Settings' Restart moves it to Your site with no new
+  tab; the vault held the same entries before and after. Then signed and
+  published.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
