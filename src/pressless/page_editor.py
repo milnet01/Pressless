@@ -1718,8 +1718,8 @@ _CODE_SCRIPT = r"""
     });
     paint(box);
   }
-  // A script that sets a box's value repaints it here.
-  window.presslessCode = {colour, paint: () => boxes.forEach(paint)};
+  // A script that sets a box's value repaints it here, or every box.
+  window.presslessCode = {colour, paint: (box) => (box ? [box] : boxes).forEach(paint)};
 })();
 """
 
@@ -1982,6 +1982,18 @@ _VISUAL_SCRIPT = r"""
     + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}"
     // PRESS-0287: a player's own controls keep its click, so the frame takes it.
     + "audio,video,iframe{pointer-events:none}";
+  // Each opening mark's closing one, or -1: the next closing mark of its name
+  // not taken by one opened after it. One pass, a stack for each name.
+  function partners(marks) {
+    const found = marks.map(() => -1), open = new Map();
+    marks.forEach((mark, at) => {
+      if (!open.has(mark.name)) open.set(mark.name, []);
+      const stack = open.get(mark.name);
+      if (!mark.closing) stack.push(at);
+      else if (stack.length) found[stack.pop()] = at;
+    });
+    return found;
+  }
   function pair() {
     const doc = frame.contentDocument;
     // PRESS-0285 § 4.5: idle while the code view shows.
@@ -1995,27 +2007,19 @@ _VISUAL_SCRIPT = r"""
       const found = /^ (\/?)pressless:([a-z]+) $/.exec(walker.currentNode.data);
       if (found) marks.push({at: walker.currentNode, closing: found[1] === "/", name: found[2]});
     }
-    const partner = (from) => {
-      let depth = 0;
-      for (let at = from + 1; at < marks.length; at++) {
-        if (marks[at].name !== marks[from].name) continue;
-        if (!marks[at].closing) depth++;
-        else if (depth === 0) return at;
-        else depth--;
-      }
-      return -1;
-    };
+    const partner = partners(marks);
     each(model, (item) => { item.start = item.end = item.el = null; });
     const order = frameSections.filter((entry) => entry.marked);
+    const current = byPathNow();
     let next = 0, skip = -1;
     marks.forEach((mark, at) => {
       // `page` and `column` marks wrap lists of sections, not a section, so
       // the outline has no entry for them.
       if (at <= skip || mark.closing || mark.name === "page" || mark.name === "column") return;
-      const closing = partner(at);
+      const closing = partner[at];
       if (closing < 0 || next >= order.length) return;
       const entry = order[next++];
-      const item = byPathNow().get(key(entry.path));
+      const item = current.get(key(entry.path));
       // The outline lists a section that holds no others as one entry, so
       // any mark inside it is passed over.
       if (!HOLDERS.includes(entry.kind)) skip = closing;
@@ -2155,7 +2159,8 @@ _VISUAL_SCRIPT = r"""
           }
         }
       });
-      window.presslessCode.paint();
+      // The panel's own box alone: the code view's holds the whole page.
+      window.presslessCode.paint(field("code").closest(".code-box"));
       panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
         button.hidden = kind !== "columns" || Number(button.dataset.column) >= picked.parts.length;
       });
@@ -2542,9 +2547,12 @@ _VISUAL_SCRIPT = r"""
   }
 
   // ---- typing (§ 4.4) --------------------------------------------------
+  // The handle follows a section as it grows, measured once a frame rather
+  // than on every key.
+  let placing = 0;
   function typed(event) {
     if (picked && picked.el && picked.el.contains(event.target)) touch(picked);
-    placeHandle();
+    if (!placing) placing = requestAnimationFrame(() => { placing = 0; placeHandle(); });
   }
   function pasted(event) {
     if (picked && picked.el) paste(frame.contentDocument, event);

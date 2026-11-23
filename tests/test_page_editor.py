@@ -1453,3 +1453,47 @@ def test_a_scripts_end_is_found_where_it_is(closing, tmp_path):
     looked for in a lower-cased copy, which puts it a letter late."""
     pieces = _coloured(f"<script>İ{closing}", tmp_path)
     assert pieces[2:] == [("İ", ""), (closing[:-1], "tag"), (">", "tag")]
+
+
+# The frame's marks paired in one pass, against the scan it replaced.
+_PARTNERS_HARNESS = """
+%s
+const scan = (marks, from) => {
+  let depth = 0;
+  for (let at = from + 1; at < marks.length; at++) {
+    if (marks[at].name !== marks[from].name) continue;
+    if (!marks[at].closing) depth++;
+    else if (depth === 0) return at;
+    else depth--;
+  }
+  return -1;
+};
+let seed = 7;
+const random = () => (seed = (seed * 1103515245 + 12345) %% 2147483648) / 2147483648;
+const wrong = [];
+for (let run = 0; run < 2000; run++) {
+  const marks = Array.from({length: Math.floor(random() * 12)}, () => ({
+    name: ["text", "columns", "column"][Math.floor(random() * 3)], closing: random() < 0.5}));
+  const found = partners(marks);
+  marks.forEach((mark, at) => {
+    if (!mark.closing && found[at] !== scan(marks, at)) wrong.push(marks);
+  });
+}
+process.stdout.write(JSON.stringify(wrong.slice(0, 3)));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_marks_pair_in_one_pass_as_they_did_by_scanning(tmp_path):
+    """PRESS-0260 § 4.2: each opening mark pairs with its own closing one.
+    The one-pass pairing agrees with a forward scan on random runs of marks,
+    nested, unclosed and stray. Breaks when a stack pairs a mark the scan
+    would not."""
+    script = page_editor._VISUAL_SCRIPT
+    start = script.index("  function partners(marks) {")
+    end = script.index("\n  function pair() {", start)
+    harness = tmp_path / "partners.js"
+    harness.write_text(_PARTNERS_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    assert json.loads(run.stdout) == []
