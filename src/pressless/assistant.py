@@ -94,6 +94,7 @@ _STATUS_WORDS = {
     UNKNOWN: "assistant.status.unknown"}
 _JSON = "application/json"
 _KEEP_FINISHED = 50                   # finished requests kept for request_status
+_NONCE_LIMIT = 128                    # the longest PROVE nonce answered
 _KEY_WORDS = "failure.secret.publishing_key"     # the words naming the key, never the key
 # What list_files says names a file, by builder.FileUser's kind: a page and a
 # part may share a name (PRESS-0420).
@@ -266,6 +267,9 @@ class _Door:
         self.requests: dict[str, _Request] = {}
         self.waiting: _Request | None = None
         self.state = threading.Lock()     # guards `requests` and `waiting`, briefly
+        # The nonce `admits` took a PROVE header with, for `call` on the same
+        # request's thread: the Face runs both there, one after the other.
+        self._proving = threading.local()
 
     # -------------------------------------------------------- the door file ---
 
@@ -280,14 +284,25 @@ class _Door:
         door_path(self.own).unlink(missing_ok=True)
 
     def admits(self, authorization: str) -> bool:
-        """§ 4.3: the switch is on and the header carries this door's token."""
+        """§ 4.3: the switch is on, and the header carries this door's token
+        or asks the door to prove it holds it, which runs nothing."""
         scheme, _, offered = authorization.partition(" ")
-        return (scheme == "Bearer" and is_on(self.own)
-                and is_secret(offered.strip(), self.token))
+        offered = offered.strip()
+        self._proving.nonce = None
+        if not is_on(self.own):
+            return False
+        if scheme == assistant_tools.PROVE and 0 < len(offered) <= _NONCE_LIMIT:
+            self._proving.nonce = offered
+            return True
+        return scheme == "Bearer" and is_secret(offered, self.token)
 
     # ------------------------------------------------------------- a call ---
 
     def call(self, request: Request) -> Reply:
+        nonce, self._proving.nonce = getattr(self._proving, "nonce", None), None
+        if nonce is not None:
+            # Admitted without the token: the proof, and nothing the body asks.
+            return _answer({"proof": assistant_tools.proof(self.token, nonce)})
         try:
             sent = json.loads(request.body.decode("utf-8"))
         except (UnicodeDecodeError, ValueError):

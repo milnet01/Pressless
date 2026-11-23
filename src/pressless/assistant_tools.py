@@ -11,9 +11,20 @@ optional argument, never rename or remove one, nor make an argument required.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 from dataclasses import dataclass, field
 
 READ, WRITE, ASK = "read", "write", "ask"
+
+# § 4.3: the Authorization scheme asking the door to prove it holds the door
+# file's token, before the bridge sends it anything of the writer's.
+PROVE = "Prove"
+
+
+def proof(token: str, nonce: str) -> str:
+    """The door's answer to PROVE `nonce`: only a holder of `token` can make it."""
+    return hmac.new(token.encode("utf-8"), nonce.encode("utf-8"), hashlib.sha256).hexdigest()
 
 # dashboard.WINDOWS' spans, written out so this module imports nothing; a test
 # checks they match.

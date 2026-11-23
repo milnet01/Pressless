@@ -5,8 +5,9 @@ It speaks a subset of the Model Context Protocol over stdio: one JSON-RPC
 message per line, read from stdin, answered on stdout. Nothing else goes to
 stdout. It lists the tools from the catalogue, and posts each call to the
 door inside the running Pressless, found through the door file, which it
-reads afresh on every call. It holds no lock and no state, and knows nothing
-about the site.
+reads afresh on every call. The door proves it holds the file's token before
+the call is sent. It keeps nothing between calls, holds no lock but its own
+output's, and knows nothing about the site.
 
 Protocol: https://modelcontextprotocol.io/specification/2026-07-28 (stdio
 transport, versioning, server/discover, tools). Legacy clients negotiate with
@@ -14,9 +15,14 @@ transport, versioning, server/discover, tools). Legacy clients negotiate with
 """
 from __future__ import annotations
 
+import hmac
 import http.client
 import json
+import queue
+import secrets
 import sys
+import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import TextIO
@@ -34,6 +40,11 @@ DOOR_PATH = "/assistant"                   # assistant.ADDRESS; a test checks th
 # behind one another (§ 4.3), so a call may wait minutes on a large site.
 TIMEOUT_SECONDS = 300
 LIST_TTL_MS = 3_600_000
+# The most a door reply may hold: the Face's own body cap. A listener sending
+# more is not the door.
+REPLY_LIMIT = 64 * 1024 * 1024
+_PROOF_LIMIT = 1024
+_CHUNK = 64 * 1024
 
 # JSON-RPC's codes, and MCP's for a version it does not speak.
 PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS = -32700, -32600, -32601, -32602
@@ -50,29 +61,62 @@ _Answer = tuple[str, dict]
 
 def run(stdin: TextIO, stdout: TextIO, *,
         door: Callable[[str, dict], dict | None] | None = None) -> None:
-    """Answer each line of `stdin` until it ends. `door` posts one call to
-    Pressless and returns its reply, or None where no Pressless answers; a
-    test hands in its own."""
+    """Answer each line of `stdin` until it ends, then each call still
+    waiting. `door` posts one call to Pressless and returns its reply, or
+    None where no Pressless answers; a test hands in its own.
+
+    Calls wait on the door, up to TIMEOUT_SECONDS, so they run one after
+    another on their own thread, and a ping meanwhile is answered at once
+    (§ 4.4). Replies may then come out of order, which JSON-RPC allows."""
     post = door or _post
-    for line in stdin:
-        if not line.strip():
-            continue
-        reply = _handle(line, post)
-        if reply is not None:
+    written = threading.Lock()
+
+    def write(reply: dict | None) -> None:
+        if reply is None:
+            return
+        with written:
             # ASCII escapes: a string from the request may hold a lone
             # surrogate, which UTF-8 cannot write.
             stdout.write(json.dumps(reply, separators=(",", ":")) + "\n")
             stdout.flush()
 
+    calls: queue.Queue[dict | None] = queue.Queue()
 
-def _handle(line: str, post: Callable[[str, dict], dict | None]) -> dict | None:
+    def call_each() -> None:
+        while (message := calls.get()) is not None:
+            write(_handle(message, post))
+
+    caller = threading.Thread(target=call_each, name="bridge-calls", daemon=True)
+    caller.start()
+    try:
+        for line in stdin:
+            if not line.strip():
+                continue
+            message, refused = _parsed(line)
+            if refused is not None:
+                write(refused)
+            elif message.get("method") == "tools/call":
+                calls.put(message)
+            else:
+                write(_handle(message, post))
+    finally:
+        calls.put(None)
+        caller.join()
+
+
+def _parsed(line: str) -> tuple[dict, dict | None]:
+    """The line's message, and the reply refusing it, or None."""
     try:
         message = json.loads(line)
     except ValueError:
-        return _reply(None, _error(PARSE_ERROR, "not JSON"))
+        return {}, _reply(None, _error(PARSE_ERROR, "not JSON"))
     if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
-        return _reply(message.get("id") if isinstance(message, dict) else None,
-                      _error(INVALID_REQUEST, "not a JSON-RPC 2.0 message"))
+        return {}, _reply(message.get("id") if isinstance(message, dict) else None,
+                          _error(INVALID_REQUEST, "not a JSON-RPC 2.0 message"))
+    return message, None
+
+
+def _handle(message: dict, post: Callable[[str, dict], dict | None]) -> dict | None:
     if "id" not in message or message.get("method") in _IGNORED:
         return None                             # a notification is never answered
     params = message.get("params")
@@ -157,29 +201,67 @@ def door_file(own: Path | None = None) -> Path:
 def _post(tool: str, arguments: dict, own: Path | None = None) -> dict | None:
     """One call to the door, read from `door_file(own)` now (§ 4.4). None
     where no Pressless answers there: closed, switched off, or something else
-    on its old port (§ 6)."""
+    on its old port, which cannot prove it holds the token (§ 6). The whole
+    call, proof included, has TIMEOUT_SECONDS."""
     try:
         door = json.loads(door_file(own).read_text(encoding="utf-8"))
         port, token = int(door["port"]), str(door["token"])
     except (OSError, ValueError, KeyError, TypeError, paths.NotPackaged):
         return None
-    body = json.dumps({"tool": tool, "arguments": arguments, "version": __version__})
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=TIMEOUT_SECONDS)
+    deadline = time.monotonic() + TIMEOUT_SECONDS
+    nonce = secrets.token_urlsafe(16)
     try:
-        connection.request("POST", DOOR_PATH, body.encode("utf-8"), {
-            "Host": f"127.0.0.1:{port}", "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"})
-        response = connection.getresponse()
-        data = response.read()
-        reply = json.loads(data.decode("utf-8")) if response.status == 200 else None
+        # Nothing of the writer's, and not the token, goes before the proof.
+        proved = _exchange(port, f"{assistant_tools.PROVE} {nonce}", b"", _PROOF_LIMIT,
+                           deadline)
+        if not (isinstance(proved, dict) and isinstance(proved.get("proof"), str)
+                and hmac.compare_digest(proved["proof"], assistant_tools.proof(token, nonce))):
+            return None
+        body = json.dumps({"tool": tool, "arguments": arguments, "version": __version__})
+        reply = _exchange(port, f"Bearer {token}", body.encode("utf-8"), REPLY_LIMIT, deadline)
     except TimeoutError:
         # The door may still be doing the call; "closed" would be untrue (§ 6).
         return {"ok": False, "said": say("assistant.still_working")}
     except (OSError, ValueError, http.client.HTTPException):
         return None
+    return reply if isinstance(reply, dict) else None
+
+
+def _exchange(port: int, authorization: str, body: bytes, limit: int,
+              deadline: float) -> object:
+    """POST `body` to the door on `port`: its JSON reply, or None where the
+    status is not 200 or the reply passes `limit` bytes. Raises TimeoutError
+    once `deadline` passes, however slowly the reply trickles in."""
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=_left(deadline))
+    try:
+        connection.request("POST", DOOR_PATH, body, {
+            "Host": f"127.0.0.1:{port}", "Authorization": authorization,
+            "Content-Type": "application/json"})
+        # Held here: the connection lets go of its socket once a reply that
+        # closes it arrives, and the reply is still read through it.
+        sock = connection.sock
+        response = connection.getresponse()
+        if response.status != 200:
+            return None
+        data = bytearray()
+        while not response.isclosed():      # closed once its last byte is read
+            sock.settimeout(_left(deadline))
+            chunk = response.read1(_CHUNK)     # what has come, so the deadline is checked
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > limit:
+                return None
+        return json.loads(data.decode("utf-8"))
     finally:
         connection.close()
-    return reply if isinstance(reply, dict) else None
+
+
+def _left(deadline: float) -> float:
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise TimeoutError
+    return left
 
 
 def main(own: Path | None = None) -> int:

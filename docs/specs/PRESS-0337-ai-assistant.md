@@ -148,8 +148,14 @@ runs:
 - **no `Origin` header**. Browsers send one on a cross-site POST; the bridge
   never does;
 - `Authorization: Bearer <token>` matches the door file's token, compared by
-  `face.is_secret`;
+  `face.is_secret`, or is `Prove <nonce>` (`assistant_tools.PROVE`);
 - the switch is on.
+
+A `Prove` request runs nothing its body asks. The door answers
+`{"proof": <hex>}`, the HMAC-SHA256 of the nonce keyed by its token
+(`assistant_tools.proof`). The bridge asks for it before each call, so a
+listener that does not hold the token is sent neither the token nor anything
+of the writer's.
 
 Request and reply bodies are JSON:
 
@@ -221,10 +227,15 @@ The protocol is a subset of MCP over stdio. Source:
   deterministic order, `ttlMs` and `cacheScope: "public"` on modern
   requests and on `server/discover`.
 - **`tools/call`** checks the name against the catalogue (-32602 if
-  unknown), reads the door file, and posts to the door with a 300-second
-  timeout. A missing file, a refused connection or a 403 answers a tool
+  unknown), reads the door file, asks the door to prove its token (§ 4.3),
+  and posts to the door. The proof and the call share one 300-second
+  timeout, however slowly a reply arrives, and a reply over 64 MiB is not
+  read. A missing file, a refused connection, a 403, a wrong proof or an
+  oversized reply answers a tool
   error, `isError: true`, with `assistant.open_pressless`; a timeout, with
-  `assistant.still_working`. A door reply
+  `assistant.still_working`. Calls run one after another on their own
+  thread, so a `ping` meanwhile is answered at once, and replies may come out
+  of order. A door reply
   becomes `content: [{type: "text", text: <JSON>}]` and `structuredContent`
   for `ok`; `said` as text with `isError: true` otherwise.
 
@@ -418,7 +429,7 @@ every update. On each pass of its wait, the helper ends every such process
 whose command line ends in `--assistant`, so a bridge started during the wait
 is ended too. It ends them through `Invoke-CimMethod Terminate`, since
 PRESS-0023 INV-12 bars `-Id` from the script. A bridge holds no state and no lock, so ending it loses
-at most a call in flight. Its AI app sees the call fail and starts a new bridge
+at most the calls in flight. Its AI app sees the call fail and starts a new bridge
 when next needed.
 
 On Linux the AppImage is replaced by `os.replace` with the bridge running, as
@@ -524,13 +535,23 @@ Every test below is new; none can run before the code exists.
   file is rewritten from Pressless's block alone, the copy loses bytes or is
   replaced by a later connect, or an unreadable file is replaced.
 
+- **INV-15** — The bridge sends nothing of the writer's, and not the token,
+  to a listener that cannot prove it holds the door file's token, and
+  believes no reply from it. *Test:*
+  `tests/test_bridge.py::test_an_impostor_on_the_port_gets_nothing` puts a
+  listener on the door file's port that answers every request with a forged
+  success; the bridge answers `assistant.open_pressless`, and the listener
+  heard only the proof request. `::test_a_proved_door_gets_the_call` is the
+  other half, and `tests/test_assistant.py::test_the_door_proves_its_token_and_runs_nothing`
+  the door's. *Breaks when:* the call is posted before the proof is checked.
+
 ## 6. Failure modes
 
 | What breaks | What happens |
 |---|---|
 | Pressless closed, or the switch off | Every call answers `assistant.open_pressless` as a tool error; `tools/list` still answers. |
 | Door file left by a crash | The connection is refused; same answer. The next Face rewrites the file. |
-| Port taken by another program after a crash | It gets a POST with a token it cannot use, and answers something that is not the door's JSON. The bridge treats any reply that does not parse as `assistant.open_pressless`. |
+| Port taken by another program after a crash | It gets a `Prove` request and cannot answer the token's proof, so the bridge sends it nothing more and answers `assistant.open_pressless` (INV-15). |
 | A press already running | The yes waits on `pressing.run`'s busy answer: the request stays waiting and the box says a press runs. |
 | The writer never answers | The request expires after 30 minutes; `request_status` says `expired`. |
 | A call outlasts the bridge's timeout (a long queue, a large site's publish plan) | The call answers `assistant.still_working`: the door may still finish it, so the AI app checks `site_overview` or `request_status` before asking again. |
@@ -542,10 +563,10 @@ Every test below is new; none can run before the code exists.
 ## 7. Tests
 
 - `tests/test_assistant.py` locks INV-1, INV-2, INV-3, INV-4, INV-5, INV-6,
-  INV-9, INV-10, INV-11, INV-12 and INV-14: the door, the catalogue, the
-  requests and the Connect button.
-- `tests/test_bridge.py` locks INV-7 and INV-8, and checks § 4.4's framing,
-  versions and methods.
+  INV-9, INV-10, INV-11, INV-12 and INV-14, and the door's half of INV-15:
+  the door, the catalogue, the requests and the Connect button.
+- `tests/test_bridge.py` locks INV-7, INV-8 and INV-15, and checks § 4.4's
+  framing, versions, methods, timeout and reply cap.
 - `tests/test_installer.py` locks INV-13's script half.
 
 Each invariant's test is seen failing before its code exists.
@@ -613,6 +634,7 @@ By hand, before release, on Linux and the Windows box:
 | INV-12 | `tests/test_assistant.py::test_box_is_escaped` |
 | INV-13 | **Partial:** `tests/test_installer.py::test_helper_ends_bridges` reads the script; only the § 7 Windows check runs it |
 | INV-14 | `tests/test_assistant.py::test_connecting_claude_desktop_keeps_the_rest` and `::test_connecting_changes_nothing_it_cannot_read` |
+| INV-15 | `tests/test_bridge.py::test_an_impostor_on_the_port_gets_nothing`, `::test_a_proved_door_gets_the_call` and `tests/test_assistant.py::test_the_door_proves_its_token_and_runs_nothing` |
 | Claude Desktop's file is where § 4.2 says | **Partial:** `::test_claude_desktops_file_on_each_system` checks our reading; only the § 7 check runs the real app, and only on Windows |
 | The home screen after Yes (§ 4.6) | `scripts/by-hand-browser-checks.py`'s PRESS-0356 row, run before a release; nothing in the gate |
 | No failure points a chat "below" (§ 4.3) | `tests/test_assistant.py::test_no_failure_points_an_ai_app_below` |

@@ -81,12 +81,14 @@ class _Pressless:
 
     def post(self, body: bytes, *, path: str = "/assistant", bearer: str | None = _OWN,
              origin: str | None = None, host: str | None = None,
-             cookie: bool = False) -> tuple[int, str]:
+             cookie: bool = False, authorization: str | None = None) -> tuple[int, str]:
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
         try:
             connection.putrequest("POST", path, skip_host=True, skip_accept_encoding=True)
             connection.putheader("Host", host or f"127.0.0.1:{self.port}")
-            if bearer is not None:
+            if authorization is not None:
+                connection.putheader("Authorization", authorization)
+            elif bearer is not None:
                 connection.putheader("Authorization",
                                      f"Bearer {self.token() if bearer is _OWN else bearer}")
             if origin is not None:
@@ -291,6 +293,27 @@ def test_the_door_file_is_the_owners_alone_on_windows(tmp_path):
     flags, aces = shown[2:shown.index("(")], shown[shown.index("("):]
     assert shown.startswith("D:") and "P" in flags and aces == "(A;;FA;;;OW)", shown
     assert json.loads((tmp_path / DOOR_FILE).read_text(encoding="utf-8"))["token"] == door.token
+
+
+# ----------------------------------------------------------------- INV-15 ---
+
+
+def test_the_door_proves_its_token_and_runs_nothing(tmp_path):
+    """INV-15, § 4.3: asked to prove, the door answers the token's proof of
+    the nonce and runs nothing the body asks, and refuses while switched off.
+    Breaks when a proof request is admitted as a call."""
+    with _pressless(tmp_path) as pressless:
+        body = json.dumps({"tool": "new_entry", "arguments": {"title": "Sneaked in"},
+                           "version": pressless_version()}).encode()
+        status, text = pressless.post(body, authorization="Prove a-nonce")
+        assert status == 200
+        assert json.loads(text) == {"proof": assistant_tools.proof(pressless.token(), "a-nonce")}
+        assert store.list_slugs(pressless.folder, draft=True) == ()
+        assert "assistant:" not in pressless.log()
+        # The next call on the door still needs the token.
+        assert pressless.post(body, bearer="x" * 43)[0] == 403
+        _switch(pressless.own, False)
+        assert pressless.post(body, authorization="Prove a-nonce")[0] == 403
 
 
 # ----------------------------------------------------------------- INV-10 ---
