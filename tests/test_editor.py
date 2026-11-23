@@ -1057,6 +1057,9 @@ def test_every_upload_says_how_it_ended(tmp_path):
     for script in (editor._VISUAL_SCRIPT, editor._EDITOR_SCRIPT, page_editor._VISUAL_SCRIPT):
         assert '"/photograph?name=' not in script and "presslessUpload(" in script
     assert '"/file?name=' not in page_editor._VISUAL_SCRIPT
+    # PRESS-0197 § 4.4: a kept file's address comes from the server, as a
+    # photograph's does; the script never builds one.
+    assert "encodeURIComponent" not in page_editor._VISUAL_SCRIPT
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")

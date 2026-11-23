@@ -6,3 +6,4 @@
 | impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: § 4.1 gains the fonts and `.ico`, and § 4.6 what any address names (its § 4.13). |
 | pointer | 2026-11-15 | none: pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4: Files' place in the bar is PRESS-0353 § 4.2's. |
 | amend | 2026-11-17 | none: PRESS-0415; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.6: `files_named` names each user with its kind, so a fixed page called `footer` is not the footer. |
+| amend | 2026-11-23 | none: PRESS-0442; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4: `POST /file` answers the address a page names the file by, so the page editor builds none. |

@@ -166,6 +166,8 @@ def test_an_upload_is_kept_or_refused_in_words(tmp_path):
         status, text = _post(browser.port, browser.cookie,
                              "/file?name=" + urllib.parse.quote("My Song.MP3"), SONG)
         assert status == 200 and json.loads(text)["name"] == "my-song.mp3"
+        # The address a page names it by, built where the Builder builds it.
+        assert json.loads(text)["address"] == "files/my-song.mp3"
         status, text = _post(browser.port, browser.cookie, "/file?name=a.html", b"<html>")
     assert status == 409
     said = face.sentence_for(files.NotAllowed("x"), publishing=False).what

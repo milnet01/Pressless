@@ -108,13 +108,14 @@ def _page(kept: tuple[str, ...], named: dict[str, tuple[builder.FileUser, ...]],
 
 def _upload(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.4: the body is the file, its chosen name in the query, answered as
-    editor._photograph answers."""
+    editor._photograph answers, with the address a page names it by."""
     name, notices, failure = editor.captured(
         face, lock, lambda: files.add(folder, request.query.get("name", ""), request.body),
         (store.StoreError, files.NotAllowed, files.TooLarge, OSError))
     if failure is not None:
         return editor.failed(face, notices, failure)
-    return editor.json_reply({"name": name, "notices": render_notices(notices)})
+    return editor.json_reply({"name": name, "address": builder.web_file(name),
+                              "notices": render_notices(notices)})
 
 
 def remove(folder: Path, name: str) -> None:

@@ -148,7 +148,7 @@ sits outside `content/`.
   | Route | Does |
   |---|---|
   | `GET /files` | lists each kept file: its name, its size, the pages naming it, and a *Remove* button |
-  | `POST /file?name=…` | the body is the file; `files.add` under `editor.LOCK`; answers `{"name", "notices"}` as `editor._photograph` does |
+  | `POST /file?name=…` | the body is the file; `files.add` under `editor.LOCK`; answers `{"name", "address", "notices"}` as `editor._photograph` does, `address` being `builder.web_file(name)` |
   | `POST /files/remove` | form field `name`; refused with a sentence naming the pages where any page names it; else `store.move_to_bin(file_path_for(...))` |
   | files at `/preview/files/` | `face.add_files(..., lambda n: store.file_path_for(folder, n))` |
 

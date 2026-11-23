@@ -2279,8 +2279,9 @@ _VISUAL_SCRIPT = r"""
   }
   // PRESS-0282: a section playing or offering a file is added by choosing
   // the file, so Add with no address asks for it, and the upload's answer
-  // is the address. Every other kind needs its address typed.
-  const FILED = ["video", "music", "download"];
+  // is the address. Every other kind needs its address typed. The kinds are
+  // files.ACCEPT's.
+  const FILED = Object.keys(given.accept);
   let adding = null;
   function asked(kind, address, column) {
     if (!ADDRESSED.includes(kind) || address) return false;
@@ -2596,8 +2597,8 @@ _VISUAL_SCRIPT = r"""
     }
     const reply = await window.presslessUpload("/file", file, window.presslessPage.stop);
     if (!reply) return;
-    const name = reply.name;
-    const address = up + "files/" + encodeURIComponent(name);
+    const {name, address: published} = reply;
+    const address = up + published;
     const suffix = name.slice(name.lastIndexOf("."));
     Object.keys(given.accept).forEach((section) => {
       const list = document.getElementById(section + "-list");
