@@ -184,7 +184,7 @@ inside its two marks, with no whitespace between a mark and the HTML:
 | picture | `src`, `alt`, optional `width`, `height`, `caption` | `<img src alt [width height]>`; with a caption, `<figure>` round the `img` and a `<figcaption><inline></figcaption>` |
 | pictures | none; `parts[0]` its pictures | `<div class="pressless-pictures">` round the picture sections |
 | button | `href`, `label` | `<p class="pressless-button"><a href>label</a></p>` |
-| video | `src`, or `youtube` (an id) | `<video controls preload="metadata" src></video>`, or an `iframe` to `https://www.youtube-nocookie.com/embed/<id>` with `title`, `allowfullscreen` and `loading="lazy"` |
+| video | `src`, or `youtube` (an id) and `title` | `<video controls preload="metadata" src></video>`, or an `iframe` to `https://www.youtube-nocookie.com/embed/<id>` with `title`, `allowfullscreen` and `loading="lazy"` |
 | music | `src` | `<audio controls preload="metadata" src></audio>` |
 | download | `href`, `label` | `<p class="pressless-download"><a href download>label</a></p>` |
 | columns | none; `parts` two to four columns | `<div class="pressless-columns">` round each `<div class="pressless-column">`, each column in its marks |
@@ -221,6 +221,12 @@ from its fields, as an editor does when it changes one, carries no
 `source` and is written in the current form. **A change to a
 kind's HTML adds a form, and never removes one.** This item ships one
 form per kind.
+
+*Amended by PRESS-0481:* a YouTube video's second form writes its `title`
+field, which the page editor fills with `page_editor.video_title` in the
+site's language, as it fills a new `top` section's label. The first form's
+fixed `title="YouTube video"` reads as that title, so its bytes are the
+second form's and both fixtures read.
 
 ### 4.6 Taking a page into sections
 

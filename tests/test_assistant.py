@@ -421,7 +421,7 @@ def test_stale_version_refused(tmp_path):
         assert reply["ok"] is False and look.digest(folder) == before
         # The right version saves.
         assert pressless.ok("save_look", {"version": shown["version"], "choices": changed})
-        assert look.read(folder).width == changed["width"]
+        assert look.read(folder, waiting=True).width == changed["width"]
 
 
 # ------------------------------------------------------------------ INV-6 ---

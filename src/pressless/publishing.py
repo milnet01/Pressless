@@ -332,9 +332,11 @@ class Preview:
 
 
 def preview(folder: Path, saved: settings.Settings, key: str, *,
-            entry: str | None = None, page: builder.Html | None = None,
+            entry: str | None = None,
+            page: builder.Html | builder.WaitingLook | None = None,
             transport: publisher.Transport | None = None) -> Preview:
-    """PRESS-0345 § 4.2: build as if `entry` or `page` were pressed, into a
+    """PRESS-0345 § 4.2: build as if `entry` or `page` were pressed, the
+    waiting look among pages (PRESS-0196 § 4.4), into a
     scratch folder with photographs named rather than resized, and plan the
     publish of that. Nothing in the Store or the site folder changes, and the
     scratch folder goes whatever happens. Raises as the press would."""
@@ -479,16 +481,19 @@ def settings_and_key(folder: Path, gathered: Callable) -> tuple[settings.Setting
 
 
 def press_preview(folder: Path, *, entry: str | None = None,
-                  page: tuple[str, str] | None = None,
+                  page: tuple[str, str] | None = None, look: bool = False,
                   transport: publisher.Transport | None = None) -> Preview:
     """PRESS-0345 § 4.3: the preview of pressing the entry `entry`, or the page
-    or part `page` (kind, name) as its waiting copy holds it, or the site as it
-    stands. Writes nothing."""
+    or part `page` (kind, name) as its waiting copy holds it, or the waiting
+    look where `look` (PRESS-0196 § 4.4), or the site as it stands. Writes
+    nothing."""
     saved, key = settings_and_key(folder, lambda step: step())
     if entry is not None:
         return preview(folder, saved, key, entry=entry, transport=transport)
-    held = None
-    if page is not None:
+    held: builder.Html | builder.WaitingLook | None = None
+    if look and store.look_waits(folder):
+        held = builder.WAITING_LOOK
+    elif page is not None:
         waiting = store.html_path_for(folder, *page, waiting=True)
         if waiting.is_file():
             held = builder.Html(*page, store.read_html(waiting))
@@ -498,8 +503,9 @@ def press_preview(folder: Path, *, entry: str | None = None,
 def _plan(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
     """PRESS-0345 § 4.3: `press_preview` for the entry `slug`, or the page or part
-    `kind` and `name`, or the site where the form names neither (PRESS-0353
-    § 4.3). The editor saves first, so the Store holds what would be pressed.
+    `kind` and `name`, or the waiting look where it names `look` (PRESS-0196
+    § 4.4), or the site where the form names none (PRESS-0353 § 4.3). The
+    editor saves first, so the Store holds what would be pressed.
     It builds under editor.LOCK, as a press does (PRESS-0013 § 4.1)."""
     form = {name: values[0]
             for name, values in request.form(blanks=True, strict=True).items()}
@@ -507,6 +513,8 @@ def _plan(face: Face, folder: Path, request: Request,
         with editor.LOCK:
             if "slug" in form:
                 shown = press_preview(folder, entry=form["slug"], transport=transport)
+            elif "look" in form:     # PRESS-0196 § 4.4
+                shown = press_preview(folder, look=True, transport=transport)
             elif "kind" in form or "name" in form:
                 shown = press_preview(folder, page=(form.get("kind", ""), form.get("name", "")),
                              transport=transport)

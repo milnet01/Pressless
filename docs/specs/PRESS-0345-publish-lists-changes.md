@@ -98,6 +98,9 @@ pages: its HTML would name each page twice and each part by its path.
 
 It is not a press: it takes no `pressing` slot and publishes nothing.
 
+*Amended by PRESS-0482:* a form naming `look` plans the press of the waiting
+look, built with `builder.WAITING_LOOK` (PRESS-0196 § 4.4).
+
 *Folded back 2026-11-06: the route saved the fields itself in the draft, which
 would have changed the file version the press posts next.*
 
