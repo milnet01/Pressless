@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=478 -->
+<!-- ants-roadmap-id-high-water: PRESS=480 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9150,12 +9150,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0445] **Second-round review fixes: the Store and Undo.**
+- ✅ [PRESS-0445] **Second-round review fixes: the Store and Undo.**
   Subject 06. Review types: Codebase, Test.
   Findings: review-code lane-06, review-readability lane-06, and the
   performance and test reviews' findings on these files and their tests.
   Among them: copy_to_bin never syncs the bin folder (a gap in
   PRESS-0376's fix).
+  Shipped 2026-11-23, ca00bf0..fd1152e (merged 0db32e7). 26 findings: 19
+  fixed, 0 queued, 7 dismissed (duplicates, a lock PRESS-0023 § 4.11
+  already holds, PRESS-0196 § 4.7's binning, two measured-small scans,
+  one kept test). The bin syncs the folders it creates; a write finishes a
+  cut-short move; Undo marks a demotion first, so a second Undo settles an
+  interrupted one; a kept version drops Replaces; an empty description is
+  allowed. PRESS-0005 and PRESS-0015 amended. Full suite 2638 passed, no
+  warning; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/06.json.
   **Layman:** Bug fixes and tidy-ups in how Pressless keeps your site's files and steps back a publish.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9547,6 +9556,28 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   picture.
   **Layman:** Saving in the visual editor stops re-downloading every full-size photograph.
   Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0479] **The code view recolours only what changed while typing.**
+  Review type: Codebase. Queued by PRESS-0442 from review-code
+  --performance lane-02 (page_editor.py's code view recolours the whole
+  page on each repaint). The colouring step measured 8.6 ms per repaint on
+  a 200 KB page after 842bc89; rebuilding the coloured text needs a
+  browser profiler to measure first.
+  **Layman:** Typing in the code view of a very big page stays smooth.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Editor.
+
+- 📋 [PRESS-0480] **A refused Remove or Rename keeps its failure box, and a kept copy keeps its reason.**
+  Review type: Codebase. Surfaced by PRESS-0442's sweep, in subjects
+  already shipped: editor.py's SAVING_SCRIPT clears #failure on every
+  successful save, so a refused Remove or Rename's failure box closes as
+  soon as the held save answers; publishing.py's bin_the_copy drops the
+  reason the copy stayed, the defect fixed at page_editor.py:893.
+  **Layman:** Two messages that vanished too soon now stay until they are read.
+  Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Editor.
 
