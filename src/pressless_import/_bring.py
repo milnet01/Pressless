@@ -515,6 +515,10 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     menu_listed: list[str] = []
     navigation = _navigation(links, menu_listed)
 
+    # The Report is made inside `write`, after the pages list what they
+    # dropped, so `keep` has it before the first move (§ 4.8).
+    made: list[Report] = []
+
     def write(work: Path, move: Callable[[Path, Path], None]) -> None:
         _write_entries(work, items, entries)
         with _writing("the look"):
@@ -526,6 +530,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
                                  _page_html(page, sheets, web, old_site))
         if not pages:
             with _writing("the page index"):
+                # The name setup kept is the one the Builder shows as the
+                # site's, so the made-up home page agrees with it.
                 identity = store.read_identity(into)
                 store.write_html(work, store.PAGES_FOLDER, "index", starter.home_page(
                     identity.name if identity is not None else site_title))
@@ -562,7 +568,6 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         if keep is not None:
             keep(made[0])
 
-    made: list[Report] = []
     staged(into, write)
     return made[0]
 
@@ -580,7 +585,7 @@ def _held(channel, ns, media: Path):
         return photo[path]
 
     names, by_address, by_id, unheld = _attachments(channel, ns, media, strict=False,
-                                                    shown=is_photo)
+                                                    is_photograph=is_photo)
     kept: dict[str, tuple[str, str]] = {}
     for place, name in names.items():
         if is_photo(media / place):
@@ -626,14 +631,14 @@ def _dropped(items: list[_Item], pages: list[_Page], menu_listed: list[str]
     return tuple(dropped)
 
 
-def _unfetched(unheld: list[tuple[str, str]], fetched: Mapping[str, str]
+def _unfetched(unheld: list[tuple[str, str]], fetch_failures: Mapping[str, str]
                ) -> tuple[tuple[str, str], ...]:
     """Each attachment not held, once, with why: where its original is
     missing, the fetch's own reason for that place takes MISSING's place."""
     why_by_place: dict[str, str] = {}
     for place, why in unheld:
         if why == MISSING:
-            why = fetched.get(place, "it was not fetched, nor in the media download")
+            why = fetch_failures.get(place, "it was not fetched, nor in the media download")
         why_by_place[place] = why
     return tuple(why_by_place.items())
 

@@ -123,8 +123,8 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 _RESIZED = re.compile(r"-\d+x\d+(?=\.[^./]+$)")
 _GALLERY = re.compile(r"\[gallery\b[^\]]*\]")
 _UPLOADS = "/uploads/"
-# A Report reason _bring.bring_in matches to put the fetch's own reason in its
-# place, so it is spelled once.
+# A Report reason _bring._unfetched matches to put the fetch's own reason in
+# its place, so it is spelled once.
 MISSING = "its original is missing"
 
 # §4.9, matched as today's generator matches them.
@@ -249,7 +249,7 @@ def read(export: Path) -> Export:
                             "content": "http://purl.org/rss/1.0/modules/content/"})
 
 
-def _field(element, name: str, ns) -> str:
+def _field(element: ET.Element, name: str, ns: dict[str, str]) -> str:
     return (element.findtext(f"wp:{name}", "", ns) or "").strip()
 
 
@@ -343,7 +343,7 @@ def _comments(item, ns) -> tuple[tuple[store.Comment, ...], list[str]]:
 _DRAFT_STATUSES = ("draft", "private", "pending", "future")
 
 
-def _items(channel, ns, *, page_statuses: Container[str] | None = None,
+def _items(channel: ET.Element, ns: dict[str, str], *, page_statuses: Container[str] | None = None,
            titled_drafts: bool = False, any_date: bool = False) -> list[_Item]:
     """Every carried post, and every page whose status is in `page_statuses`,
     or every page where that is None. With `titled_drafts`, a draft whose
@@ -478,11 +478,13 @@ def _folded(name: str) -> str:
                    for letter in name)
 
 
-def _attachments(channel, ns, originals: Path, *, strict: bool = True,
-                 shown: Callable[[Path], bool] | None = None):
+def _attachments(channel: ET.Element, ns: dict[str, str], originals: Path, *,
+                 strict: bool = True, is_photograph: Callable[[Path], bool] | None = None,
+                 ) -> tuple[dict[str, str], Lookup, Lookup, list[tuple[str, str]]]:
     """Every attachment, a file as well as a photograph, whose original is
     in `originals`, by its upload path, with its Store name; the two
-    lookups, answering for those `shown` admits (all, where none is given);
+    lookups, answering only for a photograph where `is_photograph` is given
+    (for every attachment held, where it is not);
     and each attachment not held, with why. A
     name two attachments share, compared without regard to case, takes its
     upload month in front (decision 6). Where not `strict`, an attachment
@@ -532,7 +534,7 @@ def _attachments(channel, ns, originals: Path, *, strict: bool = True,
         names[upload_path] = name
         by_id_path[post_id] = upload_path
     pictures = {upload_path: name for upload_path, name in names.items()
-                if shown is None or shown(originals / upload_path)}
+                if is_photograph is None or is_photograph(originals / upload_path)}
 
     def by_address(address: str) -> str | None:
         upload_path = _upload_path(address)
@@ -702,7 +704,7 @@ def _furniture(templates: Path) -> dict[str, str]:
 # ------------------------------------------------------------- the run ----
 
 
-def _old_site(channel, ns) -> str:
+def _old_site(channel: ET.Element, ns: dict[str, str]) -> str:
     base = (_field(channel, "base_blog_url", ns) or _field(channel, "base_site_url", ns)
             or (channel.findtext("link") or "").strip())
     return urlparse(base).netloc
