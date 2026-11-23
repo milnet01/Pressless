@@ -2,7 +2,7 @@
 
 Pressless is a program that runs on your own computer. It has no server.
 It sends the people who make Pressless nothing, unless you say yes to
-usage reports (see Usage reports below).
+usage reports, or press Send in the Send my log box (both below).
 
 ## Google user data
 
@@ -40,8 +40,10 @@ it to train any AI or machine-learning model.
 
 ### Who it is shared with
 
-No one. Pressless has no server, and its makers never receive any of
-your Google user data. Usage reports carry none of it. Pressless talks
+No one. Pressless has no server, and its makers receive none of your
+Google user data, with one exception you choose: a log you send with
+Send my log can hold Google's own short error message, which can name
+your Analytics property. Usage reports carry none of it. Pressless talks
 to Google only to ask for the figures above, and it does not send Google
 user data to anyone else.
 
@@ -139,6 +141,39 @@ On the Usage reports screen, choose **Turn usage reports off**.
 Pressless stops sending, forgets its random code, and deletes its list
 of sent reports from your computer. Reports already sent stay with
 Google. If you turn reports on again, Pressless makes a new random code.
+
+## Send my log
+
+Failure pages and Report a problem have a **Send my log** button. It
+opens a box saying what goes and where. Nothing is sent until you press
+**Send** in that box; **Not now** sends nothing.
+
+### What it sends
+
+- Pressless's two log files, `pressless.log` and the older
+  `pressless.log.1`;
+- Pressless's version and your operating system's name.
+
+The log says what Pressless did and what went wrong. It names your site,
+its pages and its files. It is written to leave out your keys,
+passwords, account names and full paths, and before sending, Pressless
+also removes the known shapes of keys and tokens. If Google refused a
+request, the log keeps Google's own short error message, which can name
+your Analytics property or YouTube channel.
+
+### Where it goes
+
+Over an encrypted connection (HTTPS) to a small relay Pressless's makers
+run on Cloudflare. The relay files the two files, and an issue quoting
+the log's last lines, in a private GitHub repository only the makers can
+read. It answers a short reference, which Pressless shows you. Cloudflare
+uses your computer's internet address to limit how often a log can be
+sent; the relay does not store it.
+
+### How long it is kept
+
+Nothing deletes a sent log on a schedule. It stays in that repository
+until the makers delete it.
 
 ## Questions
 
