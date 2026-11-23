@@ -1492,6 +1492,7 @@ class _Server(http.server.ThreadingHTTPServer):
 class _Handler(http.server.BaseHTTPRequestHandler):
     server: _Server
     _policy_sent = False  # this answer named its own Content-Security-Policy
+    _screen: str | None = None  # the screen to report once this answer is sent
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         """Write nothing: the standard one prints the request line, secret
@@ -1528,6 +1529,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if not self._policy_sent:
             super().send_header("Content-Security-Policy", _ANCESTORS_POLICY)
         self._policy_sent = False
+        # PRESS-0435: the job's record ends with its answer, so neither what
+        # runs after it nor the thread's closing reads as running.
+        progress.end()
         super().end_headers()
 
     def _send(
@@ -1768,15 +1772,20 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     def _answer_then(self, face: Face, page: Page, request: Request, publishing: bool) -> None:
         """Answer, then run what the page asked to run after (PRESS-0023 § 4.9)."""
         face._reply.after = []
+        self._screen = None
         try:
             self._answer(face, page, request, publishing)
         finally:
             # PRESS-0023 § 4.9 step 5: what runs once this answer is sent.
             actions, face._reply.after = face._reply.after, None
-            if actions:
+            if actions or self._screen is not None:
                 self.wfile.flush()
                 for action in actions:
                     action()
+            if self._screen is not None:
+                # Its own path, never after_reply's: a page shown asks
+                # for nothing to run after it (PRESS-0203).
+                usage.report("screen", screen=self._screen)
 
     def _choose_theme(self, face: Face) -> None:
         """PRESS-0190: remember the theme the picker has already applied."""
@@ -1879,8 +1888,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if request.method == "GET":
             # The registered path, no query. Reported once the page is sent,
             # so no screen waits for the list's write (PRESS-0262 § 4.5).
-            screen = request.path
-            face.after_reply(lambda: usage.report("screen", screen=screen))
+            self._screen = request.path
         self._send_page(face, 200, body)
 
     def _take_upload(self, face: Face, upload: _Upload, path: str,

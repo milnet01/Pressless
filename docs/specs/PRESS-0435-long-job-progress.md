@@ -85,7 +85,7 @@ class Counted:
 ```
 
 Records are kept per thread under one lock, held only to read or change
-them. The Face wraps each POST and GET in `progress.job()`. `publisher._fetch`
+them. The Face wraps each POST and GET in `progress.job()`, and `progress.end()` ends the record as the answer's headers go, so nothing after the answer reads as running. `publisher._fetch`
 reads blobs on four threads (PRESS-0009 § 4.5), which count each read as it
 lands through `counter()`.
 
