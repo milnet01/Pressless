@@ -355,6 +355,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Pressless/": "the User-Agent the relay is sent",
         "_KEY": "part of the secret-shape pattern, matched and never shown",
     },
+    "settings.py": {"settings file": _MESSAGE},
     "usage.py": {
         **dict.fromkeys(("Windows", "Linux", "Linux (", "an unknown system"),
                         "the system's name, sent in a report and the issue form"),
