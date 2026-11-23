@@ -24,7 +24,7 @@ import os
 import re
 import tempfile
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -371,7 +371,7 @@ def test_no_store_failure_names_a_path(tmp_path, monkeypatch):
         ("a comment with no identifier", StoreError, (replace(one, identifier=""),)),
         ("two comments sharing an identifier", StoreError, (one, one)),
         ("a comment date carrying a zone", StoreError,
-         (replace(one, date=datetime(2026, 1, 1, tzinfo=timezone.utc)),)),
+         (replace(one, date=datetime(2026, 1, 1, tzinfo=UTC)),)),
     ):
         failure(
             what,

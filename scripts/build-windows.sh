@@ -15,8 +15,10 @@ stage=build/zip
 rm -rf "$work" "$stage"
 
 # Python on Windows prints CRLF; the carriage returns would become part of
-# each argument.
-mapfile -t args < <("$PY" scripts/freeze_flags.py args "$work" | tr -d '\r')
+# each argument. Assigned first, so set -e sees freeze_flags.py fail, as
+# build-linux.sh says.
+flags=$("$PY" scripts/freeze_flags.py args "$work" | tr -d '\r')
+mapfile -t args <<<"$flags"
 "$PY" -m PyInstaller "${args[@]}" >&2
 version=$("$PY" scripts/freeze_flags.py version | tr -d '\r')
 

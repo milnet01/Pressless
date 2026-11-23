@@ -85,7 +85,9 @@ told, and nothing announces the omission. That is why it is committed.
 The list is
 right because `--docs` runs the leak sweep, which is the check a
 markdown edit in this repository can actually breach, and no test reads
-a markdown file as data. Narrow it if either stops being true.
+a file it lists. **`CHANGELOG.md` is left out**: a test reads it, so a
+push changing it runs the whole gate. Narrow the list if either stops
+being true.
 **`*.txt` is left out on purpose** (PRESS-0362): the pattern crosses
 folders, a test reads the manual's `en.txt`, and the release build
 reads `packaging/release-requirements.txt`.

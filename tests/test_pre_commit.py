@@ -145,3 +145,18 @@ def test_text_moved_to_a_document_this_change_adds_it_to_passes(tmp_path):
     repository.write("two.md", f"  {_RULE}  \n")
     ran = repository.hook()
     assert ran.returncode == 0, ran.stderr
+
+
+def test_text_deleted_from_a_renamed_document_that_survives_elsewhere_blocks(tmp_path):
+    """Breaks when a renamed document's diff names only its new path: the
+    whole file then reads as added, and nothing it deleted is seen."""
+    repository = _Repository(tmp_path)
+    body = "".join(f"Line {n} of a long document.\n" for n in range(20))
+    repository.write("old.md", f"{body}{_RULE}\n")
+    repository.write("two.md", f"{_RULE}\n")
+    repository.commit()
+    repository.git("mv", "old.md", "new.md")
+    repository.write("new.md", body)
+    ran = repository.hook()
+    assert ran.returncode == 1
+    assert "BLOCK survivor new.md -> two.md:1:" in ran.stderr

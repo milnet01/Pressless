@@ -66,7 +66,9 @@ PY
 #
 # The suite's dependencies are upgraded on each run, because a fresh CI
 # install resolves today's versions. The browser checks are not CI's mirror,
-# and keep what their kept venv already holds.
+# and keep what their kept venv already holds. The suite runs as local-ci.sh
+# runs it (-ra), with -q for a shorter log and no cache, since the clone is
+# deleted afterwards.
 if ((${#browsers[@]} == 0)); then
     body=$(cat <<EOF
     & \$python -m pip install --quiet --disable-pip-version-check --upgrade --upgrade-strategy eager $deps
@@ -144,12 +146,14 @@ git bundle create -q "$scratch/$run.bundle" HEAD
 # ssh exits 255 for an unreachable box, but also for a changed host key, a
 # refused key, or a connection lost mid-run, and those must fail the gate. So
 # a probe asks first, and only a connection that never formed is unreachable.
-# Once it has answered, any failure is the gate's.
+# Once it has answered, any failure is the gate's. A timeout counts only in
+# connect's own message: "timed out during banner exchange" means the box
+# connected and then said nothing.
 probe=0
 said=$(ssh -o ConnectTimeout=8 "$host" exit 2>&1) || probe=$?
 if ((probe != 0)); then
     case $said in
-        *"Could not resolve hostname"* | *"No route to host"* | *"timed out"* \
+        *"Could not resolve hostname"* | *"No route to host"* | *"connect to host "*": Connection timed out"* \
             | *"Connection refused"* | *"Network is unreachable"*)
             printf 'windows gate: %s is not reachable\n' "$host" >&2
             exit 2 ;;
