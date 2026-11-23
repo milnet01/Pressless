@@ -6,7 +6,9 @@ imported, so a module posting elsewhere, or sending other files, fails.
 """
 from __future__ import annotations
 
+import ast
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -79,8 +81,42 @@ def test_only_the_send_route_sends(tmp_path):
 
     source = Path(sendlog.__file__).parent
     callers = [path.name for path in sorted(source.rglob("*.py"))
-               if "sendlog.send(" in path.read_text(encoding="utf-8")]
+               if path.name != "sendlog.py" and _calls_send(path.read_text(encoding="utf-8"))]
     assert callers == []
+
+
+def _calls_send(text: str) -> bool:
+    """Whether a module imports `send` from sendlog, or calls `.send` on
+    sendlog under any name it imports it as."""
+    tree = ast.parse(text)
+    names = {"sendlog"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "pressless.sendlog":
+            if any(alias.name in ("send", "*") for alias in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom) and node.module == "pressless":
+            names |= {alias.asname or alias.name for alias in node.names
+                      if alias.name == "sendlog"}
+        elif isinstance(node, ast.Import):
+            names |= {alias.asname for alias in node.names
+                      if alias.name == "pressless.sendlog" and alias.asname}
+    return any(isinstance(node, ast.Attribute) and node.attr == "send"
+               and ((isinstance(node.value, ast.Name) and node.value.id in names)
+                    or (isinstance(node.value, ast.Attribute) and node.value.attr == "sendlog"))
+               for node in ast.walk(tree))
+
+
+@pytest.mark.parametrize("text", [
+    "from pressless.sendlog import send\nsend(folder)\n",
+    "from pressless import sendlog\nsendlog.send (folder)\n",
+    "from pressless import sendlog as logs\nlogs.send(folder)\n",
+    "import pressless.sendlog\npressless.sendlog.send(folder)\n",
+    "import pressless.sendlog as logs\nlogs.send(folder)\n",
+])
+def test_the_caller_check_sees_every_spelling(text):
+    """INV-1's walk. Breaks when it matches one spelling of the call only."""
+    assert _calls_send(text)
+    assert not _calls_send("from pressless import sendlog\nsendlog.register(face, folder)\n")
 
 
 def test_the_body_is_the_logs_and_nothing_else(tmp_path):
@@ -96,6 +132,45 @@ def test_the_body_is_the_logs_and_nothing_else(tmp_path):
     assert sent == {"version": __version__, "system": usage.system()[:128],
                     "log": f"{NEWEST}\n", "old": f"{OLDEST}\n"}
     assert str(tmp_path) not in body.decode("utf-8")
+
+
+def test_known_secret_shapes_are_removed_before_sending(tmp_path):
+    """§ 4.2: a secret that slipped into a log never leaves the machine.
+    Breaks when a file is sent as read. Built in parts, so no file here
+    holds anything shaped like a secret."""
+    key = "PRI" + "VATE KEY"
+    shapes = ["gh" + "p_" + "fake" * 9, "github" + "_pat_" + "fake" * 6,
+              "AI" + "za" + "fake" * 9, "ya" + "29." + "fake" * 4, "1/" + "/" + "fake" * 6,
+              "s" + "k-" + "fake" * 6, f"-----BEGIN {key}-----\nfake\n-----END {key}-----"]
+    relay = _Relay()
+    folder = tmp_path / "logs"
+    lines = "".join(f"{NEWEST} {shape} kept\n" for shape in shapes)
+    _logs(folder, lines + "Authorization: Bearer " + "fake" * 4 + "\n", lines)
+    sendlog.send(folder, relay)
+    sent = json.loads(relay.sent[0][2])
+    for field in ("log", "old"):
+        assert "fake" not in sent[field]
+        assert sent[field].count(f"{NEWEST} [removed] kept\n") == len(shapes)
+    assert sent["log"].endswith("Authorization: Bearer [removed]\n")
+
+
+def test_the_relay_takes_what_the_app_sends():
+    """The app's cap and reference pattern against relay/src/index.js.
+    Breaks when one side changes and the other does not."""
+    relay_source = (Path(__file__).parents[1] / "relay" / "src" / "index.js").read_text(
+        encoding="utf-8")
+    largest = int(re.search(r"LARGEST = ([0-9_]+);", relay_source)[1].replace("_", ""))
+    alphabet = re.search(r'ALPHABET = "([A-Z0-9]+)";', relay_source)[1]
+    length = int(re.search(r"function reference\(\) \{.*?Uint8Array\((\d+)\)",
+                           relay_source, re.DOTALL)[1])
+    assert sendlog.LARGEST <= largest
+    pattern = sendlog._REFERENCE.pattern
+    assert all(re.fullmatch(pattern, letter * length) for letter in alphabet)
+    assert not re.fullmatch(pattern, alphabet[0] * (length + 1))
+    assert not re.fullmatch(pattern, alphabet[0] * (length - 1))
+    outside = [chr(code) for code in range(ord("0"), ord("Z") + 1)
+               if chr(code).isalnum() and chr(code) not in alphabet]
+    assert not any(re.fullmatch(pattern, letter * length) for letter in outside)
 
 
 def test_an_absent_old_log_is_sent_empty(tmp_path):
