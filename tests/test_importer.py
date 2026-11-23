@@ -881,6 +881,8 @@ _ALLOWED_IMPORTS = {
     "pressless.os_reason",
     # PRESS-0409: whether a ZIP member stays inside; imports nothing.
     "pressless.zip_member",
+    # PRESS-0464: how far a bring-in has got; imports nothing.
+    "pressless.progress",
 }
 
 

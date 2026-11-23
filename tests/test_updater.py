@@ -492,7 +492,7 @@ def test_the_updater_reaches_no_store_settings_or_credentials():
     one inside a function body included, which loading alone never sees."""
     allowed = {"pressless", "pressless.updater", "pressless.update_key",
                "pressless.installer", "pressless.safe_write", "pressless.os_reason",
-               "pressless.zip_member", "pressless.json_record"}
+               "pressless.zip_member", "pressless.json_record", "pressless.progress"}
     source = Path(updater.__file__).parents[1]
     loaded = subprocess.run(
         [sys.executable, "-c", "import sys, pressless.updater; "

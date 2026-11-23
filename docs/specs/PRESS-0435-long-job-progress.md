@@ -85,7 +85,7 @@ class Counted:
 ```
 
 Records are kept per thread under one lock, held only to read or change
-them. `Face._dispatch` wraps each POST in `progress.job()`. `publisher._fetch`
+them. The Face wraps each POST and GET in `progress.job()`. `publisher._fetch`
 reads blobs on four threads (PRESS-0009 § 4.5), which count each read as it
 lands through `counter()`.
 
@@ -96,8 +96,13 @@ lands through `counter()`.
 | `publisher._fetch` (look, take-in, bring-in, undo, takeover) | `progress.downloading` | yes, files and size from the tree listing's `size` |
 | `publisher.publish`, the blob loop | `progress.sending` | yes, files and size of `uploaded` |
 | `pressless_import.fetch._Crawl`, each page kept | `progress.downloading` | no |
-| `sitefile.save` | `progress.packing` | yes |
+| `sitefile.save` | `progress.packing` | yes; `save_part` reports it with no numbers first |
 | `sitefile._unpack` | `progress.unpacking` | yes |
+| `publisher._local_files`, the press's check of every file | `progress.checking` | yes, files |
+| `builder`, each entry page and fixed page | `progress.building` | yes, pages |
+| `builder`, each photograph's web copy waited for | `progress.photographs` | yes |
+| `pressless_import`'s two bring-ins, each file written | `progress.bringing` | yes |
+| `updater._stream` | `progress.updating` | size only |
 
 Each loop reports before its first file (0 done) and after each one.
 `pressless_import.fetch.fetch_all`, a WordPress import's pictures, needs
@@ -135,7 +140,7 @@ count line one line high and empty. While the note is up the script asks
 `said` and sets the bar's value to `fraction` where it is not null. The
 note's width is fixed, so nothing moves when the count arrives.
 
-The note goes up on three paths:
+The note goes up on four paths:
 
 1. **A form sent** — as PRESS-0434 does now. The old page's script keeps
    running until the reply arrives, so its asks keep coming.
@@ -144,6 +149,9 @@ The note goes up on three paths:
    left unanswered, the note goes.
 3. **A press running when a page opens** — `pressing.SCRIPT`'s `ask` calls
    `presslessWorking` while `GET /press` says one runs.
+4. **A download link clicked** (PRESS-0464) — at once. Its page stays, so
+   the note goes once two asks running find nothing running. A `GET` holds
+   a record as a `POST` does, so a download's packing counts.
 
 ## 5. Invariants
 

@@ -686,11 +686,11 @@ _SCRIPT = """
 // The browser's own fetch, kept once per window so a second run does not
 // wrap the first run's wrapper.
 const sendFetch = window.presslessSendFetch ??= window.fetch.bind(window);
-let askingProgress = false;
+let askingProgress = false, downloading = false;
 async function askProgress() {
   if (askingProgress) return;
   askingProgress = true;
-  let missed = 0;
+  let missed = 0, idle = 0;
   while (missed < 5) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const note = document.getElementById("working-note");
@@ -701,6 +701,14 @@ async function askProgress() {
       continue;
     }
     missed = 0;
+    // A download's page stays, so the note goes once nothing has run for
+    // two asks running (PRESS-0464).
+    idle = now.running ? 0 : idle + 1;
+    if (downloading && idle >= 2) {
+      downloading = false;
+      note.remove();
+      break;
+    }
     if (!now.running || !now.said) continue;
     note.querySelector(".count").textContent = now.said;
     if (now.fraction !== null) note.querySelector("progress").value = now.fraction;
@@ -748,6 +756,15 @@ document.addEventListener("submit", (event) => {
   showWorking("script.working");
   const pressed = event.submitter;
   if (pressed) setTimeout(() => { pressed.disabled = true; pressed.dataset.working = ""; });
+});
+// A download link says so at once: Pressless packs the file before the
+// browser shows the download (PRESS-0464).
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href][download]");
+  if (!link || event.defaultPrevented || event.button !== 0
+      || link.closest("[data-quiet]")) return;
+  downloading = true;
+  showWorking("script.working");
 });
 // A link to a screen that takes a moment says so too, after a short wait,
 // so a quick screen never flashes it.
@@ -1488,7 +1505,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         super().setup()
 
     def do_GET(self) -> None:  # noqa: N802 -- the name http.server dispatches to
-        self._dispatch("GET")
+        # PRESS-0464: a download packs as a POST's job runs, and counts too.
+        with progress.job():
+            self._dispatch("GET")
 
     def do_POST(self) -> None:  # noqa: N802
         # PRESS-0435: a long job's loops report how far they have got into

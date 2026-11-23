@@ -186,6 +186,7 @@ def save_part(site: Path, folder: Path) -> Path:
     _SPARE free, it raises ENOSPC and writes nothing, so a save never fills
     the drive other writes need."""
     folder = Path(folder)
+    progress.count("progress.packing")   # before the lock, so a download says so
     if sum(path.stat().st_size for _, path in _members(Path(site))) \
             > shutil.disk_usage(folder).free - _SPARE:
         raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))

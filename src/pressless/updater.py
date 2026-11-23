@@ -36,7 +36,7 @@ import certifi
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from pressless import json_record, os_reason, update_key, zip_member
+from pressless import json_record, os_reason, progress, update_key, zip_member
 from pressless.installer import UpdateError
 
 # The app's repository, not his site's. PRESSLESS_UPDATE_REPOSITORY replaces it
@@ -454,6 +454,7 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
             raise DownloadFailed("the download's length is not the signed list's")
         digest = hashlib.sha256()
         total = 0
+        progress.count("progress.updating", 0, None, 0, offer.size)   # PRESS-0464
         while True:
             try:
                 chunk = response.read(_CHUNK)
@@ -466,6 +467,7 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
                 raise UpdateRejected("more bytes arrived than the signed list names")
             digest.update(chunk)
             out.write(chunk)
+            progress.count("progress.updating", 0, None, total, offer.size)
         if total < offer.size:
             raise DownloadEndedEarly(f"the download stopped at {total} of {offer.size} bytes")
         if digest.hexdigest() != offer.sha256:

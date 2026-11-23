@@ -1285,7 +1285,11 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, _Local
     (PRESS-0069).
     """
     files = {}
-    for path in _entries(folder, untouchable):
+    found = _entries(folder, untouchable)
+    # Every byte is read, so a large site counts (PRESS-0464).
+    total = sum(1 for path in found if path.is_file())
+    progress.count("progress.checking", 0, total)
+    for path in found:
         relative = path.relative_to(folder).as_posix()
         try:
             _refuse_if_stray(relative, path)
@@ -1294,6 +1298,7 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, _Local
         except OSError as exc:
             raise _unreadable(relative, exc) from exc
         files[relative] = _Local(path, *_hash_file(relative, path))
+        progress.count("progress.checking", len(files), total)
     return files
 
 

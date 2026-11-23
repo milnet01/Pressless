@@ -46,7 +46,7 @@ from pressless import (
 )
 from pressless.words import say
 
-from . import Dropped, ImportStopped, Report, _writing, resolve_slug
+from . import Dropped, ImportStopped, Report, _Counted, _writing, resolve_slug
 from ._bring import (
     _NOT_EMPTY,
     _UNREADABLE,
@@ -1761,9 +1761,11 @@ def bring_in_folder(folder: Path, into: Path, *,
 
 def _write_all(work: Path, into: Path, folder: Path, written: _Written,
                move: Callable[[Path, Path], None]) -> None:
+    counted = _Counted(len(written.pages) + len(written.photographs) + len(written.files))
     for name, text in written.pages.items():
         with _writing(f"the page {name}"):
             store.write_html(work, store.PAGES_FOLDER, name, text)
+        counted.one()
     for name, text in (("header", written.header), ("footer", written.footer),
                        ("navigation", written.navigation)):
         with _writing(f"the furniture file {name}"):
@@ -1777,6 +1779,7 @@ def _write_all(work: Path, into: Path, folder: Path, written: _Written,
         for path, name in kept.items():
             with _writing(f"the file {path}"):
                 move(folder / path, path_for(work, name))
+            counted.one()
     with _writing("the templates"):
         templates.seed(work)
     with _writing("the journal switch"):
