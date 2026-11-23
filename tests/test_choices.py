@@ -49,6 +49,24 @@ def test_a_choice_that_cannot_be_written_is_only_forgotten(tmp_path) -> None:
     assert choices.read(missing) == choices.Choices()
 
 
+def test_a_choice_over_a_file_that_cannot_be_read_now_keeps_the_others(
+        tmp_path, monkeypatch) -> None:
+    """A file held open elsewhere, as Windows antivirus or Explorer can, reads
+    as no choices. Breaks when remembering one then replaces the others."""
+    assert choices.remember(tmp_path, view="code", page=("pages", "about"))
+    real_read_text = Path.read_text
+
+    def held(path, *args, **kwargs):
+        if path.name == FILE_NAME:
+            raise PermissionError("held by another program")
+        return real_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", held)
+    assert not choices.remember(tmp_path, true_colours=True)
+    monkeypatch.setattr(Path, "read_text", real_read_text)
+    assert choices.read(tmp_path) == choices.Choices(page=("pages", "about"), view="code")
+
+
 def _view(text: str) -> str:
     return "code" if 'data-view="code"' in text else "visual"
 

@@ -17,6 +17,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from test_editor import _binned, _Browser, _folder
+from test_face import FILES_POLICY_WORDS
 from test_photographs import _post
 
 from pressless import builder, editor, face, files, files_screen, store
@@ -66,7 +67,7 @@ def test_kept_files_are_served_under_the_policy(tmp_path):
         status, headers, _ = browser.request("GET", "/preview/files/a.mp3")
         assert status == 200
         assert headers["Content-Type"] == "audio/mpeg"
-        assert headers["Content-Security-Policy"] == face.FILES_POLICY
+        assert headers["Content-Security-Policy"] == FILES_POLICY_WORDS
         assert headers["X-Content-Type-Options"] == "nosniff"
         status, headers, _ = browser.request("GET", "/preview/files/a.txt")
         assert (status, headers["Content-Type"]) == (200, "text/plain; charset=utf-8")

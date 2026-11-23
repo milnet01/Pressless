@@ -28,9 +28,10 @@ class Choices:
     true_colours: bool = False           # the preview's true-colours switch
 
 
-def read(folder: Path) -> Choices:
-    """The choices held. Each one of the wrong shape reads as not made."""
-    data = json_record.read(Path(folder) / FILE_NAME)
+def read(folder: Path, *, strict: bool = False) -> Choices:
+    """The choices held. Each one of the wrong shape reads as not made.
+    `strict` raises where the file is there but cannot be read now."""
+    data = json_record.read(Path(folder) / FILE_NAME, strict=strict)
     page = data.get("page")
     if not (isinstance(page, list) and len(page) == 2
             and all(isinstance(part, str) and part for part in page)):
@@ -45,10 +46,10 @@ def read(folder: Path) -> Choices:
 
 def remember(folder: Path, **changes: object) -> bool:
     """Keep `changes` beside the choices already held. False where the file
-    could not be written, which costs only the choice."""
+    could not be read or written, which costs only the choice."""
     with _LOCK:
-        held = dataclasses.replace(read(folder), **changes)
         try:
+            held = dataclasses.replace(read(folder, strict=True), **changes)
             json_record.write(Path(folder) / FILE_NAME, dataclasses.asdict(held))
         except OSError:
             return False

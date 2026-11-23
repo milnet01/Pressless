@@ -8,9 +8,10 @@ prose; the sentences live here, keyed by the failure's class, and their words
 in the words table (PRESS-0242).
 
 Nothing here keeps state between requests (`docs/design.md` § State) beyond
-what the server itself needs: the secret made at launch, whether its link is
-spent, the pages later items add, the log it holds open, and the chosen theme
-and text size, which a request may change.
+what the server itself needs: its link's secret, which `fresh_link` replaces,
+and whether that link is spent; the session a restart hands on, and whether a
+tab came back; the pages later items add; the log it holds open; and the
+choices a request may change: theme, text size and language.
 """
 
 from __future__ import annotations
@@ -320,16 +321,16 @@ def sentence_for(
                           say("failure.unforeseen.next"))
     if entry is None:
         return unforeseen
-    link = (entry.link[0], say(entry.link[1])) if entry.link else None
-    # A failure may carry the words for its sentence's gaps. The secret is the
-    # one the Face names, else the failure's own, else "that secret".
-    slots = dict(getattr(failure, "slots", {}))
-    slots["secret"] = secret or slots.get("secret") or say("failure.unnamed_secret")
     try:
+        link = (entry.link[0], say(entry.link[1])) if entry.link else None
+        # A failure may carry the words for its sentence's gaps. The secret is
+        # the one the Face names, else the failure's own, else "that secret".
+        slots = dict(getattr(failure, "slots", {}))
+        slots["secret"] = secret or slots.get("secret") or say("failure.unnamed_secret")
         return Sentence(say(entry.what, **slots), entry.site, say(entry.next, **slots), link)
-    except KeyError:
-        # A gap the failure left unfilled. This runs in the last-resort
-        # catch, so raising here would leave him with no answer at all.
+    except Exception:  # noqa: BLE001 -- the last-resort catch runs this
+        # A gap the failure left unfilled, or slots of the wrong shape.
+        # Raising here would leave him with no answer at all.
         return unforeseen
 
 
@@ -351,7 +352,7 @@ def details_for(failure: BaseException) -> str:
     return text
 
 
-def _size(count: int) -> str:
+def _said_bytes(count: int) -> str:
     """`count` bytes in KB, MB or GB to one decimal, marked as the language
     in use marks a decimal: a comma wherever it marks thousands otherwise."""
     value, unit = count / 1024, "KB"
@@ -373,20 +374,31 @@ def progress_said(counted: progress.Counted) -> dict:
                          total=words.number(counted.total)))
     elif counted.done:
         parts.append(say("progress.so_far", done=words.number(counted.done)))
-    if counted.whole is not None:
-        parts.append(say("progress.size_of", size=_size(counted.size),
-                         whole=_size(counted.whole)))
-    elif counted.size:
-        parts.append(_size(counted.size))
+    if counted.bytes_total is not None:
+        parts.append(say("progress.size_of", size=_said_bytes(counted.bytes_done),
+                         whole=_said_bytes(counted.bytes_total)))
+    elif counted.bytes_done:
+        parts.append(_said_bytes(counted.bytes_done))
     what = say(counted.key)
     said = (say("progress.line", what=what, parts=", ".join(parts)) if parts
             else say("progress.bare", what=what))
     fraction = None
-    if counted.whole:
-        fraction = counted.size / counted.whole
+    if counted.bytes_total:   # truthy, not `is not None`: a total of 0 counts files
+        fraction = counted.bytes_done / counted.bytes_total
     elif counted.total:
         fraction = counted.done / counted.total
     return {"running": True, "said": said, "fraction": fraction}
+
+
+def _bare_failure() -> str:
+    """The unforeseen sentence alone, for where the failure page itself could
+    not be drawn. Nothing here can raise but `say`, and then it is empty."""
+    try:
+        what, then = say("failure.unforeseen.what"), say("failure.unforeseen.next")
+        return (f'<section class="failure"><p class="what">{html.escape(what)}</p>'
+                f'<p class="next">{html.escape(then)}</p></section>')
+    except Exception:  # noqa: BLE001 -- an empty answer still beats none
+        return ""
 
 
 def render_failure(
@@ -651,8 +663,11 @@ def _open_folder(folder: Path) -> None:
 # Every Face page's own script: the failure's buttons, the theme and size
 # pickers, More, help, message boxes and the true-colours switch. It lives in
 # the page, never in a fragment, and it asks for the folder's path only when
-# Copy is clicked, so the path is never in the document.
+# Copy is clicked, so the path is never in the document. It declares nothing
+# at the top level, because a page written over this one by document.write
+# runs it again in the same window, where a second `const` would throw.
 _SCRIPT = """
+(() => {
 // PRESS-0434: a press says at once that Pressless is working, on every
 // screen (user, 2026-11-21). A form a script sends itself is left to it, as
 // is anything marked data-quiet. The note is fixed, so nothing on the page
@@ -661,7 +676,9 @@ _SCRIPT = """
 // start so the note keeps its size, and asks GET /progress each second while
 // it is up. A form's page keeps running until its reply arrives, so the count
 // fills in during the wait.
-const sendFetch = window.fetch.bind(window);
+// The browser's own fetch, kept once per window so a second run does not
+// wrap the first run's wrapper.
+const sendFetch = window.presslessSendFetch ??= window.fetch.bind(window);
 let askingProgress = false;
 async function askProgress() {
   if (askingProgress) return;
@@ -906,6 +923,7 @@ if (!window.presslessAsksAlive) {
   };
   setTimeout(askAlive, 2000);
 }
+})();
 """
 
 # PRESS-0242 § 4.3: a page script's words. It fills `{name}` gaps and turns
@@ -936,6 +954,8 @@ function say(key, slots = {}) {
 # colours only where his stylesheet sets none. The body resets every property
 # first, because a rule of his can set one no `.face` rule does, as a
 # two-column `body { display: grid }` would (PRESS-0133).
+# A hidden #photograph-missing, #address, .states or #standing child keeps its
+# space, so nothing beside a control moves; #panel's hidden rows are dropped.
 # PRESS-0261: a code box's textarea is reached as `.code-box > :last-child`, so
 # a site's own textarea rule cannot cover the coloured copy behind it.
 # PRESS-0338: the text size zooms the body. A width rule is therefore a
@@ -1198,9 +1218,9 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 
 _STYLE = (
     f":root {{ color-scheme: light dark; {themes.declarations(themes.find('light'))}"
-    f" --shadow: rgba(60, 40, 10, .10); {themes.preview(False)} }}\n"
+    f" --shadow: rgba(60, 40, 10, .10); {themes.preview_dimming(False)} }}\n"
     f"@media (prefers-color-scheme: dark) {{ :root {{ {themes.declarations(themes.find('dark'))}"
-    f" --shadow: rgba(0, 0, 0, .45); {themes.preview(True)} }} }}\n"
+    f" --shadow: rgba(0, 0, 0, .45); {themes.preview_dimming(True)} }} }}\n"
     + themes.css() + _SHAPES
 )
 
@@ -1460,7 +1480,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def setup(self) -> None:
         # A client that declares a body and stops sending holds this thread
-        # until the stall limit, not for ever. Read here, per connection.
+        # until the stall limit, not for ever. Read here, per connection, so
+        # a test that shortens _STALL_SECONDS reaches the next one.
         self.timeout = _STALL_SECONDS
         super().setup()
 
@@ -1496,14 +1517,23 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self, status: int, data: bytes, content_type: str,
         headers: tuple[tuple[str, str], ...] = (),
     ) -> None:
+        self._send_head(status, content_type, len(data), headers)
+        self.wfile.write(data)
+
+    def _send_head(self, status: int, content_type: str, length: int,
+                   headers: tuple[tuple[str, str], ...] = ()) -> None:
+        """The headers every answer shares, then its own: a page, a file and a
+        download alike. A 204 carries no body, so it names no type or length
+        (RFC 9110 § 8.6)."""
         self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
+        if status != 204:
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(length))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         for name, value in headers:
             self.send_header(name, value)
         self.end_headers()
-        self.wfile.write(data)
 
     def _send_page(self, face: Face, status: int, body: str) -> None:
         """`body` wrapped in the Face's frame, carrying the frames policy.
@@ -1527,12 +1557,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001 -- the bar then stays open
             face.note(f"setup's state could not be read: {type(exc).__name__}")
             setting_up = other_sites = False
-        self._send(status, _page(body, face._theme, name, face._size, "".join(after),
-                                 language=face._language,
-                                 offer_languages=face._offer_languages,
-                                 setting_up=setting_up,
-                                 other_sites=other_sites),
-                   "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
+        try:
+            page = _page(body, face._theme, name, face._size, "".join(after),
+                         language=face._language, offer_languages=face._offer_languages,
+                         setting_up=setting_up, other_sites=other_sites)
+        except Exception as exc:  # noqa: BLE001 -- § Errors: he always gets an answer
+            face.note(f"the page's frame could not be drawn: {type(exc).__name__}")
+            self._send(500, _bare_failure(), "text/html")
+            return
+        self._send(status, page, "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int,
                      too_long: Callable[[], None] | None = None) -> int | None:
@@ -1806,7 +1839,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             # the message, which can hold paths and names.
             usage.report("failure", error=type(exc).__name__, screen=request.path,
                          publishing="yes" if publishing else "no")
-            self._send_page(face, 500, face.fail(exc, publishing=publishing))
+            try:
+                fragment = face.fail(exc, publishing=publishing)
+            except Exception as again:  # noqa: BLE001 -- he always gets an answer
+                face.note(f"the failure could not be worded: {type(again).__name__}")
+                fragment = _bare_failure()
+            self._send_page(face, 500, fragment)
             return
         if isinstance(body, Reply):
             location = (("Location", body.location),) if body.location is not None else ()
@@ -1879,15 +1917,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 plain = "".join(c if c.isascii() and (c.isalnum() or c in " ._-") else "_"
                                 for c in download.name)
                 quoted = urllib.parse.quote(download.name, safe="")
-                self.send_response(200)
-                self.send_header("Content-Type", _FILE_TYPES.get(
-                    Path(download.name).suffix.lower(), "application/octet-stream"))
-                self.send_header("Content-Length", str(size))
-                self.send_header("Content-Disposition",
-                                 f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}")
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Content-Type-Options", "nosniff")
-                self.end_headers()
+                # An attachment is saved, never shown, so it needs no
+                # FILES_POLICY; end_headers gives it frame-ancestors.
+                self._send_head(200, _FILE_TYPES.get(
+                    Path(download.name).suffix.lower(), "application/octet-stream"), size, ((
+                        "Content-Disposition",
+                        f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}"),))
                 self._send_pieces(handle)
         finally:
             download.path.unlink(missing_ok=True)
@@ -1914,14 +1949,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         handle, size = opened
         with handle:
-            self.send_response(200)
-            self.send_header("Content-Type",
-                             _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream"))
-            self.send_header("Content-Length", str(size))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Security-Policy", FILES_POLICY)
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.end_headers()
+            self._send_head(200, _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream"),
+                            size, (("Content-Security-Policy", FILES_POLICY),))
             self._send_pieces(handle)
 
 
@@ -1934,8 +1963,8 @@ _POLL_SECONDS = 0.5
 # the browser is on this machine.
 _STALL_SECONDS = 60
 
-# The longest body the theme, text-size and true-colours routes take: the
-# longest theme key with room to spare. A longer body is no choice of any.
+# The longest body the theme, text-size, language and true-colours routes
+# take: the longest theme key with room to spare. A longer body is no choice of any.
 _CHOICE_LIMIT = 64
 
 # The ceiling on a registered page's POST body, read whole into memory. It sits

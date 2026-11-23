@@ -63,7 +63,7 @@ def job() -> AbstractContextManager[None]:
     """The calling thread's record while the block runs; removed after."""
 
 def count(key: str, done: int, total: int | None = None,
-          size: int = 0, whole: int | None = None) -> None:
+          bytes_done: int = 0, bytes_total: int | None = None) -> None:
     """The calling thread's record now says `key` with these numbers.
     Does nothing on a thread holding no record."""
 
@@ -72,7 +72,7 @@ def now() -> Counted | None:
 
 @dataclass(frozen=True)
 class Counted:
-    key: str; done: int; total: int | None; size: int; whole: int | None
+    key: str; done: int; total: int | None; bytes_done: int; bytes_total: int | None
 ```
 
 Records are kept per thread under one lock, held only to read or change
@@ -105,8 +105,8 @@ Registered by the Face. Takes no `editor.LOCK`. Answers JSON:
 
 `said` is `say(key)` filled with the numbers; a number not known leaves its
 part out. Sizes are one decimal, in KB, MB or GB. `fraction` is
-`size / whole` where `whole` is known and above 0, else `done / total`,
-else null. Where `now()` is None: `{"running": false, "said": "",
+`bytes_done / bytes_total` where `bytes_total` is known and above 0, else
+`done / total`, else null. Where `now()` is None: `{"running": false, "said": "",
 "fraction": null}`.
 
 ### 4.4 The note
@@ -143,7 +143,7 @@ The note goes up on three paths:
   *Test:* `tests/test_progress.py::test_a_count_with_no_job_is_ignored`.
   *Breaks when:* `count` creates a record, or raises, where none is held.
 - **INV-3** — `publisher._fetch` reports 0 of N before its first blob and
-  N of N after its last, where N is the blobs it fetches, with `whole` the
+  N of N after its last, where N is the blobs it fetches, with `bytes_total` the
   sum of their listed sizes; `publisher.publish` does the same for the
   blobs it sends.
   *Test:* `tests/test_progress.py::test_fetch_and_publish_count_every_blob`.
@@ -178,7 +178,7 @@ The note goes up on three paths:
   `pressing.SCRIPT` does.
 - **Two jobs at once** (two tabs). The note shows the one updated last.
   The count may switch between them; neither job is affected.
-- **A listing without `size`.** `whole` is None, so the bar runs on files.
+- **A listing without `size`.** `bytes_total` is None, so the bar runs on files.
 - **A browser that stops scripts during a pending submit** (INV-6 fails).
   The note shows "Working…" and the moving bar, as PRESS-0434 does now.
 

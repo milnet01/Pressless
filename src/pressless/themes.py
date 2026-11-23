@@ -152,16 +152,18 @@ def known(key: str) -> bool:
     return key == FOLLOW or key in _BY_KEY
 
 
-def _read(folder: Path) -> dict:
-    """The file's choices; missing, unreadable or another version is none."""
-    return json_record.read(Path(folder) / FILE_NAME)
+def _read(folder: Path, *, strict: bool = False) -> dict:
+    """The file's choices; missing, unreadable or another version is none.
+    `strict` raises where the file is there but cannot be read now."""
+    return json_record.read(Path(folder) / FILE_NAME, strict=strict)
 
 
 def _write(folder: Path, **choice: str | int) -> None:
     """Replace the file whole, keeping the choices `choice` does not name.
-    Locked: /theme and /text-size are answered on threads of their own."""
+    Locked: /theme and /text-size are answered on threads of their own. A
+    file that cannot be read now raises OSError rather than lose the rest."""
     with _LOCK:
-        json_record.write(Path(folder) / FILE_NAME, {**_read(folder), **choice})
+        json_record.write(Path(folder) / FILE_NAME, {**_read(folder, strict=True), **choice})
 
 
 def read_choice(folder: Path) -> str:
@@ -206,7 +208,7 @@ def declarations(theme: Theme) -> str:
     return " ".join(f"--{name}: {colour};" for name, colour in pairs)
 
 
-def preview(dark: bool) -> str:
+def preview_dimming(dark: bool) -> str:
     """PRESS-0187: the preview shows his site's own colours, so a dark look
     dims it rather than let a light site glare. The switch that brings the
     true colours back shows only where there is dimming."""
@@ -225,7 +227,7 @@ def css() -> str:
         shadow = "rgba(0, 0, 0, .45)" if theme.dark else "rgba(60, 40, 10, .10)"
         scheme = "dark" if theme.dark else "light"
         rules.append(f':root[data-theme="{theme.key}"] {{ color-scheme: {scheme}; '
-                     f"{values} --shadow: {shadow}; {preview(theme.dark)} }}")
+                     f"{values} --shadow: {shadow}; {preview_dimming(theme.dark)} }}")
     rules.extend(f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}'
                  for size in SIZES if size != NO_ZOOM)
     return "\n".join(rules)

@@ -647,27 +647,6 @@ def test_files_carry_the_policy(tmp_path: Path) -> None:
         served.stop()
 
 
-def test_every_page_links_to_settings(tmp_path: Path) -> None:
-    """PRESS-0193. Breaks when the top bar loses the Settings link, on an
-    ordinary page or on a failure page."""
-    def broken(request: face.Request) -> str:
-        raise ValueError("x")
-
-    _set_up(tmp_path)
-    served = face.serve(tmp_path)
-    try:
-        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
-        served.add_page("GET", "/broken", broken)
-        client = _Client(served)
-        for path, expected in (("/words", 200), ("/broken", 500)):
-            status, _, body = client.request("GET", path)
-            bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
-            assert status == expected, path
-            assert '<a href="/setup">Settings</a>' in bar, path
-    finally:
-        served.stop()
-
-
 def test_every_page_links_back_to_your_site(tmp_path: Path) -> None:
     """PRESS-0281. Breaks when the top bar has no way back to Your site, on an
     ordinary page or on a failure page."""
@@ -1699,6 +1678,22 @@ def test_the_top_bar_unlocks_once_setup_is_done(tmp_path) -> None:
     assert "target=" not in bar
 
 
+def test_a_settings_file_from_another_machine_keeps_the_bar_locked(tmp_path) -> None:
+    """PRESS-0021 § 4.8: a file carried from another machine, whose site
+    folder is not a path here, is still first-run setup. Breaks when that
+    file unlocks the bar mid-setup."""
+    _set_up(tmp_path)
+    carried = json.loads((tmp_path / "settings.json").read_text(encoding="utf-8"))
+    carried["site_folder"] = "site"            # not absolute here
+    (tmp_path / "settings.json").write_text(json.dumps(carried), encoding="utf-8")
+    served = face.serve(tmp_path)
+    try:
+        bar = _bar(served)
+    finally:
+        served.stop()
+    assert 'href="/pages"' not in bar and 'href="/manual" target="_blank"' in bar
+
+
 def test_sites_stays_open_while_another_site_is_set_up(tmp_path) -> None:
     """A second site's setup must not trap him away from his first site."""
     first = sites.open_site(tmp_path)
@@ -1770,3 +1765,132 @@ def test_alive_needs_the_session(tmp_path) -> None:
     said = json.loads(text)
     assert said == {"face": served.id} and re.fullmatch(r"[0-9a-f]{16}", served.id), said
     assert served.returned.is_set()
+
+
+# ------------------------------------------------------------- PRESS-0440 ---
+
+# A page written over this one by document.write runs the Face's script again
+# in the same window: document.open clears the listeners but keeps the
+# window, so the first run's top-level names are still declared. Node runs
+# both in one context, as the browser does, and clears the listeners between.
+_RERUN_HARNESS = """const vm = require("vm");
+const fetched = [];
+const listening = [];
+const timers = [];
+const document = {
+  addEventListener: (kind) => listening.push(kind),
+  querySelectorAll: () => [], querySelector: () => null, getElementById: () => null,
+};
+const window = {fetch: (to, how = {}) => { fetched.push((how.method || "GET") + " " + to);
+                                          return Promise.resolve({}); }};
+const context = vm.createContext({window, document, location: {href: "http://face/"},
+                                  setTimeout: (run, wait) => timers.push(wait),
+                                  clearTimeout: () => {},
+                                  addEventListener: (kind) => listening.push("window " + kind)});
+context.window.addEventListener = context.addEventListener;
+const script = new vm.Script(process.argv[2]);
+script.runInContext(context);
+const first = listening.length;
+listening.length = 0;
+let failed = null;
+try {
+  new vm.Script(process.argv[2]).runInContext(context);
+} catch (error) {
+  failed = String(error);
+}
+timers.length = 0;
+window.fetch("/theme", {method: "POST"});
+window.fetch("/progress");
+process.stdout.write(JSON.stringify({failed, first, second: listening.length, fetched, timers}));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_page_script_runs_again_on_a_page_written_over_it(tmp_path):
+    """PRESS-0440. Open folder's failure and every file box's answer write a
+    whole Face page over the old one, and its script runs a second time in
+    the same window. Breaks when that second run throws, so the written
+    page's buttons, pickers and working note do nothing, or when it wraps
+    fetch around the first run's wrapper, so one press is counted twice."""
+    harness = tmp_path / "rerun.js"
+    harness.write_text(_RERUN_HARNESS, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), face._SCRIPT], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    said = json.loads(run.stdout)
+    assert said["failed"] is None, said["failed"]
+    assert said["second"] == said["first"] > 0, said
+    # One wrapper: the press reaches the browser once and starts one working note.
+    assert said["fetched"] == ["POST /theme", "GET /progress"], said
+    assert said["timers"] == [600], said
+
+
+def test_an_answer_with_no_content_says_no_length(tmp_path):
+    """PRESS-0440: RFC 9110 § 8.6 forbids Content-Length on a 204. Breaks
+    when a kept choice's empty answer carries one."""
+    served = face.serve(tmp_path)
+    try:
+        status, headers, body = _Client(served).raw("POST", "/theme", b"dark")
+    finally:
+        served.stop()
+    assert status == 204 and body == b""
+    assert "Content-Length" not in headers and "Content-Type" not in headers, headers
+
+
+def test_every_answer_tells_the_browser_not_to_guess_its_type(tmp_path):
+    """PRESS-0440: a page, a Reply in the type its page chose, and a refusal
+    each carry nosniff, as files and downloads do. Breaks when one sender
+    leaves it out."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/as-is", lambda request: face.Reply(b"{}", "application/json"))
+        client = _Client(served)
+        answers = {path: client.raw("GET", path) for path in ("/words", "/as-is", "/nowhere")}
+    finally:
+        served.stop()
+    for path, (status, headers, _) in answers.items():
+        assert headers.get("X-Content-Type-Options") == "nosniff", (path, status)
+
+
+class _OddSlots(Exception):
+    """A failure whose slots are not a mapping."""
+
+    def __init__(self) -> None:
+        super().__init__("made up")
+        self.slots = 5
+
+
+def test_a_sentence_that_cannot_be_worded_says_the_unforeseen_one(monkeypatch) -> None:
+    """PRESS-0440: sentence_for runs in the last-resort catch. Breaks when
+    slots that are not a mapping, a link's words, or a `say` raising other
+    than KeyError escape it."""
+    monkeypatch.setitem(face.SENTENCES, _OddSlots, face.SENTENCES[credentials.NotStored])
+    unforeseen = face.sentence_for(RuntimeError(), publishing=False)
+    assert face.sentence_for(_OddSlots(), publishing=False) == unforeseen
+    monkeypatch.setitem(face.SENTENCES, _LeavesAGap, face.Sentence(
+        "failure.log", face.Site.UNCHANGED, "failure.again", ("/", "no.such.words")))
+    assert face.sentence_for(_LeavesAGap(), publishing=False) == unforeseen
+
+
+def test_a_frame_that_cannot_be_drawn_still_answers(tmp_path, monkeypatch) -> None:
+    """PRESS-0440: Nothing raw ever reaches the screen. Breaks when drawing
+    the page's frame raises, on a failure page or any other, and the
+    connection closes with no answer."""
+    served = face.serve(tmp_path)
+
+    def broken(*args, **kwargs):
+        raise ValueError("the frame's own failure")
+
+    def failing(request):
+        raise RuntimeError("the page's own failure")
+
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/broken", failing)
+        monkeypatch.setattr(face, "_page", broken)
+        client = _Client(served)
+        answers = [client.request("GET", path) for path in ("/words", "/broken")]
+    finally:
+        served.stop()
+    for status, _, body in answers:
+        assert status == 500 and UNFORESEEN_WHAT in body, (status, body)

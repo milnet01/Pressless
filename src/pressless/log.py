@@ -1,6 +1,6 @@
 """The rolling plain-English log (PRESS-0003).
 
-One record of what Pressless did, beside the settings file. The Face writes
+One record of what Pressless did, in Pressless's own folder. The Face writes
 it; no other part may, because rule 3 denies Marks a disk and rules 5 and 8
 spend the Publisher's and Insights' one disk write elsewhere
 (`docs/design.md` § Logging).
@@ -128,12 +128,13 @@ class Log:
         record stops and the file stays bounded -- §9 accepts that rather than
         handling it.
         """
-        if self._handler is None:
+        handler = self._handler   # read once: close may clear it meanwhile
+        if handler is None:
             return
         try:
             # handle(), not emit(): it holds the handler's lock around the roll
             # and the write, and every request thread notes here (PRESS-0135).
-            self._handler.handle(
+            handler.handle(
                 logging.LogRecord(
                     name="pressless",
                     level=logging.INFO,
@@ -149,10 +150,12 @@ class Log:
 
     def close(self) -> None:
         """Never raises (§5 INV-3). This is the entry point that flushes, so
-        it is where a full disk raises."""
-        if self._handler is None:
+        it is where a full disk raises. A note after it writes nothing: a
+        closed handler would reopen the file and hold it."""
+        handler, self._handler = self._handler, None
+        if handler is None:
             return
         try:
-            self._handler.close()
+            handler.close()
         except Exception:  # noqa: BLE001 -- §4.4
             return

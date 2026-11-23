@@ -250,6 +250,26 @@ def test_the_theme_and_the_text_size_keep_each_other(tmp_path: Path) -> None:
     assert (themes.read_choice(tmp_path), themes.read_size(tmp_path)) == ("bonfire", 200)
 
 
+def test_a_choice_over_a_file_that_cannot_be_read_now_keeps_the_others(
+        tmp_path: Path, monkeypatch) -> None:
+    """A file held open elsewhere, as Windows antivirus or Explorer can, reads
+    as no choices. Breaks when the write then goes ahead and replaces the
+    theme with only the size."""
+    themes.write_choice(tmp_path, "dark")
+    real_read_text = Path.read_text
+
+    def held(path, *args, **kwargs):
+        if path.name == FILE_NAME:
+            raise PermissionError("held by another program")
+        return real_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", held)
+    with pytest.raises(OSError):
+        themes.write_size(tmp_path, 150)
+    monkeypatch.setattr(Path, "read_text", real_read_text)
+    assert (themes.read_choice(tmp_path), themes.read_size(tmp_path)) == ("dark", 100)
+
+
 @pytest.mark.parametrize("text", ["", "not json", '{"version": 1, "size": 90}',
                                   '{"version": 1, "size": "150"}', '{"version": 2, "size": 150}'])
 def test_an_unusable_size_reads_as_normal(tmp_path: Path, text: str) -> None:
@@ -298,8 +318,8 @@ def test_a_theme_and_a_size_chosen_at_once_are_both_kept(tmp_path: Path, monkeyp
     so the two overlap every run."""
     real_read = themes._read
 
-    def slow_read(folder):
-        held = real_read(folder)
+    def slow_read(folder, **how):
+        held = real_read(folder, **how)
         time.sleep(0.2)
         return held
 
