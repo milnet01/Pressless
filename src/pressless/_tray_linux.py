@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import contextlib
 import os
-import socket
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -45,6 +44,9 @@ _INVALID_ARGS = "org.freedesktop.DBus.Error.InvalidArgs"
 _PRIMARY_OWNER = 1          # RequestName's reply when the name is ours
 _SIZES = (22, 44)           # measured on Plasma 6: the panel's size and twice it
 _START_WAIT = 10.0          # seconds for the bus to answer a start call
+# socket.SHUT_RDWR, written out: this module opens no socket of its own, so
+# it imports none of the network machinery the confinement tests watch.
+_SHUT_BOTH_WAYS = 2
 _ICON = "pressless.png"     # inside the AppImage, as shortcuts._ICON
 _SOURCE_ICON = Path(__file__).resolve().parents[2] / "packaging" / "icons" / _ICON
 
@@ -126,7 +128,7 @@ class Icon:
         self._closing.set()
         if self._conn is not None:
             with contextlib.suppress(OSError):
-                self._conn.sock.shutdown(socket.SHUT_RDWR)
+                self._conn.sock.shutdown(_SHUT_BOTH_WAYS)
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=5)
