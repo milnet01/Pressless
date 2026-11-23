@@ -9299,10 +9299,21 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Updater.
 
-- 📋 [PRESS-0451] **Second-round review fixes: the AI helper.**
+- ✅ [PRESS-0451] **Second-round review fixes: the AI helper.**
   Subject 12. Review types: Codebase, Test.
   Findings: review-code lane-12, review-readability lane-12, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, b20af86..2458934 (merged e3d4341). 28 findings: 24
+  fixed, 0 queued, 4 dismissed (two duplicates, the settings file's 0600
+  is harmless, the 2 s poll is the spec's rate). The bridge sends nothing
+  until the door proves its token, so a program left on the old port gets
+  neither key nor content. One 300 s deadline and a 64 MiB reply cap per
+  call; pings answered during a long plan; Pressless starts when the door
+  file cannot be written; a request always ends; names in the box are
+  quoted; a malformed call is refused in the writer's language. The proof
+  relies on the Face running admits and call on one thread, which its
+  tests lock. PRESS-0337 amended, new INV-15. Full suite 2762 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/12.json.
   **Layman:** Bug fixes and tidy-ups in the connection that lets an AI app work on your site.
   Kind: review-fix.
   Source: review-2026-11-23.
