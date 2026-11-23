@@ -9243,10 +9243,19 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Setup.
 
-- 📋 [PRESS-0448] **Second-round review fixes: sign-in, take-in and your own address.**
+- ✅ [PRESS-0448] **Second-round review fixes: sign-in, take-in and your own address.**
   Subject 09. Review types: Codebase, Test.
   Findings: review-code lane-09, review-readability lane-09, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 3c973c2..6572d24 (merged 7a3aa77). 34 findings: 27
+  fixed, 0 queued, 7 dismissed (each reasoned in the ledger). Google: a
+  non-ASCII return address gets 403; a failed Settings save puts the old
+  sign-in back. GitHub: installations are paged past 100; a failed save is
+  shown as Settings'. Take-in checks the Store is still empty before it
+  writes, and a close mid-download downloads again. The domain wizard
+  takes other alphabets' full stops and hints at the xn-- form.
+  PRESS-0122, 0231, 0218 and 0333 amended. Full suite 2693 passed; ruff
+  clean. Ledger: local-archive/reviews/2026-11-23/close-findings/09.json.
   **Layman:** Bug fixes and tidy-ups in signing in to GitHub and Google, bringing a GitHub site in, and custom addresses.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9607,6 +9616,8 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Also, surfaced by PRESS-0448's sweep: the Settings failure sentence says
   "could not read its settings" even when a save failed (settings.py's
   words, subject 08, shipped).
+  Also, passed on by PRESS-0449: publisher.py's docstring says "Tests are its
+  only other caller", which is false because github_signin.py uses it.
   **Layman:** Two messages that vanished too soon now stay until they are read.
   Kind: review-fix.
   Source: review-2026-11-23.
