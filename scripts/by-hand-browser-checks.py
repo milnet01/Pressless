@@ -8,13 +8,14 @@ the labels are the list:
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
-Run it by hand before a release:
+Run it by hand before a release, from the venv
+docs/working-here.md § "Windows and browser checks" makes:
 
-    python3 scripts/by-hand-browser-checks.py
-    python3 scripts/by-hand-browser-checks.py --browser firefox
-    python3 scripts/by-hand-browser-checks.py --browser edge
-    python3 scripts/by-hand-browser-checks.py --cdp http://127.0.0.1:19222 \
-        --port 47501 --site-port 47502
+    .venv-browsers/bin/python scripts/by-hand-browser-checks.py
+    .venv-browsers/bin/python scripts/by-hand-browser-checks.py --browser firefox
+    .venv-browsers/bin/python scripts/by-hand-browser-checks.py --browser edge
+    .venv-browsers/bin/python scripts/by-hand-browser-checks.py --cdp \
+        http://127.0.0.1:19222 --port 47501 --site-port 47502
 
 Firefox is Playwright's own build (`playwright install firefox`); it cannot
 drive the system Firefox. Edge and Chrome are the installed ones. On the
