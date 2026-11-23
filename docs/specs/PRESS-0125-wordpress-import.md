@@ -205,6 +205,9 @@ which can be absolute. Nor is a place whose file would land outside
 A file that cannot be written on this computer stops the unpacking
 (`MediaNotWritten`) with the system's reason, not as an unusable
 download; the places filled before it stay filled and leave the gaps.
+Data that proves damaged partway — a member cut short, or one that will
+not decompress — stops it too (`MediaDamaged`), saying the download is
+damaged, and the places filled before it stay filled and leave the gaps.
 A member's name is matched as its maker wrote it: UTF-8 without the ZIP's
 UTF-8 flag, and accents composed.
 
@@ -478,6 +481,7 @@ fetch's reason among them — are `pressless_import`'s English.
 | The old site is gone | every fetch fails and is listed; `gaps` offers the ZIP |
 | A fetch hangs | stops at 30 seconds without data, or 30 minutes in all, listed |
 | The disk fills | fetching stops before the spare is reached; each file left is listed as having no room |
+| A media ZIP is damaged partway | unpacking stops, saying so; the places filled before it stay filled (§ 4.4) |
 | Pressless closes while fetching | the next visit resumes; held files are kept |
 | Pressless closes during the moves | the next start finishes them (§ 4.7) |
 | A slug cannot be held | as PRESS-0007 § 4.4: the item takes `<slug>-<post id>`, listed |
