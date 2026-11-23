@@ -61,11 +61,12 @@ UNDONE = editor.UNDONE
 # The routes `register` adds beside POST /publish.
 REPLACE_ADDRESS = "/publish/replace"
 TAKEOVER_ADDRESS = "/publish/takeover"
-PLAN_ADDRESS = "/publish/plan"
+PLAN_ADDRESS = pressing.PLAN_ADDRESS   # its script asks it, so it is spelled there
 SITE_ADDRESS = "/publish/site"
 
-# In the site's folder, kept in a saved site file and never published: an empty
-# file saying the site an import brought in is not yet on the web. The publish
+# In Pressless's data folder (`folder` here), so a saved site file carries it,
+# and never in the site folder the Publisher sends: an empty file saying the
+# site an import brought in is not yet on the web. The publish
 # that lands removes it, so Finish setting up waits for that (PRESS-0126 § 4.4,
 # PRESS-0422, PRESS-0425).
 IMPORTED = "import-unpublished"
@@ -150,7 +151,7 @@ SENTENCES[KeptFolderBuilt] = Sentence(
 # GitHub Pages serves either as a site's front page (PRESS-0126 § 3 decision 5).
 A_SITE = frozenset({"index.html", "index.md"})
 
-def replace_link(failure: BaseException) -> str:
+def way_on(failure: BaseException) -> str:
     """The way to the replace page, beside a WouldReplaceASite failure, or to the
     takeover, beside a TakeoverOwed; a Sentence is escaped text and cannot carry it."""
     if isinstance(failure, TakeoverOwed):
@@ -168,7 +169,7 @@ def press_failure(face: Face, failure: BaseException) -> str:
     (PRESS-0013 § 4.2)."""
     return (face.fail(failure, publishing=False,
                       secret=say("failure.secret.publishing_key"))
-            + replace_link(failure))
+            + way_on(failure))
 
 
 @dataclass(frozen=True)
@@ -473,8 +474,9 @@ def settings_and_key(folder: Path, gathered: Callable) -> tuple[settings.Setting
                                      saved.credentials.github_account)
 
 
-def plan(folder: Path, *, entry: str | None = None, page: tuple[str, str] | None = None,
-         transport: publisher.Transport | None = None) -> Preview:
+def press_preview(folder: Path, *, entry: str | None = None,
+                  page: tuple[str, str] | None = None,
+                  transport: publisher.Transport | None = None) -> Preview:
     """PRESS-0345 § 4.3: the preview of pressing the entry `entry`, or the page
     or part `page` (kind, name) as its waiting copy holds it, or the site as it
     stands. Writes nothing."""
@@ -491,7 +493,7 @@ def plan(folder: Path, *, entry: str | None = None, page: tuple[str, str] | None
 
 def _plan(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
-    """PRESS-0345 § 4.3: `plan` for the entry `slug`, or the page or part
+    """PRESS-0345 § 4.3: `press_preview` for the entry `slug`, or the page or part
     `kind` and `name`, or the site where the form names neither (PRESS-0353
     § 4.3). The editor saves first, so the Store holds what would be pressed.
     It builds under editor.LOCK, as a press does (PRESS-0013 § 4.1)."""
@@ -500,12 +502,12 @@ def _plan(face: Face, folder: Path, request: Request,
     try:
         with editor.LOCK:
             if "slug" in form:
-                shown = plan(folder, entry=form["slug"], transport=transport)
+                shown = press_preview(folder, entry=form["slug"], transport=transport)
             elif "kind" in form or "name" in form:
-                shown = plan(folder, page=(form.get("kind", ""), form.get("name", "")),
+                shown = press_preview(folder, page=(form.get("kind", ""), form.get("name", "")),
                              transport=transport)
             else:
-                shown = plan(folder, transport=transport)
+                shown = press_preview(folder, transport=transport)
     except Exception as exc:  # noqa: BLE001 -- every failure is shown as a press's is
         failure = press_failure(face, exc)
         return Reply(json.dumps({"failure": failure}).encode("utf-8"), "application/json")

@@ -5,7 +5,7 @@ Each part once held its own copy, and a fix to one was owed to the others
 against all three. The Publisher and Insights subclass it as their own
 `_Urllib`, adding the clock their seam promises, so a test double still
 replaces that one name; the GitHub sign-in borrows the Publisher's. Usage
-reports and the votes setup make a `Client` directly. The Updater keeps its
+reports, the votes setup and Send my log make a `Client` directly. The Updater keeps its
 own: it refuses any redirect off https, and its seam streams a body rather
 than returning one (PRESS-0023 § 4.5).
 

@@ -160,7 +160,7 @@ at step 1 landed and the page needs its new address and `base`:
 
 The fragment is `publishing.press_failure(face, failure)`: `face.fail(failure,
 publishing=False, secret=say("failure.secret.publishing_key"))`, then the
-way on beside a failure that has one (`replace_link`).
+way on beside a failure that has one (`way_on`).
 **`slug`, `draft` and `base` are read from disk after `publish` returns or
 raises**: the working copy of the published entry where one is left, else the
 published entry, else the draft. So the page's next save goes to a file that

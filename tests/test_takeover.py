@@ -292,7 +292,7 @@ def test_no_publish_passes_the_marker(tmp_path, monkeypatch, route):
 
 def test_the_refusal_links_to_the_takeover():
     """§ 4.5: the way on, beside the failure, as a replace has."""
-    link = publishing.replace_link(publishing.TakeoverOwed("owed"))
+    link = publishing.way_on(publishing.TakeoverOwed("owed"))
     assert f'href="{publishing.TAKEOVER_ADDRESS}"' in link
 
 
@@ -824,7 +824,7 @@ def test_a_takeover_refused_for_a_site_shows_the_way_on(tmp_path, monkeypatch):
 
 
 def test_an_undo_refused_for_the_takeover_links_to_it(tmp_path, monkeypatch):
-    """§ 4.5: replace_link supplies the way on beside a TakeoverOwed. Breaks
+    """§ 4.5: way_on supplies the way on beside a TakeoverOwed. Breaks
     when the undo route shows the failure without it."""
     from test_publishing import _key
     github, folder = _publishable(tmp_path)

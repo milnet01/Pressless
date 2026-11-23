@@ -652,6 +652,8 @@ def _pages(session: _Session, repository: str) -> Pages:
         return Pages(on=False, address=None, serves_root=False)
     source = answer.get("source") if isinstance(answer.get("source"), dict) else {}
     address = answer.get("html_url")
+    # An answer with no build_type predates the field, when every Pages site
+    # was built from a branch, so it is read as one.
     served = source.get("branch") if answer.get("build_type") in (None, "legacy") else None
     default = _default_branch(session, repository) if isinstance(served, str) and served else None
     serves_root = default is not None and served == default and source.get("path") == "/"

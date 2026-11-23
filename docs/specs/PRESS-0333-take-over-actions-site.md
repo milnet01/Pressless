@@ -262,7 +262,7 @@ def publish(folder, settings, key, *, entry, emptying=False, taking_over=False,
 
 `guard_and_build` raises `TakeoverOwed` first, where `takeover.owed(folder)` and not
 `taking_over`. `publish` is the one way out for `_pressed`, `undo` and `page_editor`,
-so none of them skips it. `replace_link` also answers the link to `TAKEOVER_ADDRESS`
+so none of them skips it. `way_on` also answers the link to `TAKEOVER_ADDRESS`
 for this failure.
 
 **GET `/publish/takeover`**, with no marker: `publishing.nothing`. With one, after

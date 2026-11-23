@@ -664,7 +664,7 @@ def test_a_refused_ai_publish_offers_the_way_on(tmp_path, monkeypatch, refusal, 
     """PRESS-0417: a publish an AI app asked for, refused because it would
     replace a site or a takeover is owed, offers on its press row the same
     link as the writer's own publish. Breaks when the door renders the
-    failure without publishing.replace_link."""
+    failure without publishing.way_on."""
     _key(monkeypatch)
     with _pressless(tmp_path) as pressless:
         store.write(pressless.folder, _entry("harbour"), draft=False)

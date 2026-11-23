@@ -902,7 +902,7 @@ def test_the_plan_route_holds_the_editor_lock(tmp_path, monkeypatch):
         held.append(editor.LOCK.locked())
         return publishing.Preview({}, 0, 0)
 
-    monkeypatch.setattr(publishing, "plan", planned)
+    monkeypatch.setattr(publishing, "press_preview", planned)
     with _pressless(folder, _github()) as browser:
         browser.request("POST", publishing.PLAN_ADDRESS, {})
     assert held == [True]
