@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import html
 import json
 import re
@@ -149,7 +150,14 @@ def test_the_two_families_come_from_their_sources() -> None:
 
 
 def _parsed(path: Path) -> ast.Module:
-    return ast.parse(path.read_text(encoding="utf-8"))
+    """`path`'s tree, parsed once per text: several tests walk every module,
+    and none changes a tree."""
+    return _tree(path.read_text(encoding="utf-8"))
+
+
+@functools.cache
+def _tree(source: str) -> ast.Module:
+    return ast.parse(source)
 
 
 def _docstrings(tree: ast.Module) -> set[int]:
@@ -170,9 +178,11 @@ def _strings(tree: ast.Module, skip: set[int]) -> list[ast.Constant]:
 # ------------------------------------------------------------------ INV-4 ---
 
 
+@functools.cache
 def _asked() -> dict[str, str]:
     """Every literal key the source names, outside words.py, with where: a
-    string that is a key, or a quoted key inside a script."""
+    string that is a key, or a quoted key inside a script. Worked out once;
+    callers only read it."""
     prefixes = {key.split(".", 1)[0] for key in words.ENGLISH}
     asked: dict[str, str] = {}
     # pressless_import words its Report too (PRESS-0210 § 4.12).

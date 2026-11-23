@@ -1661,7 +1661,7 @@ def test_the_top_bar_is_locked_until_setup_is_done(tmp_path) -> None:
     for address in ("/sites", "/", "/pages", "/journal", "/look", "/files",
                     "/visitors", "/setup"):
         assert f'href="{address}"' not in bar, address
-    for address in ("/manual", "/report", "/about"):
+    for address in ("/manual", "/report", usage.ADDRESS, "/about"):
         assert f'href="{address}" target="_blank"' in bar, address
 
 
