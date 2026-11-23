@@ -337,13 +337,17 @@ the hourly allowance waits for the reset GitHub names** (user,
 every file again, so a publish larger than the allowance could never land.
 **`fetch_previous` and `fetch_state` wait the same way** (user, 2026-11-23,
 PRESS-0490), so a take-in, an undo or a takeover read finishes rather than
-failing. The wait is counted down a second at a time on the job's progress
+failing. **A fetch made while a page loads waits only for a reset within
+`PAGE_RESET_WAIT_SECONDS`**, passed as `fetch_state`'s `longest_reset_wait`:
+a browser gives up on a load after about 300 s, so a longer wait would end
+in its error rather than a countdown. The takeover page's read is the one
+such fetch. The wait is counted down a second at a time on the job's progress
 record (PRESS-0435 § 4.2), from whichever thread was told, then the request
 is retried and a publish stays one commit. It is taken once per request,
 and only for a reset no further off than `MAX_RESET_WAIT_SECONDS`, a little
-over the hour. A further reset, a second one on the same request, a long
-`Retry-After`, and every request outside `publish` and the two fetches
-still raise `RateLimited`. A limit naming no usable interval
+over the hour, or the page-load bound. A further reset, a second one on
+the same request, a long `Retry-After`, and every request outside `publish`
+and the two fetches still raise `RateLimited`. A limit naming no usable interval
 waits GitHub's documented minimum rather than the pacing interval, which
 would spend the whole retry bound in seconds (PRESS-0046).
 
@@ -967,7 +971,7 @@ code, so a green INV-1 says nothing about the rest.
 | §4.3's two hint shapes, and the bound on one | `tests/test_publisher.py::test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal`, `::test_a_rate_limit_naming_no_interval_waits_the_documented_minute` and `::test_a_wait_longer_than_the_bound_is_refused_rather_than_slept` |
 | §4.3's third hint shape, a 403 whose message names the rate limit | `tests/test_publisher.py::test_a_secondary_limit_naming_no_interval_is_waited_out`, with `::test_a_plain_refusal_is_still_a_refusal` holding a 403 that names none to `Refused` |
 | §4.4's untouchable entries left unread | `tests/test_publisher.py::test_nothing_on_the_untouchable_list_is_read` |
-| §4.3's wait for the hourly reset during a publish or a fetch, and its bounds | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown`, `::test_a_reset_too_far_off_or_that_does_not_clear_is_refused`, `::test_a_fetch_waits_out_the_hourly_reset_with_a_countdown`, `::test_a_fetch_s_reset_too_far_off_is_refused` and `::test_other_requests_fail_at_once_past_the_hourly_allowance` |
+| §4.3's wait for the hourly reset during a publish or a fetch, and its bounds | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown`, `::test_a_reset_too_far_off_or_that_does_not_clear_is_refused`, `::test_a_fetch_waits_out_the_hourly_reset_with_a_countdown`, `::test_a_fetch_s_reset_too_far_off_is_refused` and `::test_other_requests_fail_at_once_past_the_hourly_allowance`; the page-load bound, `tests/test_takeover.py::test_the_takeover_page_waits_only_for_a_reset_a_browser_outlasts` |
 | §4.3's growth between successive retries, and its clamp | `tests/test_publisher.py::test_successive_retry_waits_grow_rather_than_repeating` and `::test_grown_retry_waits_stop_at_the_bound_rather_than_raising` |
 | §4.5's reads four at a time, spaced, and held by a slow-down | `tests/test_publisher.py::test_a_fetch_reads_a_few_blobs_at_once`, `::test_a_fetch_spaces_its_reads_under_github_s_points_a_minute` and `::test_a_slow_down_on_one_read_holds_the_others` |
 | §4.5's kept connections: reads only, one per thread, certificates checked as a write's | `tests/test_https.py::test_reads_from_one_thread_share_one_connection`, `::test_a_kept_connection_checks_certificates_as_a_write_s_does`, `::test_a_write_never_rides_a_kept_connection` and `::test_each_thread_reads_on_its_own_connection` |

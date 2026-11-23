@@ -33,3 +33,4 @@
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0471: § 4.3 a publish waits out the hourly reset GitHub names, once per request, within `MAX_RESET_WAIT_SECONDS`; § 6 and § 10 rows. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0461: § 4.5 reads blobs four at a time on kept connections, spaced under GitHub's points a minute; § 10 rows. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0490: § 4.3 `fetch_previous` and `fetch_state` wait out the hourly reset as a publish does; § 10 row. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0490: § 4.3 a fetch made while a page loads waits only within `PAGE_RESET_WAIT_SECONDS`; § 10 row. |

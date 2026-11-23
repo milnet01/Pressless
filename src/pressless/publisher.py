@@ -79,6 +79,10 @@ MAX_WAIT_SECONDS = 120.0
 # hourly, so a reset further off than this is a clock or an answer gone
 # wrong, and is refused.
 MAX_RESET_WAIT_SECONDS = 3900.0
+# A fetch made while a page loads waits only this long: a browser gives up on
+# a load after about 300 s (Firefox), so a longer wait would end in its error
+# rather than a countdown (PRESS-0490).
+PAGE_RESET_WAIT_SECONDS = 240.0
 COUNTDOWN_SECONDS = 1.0
 
 # Successive retries wait longer. GitHub's rate-limit documentation asks for an
@@ -731,7 +735,8 @@ def fetch_previous(settings: Settings, token: str, into: Path,
 
 def fetch_state(settings: Settings, token: str, into: Path,
                 prefixes: tuple[str, ...], commit: str = "",
-                transport: Transport | None = None) -> Fetched:
+                transport: Transport | None = None, *,
+                longest_reset_wait: float = MAX_RESET_WAIT_SECONDS) -> Fetched:
     """Write the state at `commit`, or at the default branch's current commit
     where `commit` is "", into `into`, keeping only paths within one of
     `prefixes` (PRESS-0218 § 4.1).
@@ -740,8 +745,10 @@ def fetch_state(settings: Settings, token: str, into: Path,
     at its full repository-relative path, nothing lands until every file has
     been fetched, and a path outside `into` is refused. A repository with no
     commits, or a commit it no longer holds, raises RemoteStateMissing.
+    A reset further off than `longest_reset_wait` raises RateLimited (§4.3).
     """
-    session = _Session(transport or _Urllib(), token, waits_for_reset="progress.downloading")
+    session = _Session(transport or _Urllib(), token, waits_for_reset="progress.downloading",
+                       longest_reset_wait=longest_reset_wait)
     if not commit:
         current = _head(session, settings.repository)
         if current is None:
@@ -878,7 +885,8 @@ class _Session:
     """
 
     def __init__(self, client: Transport, token: str | None, *,
-                 waits_for_reset: str = "") -> None:
+                 waits_for_reset: str = "",
+                 longest_reset_wait: float = MAX_RESET_WAIT_SECONDS) -> None:
         self._client = client
         self._token = token     # None for the wizard's reads before there is a key
         self._written = False
@@ -887,6 +895,7 @@ class _Session:
         # where a spent allowance fails at once. Made on the job's thread, so
         # a reader thread's countdown reaches the job's record.
         self._waits_for_reset = waits_for_reset
+        self._longest_reset_wait = longest_reset_wait   # PAGE_RESET_WAIT_SECONDS in a page load
         self._waiting = progress.waiter()
         self._pace = threading.Lock()
         self._last_read = -math.inf     # when the latest paced read may start
@@ -981,7 +990,7 @@ class _Session:
             hint = _retry_hint(status, response_headers, data)
             if hint is not None:
                 if (hint.reset and self._waits_for_reset and not reset_waited
-                        and MAX_WAIT_SECONDS < hint.seconds <= MAX_RESET_WAIT_SECONDS):
+                        and MAX_WAIT_SECONDS < hint.seconds <= self._longest_reset_wait):
                     reset_waited = True
                     self._wait_for_reset(hint.seconds)
                     continue

@@ -737,7 +737,9 @@ def _takeover_page(face: Face, folder: Path, transport: publisher.Transport | No
     try:
         saved, key = settings_and_key(folder, lambda step: step())
         shown = publisher.pages(saved.repository, key, transport)
-        files = takeover.build_files(folder, saved, key, shown, transport)
+        # Read while the page loads, so within what a browser waits for (PRESS-0490).
+        files = takeover.build_files(folder, saved, key, shown, transport,
+                                     longest_reset_wait=publisher.PAGE_RESET_WAIT_SECONDS)
         branch = publisher.default_branch(saved.repository, key, transport)
         entries = publisher.root_entries(saved, key, transport)
     except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page

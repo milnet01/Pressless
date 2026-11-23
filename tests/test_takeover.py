@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -950,3 +951,46 @@ def test_a_folder_held_open_on_the_pages_step_is_said(tmp_path, monkeypatch):
     with _setup(folder, double) as browser:
         after = _next(browser, _walk_to(browser, "pages"))
     assert "could not clear its own working folder, so it changed nothing." in after, after
+
+
+class _SpentOnce(_Built):
+    """_Built whose first blob read, once armed, finds the hourly allowance
+    spent, with the reset `seconds` off; each wait is recorded."""
+
+    def __init__(self, seconds: float, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.seconds, self.armed, self.waited = seconds, False, []
+
+    def request(self, method, url, body, headers):
+        if self.armed and "/git/blobs/" in url:
+            self.armed = False
+            return 403, {"X-RateLimit-Remaining": "0",
+                         "X-RateLimit-Reset": str(time.time() + self.seconds)}, \
+                b'{"message": "API rate limit exceeded"}'
+        return super().request(method, url, body, headers)
+
+    def wait(self, seconds: float) -> None:
+        self.waited.append(seconds)
+
+
+@pytest.mark.parametrize(("reset", "waits"), [(600, False), (200, True)])
+def test_the_takeover_page_waits_only_for_a_reset_a_browser_outlasts(
+        tmp_path, monkeypatch, reset, waits):
+    """PRESS-0490: the takeover page reads the build files while it loads, and a
+    browser gives up on a load after about 300 s. So past the hourly allowance
+    it waits only for a reset within publisher.PAGE_RESET_WAIT_SECONDS, and
+    otherwise says GitHub asked to slow down at once. Breaks when the page
+    waits out a far reset, or refuses a near one."""
+    _site(monkeypatch)
+    github = _SpentOnce(reset)
+    folder = _finished(tmp_path, monkeypatch, github)
+    github.armed, github.waited = True, []
+    shown = _shown(folder, github)
+    assert not github.armed, "the build files were not read"
+    slowed = "GitHub asked Pressless to slow down."
+    if waits:
+        assert 198 <= sum(github.waited) <= 201, sum(github.waited)
+        assert slowed not in shown and BUILD in shown
+    else:
+        assert sum(github.waited) < 5, f"a far reset was waited: {sum(github.waited)}s"
+        assert slowed in shown

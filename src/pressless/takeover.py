@@ -48,15 +48,19 @@ def unmark(folder: Path) -> None:
 
 
 def build_files(folder: Path, settings: Settings, key: str, shown: publisher.Pages,
-                transport: publisher.Transport | None = None) -> tuple[str, ...]:
+                transport: publisher.Transport | None = None, *,
+                longest_reset_wait: float = publisher.MAX_RESET_WAIT_SECONDS
+                ) -> tuple[str, ...]:
     """The workflow files at the default branch's head that make the site `shown`
     serves, read through the fetch area, emptied before and after as a take-in's is.
-    Empty where Pages is not built elsewhere: there is nothing to take over."""
+    Empty where Pages is not built elsewhere: there is nothing to take over.
+    `longest_reset_wait` bounds a wait for GitHub's hourly reset (PRESS-0490)."""
     if not shown.built_elsewhere:
         return ()
     with undo.fetch_area(folder) as fetch_area:
         fetched = publisher.fetch_state(settings, key, fetch_area, (_WORKFLOWS,),
-                                        transport=transport)
+                                        transport=transport,
+                                        longest_reset_wait=longest_reset_wait)
         return tuple(sorted(
             path for path in fetched.paths
             if "/" not in path.removeprefix(_WORKFLOWS) and path.endswith(_SUFFIXES)
