@@ -115,7 +115,7 @@ def available() -> bool: ...          # CLIENT_ID and APP_SLUG both set
 def begin(transport=None) -> DeviceCode: ...
 def poll(code: DeviceCode, transport=None) -> Tokens: ...
 def refresh(refresh_token: str, transport=None) -> Tokens: ...
-def login(token: str, transport=None) -> str: ...
+def account_name(token: str, transport=None) -> str: ...
 def installation(token: str, account: str, transport=None) -> Installation | None: ...
 def create_repository(token: str, name: str, transport=None) -> bool: ...
 def reaches(token: str, found: Installation, repository: str,
@@ -134,12 +134,13 @@ def sites(token: str, found: Installation, account: str,
   403 from any request this module makes and a 401 from any but `refresh`
   (PRESS-0233).
 - `refresh` POSTs `client_id`, `grant_type` `refresh_token` and the refresh
-  token to the same address. Any `error` answer, or a 400 or 401, is
-  `SignedOut`. GitHub
+  token to the same address. Any `error` answer, whatever its status, or a
+  400 or 401, is `SignedOut`. GitHub
   returns a new refresh token and the old one stops working.
 - Every request to `github.com` sends `Accept: application/json`.
-- `login` reads `GET /user`'s `login`.
-- `installation` reads `GET /user/installations` and returns the one whose
+- `account_name` reads `GET /user`'s `login`.
+- `installation` reads `GET /user/installations?per_page=100&page=N`, paged
+  as `reaches` is, and returns the first whose
   `app_slug` is `APP_SLUG` and whose `account.login` is `account`, else
   `None`. An organisation's installation of the app is never it.
 - `create_repository` POSTs `{"name": name, "private": false}` to
@@ -183,7 +184,7 @@ def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None,
              clock: Callable[[], float] = time.monotonic) -> None: ...
 def token(folder: Path, store: str, account: str) -> str: ...
-def replace(store: str, folder: Path, tokens: github_signin.Tokens) -> None: ...  # a new sign-in
+def store_sign_in(store: str, folder: Path, tokens: github_signin.Tokens) -> None: ...  # a new sign-in
 def own_name(saved: Settings, folder: Path) -> Settings: ...  # filed under this site's name
 ```
 
@@ -205,13 +206,13 @@ works once, so two renewals at once would leave one of them signed out.
 The held token and a renewed refresh token not yet written are kept per
 `account`: one launch can reach two sign-ins (§ 4.3, *Continue as*).
 
-`register` runs at launch, as `google_setup.register` does. `token`, `replace`,
+`register` runs at launch, as `google_setup.register` does. `token`, `store_sign_in`,
 the *signin* step and `/setup/github` use its transport and its clock, and
 turn each `expires_in` into a time with that clock. It defaults to
 `time.monotonic`, which a change to the computer's time cannot move back.
 Tests pass a recording transport and a fake clock there.
 
-`replace` writes a new sign-in's refresh token under
+`store_sign_in` writes a new sign-in's refresh token under
 `sites.account("github", folder)` and holds its pass, under the same lock
 as steps 1 to 4, so a renewal at that moment cannot write over it.
 `own_name` gives Settings naming that same entry.
@@ -243,9 +244,9 @@ click. A sign-in kept in a site's own file is not offered, and neither is a
 hand-made key. Next with `reuse` naming one:
 
 1. A `reuse` no other site keeps is a `Hint`, and GitHub is not asked.
-2. `token` for that name, then `login`. Nothing is written.
+2. `token` for that name, then `account_name`. Nothing is written.
 3. The answers gain `store`, `"keyring"`; `store_name`; and `account`,
-   `login`'s answer. The new site's `credentials.github_account` is that
+   `account_name`'s answer. The new site's `credentials.github_account` is that
    name, not its own: GitHub retires a refresh token at each renewal, so a
    copy would stop working.
 
@@ -268,13 +269,13 @@ the progress file (PRESS-0212 § 4.2).
    yet, with the same code. `Expired` drops the code and runs step 1.
    `Declined` drops the code and is a `Hint` saying the sign-in was
    cancelled on GitHub.
-3. `Tokens`: the code is dropped, and `login` is read first, so a failure
-   there stores nothing. A `login` other than `account`, ignoring case, is a
+3. `Tokens`: the code is dropped, and `account_name` is read first, so a failure
+   there stores nothing. An `account_name` other than `account`, ignoring case, is a
    `Hint` naming both, and nothing is stored; the next Next starts a new
    code. Then `credentials.choose()` where the answers hold
-   no `store`, then `github_setup.replace(store, folder, tokens)`. A
+   no `store`, then `github_setup.store_sign_in(store, folder, tokens)`. A
    credential failure is a `Stop`, as on PRESS-0212's *key* step.
-4. The answers gain `store`, `store_name` and `account`, `login`'s answer.
+4. The answers gain `store`, `store_name` and `account`, `account_name`'s answer.
 
 **repository.** The joined `account/repository` must pass `settings.check`'s
 repository rule, or the hint asks for the name alone, as PRESS-0212's
@@ -308,10 +309,12 @@ in to GitHub, typing a key replaces the sign-in, and a link to
 `/setup/github`, GET and POST, runs the *signin* step's sequence on its own,
 with the saved store and no `account` box. A sign-in whose account cannot
 write to Settings' `repository` is refused, named, and nothing is stored
-(PRESS-0334). Success is `replace`, so the sign-in goes under this site's
-own name and never over one another site shares (PRESS-0347). Where
-Settings named another entry, `own_name`'s Settings are saved. Then it
-shows Settings. It is registered behind the Face's boundary like every
+(PRESS-0334); the refusal names the repository by its short name
+(`design.md` § Logging). Success is `store_sign_in`, so the sign-in goes
+under this site's own name and never over one another site shares
+(PRESS-0347). Where Settings named another entry, `own_name`'s Settings are
+saved; a save that fails is shown as Settings' failure, and the sign-in
+stays stored. Then it shows Settings. It is registered behind the Face's boundary like every
 other page.
 
 ## 5. Invariants

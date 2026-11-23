@@ -369,9 +369,7 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
         if not pressless_import.read_folder(unpacked).pages:
             shutil.rmtree(unpacked, ignore_errors=True)
             return shown_again(message_box("import-hint", say("import.folder.no_page")))
-        safe_write.write_whole(held / pressless_import.FOLDER_LEFT,
-                               json.dumps(left, indent=1) + "\n",
-                               prefix=".folder-left-")
+        pressless_import.write_folder_left(held, left)
         return shown_again(f"<p>{say('import.folder.held')}</p>")
 
     face.add_page("GET", FOLDER_ADDRESS, page)

@@ -211,7 +211,7 @@ def test_a_new_sign_in_is_never_overwritten_by_an_unsaved_one(tmp_path, monkeypa
         with pytest.raises(credentials.CredentialError):
             _token(tmp_path)
         keyring = _Store(monkeypatch, SECOND_REFRESH)
-        github_setup.replace("keyring", tmp_path, github_signin.Tokens(
+        github_setup.store_sign_in("keyring", tmp_path, github_signin.Tokens(
             "ghu_signed-in-again", SECOND_REFRESH, 8 * 3600))
         assert _token(tmp_path) == "ghu_signed-in-again"
     assert keyring.writes == [("keyring", "github", SECOND_REFRESH)]
@@ -335,6 +335,7 @@ def test_signing_in_again_to_an_account_that_cannot_write_keeps_the_old_pass(
         assert browser.request("POST", PAGE)[0] == 200
         status, _, page = browser.request("POST", PAGE)
         assert status == 200 and "another-account" in page and "Nothing was stored" in page
+        assert "owner.github.io" in page and "owner/owner.github.io" not in page
         assert keyring.saved == REFRESH
         assert _token(tmp_path) != SECOND_ACCESS
 
@@ -366,3 +367,25 @@ def test_settings_says_it_is_signed_in(tmp_path, monkeypatch):
     assert "Pressless is signed in to GitHub" in signed_in
     assert f'href="{PAGE}"' in signed_in
     assert "Pressless is signed in to GitHub" not in with_a_key
+
+
+def test_a_settings_save_that_fails_is_said_as_settings(tmp_path, monkeypatch):
+    """PRESS-0231 § 4.4. Breaks when Settings refusing the new name reaches the
+    last-resort page, or is said as a failure of the GitHub sign-in's store,
+    which kept the sign-in."""
+    _saved(tmp_path)
+    settings.save(tmp_path, dataclasses.replace(settings.load(tmp_path), credentials=(
+        settings.Credentials(store="keyring", github_account="github-site-5",
+                             google_account=None))))
+    keyring = _Store(monkeypatch, REFRESH)
+
+    def save_fails(*args, **kwargs):
+        raise settings.SettingsError("the settings file could not be written")
+
+    with _served(tmp_path, _GitHub(), _Clock()) as browser:
+        browser.request("POST", PAGE)
+        monkeypatch.setattr(settings, "save", save_fails)
+        status, _, page = browser.request("POST", PAGE)
+    assert status == 200 and 'class="failure"' in page, page
+    assert "your GitHub sign-in" not in page
+    assert keyring.saved == SECOND_REFRESH

@@ -9122,10 +9122,20 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 🚧 [PRESS-0442] **Second-round review fixes: the page editor and the menu.**
+- ✅ [PRESS-0442] **Second-round review fixes: the page editor and the menu.**
   Subject 03. Review types: Codebase, Test.
   Findings: review-code lane-03, review-readability lane-03, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 32a7d83..9ba38bd (merged 4123778). 30 findings: 27
+  fixed, 1 queued (PRESS-0479), 2 dismissed (duplicates closed by
+  PRESS-0441). No move or Remove leaves a row, question or menu the save
+  refuses, which used to stop all saving silently. An unknown Remove or
+  Rename stops saving to the gone page and says so. A build note moves no
+  control; the panel's fixed controls sit above the changing fields. A
+  menu link's href is read as its own attribute. The code view repaints
+  faster and finds a script's end correctly. PRESS-0260, 0216, 0195 and
+  0197 amended. Full suite 2666 passed; ruff clean. Sweep found
+  PRESS-0480. Ledger: local-archive/reviews/2026-11-23/close-findings/03.json.
   **Layman:** Bug fixes and tidy-ups in the editor for pages, the header, the footer and the menu.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9149,11 +9159,20 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0444] **Second-round review fixes: marks and the builder.**
+- ✅ [PRESS-0444] **Second-round review fixes: marks and the builder.**
   Subject 05. Review types: Codebase, Test.
   Findings: review-code lane-05, review-readability lane-05, and the
   performance and test reviews' findings on these files and their tests.
   Among them: GIF frames held in memory without a bound.
+  Shipped 2026-11-23, 31e573a..ea82350 (merged 0c4c181). 34 findings: 24
+  fixed, 0 queued, 10 dismissed (each with its reason in the ledger). Marks
+  reads a reference alike in alt, href and words, so archived captions and
+  &amp; links work; a site's own counting code, sharing picture and icon
+  are found as real tags; long GIFs shrink frame by frame; placeholders
+  fill in one pass; a long run of spaces no longer stalls the caption
+  pattern (measured 1.6 s before). Every language's cheat sheet is tested.
+  PRESS-0004, 0008, 0199, 0213 and 0227 amended. Full suite 2675 passed;
+  ruff clean. Ledger: local-archive/reviews/2026-11-23/close-findings/05.json.
   **Layman:** Bug fixes and tidy-ups in how your writing becomes the finished website.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9585,6 +9604,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   successful save, so a refused Remove or Rename's failure box closes as
   soon as the held save answers; publishing.py's bin_the_copy drops the
   reason the copy stayed, the defect fixed at page_editor.py:893.
+  Also, surfaced by PRESS-0448's sweep: the Settings failure sentence says
+  "could not read its settings" even when a save failed (settings.py's
+  words, subject 08, shipped).
   **Layman:** Two messages that vanished too soon now stay until they are read.
   Kind: review-fix.
   Source: review-2026-11-23.

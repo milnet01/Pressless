@@ -1311,6 +1311,10 @@ _WORDS: dict[str, str] = {
     ),
     "domain.field": "Your domain name",
     "domain.hint.name": "Type the name you bought, such as example.com.",
+    "domain.hint.alphabet": (
+        "Pressless cannot check a name in this alphabet yet. Type it as your domain seller "
+        "shows it in the letters a to z, the form starting xn--."
+    ),
     "domain.hint.takeover": (
         "Your site is still built by GitHub Actions. Switch it to Pressless first, by "
         "publishing, then come back."

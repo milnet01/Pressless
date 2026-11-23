@@ -106,8 +106,7 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
     folder = Path(folder)
     gathered = notices if notices is not None else []
     captured = gatherer(capture, gathered)
-    if captured(lambda: store.holds_a_site(folder)):
-        raise TakeInStopped("the Store already holds a site")
+    _refuse_a_site(folder, captured)
 
     fetch_area = folder / undo.FETCH_FOLDER
     undo.empty_fetch(fetch_area)
@@ -115,13 +114,21 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
     try:
         read = _fetch_and_read(fetch_area, settings, key, commit, transport, captured)
         try:
-            captured(lambda: _write(folder, fetch_area, read, reversals))
+            # Asked again under the writes' own capture: the fetch held no
+            # lock, and anything may have filled the Store meanwhile (INV-3).
+            captured(lambda: (_refuse_a_site(folder), _write(folder, fetch_area, read,
+                                                              reversals)))
         except BaseException:
             captured(lambda: undo.reverse(reversals))
             raise
     finally:
         undo.empty_fetch_quietly(fetch_area)
     return TakenIn(read.found, lambda: captured(lambda: undo.reverse(reversals)))
+
+
+def _refuse_a_site(folder: Path, captured: Callable = lambda step: step()) -> None:
+    if captured(lambda: store.holds_a_site(folder)):
+        raise TakeInStopped("the Store already holds a site")
 
 
 def _fetch_and_read(fetch_area: Path, settings: Settings, key: str, commit: str,
@@ -201,12 +208,16 @@ def _place(source: Path, name: str, path_for: Callable[[str], Path]) -> str:
 # ------------------------------------------------- PRESS-0210 § 4.11 ----
 
 
+def _imports(folder: Path) -> Path:
+    return Path(folder) / pressless_import.IMPORT_FOLDER
+
+
 def _held_folder(folder: Path) -> Path:
-    return Path(folder) / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER
+    return _imports(folder) / pressless_import.FOLDER
 
 
 def _record_path(folder: Path) -> Path:
-    return Path(folder) / pressless_import.IMPORT_FOLDER / _FOLDER_RECORD
+    return _imports(folder) / _FOLDER_RECORD
 
 
 def forget_record(folder: Path) -> None:
@@ -250,11 +261,11 @@ def look_site(folder: Path, settings: Settings, key: str, address: str, commit: 
     held = _cleared_held(folder)
     commit = commit or publisher.head_commit(settings, key, transport)
     crawled = fetch.fetch_site(address, held, lambda: _room(held))
-    imports = held.parent
+    # The record last: it says the folder is whole, so a close between the
+    # two never leaves a held commit without its list of what was left out.
+    pressless_import.write_folder_left(_imports(folder), crawled.left)
     safe_write.write_whole(_record_path(folder), json.dumps({"commit": commit}, indent=1) + "\n",
                            prefix=".folder-")
-    safe_write.write_whole(imports / pressless_import.FOLDER_LEFT,
-                           json.dumps(crawled.left, indent=1) + "\n", prefix=".folder-left-")
     return pressless_import.read_folder(held), commit
 
 
@@ -273,8 +284,7 @@ def forget_folder(folder: Path) -> None:
     """A repository read and refused, or one read again, leaves no copy behind."""
     shutil.rmtree(_held_folder(folder), ignore_errors=True)
     _record_path(folder).unlink(missing_ok=True)
-    (Path(folder) / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER_LEFT).unlink(
-        missing_ok=True)
+    pressless_import.forget_folder_left(_imports(folder))
 
 
 def _lay_out(folder: Path, settings: Settings, key: str, commit: str, address: str,
@@ -284,7 +294,7 @@ def _lay_out(folder: Path, settings: Settings, key: str, commit: str, address: s
     return look_folder(folder, settings, key, commit, transport)[0]
 
 
-def found_held(folder: Path, settings: Settings, key: str, commit: str,
+def read_held_or_fetch(folder: Path, settings: Settings, key: str, commit: str,
                transport: publisher.Transport | None = None,
                address: str = "") -> pressless_import.Found:
     """What the state at `commit` holds: from import/folder/ where it holds that
@@ -316,9 +326,11 @@ def bring_folder(folder: Path, settings: Settings, key: str, commit: str, *,
         if brought is not None:
             forget_folder(folder)
             return brought
+    # A Store holding a site this commit did not bring in is refused by
+    # `bring_in_folder` below, so nothing is downloaded for it first: a close
+    # during the moves was finished by `finish` above.
     if _held_commit(folder) != commit and not captured(lambda: store.holds_a_site(folder)):
         _lay_out(folder, settings, key, commit, address, transport)
-    left = (pressless_import.read_folder_left(folder / pressless_import.IMPORT_FOLDER)
-            if address else ())
+    left = pressless_import.read_folder_left(_imports(folder)) if address else ()
     return captured(lambda: pressless_import.bring_in_folder(_held_folder(folder), folder,
                                                               left=left, commit=commit))

@@ -106,6 +106,8 @@ def _next(browser: _Browser, page: str) -> str:
     ("example.org", "example.org"), (" WWW.Example.org ", "www.example.org"),
     ("https://www.example.org/", "www.example.org"), ("example.org.", "example.org"),
     ("http://example.co.za/a/page", "example.co.za"), ("münchen.de", "xn--mnchen-3ya.de"),
+    ("bücher\u3002de", "xn--bcher-kva.de"), ("example\uff0eorg", "example.org"),
+    ("example\uff61org", "example.org"),
 ])
 def test_a_name_is_found_however_it_was_pasted(typed, name):
     assert domain.clean(typed) == name
@@ -171,7 +173,7 @@ def test_the_bought_name_follows_the_public_suffix_list(name, bought):
     """PRESS-0342: the list's rules, its wildcards and exceptions included, and
     its default that a last label alone is an ending. Breaks when a rule kind
     is read wrongly."""
-    assert domain.bought(name) == bought
+    assert domain.bought_name(name) == bought
 
 
 def test_an_ending_alone_is_not_a_domain():
@@ -191,6 +193,19 @@ def test_nothing_changes_on_github_before_the_person_has_been_told(tmp_path, mon
         assert words in page or words.replace("&#x27;", "'") in page, words
     assert github.writes() == []
     assert settings.load(folder) == before
+
+
+@pytest.mark.parametrize(("typed", "said"), [
+    ("faß.de", "cannot check a name in this alphabet"),
+    ("exa mple.org", "Type the name you bought"),
+])
+def test_a_name_the_old_rules_cannot_read_says_how_to_type_it(tmp_path, monkeypatch, typed, said):
+    """Breaks when a name Python's IDNA 2003 rules cannot read is called not a
+    domain, though the person bought it: the hint names the xn-- form instead."""
+    github, folder = _ready(tmp_path, monkeypatch)
+    with _wizard(folder, github) as browser:
+        page = _post(browser, "name", domain=typed)
+    assert said in page and github.writes() == []
 
 
 def test_a_refused_name_stays_on_its_step_and_is_not_echoed_raw(tmp_path, monkeypatch):

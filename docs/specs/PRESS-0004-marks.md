@@ -220,7 +220,7 @@ it, and the preview and the built page style the same entry differently.
 by the `link` row's `arg` in full once the whitespace either side is
 stripped: the scheme, then no whitespace, quote, angle bracket, brace or
 backslash. That refuses `javascript:` and every other scheme, which is
-what defends the `href` (INV-11); §4.6's attribute rule then escapes it.
+what defends the `href` (INV-11); §4.6's rule for an address then escapes it.
 It cannot contain `}`, because the argument ends at the first one (§4.5).
 
 **A `prefix` mark owns every line that begins with it.** The `quote`
@@ -353,13 +353,13 @@ it found rather than this prose carrying a figure that ages.
 **This is where the text rule departs from `wpautop()`**, which escapes
 no `&` at all. INV-5 owns that departure and checks it.
 
-**Attribute values** — a photo's `src`, whatever `photo_src` returned, a
-caption used as `alt`, and a colour's `style` value: strict, `&`, `<`,
-`>`, `"` and `'` all escaped
-unconditionally. Neither a returned name nor a caption carrying a quote
-can break out of the tag. So a caption is escaped once per destination
-and by a different rule each time: the text rule for `<figcaption>`, this
-one for `alt`.
+**Attribute values** — a photo's `src`, whatever `photo_src` returned,
+and a colour's `style` value: strict, `&`, `<`, `>`, `"` and `'` all
+escaped unconditionally. **A caption used as `alt`, and a link's
+address in `href`, take the text rule with `"` and `'` escaped too**, so
+a character reference the archive carries reads there as it does in the
+words, and `&amp;` in an address is one `&`. Neither a returned name nor
+a caption or address carrying a quote can break out of the tag.
 
 ## 5. Invariants
 
@@ -399,7 +399,8 @@ one for `alt`.
 
 - **INV-4** — In text, `<` and `>` are always escaped and `&` is escaped
   only where it does not already begin a character reference. In an
-  attribute value, all five of `& < > " '` are escaped unconditionally.
+  attribute value, all five of `& < > " '` are escaped, the `&` beginning a
+  reference in a caption or an address excepted (§4.6).
   *Test:* `tests/test_marks.py::test_escaping_text_and_attributes`.
   *Breaks when:* one escape helper is used for both contexts.
 
@@ -488,7 +489,7 @@ one for `alt`.
   photograph decorative whatever the writer captioned it.
 
 - **INV-11** — A link's address reaches `href` only after matching §4.2's
-  address grammar in full, and only escaped by §4.6's attribute rule.
+  address grammar in full, and only escaped by §4.6's rule for an address.
   *Test:* `tests/test_marks.py::test_a_link_address_cannot_carry_a_script`
   — `{link: javascript:alert(1)}x{/}` and an address carrying a `"` stay
   literal; `{link: https://example.org/a?b=1&c=2}x{/}` renders an `href`
