@@ -107,13 +107,37 @@ def _imports(module) -> tuple[set[str], list]:
 
 
 def _calls(module) -> set[str]:
-    """Every dotted name a module calls, such as `os.fsync`."""
+    """Every dotted name a module calls or imports to call, such as `os.fsync`:
+    `os.fsync(fd)` and `t.mkstemp()` after `import tempfile as t` by their
+    calls, and `from os import fsync` by its import."""
+    tree = ast.parse(inspect.getsource(module))
+    aliases = {alias.asname or alias.name: alias.name
+               for node in ast.walk(tree) if isinstance(node, ast.Import)
+               for alias in node.names}
     called = set()
-    for node in ast.walk(ast.parse(inspect.getsource(module))):
+    for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             if isinstance(node.func.value, ast.Name):
-                called.add(f"{node.func.value.id}.{node.func.attr}")
+                owner = aliases.get(node.func.value.id, node.func.value.id)
+                called.add(f"{owner}.{node.func.attr}")
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            called.update(f"{node.module}.{alias.name}" for alias in node.names)
     return called
+
+
+def _pressless_modules(module) -> set[str]:
+    """The pressless modules `module` imports, in either import form."""
+    found = set()
+    for node in ast.walk(ast.parse(inspect.getsource(module))):
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names
+                         if alias.name.split(".")[0] == "pressless")
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            if node.module == "pressless":
+                found.update(f"pressless.{alias.name}" for alias in node.names)
+            elif node.module.split(".")[0] == "pressless":
+                found.add(node.module)
+    return found
 
 
 def test_settings_imports_nothing_forbidden():
@@ -155,10 +179,8 @@ def test_settings_imports_nothing_forbidden():
         assert not helper_relative, leaf.__name__
     # The words table builds from two modules and nothing else, so the rule
     # holds through it as well (PRESS-0242).
-    table_parts = {alias.name for node in ast.walk(ast.parse(inspect.getsource(words)))
-                   if isinstance(node, ast.ImportFrom) and node.module == "pressless"
-                   for alias in node.names}
-    assert table_parts <= {"_flag_data", "marks"}, table_parts
+    table_parts = _pressless_modules(words)
+    assert table_parts <= {"pressless._flag_data", "pressless.marks"}, table_parts
     for module in (words, marks, _flag_data):
         names, module_relative = _imports(module)
         names_top = {name.split(".")[0] for name in names}
@@ -659,8 +681,9 @@ def test_no_failure_chains_what_it_caught(tmp_path):
         with pytest.raises(SettingsError) as caught:
             call()
         shown = "".join(traceback.format_exception(caught.value))
-        if (caught.value.__cause__ is not None or not caught.value.__suppress_context__
-                or str(tmp_path) in shown):
+        # Only a cause, or a context left unsuppressed, prints beneath it.
+        context = caught.value.__context__ is not None and not caught.value.__suppress_context__
+        if caught.value.__cause__ is not None or context or str(tmp_path) in shown:
             printed.append(name)
     assert not printed, f"a traceback would print what these caught: {printed!r}"
 
@@ -883,11 +906,17 @@ def test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor(
         handed.append(handle)
         return handle, path
 
-    def refusing_fdopen(*args, **kwargs):
+    real_fdopen = os.fdopen
+
+    def refusing_fdopen(fd, mode="r", *args, **kwargs):
+        # The save's own read of the file goes through fdopen too; only the
+        # temporary's write is refused.
+        if "w" not in mode:
+            return real_fdopen(fd, mode, *args, **kwargs)
         raise OSError("no descriptors left")
 
     monkeypatch.setattr(tempfile, "mkstemp", recording_mkstemp)
-    monkeypatch.setattr(settings_module.os, "fdopen", refusing_fdopen)
+    monkeypatch.setattr(os, "fdopen", refusing_fdopen)
 
     with pytest.raises(SettingsError):
         save(tmp_path, settings)

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import os
-import stat
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -307,21 +306,8 @@ def _secrets(raw: dict, *, writing: bool = False) -> dict:
     `writing` picks the wording: a refused write says what saving over the
     file would do.
     """
-    version = raw.get("version")
-    # Type-strict, as PRESS-0001 pins it: `true == 1` and `1.0 == 1` in
-    # Python, so a plain != accepts both as this build's own version
-    # (PRESS-0100). One on-disk shape, one acceptance set.
-    if type(version) is not int or version != FILE_VERSION:
-        if writing:
-            raise CredentialError(
-                f"the credentials file has version {version!r}; "
-                f"this Pressless writes version {FILE_VERSION}, and saving "
-                "over it would relabel a file written by another"
-            )
-        raise CredentialError(
-            f"the credentials file has version {version!r}; this "
-            f"Pressless reads version {FILE_VERSION}"
-        )
+    safe_write.refuse_other_version(raw, version=FILE_VERSION, label="credentials file",
+                                    error=CredentialError, saving=writing)
 
     secrets = raw.get("secrets")
     if not isinstance(secrets, dict):
@@ -408,8 +394,8 @@ def _refuse_a_wide_grant(handle: int) -> None:
     it, and os.replace would carry the permissive mode onto the target.
     write_whole runs this on the temporary before a byte is written, so the
     secret never reaches such a filesystem at all (PRESS-0042)."""
-    granted = stat.S_IMODE(os.fstat(handle).st_mode)
-    if granted & 0o077:
+    granted = safe_write.wider_than_owner(handle)
+    if granted:
         raise NoStore(
             "Pressless's own folder cannot hold a file private to one "
             f"user: a new file there is mode {granted:03o}, so the key would "
@@ -417,71 +403,33 @@ def _refuse_a_wide_grant(handle: int) -> None:
         )
 
 
-def _read_ours(target: Path) -> str:
-    """The file's text, refusing one that is not ours (§3 decision 6).
-
-    `O_NOFOLLOW` where the platform offers it, so a symlink at that name is
-    refused by the open rather than followed -- a descriptor cannot report a
-    symlink, which is why that half is the open's job. The owner is then read
-    off the open descriptor rather than the path, so what was checked is what
-    is read.
+def _refuse_another_owner(handle: int) -> None:
+    """§3 decision 6: a file owned by another user is not ours. Read off the
+    open descriptor rather than the path, so what was checked is what is read.
 
     The mode is deliberately NOT checked. A file carried from another machine
     is what recovery reads, and its mode did not survive the journey while its
     ownership became the writer's on the copy that carried it -- so a mode
     check reads as stricter and rejects exactly that file.
     """
-    # O_NONBLOCK so a FIFO planted at that name cannot hold the open forever;
-    # it is then refused as not a regular file (PRESS-0162).
-    handle = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-                     | getattr(os, "O_NONBLOCK", 0))
-    try:
-        if not stat.S_ISREG(os.fstat(handle).st_mode):
-            raise CredentialError(
-                "the credentials file is not an ordinary file, so it is not "
-                "the file Pressless wrote"
-            )
-        owner = getattr(os, "getuid", None)
-        if owner is not None and os.fstat(handle).st_uid != owner():
-            raise CredentialError(
-                "the credentials file is owned by another user, so it is "
-                "not the file Pressless wrote"
-            )
-    except BaseException:
-        os.close(handle)
-        raise
-    with os.fdopen(handle, "r", encoding="utf-8") as stream:
-        return stream.read()
+    owner = getattr(os, "getuid", None)
+    if owner is not None and os.fstat(handle).st_uid != owner():
+        raise CredentialError(
+            "the credentials file is owned by another user, so it is "
+            "not the file Pressless wrote"
+        )
 
 
 def _read_mapping(target: Path) -> dict | None:
-    """The file as a mapping, or None where there is no file. Raises where
-    saving over it would discard what could not be parsed (§4.3).
+    """The file as a mapping, or None where there is no file. Raises for a file
+    that cannot be read or parsed (§4.3), with the reader Settings uses, so a
+    fix to either reaches both (PRESS-0447).
 
     Every read of the fallback file lands here, `write()`'s own pre-read
-    included, which is what puts §3 decision 6's checks on both paths.
+    included, which is what puts §3 decision 6's checks on both paths: a
+    symlink is refused by the open (`follow=False`), a FIFO or folder as not an
+    ordinary file (PRESS-0162), and another user's file by its owner.
     """
-    try:
-        text = _read_ours(target)
-    except FileNotFoundError:
-        return None
-    except OSError as exc:
-        raise CredentialError(
-            f"the credentials file could not be read: {os_reason.of(exc)}"
-        ) from None
-    except UnicodeDecodeError:  # a ValueError, not an OSError (PRESS-0135)
-        raise CredentialError(
-            "the credentials file is not UTF-8 text"
-        ) from None
-
-    try:
-        raw = json.loads(text)
-    except (ValueError, RecursionError) as exc:
-        raise CredentialError(
-            f"the credentials file is not valid JSON: {exc}"
-        ) from None
-    if not isinstance(raw, dict):
-        raise CredentialError(
-            f"the credentials file holds {type(raw).__name__}, not an object"
-        )
-    return raw
+    return safe_write.read_mapping(target, label="credentials file", error=CredentialError,
+                                   reason=os_reason.of, follow=False,
+                                   check=_refuse_another_owner)

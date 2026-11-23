@@ -12,9 +12,7 @@ holding an accented character would be written here and unreadable there.
 from __future__ import annotations
 
 import json
-import os
 import re
-import stat
 import warnings
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -155,7 +153,9 @@ def retired_site_name(folder: Path) -> str | None:
     this module imports no other part (§5 INV-1). None otherwise, and never
     raises (PRESS-0213 § 4.2)."""
     try:
-        raw = json.loads(path_for(folder).read_text(encoding="utf-8"))
+        # Read as _read reads, so a FIFO planted there cannot hang launch.
+        text = safe_write.read_ordinary(path_for(folder))
+        raw = json.loads(text) if text is not None else None
     except (OSError, ValueError, RecursionError):
         return None
     name = raw.get("site_name") if isinstance(raw, dict) else None
@@ -170,58 +170,15 @@ def _read(target: Path, *, saving: bool) -> dict | None:
     load() and save() judge the file by this one check, so a file one refuses
     the other refuses too (PRESS-0053). `saving` picks the wording: a refused
     save says what saving over the file would do. Raises SettingsError for a
-    file that cannot be read, decoded, parsed, is not an object, or carries a
-    version other than this build's.
+    file that is not an ordinary file, cannot be read, decoded or parsed, is
+    not an object, or carries a version other than this build's. The reader is
+    the one Credentials uses, so a fix to either reaches both (PRESS-0447).
     """
-    try:
-        text = target.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return None
-    except UnicodeDecodeError as exc:
-        # A UnicodeDecodeError is a ValueError and NOT an OSError, so without
-        # this arm it escaped as something in neither of this module's
-        # families -- §4.3 has this row, and the Face has nothing to report
-        # it with (PRESS-0049).
-        raise SettingsError(
-            "the settings file is not readable as UTF-8, so it cannot be parsed: "
-            f"{exc}"
-        ) from None
-    except OSError as exc:
-        raise SettingsError(
-            f"the settings file could not be read: {os_reason.of(exc)}"
-        ) from None
-
-    try:
-        raw = json.loads(text)
-    except (ValueError, RecursionError) as exc:
-        # RecursionError is not a ValueError, so deeply nested JSON needs its
-        # own arm -- §4.3 has this row (PRESS-0066).
-        if saving:
-            raise SettingsError(
-                "the settings file is not valid JSON, so saving over it would discard "
-                f"what could not be parsed: {exc}"
-            ) from None
-        raise SettingsError(f"the settings file is not valid JSON: {exc}") from None
-    if not isinstance(raw, dict):
-        raise SettingsError(f"the settings file holds {type(raw).__name__}, not an object")
-
-    version = raw.get("version")
-    # The type is checked as well as the value. A bool IS an int in Python, so
-    # `!=` alone accepted `true`, and a float 1.0 compares equal to 1 too.
-    # §4.3 refuses anything that is not the number 1 (PRESS-0066). A save
-    # refuses it too: carrying unknown keys forward under this build's own
-    # version stamp would relabel a file another Pressless wrote (PRESS-0053).
-    if type(version) is not int or version != FILE_VERSION:
-        if saving:
-            raise SettingsError(
-                f"the settings file has version {version!r}; this Pressless "
-                f"writes version {FILE_VERSION}, and saving over it would "
-                "relabel a file written by another"
-            )
-        raise SettingsError(
-            f"the settings file has version {version!r}; this Pressless reads "
-            f"version {FILE_VERSION}"
-        )
+    raw = safe_write.read_mapping(target, label="settings file", error=SettingsError,
+                                  reason=os_reason.of, saving=saving)
+    if raw is not None:
+        safe_write.refuse_other_version(raw, version=FILE_VERSION, label="settings file",
+                                        error=SettingsError, saving=saving)
     return raw
 
 
@@ -435,10 +392,9 @@ def _is_windows() -> bool:
 def _report_a_wide_grant(handle: int, target: Path) -> None:
     """Say so where the mount granted more than owner-only (§4.4, INV-8).
 
-    Read off the DESCRIPTOR, as `credentials.py` does (PRESS-0042): that is the
-    one call reporting what the mount actually granted, where `mkstemp` only
-    asked. The predicate is Credentials' `& 0o077` -- any group or other bit --
-    and not `tests/_mode_support.py`'s exact `0600`, which asks the different
+    `safe_write.wider_than_owner` reads the grant off the descriptor, the
+    check `credentials.py` refuses on (PRESS-0042). Its predicate is any group
+    or other bit, and not `tests/_mode_support.py`'s exact `0600`, which asks the different
     question of whether the mount enforces modes at all.
 
     Credentials REFUSES here and this reports: §4.5 keeps every secret out of
@@ -451,8 +407,8 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
     """
     if _is_windows():
         return
-    granted = stat.S_IMODE(os.fstat(handle).st_mode)
-    if granted & 0o077:
+    granted = safe_write.wider_than_owner(handle)
+    if granted:
         warnings.warn(SettingsNotice("notice.settings.not_private", mode=f"{granted:03o}"),
                       stacklevel=2)
 
@@ -470,9 +426,9 @@ def _required(mapping: dict, key: str, kind: type, prefix: str = ""):
 
 
 def _optional(mapping: dict, key: str, kind: type, prefix: str = ""):
-    """Absent and null both read as None (§4.2). Two fields carry a declined
-    dashboard, and ADR-0005 makes that step declinable — requiring either
-    would leave a declined setup unable to load at all."""
+    """Absent and null both read as None (§4.2). For every field a file may
+    lack: one written before the field existed, or a step declined, must
+    still load."""
     value = mapping.get(key)
     if value is None:
         return None

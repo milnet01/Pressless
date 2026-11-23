@@ -21,7 +21,6 @@ import hashlib
 import json
 import os
 import re
-import stat
 import warnings
 from dataclasses import dataclass
 from datetime import datetime
@@ -1735,10 +1734,9 @@ def _is_windows() -> bool:
 def _report_a_wide_grant(handle: int, target: Path) -> None:
     """Say so where the mount granted more than owner-only (§4.5, INV-11).
 
-    Read off the DESCRIPTOR, as `credentials.py` does (PRESS-0042): that is the
-    one call reporting what the mount actually granted, where `mkstemp` only
-    asked. The predicate is Credentials' `& 0o077` -- any group or other bit --
-    and not `tests/_mode_support.py`'s exact `0600`, which asks the different
+    `safe_write.wider_than_owner` reads the grant off the descriptor, the
+    check `credentials.py` refuses on (PRESS-0042). Its predicate is any group
+    or other bit, and not `tests/_mode_support.py`'s exact `0600`, which asks the different
     question of whether the mount enforces modes at all.
 
     Credentials REFUSES here and this reports, because his own writing is not a
@@ -1750,8 +1748,8 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
     """
     if _is_windows():
         return
-    granted = stat.S_IMODE(os.fstat(handle).st_mode)
-    if granted & 0o077:
+    granted = safe_write.wider_than_owner(handle)
+    if granted:
         warnings.warn(StoreNotice("notice.store.not_private", file=target.name,
                                   mode=f"{granted:03o}"), stacklevel=2)
 

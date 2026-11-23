@@ -1,16 +1,21 @@
-"""Replacing a file whole, so an interrupted save leaves the old file or the new.
+"""Replacing a file whole, so an interrupted save leaves the old file or the new;
+and reading back the versioned JSON files Settings and Credentials keep.
 
 The contract is docs/specs/PRESS-0001-settings.md § 4.4, which states this
 module's functions; § 11 there names the modules that call it. It is not a
 part of Pressless: it imports no pressless module and no network module, so a
 module allowed to import it reaches nothing else through it (PRESS-0141).
 
-Each caller keeps its own error type. Everything here propagates unchanged,
-because only the caller knows which sentence a failure becomes.
+Each caller keeps its own error type. The writing steps propagate everything
+unchanged, because only the caller knows which sentence a failure becomes. The
+reading steps raise the error type and file label their caller passes, so a
+refusal one reader makes the other makes too (PRESS-0447).
 """
 from __future__ import annotations
 
+import json
 import os
+import stat
 import sys
 import tempfile
 import time
@@ -104,6 +109,103 @@ def patiently(step: Callable[[], _T]) -> _T:
             if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
                 raise
             time.sleep(_WINDOWS_PAUSE)
+
+
+def read_ordinary(target: Path, *, follow: bool = True,
+                  check: Callable[[int], None] | None = None) -> str | None:
+    """`target`'s text as UTF-8, or None where it is not a regular file: a
+    FIFO, a folder, a device, read as a file, answers empty or forever.
+
+    O_NONBLOCK, so a FIFO planted at that name cannot hold the open forever
+    (PRESS-0162). A missing file raises FileNotFoundError.
+    `follow=False` refuses a symlink at the open, which is the only place a
+    symlink can be seen. `check` runs on the open descriptor, as write_whole's
+    does, so what was checked is what is read; what it raises propagates.
+    """
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+    if not follow:
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+    handle = os.open(target, flags)
+    try:
+        ordinary = stat.S_ISREG(os.fstat(handle).st_mode)
+        if ordinary and check is not None:
+            check(handle)
+    except BaseException:
+        os.close(handle)
+        raise
+    if not ordinary:
+        os.close(handle)
+        return None
+    with os.fdopen(handle, "r", encoding="utf-8") as stream:
+        return stream.read()
+
+
+def read_mapping(target: Path, *, label: str, error: type[Exception],
+                 reason: Callable[[OSError], str], saving: bool = False,
+                 follow: bool = True,
+                 check: Callable[[int], None] | None = None) -> dict | None:
+    """The JSON object in `target`, or None where there is no file.
+
+    Raises `error`, naming the file as `label`, for a file that is not an
+    ordinary one, cannot be read, is not UTF-8 (a ValueError, not an OSError:
+    PRESS-0049, PRESS-0135), is not JSON or nests too deep (RecursionError is
+    not a ValueError: PRESS-0066), or holds something other than an object.
+    `reason` words an OSError without its path. `saving` picks the wording: a
+    refused save says what saving over the file would do. `follow` and
+    `check` are read_ordinary's.
+    """
+    try:
+        text = read_ordinary(target, follow=follow, check=check)
+    except FileNotFoundError:
+        return None
+    except UnicodeDecodeError as exc:
+        raise error(f"the {label} is not readable as UTF-8, so it cannot be "
+                    f"parsed: {exc}") from None
+    except OSError as exc:
+        raise error(f"the {label} could not be read: {reason(exc)}") from None
+    if text is None:
+        raise error(f"the {label} is not an ordinary file, so it is not the "
+                    "file Pressless wrote")
+
+    try:
+        raw = json.loads(text)
+    except (ValueError, RecursionError) as exc:
+        if saving:
+            raise error(f"the {label} is not valid JSON, so saving over it would "
+                        f"discard what could not be parsed: {exc}") from None
+        raise error(f"the {label} is not valid JSON: {exc}") from None
+    if not isinstance(raw, dict):
+        raise error(f"the {label} holds {type(raw).__name__}, not an object")
+    return raw
+
+
+def refuse_other_version(raw: dict, *, version: int, label: str,
+                         error: type[Exception], saving: bool = False) -> None:
+    """Raise `error` unless `raw` carries `version`, as the number itself.
+
+    The type is checked as well as the value: a bool IS an int in Python and
+    a float 1.0 equals 1, so `!=` alone accepts both (PRESS-0066, PRESS-0100).
+    A save refuses too: carrying unknown keys forward under this build's
+    version stamp would relabel a file another Pressless wrote (PRESS-0053).
+    """
+    found = raw.get("version")
+    if type(found) is int and found == version:
+        return
+    if saving:
+        raise error(f"the {label} has version {found!r}; this Pressless writes "
+                    f"version {version}, and saving over it would relabel a "
+                    "file written by another")
+    raise error(f"the {label} has version {found!r}; this Pressless reads "
+                f"version {version}")
+
+
+def wider_than_owner(handle: int) -> int:
+    """The mode the mount granted `handle`, where it reaches any group or
+    other bit; else 0. Read off the descriptor, the one call reporting what
+    the mount actually granted, where mkstemp only asked (PRESS-0042). Each
+    caller decides whether that is refused or reported."""
+    granted = stat.S_IMODE(os.fstat(handle).st_mode)
+    return granted if granted & 0o077 else 0
 
 
 def _is_windows() -> bool:

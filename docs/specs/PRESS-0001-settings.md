@@ -260,6 +260,7 @@ live repository root.
 |---|---|
 | No file at `path_for(folder)` | `NotSetUp` |
 | File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the settings file by what it is |
+| Something other than an ordinary file at that name — a FIFO, a folder | `SettingsError`, and the open never waits on it (PRESS-0447) |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
 | Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` and neither half being `.` or `..` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for, and a dot segment can resolve to a different path than the one typed), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as, `site_name` empty after stripping or holding a line break, `site_address` not `http://` or `https://` followed by a host of ASCII letters, digits, `.` and `-`, an optional port, and `/`-separated path segments of ASCII letters, digits, `.`, `_`, `~` and `-`, with an optional trailing `/` (a query, fragment, `%` or whitespace would change the addresses `sitemap.xml` and `robots.txt` carry) | `SettingsError`, naming the key |
@@ -330,6 +331,16 @@ caller's. **After the replace it syncs `target`'s folder** through
 entry naming it. That is POSIX only and best effort: Windows opens no folder
 descriptor, and a refusal must not fail a save already made (PRESS-0376). It imports no `pressless` module and no network module.
 `settings.py` passes its owner-only notice (below) as `check`.
+
+**The reading steps live there too** (PRESS-0447), so a refusal one reader
+makes the other makes. `read_mapping(target, *, label, error, reason,
+saving=False, follow=True, check=None)` returns the JSON object in `target`,
+or None where there is no file. It raises `error`, naming the file as
+`label`, for §4.3's file rows. `refuse_other_version(raw, *, version, label,
+error, saving=False)` is the version row. Settings and PRESS-0002 read
+through both. `wider_than_owner(fd)` returns the mode the descriptor was
+granted where any group or other bit is set, else 0; the notice below and
+PRESS-0002's refusal both read it.
 **`safe_write` is not a part**, as `paths` and `update_key` are not:
 `docs/design.md` § The parts lists parts, and *depends on nothing* there
 means on no other part. A module that knows no part leaves that true.
@@ -411,12 +422,12 @@ which is the writer's choice of somewhere else and is stored absolute.
 
 - **INV-1** — `src/pressless/settings.py` imports no network module and no
   other `pressless` module but `pressless.safe_write`, which carries §4.4's
-  temporary-file, sync and replace steps (§4.4), and `pressless.words`,
+  temporary-file, sync and replace steps and its reading steps (§4.4), and `pressless.words`,
   which gives `SettingsNotice` its words (PRESS-0242 § 4.2), and
   `pressless.os_reason`, which gives a failure its reason without its path
   (PRESS-0401). `safe_write.py` and `os_reason.py` import no network module
-  and no `pressless` module, so the rule holds through them. The descriptor check and the
-  `SettingsError` wording stay in `settings.py`, and `settings.py` calls
+  and no `pressless` module, so the rule holds through them. What the descriptor check decides and the
+  `SettingsError` type and file label stay in `settings.py`, and `settings.py` calls
   neither `tempfile.mkstemp` nor `os.fsync` itself, so the steps are not
   copied back. Named modules on purpose: an import list sees what
   is imported and not what it is used for, so *reaches no disk but its own
@@ -692,6 +703,8 @@ loading or saving does anything.
 | §4.3's `version` row | `tests/test_settings.py::test_a_version_that_is_not_the_number_one_is_refused`. Added after both slipped: comparing with `!=` alone accepted `true` and `1.0`, because a bool is an int in Python and a float compares equal (PRESS-0066) |
 | §4.3's `repository` shape | `tests/test_settings.py::test_a_repository_carrying_url_punctuation_is_refused` and `::test_a_repository_with_the_punctuation_github_allows_still_loads`. The second is the half that matters: the value reaches an API URL, so the rule has to reject punctuation without rejecting the writer's own site. `::test_a_repository_half_of_dot_or_dotdot_is_refused` refuses `.` and `..` in either half, and `::test_a_repository_half_with_dots_that_is_not_a_dot_segment_loads` loads `owner/.github`, `a..b/c` and `.../x`, so a rule refusing more than those two halves fails it (PRESS-0171) |
 | §4.3's `store` shape | **nothing** — no invariant locks it, so an implementer could drop the row and this suite stays green. Its absence is silent: a malformed `store` reaches PRESS-0002 as a value it did not expect. Worth an invariant if it is ever seen to slip |
+| §4.3's not-an-ordinary-file row | `tests/test_safe_write.py::test_both_readers_refuse_what_is_not_an_ordinary_file`, at every door of both readers and at `retired_site_name` |
+| §4.3's file and version rows, held by both readers through `safe_write` | `tests/test_safe_write.py::test_both_readers_refuse_each_file_they_refused_before` |
 | §4.3's not-decodable-as-UTF-8 row | `tests/test_settings.py::test_an_undecodable_settings_file_is_a_typed_failure` and `::test_saving_over_an_undecodable_file_is_a_typed_failure` |
 | §4.2's `\n` line endings | `tests/test_settings.py::test_save_names_the_line_endings` |
 | §4.2's UTF-8, read and written | `tests/test_settings.py::test_the_file_is_read_and_written_as_utf8`. Asserted at the call, like its line-endings twin and for the same reason: this suite runs where the locale is already UTF-8, so the bytes are identical whether or not the open named it, and only Windows would show the difference |
@@ -758,3 +771,4 @@ loading or saving does anything.
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 names `pressless.os_reason`, which imports nothing. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0406: § 1 and § 4.1 stop counting the credentials as two. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0398: § 11 names `json_record.py`, which writes the small versioned records, in place of `themes.py` and `updater.py`. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0447: § 4.4 names `safe_write`'s reading steps, which Settings and Credentials share; § 4.3 refuses what is not an ordinary file; INV-1 and § 10 follow. |
