@@ -156,10 +156,12 @@ over the certifi context, refuses a non-https redirect, removes the file on
 any failure and returns it only when size and hash match (PRESS-0023
 §§ 4.5–4.6). `install` then sets mode `0o700` on Linux, and `os.replace`s
 the file onto the pinned name. Any file in `extras/` not named by a pin is
-left alone. A failure raises `updater.DownloadFailed`, `DiskFull` or
-`UpdateRejected` as `download` does, and leaves no file behind. A failure of
-`install`'s own steps, making `extras/` or putting the file in place, is
-`DiskFull` for a full disk and `DownloadFailed` otherwise.
+left alone. A failure raises `updater.DownloadFailed`, `DiskFull`,
+`NotWritable` or `UpdateRejected` as `download` does, and leaves no file
+behind. A failure of `install`'s own steps, making `extras/` or putting the
+file in place, is `DiskFull` for a full disk, `NotWritable` where the folder
+refuses the file (`EACCES`, `EPERM` or `EROFS`), and `DownloadFailed`
+otherwise.
 
 **A Pressless release that moves the pin makes the old decoder "not
 installed".** The line in § 4.6 then offers the download again.
@@ -265,8 +267,9 @@ browser back to `/`, where the line is drawn again. One Add runs at a time:
 a second click waits, then finds the decoder in and downloads nothing. Once installed, the
 button is hidden but keeps its place. On a failure the line carries its own
 sentence until the next try: no
-connection, a full disk, and *the download was not the expected file, so it
-was thrown away* for `UpdateRejected`. These three are not added to
+connection, a full disk, a folder Pressless may not change (`NotWritable`),
+and *the download was not the expected file, so it was thrown away* for
+`UpdateRejected`. These four are not added to
 `SENTENCES`, which is keyed by type and already holds the update's sentences
 for them.
 
@@ -400,6 +403,7 @@ published.** The pre-release mark keeps it away from the updater:
 |---|---|
 | No connection, or GitHub fails, during install | The line's no-connection sentence; nothing kept |
 | Disk full during install | The full-disk sentence (`DiskFull`) |
+| Pressless's own folder refuses `extras/` or the decoder: read-only, not his to change, or the file held open | The not-writable sentence (`NotWritable`) |
 | The download's bytes are not the pin's | *Not the expected file, thrown away*; nothing kept |
 | The installed decoder is changed or damaged on disk | The line offers the download again; nothing runs |
 | A Pressless update moves the pin | The same |

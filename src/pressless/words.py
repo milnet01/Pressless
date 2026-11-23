@@ -2162,6 +2162,10 @@ _WORDS: dict[str, str] = {
         "There is not enough room on this computer for JPEG XL support. Free some space, then "
         "try again."
     ),
+    "jpegxl.not_writable": (
+        "JPEG XL support could not be saved, because Pressless may not change the folder it "
+        "runs from."
+    ),
     "jpegxl.rejected": "The download was not the expected file, so it was thrown away.",
     "jpegxl.no_decoder": (
         "JPEG XL photographs cannot be read on this computer. Pressless's decoder runs on "

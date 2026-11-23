@@ -16,7 +16,8 @@ from pathlib import Path
 import _jxl_standin as standin
 import pytest
 
-from pressless import jpegxl, jpegxl_screen, setup, updater
+from pressless import jpegxl, jpegxl_screen, setup, updater, words
+from pressless.words import say
 
 DOWNLOADS = "https://github.com/milnet01/Pressless/releases/download"
 
@@ -539,12 +540,15 @@ def test_the_line_adds_support_on_a_click(tmp_path, monkeypatch, served, said):
 
 @pytest.mark.parametrize("step, error, raised", [
     ("mkdir", OSError(28, "No space left on device"), updater.DiskFull),
-    ("replace", OSError(13, "Permission denied"), updater.DownloadFailed),
-], ids=["no-room-for-extras", "replace-refused"])
-def test_install_raises_only_its_three_failures(tmp_path, monkeypatch, step, error, raised):
-    """§ 4.3: a failure in install's own steps is DiskFull or DownloadFailed,
-    as the download's are, and leaves no file behind. Breaks when a raw
-    OSError gets out and the line calls a full disk a lost connection."""
+    ("mkdir", OSError(30, "Read-only file system"), updater.NotWritable),
+    ("replace", OSError(13, "Permission denied"), updater.NotWritable),
+    ("replace", OSError(5, "Input/output error"), updater.DownloadFailed),
+], ids=["no-room-for-extras", "read-only-folder", "replace-refused", "replace-failed"])
+def test_install_raises_only_the_downloads_failures(tmp_path, monkeypatch, step, error, raised):
+    """§ 4.3: a failure in install's own steps is DiskFull, NotWritable or
+    DownloadFailed, as the download's are, and leaves no file behind. Breaks
+    when a raw OSError gets out, or a folder that refuses the file reads as
+    a lost connection."""
     monkeypatch.setitem(jpegxl.PINS, "linux", jpegxl.Pin(
         "djxl-test", len(_RIGHT), hashlib.sha256(_RIGHT).hexdigest()))
 
@@ -563,6 +567,37 @@ def test_install_raises_only_its_three_failures(tmp_path, monkeypatch, step, err
                               _Net(f"{DOWNLOADS}/jpeg-xl-0.12.0/djxl-test", _RIGHT))
     assert type(caught.value) is raised
     assert [path.name for path in own.rglob("*") if path.is_file()] == []
+
+
+def test_a_folder_that_refuses_the_decoder_says_so(tmp_path, monkeypatch):
+    """§ 4.6: where Pressless may not change its own folder, the line says
+    so, not that the connection failed. Breaks when NotWritable falls to the
+    no-connection sentence."""
+    from test_editor import _Browser, _editor, _folder
+    folder = _folder(tmp_path)
+    monkeypatch.setitem(jpegxl.PINS, "linux", jpegxl.Pin(
+        "djxl-test", len(_RIGHT), hashlib.sha256(_RIGHT).hexdigest()))
+
+    def refuse(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(jpegxl_screen.os, "replace", refuse)
+    net = _Net(f"{DOWNLOADS}/jpeg-xl-0.12.0/djxl-test", _RIGHT)
+    with _editor(folder) as browser:
+        setup.register(browser.served, folder)
+        jpegxl_screen.register(browser.served, tmp_path / "own", platform="linux", transport=net)
+        _Browser.request(browser, "POST", "/jpeg-xl")
+        line = _line_html(browser.request("GET", "/setup/computer")[2])
+    assert say("jpegxl.not_writable") in line
+    assert say("jpegxl.no_connection") not in line
+
+
+def test_the_download_size_has_the_languages_decimal_mark():
+    """PRESS-0241: the button's size takes the language's decimal mark.
+    Breaks when German reads 4.9 MB, which it reads as forty-nine."""
+    words.choose("de")
+    button = jpegxl_screen.line_html(False, 4_924_448, [])
+    assert "4,9" in button and "4.9" not in button, button
 
 
 def test_two_clicks_download_once(tmp_path, monkeypatch):
