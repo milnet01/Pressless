@@ -23,7 +23,6 @@ import warnings
 from collections.abc import Callable, Collection
 from datetime import datetime
 from pathlib import Path
-from typing import TypeVar
 
 from pressless import (
     builder,
@@ -146,7 +145,6 @@ _VIEWS_LOCK = threading.Lock()
 PRESS_RUNNING = ' data-press="running"'
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
-_T = TypeVar("_T")   # what `captured` hands back
 
 
 def address_for(title: str) -> str:
@@ -333,9 +331,9 @@ def _preview(face: Face, folder: Path, entry: store.Entry, *, draft: bool
     return PREVIEW_ADDRESS + relative, None
 
 
-def captured(face: Face, lock: threading.Lock, call: Callable[[], _T],
+def captured[T](face: Face, lock: threading.Lock, call: Callable[[], T],
              failures: tuple[type[Exception], ...]
-             ) -> tuple[_T | None, list[str], Exception | None]:
+             ) -> tuple[T | None, list[str], Exception | None]:
     """`call`'s result under `lock` and a notice capture, with the notices and
     the failure among `failures` it raised, or None. The capture fills its
     list only as it ends, so a failure is answered after this returns."""

@@ -60,7 +60,8 @@ def _stand_ins(bin_dir: Path, kept: Path, *, ssh_fails: str = "", scp_fails: str
         (bin_dir / name).chmod(0o755)
 
 
-def _gate(tmp_path: Path, change=None, **failing: str) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+def _gate(tmp_path: Path, change=None,
+          **failing: str) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """The gate run against a stand-in box. `change` gets the repository
     first. Returns the run, the repository and the folder holding what scp
     was given."""

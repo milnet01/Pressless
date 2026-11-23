@@ -39,7 +39,8 @@ program.mkdir(parents=True)
 """
 
 
-def _build(tmp_path: Path, script: str, **env: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+def _build(tmp_path: Path, script: str,
+           **env: str) -> tuple[subprocess.CompletedProcess[str], Path]:
     repository = tmp_path / "repository"
     (repository / "scripts").mkdir(parents=True)
     for name in (script, "python.sh"):
@@ -53,7 +54,8 @@ def _build(tmp_path: Path, script: str, **env: str) -> tuple[subprocess.Complete
     (repository / "src").symlink_to(ROOT / "src")
     stand_ins = tmp_path / "bin"
     stand_ins.mkdir()
-    (stand_ins / "python3").write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+    (stand_ins / "python3").write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n',
+                                       encoding="utf-8")
     # appimagetool --runtime-file <runtime> <AppDir> <out>: keeps the AppDir's entry.
     (stand_ins / "appimagetool").write_text(
         f'#!/bin/sh\ncp "$3/pressless.desktop" "{tmp_path}/entry.desktop"\ntouch "$4"\n',

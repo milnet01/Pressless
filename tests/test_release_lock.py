@@ -14,10 +14,10 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
-import tomllib
 
 _ROOT = Path(__file__).resolve().parent.parent
 _LOCK = _ROOT / "packaging" / "release-requirements.txt"

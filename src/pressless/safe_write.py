@@ -16,7 +16,6 @@ import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
 
 # Windows refuses to replace a file another program holds open -- its own
 # scanners open what was just written for a moment -- where Linux does not
@@ -24,7 +23,6 @@ from typing import TypeVar
 # marked read-only is refused throughout and fails as before (PRESS-0159).
 _WINDOWS_TRIES = 10
 _WINDOWS_PAUSE = 0.1
-_T = TypeVar("_T")
 
 
 def write_whole(
@@ -93,7 +91,7 @@ def sync_folder(folder: Path) -> None:
         os.close(handle)
 
 
-def patiently(step: Callable[[], _T]) -> _T:
+def patiently[T](step: Callable[[], T]) -> T:
     """Run `step` and return what it returns, retrying a PermissionError for a
     moment on Windows only, where a scanner briefly refuses a file just
     written (PRESS-0135 #2). PRESS-0001 § 11 names its callers."""
