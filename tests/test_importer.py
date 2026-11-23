@@ -343,6 +343,10 @@ _ROWS = [
     ("<p><strong>a<br>b</strong></p>", "**a**\n**b**", None),
     ("<p><strong><em>x</em></strong></p>", "**x**", "italic"),
     ("<p>a\nb</p>", "a b", None),
+    # A brace in the post's own words stays words, as a leading > does: a
+    # mark the converter did not write never forms.
+    ("<p>{photo: a.jpg}</p>", "&#123;photo: a.jpg}", None),
+    ("<p>a {b} c</p>", "a &#123;b} c", None),
 ]
 
 
@@ -1176,6 +1180,19 @@ def test_a_comment_that_cannot_be_held_is_listed_and_skipped(tmp_path):
     assert [c.identifier for c in comments] == ["101"]
     assert comments[0].body == "Lovely.", "the first of a repeated identifier is kept"
     assert len([w for w in _whats(report, "one") if "comment" in w]) == 3, report.dropped
+
+
+def test_a_brace_in_the_words_never_forms_a_mark():
+    """PRESS-0007 § 4.3: Marks syntax written as text in a post reaches the
+    page as the same text, and the self-check finds nothing changed.
+
+    Breaks when a `{photo:` in the words becomes a live mark, which stops
+    every publish where it names no held photograph."""
+    body = "<p>{photo: gone.jpg}</p><p>see {link: https://example.org}here{/}</p>"
+    text, _dropped = convert(body, _by_address, _by_id)
+    assert "{photo:" not in text and "{link:" not in text, text
+    assert visible_lines(render(text, lambda name: name)) == visible_lines(body), text
+    assert pressless_import._differences(body, text) == []
 
 
 def test_script_and_style_are_dropped_and_listed():
