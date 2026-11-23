@@ -2600,6 +2600,9 @@ _WORDS: dict[str, str] = {
     "votes_setup.check.unreachable": (
         "Pressless could not reach Google, so nothing is wrong yet. Try again later."
     ),
+    "votes_setup.check.busy": (
+        "Google asked Pressless to wait, so nothing is wrong yet. Try again in a few minutes."
+    ),
     "votes_setup.check.recaptcha": (
         "With App Check on, this cannot be checked from your computer. Try the buttons on your "
         "published site."

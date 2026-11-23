@@ -34,6 +34,8 @@ _WRONG_RULES = "votes_setup.check.rules_wrong"
 _NO_DATABASE = "votes_setup.check.database"
 _KEY_REFUSED = "votes_setup.check.key"
 _UNREACHABLE = "votes_setup.check.unreachable"
+_BUSY = "votes_setup.check.busy"
+_TOO_MANY = 429                         # Google's quota or rate limit: ask again later
 
 # The Copy button. It says so in a place that moves nothing.
 _SCRIPT = """
@@ -56,7 +58,7 @@ def register(face: Face, folder: Path, *, client: Transport | None = None) -> No
     folder = Path(folder)
     face.add_page("GET", PAGE, lambda request: _show(face, folder))
     face.add_page("POST", PAGE, lambda request: _save(face, folder, client, request))
-    face.add_page("POST", PAGE + "/check", lambda request: _checked(face, folder, client))
+    face.add_page("POST", PAGE + "/check", lambda request: _check_page(face, folder, client))
     face.add_page("POST", PAGE + "/off", lambda request: _off(face, folder))
 
 
@@ -136,7 +138,7 @@ def _save(face: Face, folder: Path, client: Transport | None, request: Request) 
             + f'<p><a href="{PAGE}">{say("votes_setup.back")}</a></p>')
 
 
-def _checked(face: Face, folder: Path, client: Transport | None) -> str:
+def _check_page(face: Face, folder: Path, client: Transport | None) -> str:
     saved, shown = loaded_settings(face, folder)
     if saved is None or saved.votes is None:
         return _show(face, folder)
@@ -178,6 +180,8 @@ def _check(value: settings.Votes, client: Transport) -> str:
         status, _, reply = client.request("POST", _SIGN_UP + gate,
                                           json.dumps({"returnSecureToken": True}).encode("utf-8"),
                                           json_type)
+        if status == _TOO_MANY:
+            return _BUSY
         if 400 <= status < 500:
             return _refused_sign_up(status, reply)
         made = json.loads(reply)
@@ -185,31 +189,15 @@ def _check(value: settings.Votes, client: Transport) -> str:
             return _UNREACHABLE
         vote = f"{entry}/votes/{made['localId']}{gate}"
         signed_in = {**json_type, "Authorization": f"Bearer {made['idToken']}"}
-
-        def write(number: int) -> int:
-            body = {"fields": {"value": {"integerValue": str(number)}}}
-            return client.request("PATCH", vote, json.dumps(body).encode("utf-8"), signed_in)[0]
-
     except (OSError, ValueError, KeyError):
         return _UNREACHABLE
 
+    def write(number: int) -> int:
+        body = {"fields": {"value": {"integerValue": str(number)}}}
+        return client.request("PATCH", vote, json.dumps(body).encode("utf-8"), signed_in)[0]
+
     def delete() -> int:
         return client.request("DELETE", vote, None, signed_in)[0]
-
-    try:
-        status = write(1)
-    except OSError:
-        status = None
-    if status is None or status >= 500:
-        # Sent, with no answer that says whether it landed: remove it anyway.
-        _asked(delete)
-        return _UNREACHABLE
-    if status == 403:
-        return _NO_RULES
-    if status == 404:
-        return _NO_DATABASE
-    if not 200 <= status < 300:
-        return _UNREACHABLE
 
     def count() -> int:
         query = {"structuredAggregationQuery": {
@@ -221,6 +209,19 @@ def _check(value: settings.Votes, client: Transport) -> str:
         return client.request("POST", f"{entry}:runAggregationQuery{gate}",
                               json.dumps(query).encode("utf-8"), json_type)[0]
 
+    try:
+        status = write(1)
+    except OSError:
+        status = None
+    if status == 403:
+        return _NO_RULES
+    if status == 404:
+        return _NO_DATABASE
+    if status is None or not 200 <= status < 300:
+        # Not refused as missing rules or database, so it may have landed:
+        # remove it anyway (§ 4.6).
+        _asked(delete)
+        return _BUSY if status == _TOO_MANY else _UNREACHABLE
     # The first write landed: the test vote goes whatever came between.
     found = _rules_fault(write, count)
     deleted = _asked(delete)
@@ -250,6 +251,8 @@ def _rules_fault(write: Callable[[int], int], count: Callable[[], int]) -> str |
         return _UNREACHABLE
     if 200 <= status < 300:
         return _WRONG_RULES
+    if status == _TOO_MANY:
+        return _BUSY
     if status >= 500:
         return _UNREACHABLE
     return _asked(count)
@@ -263,4 +266,6 @@ def _asked(step: Callable[[], int]) -> str | None:
         return _UNREACHABLE
     if 200 <= status < 300:
         return None
+    if status == _TOO_MANY:
+        return _BUSY
     return _WRONG_RULES if status < 500 else _UNREACHABLE
