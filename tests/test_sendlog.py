@@ -151,12 +151,13 @@ def test_a_sent_log_shows_its_reference(tmp_path):
 
 
 def test_the_send_is_logged_without_the_text(tmp_path):
-    """INV-5. Breaks when the note logs the body."""
+    """INV-5. Breaks when the note logs the body, before or after the
+    reference: the seeded first line is the log's only copy of the text."""
     _, _, own_log = _press(tmp_path, _Relay())
     written = own_log.read_text(encoding="utf-8")
-    after = written.split(f"{SENTINEL} older\n")[-1].split(f"{SENTINEL}\n", 1)[-1]
-    assert "K7Q2MX" in after
-    assert SENTINEL not in after
+    assert written.startswith(f"{SENTINEL}\n")
+    assert written.count(SENTINEL) == 1
+    assert "K7Q2MX" in written
 
 
 def test_failure_pages_and_report_carry_the_button(tmp_path):
