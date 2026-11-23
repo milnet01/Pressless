@@ -1253,6 +1253,32 @@ def test_a_value_mark_is_worked_out_once_per_build(tmp_path):
     assert "Going for 1 years." in shown and "&copy; 2001" in shown, shown
 
 
+def test_an_entry_body_is_parsed_twice_per_build(tmp_path, monkeypatch):
+    """PRESS-0462: an entry's page parses its body once for its photographs
+    and description, and `marks.render` once more; its cards on the journal,
+    category and tag lists reuse that page's text rather than parsing again."""
+    folder = _store(tmp_path)
+    for slug in ("one", "two"):
+        store.write(folder, _entry(slug, title=slug.title(), body=f"Words of {slug}.",
+                                   categories=("music", "life"), tags=("sea", "road")),
+                    draft=False)
+    store.write(folder, _entry("untitled", body="No title here.", categories=("music",),
+                               tags=("sea",)), draft=False)
+    parsed: list[str] = []
+    real = marks.parse
+
+    def counted(body):
+        parsed.append(body)
+        return real(body)
+
+    monkeypatch.setattr(marks, "parse", counted)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert sorted(parsed) == sorted(2 * ["Words of one.", "Words of two.", "No title here."])
+    card = (into / "blog" / "tag" / "sea" / "index.html").read_text(encoding="utf-8")
+    assert "Words of one." in card and "No title here." in card, card
+
+
 def test_a_value_mark_outside_an_entry_is_left_alone(tmp_path):
     """PRESS-0123 INV-5: a value mark in a fixed page or a furniture file
     stays as written."""

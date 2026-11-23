@@ -972,6 +972,9 @@ class _Build:
         self.marked = ""  # the furniture file whose marks stay, for its preview alone
         self.furniture_pieces = False  # whether the header or footer holds a piece
         self.pieces_linked = False     # whether any page written links pieces.js
+        # PRESS-0462: each body's plain text, worked out by its page and read
+        # again by its cards. One string per entry, held for this build alone.
+        self.texts: dict[str, str] = {}
         # Set by read_furniture or read_html, before any page is written.
         self.furniture: _Furniture
 
@@ -1325,7 +1328,7 @@ class _Build:
     </article>
 {comments}
     <p class="back"><a href="{up}blog/index.html">{self.say("site.all_entries")}</a></p>"""
-        description = _excerpt(_entry_text(doc, self.today), 150) or heading
+        description = _excerpt(self.entry_text(entry.body, doc), 150) or heading
         self.page(relative, depth, heading, description, body, code=code)
 
     def comments(self, entry: store.Entry) -> str:
@@ -1425,17 +1428,25 @@ class _Build:
         self.write_bytes(f"{store.FILES_FOLDER}/{name}", data)
         self.copied_files.add(name)
 
+    def entry_text(self, body: str, doc: marks.Document | None = None) -> str:
+        """`_entry_text` of `body`, parsed only where this build has not yet
+        worked it out (PRESS-0462). `doc` is the body already parsed."""
+        if body not in self.texts:
+            self.texts[body] = _entry_text(doc if doc is not None else marks.parse(body),
+                                           self.today)
+        return self.texts[body]
+
     # -- listings --
 
     def card(self, entry: store.Entry, depth: int) -> str:
         up = "../" * depth
         if entry.title:
             heading = html.escape(entry.title)
-            excerpt = _excerpt(_entry_text(marks.parse(entry.body), self.today), 180)
+            excerpt = _excerpt(self.entry_text(entry.body), 180)
             excerpt_row = f'\n        <p class="post-excerpt">{_as_text_html(excerpt)}</p>'
             untitled = ""
         else:
-            teaser = _excerpt(_entry_text(marks.parse(entry.body), self.today), 48) \
+            teaser = _excerpt(self.entry_text(entry.body), 48) \
                 or words.long_date(entry.date, self.language)
             heading, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">
