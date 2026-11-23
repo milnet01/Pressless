@@ -48,14 +48,16 @@ _SIGN_IN_PREFIX = "ghu_"   # every GitHub App sign-in's pass; no publishing key 
 PACE_SECONDS = 1.0
 
 # Blob creation is paced faster, and the split is measured rather than advised
-# (§4.3). PRESS-0092 sent 550 blob creations inside one rate-limit hour, serial,
-# every one accepted, at a sustained 136 a minute -- past both documented
-# content-generating thresholds. Half a second is 120 a minute, under what was
-# measured accepted, so this reduces the pace rather than removing it. The tree,
-# the commit and the reference update keep PACE_SECONDS: those three are
-# plausibly what the documented limits are about, nothing has measured them,
-# and there are three per publish so pacing them costs nothing (PRESS-0114).
-BLOB_PACE_SECONDS = 0.5
+# (§4.3). Blob STARTS are spaced 80 a minute, the documented content-generating
+# limit, and GitHub's reply time counts towards the spacing rather than being
+# added to it: a half-second pause after each reply measured about a second
+# between starts on a real publish (PRESS-0472). The tree, the commit and the
+# reference update keep PACE_SECONDS after the write before them: there are
+# three per publish, so pacing them costs nothing (PRESS-0114).
+BLOB_SPACING_SECONDS = 60 / 80
+
+# The clock blob spacing is measured on; a test replaces it.
+_clock = time.monotonic
 
 MAX_RETRIES = 4
 
@@ -300,7 +302,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
             session.write("POST", _repo_url(settings.repository, "git/blobs"),
                           {"content": base64.b64encode(content).decode("ascii"),
                            "encoding": "base64"},
-                          pace=BLOB_PACE_SECONDS),
+                          spacing=BLOB_SPACING_SECONDS),
             "sha", "a blob",
         )
         entries.append({"path": path, "mode": BLOB_MODE, "type": "blob",
@@ -884,6 +886,7 @@ class _Session:
         self._pace = threading.Lock()
         self._last_read = -math.inf     # when the latest paced read may start
         self._hold_until = -math.inf    # a slow-down one reader was told of
+        self._write_started = -math.inf     # the latest write request's start
 
     def paced_read(self, url: str) -> dict | None:
         """`read`, started READ_PACE_SECONDS after the paced one before it and
@@ -927,13 +930,18 @@ class _Session:
 
     def write(self, method: str, url: str, payload: dict, *,
               outcome_unknown: bool = False, no_content: bool = False,
-              pace: float = PACE_SECONDS) -> dict:
+              spacing: float | None = None) -> dict:
         # The pace before a write is the pace THAT write requires, not the one
         # before it -- so a tree write following a blob still waits the full
         # second. Applied after each write instead, the rule would depend on
-        # ordering and the tree would inherit the blob's half second (§4.3).
+        # ordering and the tree would inherit the blob's spacing (§4.3).
+        # `spacing` counts from the previous write's start, so its reply time
+        # is part of the wait; PACE_SECONDS is waited whole after it.
         if self._written:
-            self._client.wait(pace)
+            left = (PACE_SECONDS if spacing is None
+                    else self._write_started + spacing - _clock())
+            if left > 0:
+                self._client.wait(left)
         self._written = True
         return self._call(method, url, payload,
                           outcome_unknown=outcome_unknown, no_content=no_content)
@@ -956,6 +964,8 @@ class _Session:
         attempts = 0
         reset_waited = False
         while True:
+            if method != "GET":
+                self._write_started = _clock()
             try:
                 status, response_headers, data = self._client.request(
                     method, url, body, headers

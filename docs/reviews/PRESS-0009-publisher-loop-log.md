@@ -32,3 +32,4 @@
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: INV-1 admits `pressless.safe_write`, which imports no `pressless` module. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0471: § 4.3 a publish waits out the hourly reset GitHub names, once per request, within `MAX_RESET_WAIT_SECONDS`; § 6 and § 10 rows. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0461: § 4.5 reads blobs four at a time on kept connections, spaced under GitHub's points a minute; § 10 rows. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0472: § 4.3 and INV-9 space blob starts 80 a minute, reply time included; a new INV-9 test. |

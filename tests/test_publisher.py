@@ -1852,14 +1852,14 @@ def test_an_untouchable_symlink_does_not_refuse(tmp_path):
     )
 
 
-def test_each_write_is_preceded_by_its_own_pace(tmp_path):
+def test_each_write_is_preceded_by_its_own_pace(tmp_path, monkeypatch):
     """INV-9: the pace before a write is the pace THAT write requires.
 
     A two-file publish is five writes -- two blobs, the tree, the commit, the
-    reference update -- and the first is not paced, so four gaps: half a
-    second before the second blob and before the tree... no. Before the second
-    blob is a BLOB's pace; before the tree, the commit and the reference
-    update is the full second. `[0.5, 1.0, 1.0, 1.0]`.
+    reference update -- and the first is not paced, so four gaps. Before the
+    second blob is a BLOB's spacing, three quarters of a second from the
+    first blob's start; before the tree, the commit and the reference update
+    is the full second. On a clock that never moves, `[0.75, 1.0, 1.0, 1.0]`.
 
     **The SEQUENCE, not a count and not a set.** A count passes a single flat
     pace, which is what shipped before PRESS-0114. A set passes the split
@@ -1878,13 +1878,53 @@ def test_each_write_is_preceded_by_its_own_pace(tmp_path):
         ("two.html", _blob_hash(b"<html>old two</html>")),
     ])
     transport = _Transport(reads=_reads(listing), writes=_writes())
+    monkeypatch.setattr("pressless.publisher._clock", lambda: 100.0)
 
     publish(_settings(), tmp_path, "a-token", "message", transport=transport)
 
-    assert transport.waits == [0.5, 1.0, 1.0, 1.0], (
+    assert transport.waits == [0.75, 1.0, 1.0, 1.0], (
         f"the recorded pace sequence was {transport.waits!r}, not "
-        f"[0.5, 1.0, 1.0, 1.0]. Two blobs then the tree, commit and reference "
-        f"update: only the second blob takes the blob pace"
+        f"[0.75, 1.0, 1.0, 1.0]. Two blobs then the tree, commit and reference "
+        f"update: only the second blob takes the blob spacing"
+    )
+
+
+class _Timed(_Transport):
+    """A transport on a fake clock: each request takes `took` seconds of it,
+    each wait the seconds waited."""
+
+    def __init__(self, took: float, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.took, self.now = took, 0.0
+
+    def request(self, method, url, body, headers):
+        self.now += self.took
+        return super().request(method, url, body, headers)
+
+    def wait(self, seconds: float) -> None:
+        super().wait(seconds)
+        self.now += seconds
+
+
+@pytest.mark.parametrize(("took", "between_blobs"), [(0.5, [0.25]), (0.75, []), (1.2, [])])
+def test_a_blobs_own_round_trip_counts_towards_its_spacing(tmp_path, monkeypatch,
+                                                         took, between_blobs):
+    """INV-9 (PRESS-0472): blob starts are spaced three quarters of a second,
+    80 a minute, the documented content-generating limit. GitHub's own reply
+    time is part of that spacing, not added to it: measured 2026-11-23, a
+    blob's round trip was about half a second, so waiting a flat pace after
+    it put a second between starts. A round trip as long as the spacing
+    leaves nothing to wait. The tree, commit and reference update still wait
+    their full second after the write before them."""
+    for name in ("one.html", "two.html"):
+        (tmp_path / name).write_text(f"<html>{name}</html>", encoding="utf-8")
+    transport = _Timed(took, reads=_reads(_listing([])), writes=_writes())
+    monkeypatch.setattr("pressless.publisher._clock", lambda: transport.now)
+
+    publish(_settings(untouchable=()), tmp_path, "a-token", "message", transport=transport)
+
+    assert transport.waits == pytest.approx([*between_blobs, 1.0, 1.0, 1.0]), (
+        f"with a {took}s round trip the waits were {transport.waits!r}"
     )
 
 
