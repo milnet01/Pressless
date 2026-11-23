@@ -9914,11 +9914,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0488] **The AI helper says when a publish left a copy behind.**
+- ✅ [PRESS-0488] **The AI helper says when a publish left a copy behind.**
   Review type: Codebase. Surfaced by PRESS-0480's sweep: assistant._press
   discards Published.copy_kept, so a publish the AI helper runs never says
   a copy stayed. Needs new screen words and a place in the helper's answer
   or the waiting-request box (PRESS-0337 § 4.6).
+  Shipped 2026-11-23, 98376a5..de25574 (merged 1dec258). After an AI app
+  publishes a site, an entry or a page, its answer says when a working copy
+  was kept, or may have been kept after an unknown outcome, in the Publish
+  button's own words (no new screen words). Each path's wiring and both of
+  _yes's appends were removed once, and a test went red each time.
+  PRESS-0337 § 4.6 amended. Full suite 2896 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0488.json.
   **Layman:** After an AI app publishes, you are told when an entry's working copy was kept, as the Publish button already tells you.
   Kind: review-fix.
   Source: review-2026-11-23.
