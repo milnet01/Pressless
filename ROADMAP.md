@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=484 -->
+<!-- ants-roadmap-id-high-water: PRESS=485 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9480,6 +9480,10 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   find the newest; an autosave parses the body about six times; a build
   parses each entry three or more times; Your site, the importer and the
   AI helper read the same files twice or more.
+  Also, queued by PRESS-0454 (review-code --performance PF-1,
+  _folder.py): a folder bring scans each page about ten times; measured
+  2026-11-23 on a 300-page bring, 21,901 page scans, 53% of profiled time.
+  Passing scans through costs memory in proportion to the folder.
   **Layman:** Screens and saves answer a little faster.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9576,6 +9580,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   progress, refuse before the first upload, or split into several commits
   and lose the one-commit guarantee. Measure a large publish on a scratch
   repository first.
+  User decision 2026-11-23: wait and carry on. Past the hourly allowance,
+  Pressless pauses until GitHub's reset, showing a countdown, then
+  finishes; the publish stays one commit.
   **Layman:** A very large publish no longer fails late and starts again from nothing.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9595,6 +9602,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   (relay/src/index.js: a body near the 2.2 MiB cap took 92 ms of CPU
   locally). Settle with one near-limit test send to the deployed relay;
   then a cheaper base64 pass or the paid plan's allowance, the user's call.
+  User decision 2026-11-23: redeploy the relay at push time, then one
+  near-limit test send to measure its CPU. Over the free limit, the choice
+  goes back to the user.
   **Layman:** A big log sent with Send my log is checked to fit the relay's free limits.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9691,6 +9701,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   (user, 2026-10-02), but look.save writes the live look files
   (PRESS-0196), so the next publish of anything ships a saved look. Needs
   the user's choice: build look drafts, or amend design.md.
+  User decision 2026-11-23: the look waits for Publish. Build look drafts,
+  so a saved look stays a draft until the look itself is published and an
+  entry's publish never ships it. design.md § Pages stands.
   **Layman:** Saving a new look either waits for Publish, or the design notes stop promising that it does.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9715,6 +9728,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
+
+- 📋 [PRESS-0485] **JPEG XL decodes to PAM rather than PNG, keeping colour profile and alpha.**
+  Review type: Codebase. Queued by PRESS-0455 from review-code
+  --performance lane-03 (jpegxl.py decodes to PNG). Measured 2026-11-23 on
+  30 MP: PNG 2.87 s, PAM 0.64 s. Changes PRESS-0275's fixed decoder command
+  (INV-3); the colour profile (--icc_out) and alpha must be kept another way.
+  **Layman:** Publishing JPEG XL photographs takes less time.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Builder.
 
 ## 1.3.0 — a home other than GitHub
 
