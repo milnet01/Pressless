@@ -8,7 +8,6 @@ import html
 import json
 import re
 import threading
-import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -45,6 +44,7 @@ from pressless import (
     wizard,
     words,
 )
+from pressless.notices import notify
 
 SOURCE = Path(words.__file__).parent
 
@@ -591,8 +591,8 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
         monkeypatch.setattr(pressing, "_running", None)
         shown["a failure"] = served.fail(store.StoreError(OWN), publishing=True)
         with served.capture() as notices:
-            warnings.warn(store.StoreNotice("notice.store.passed_over", file=OWN, reason=OWN),
-                          stacklevel=1)
+            notify(store.StoreNotice("notice.store.passed_over", file=OWN, reason=OWN),
+                   stacklevel=1)
         shown["a notice"] = face.render_notices(notices)
     finally:
         served.stop()

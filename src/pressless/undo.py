@@ -14,7 +14,6 @@ import dataclasses
 import json
 import shutil
 import threading
-import warnings
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
@@ -41,6 +40,7 @@ from pressless.face import (
     nothing_captured,
     render_notices,
 )
+from pressless.notices import notify
 from pressless.words import say, say_count
 
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
@@ -87,7 +87,7 @@ def undo(folder: Path, saved: settings.Settings, key: str, *,
 
     `capture` wraps the read and the reconcile and nothing else (§ 4.1): both are
     long runs of Store calls that emit a StoreNotice only a capturing caller
-    sees, while a fetch is minutes long and a capture holds a process-wide lock.
+    sees, and the fetch emits none.
     """
     folder = Path(folder)
     gathered = notices if notices is not None else []
@@ -402,7 +402,7 @@ def _restore_look(folder: Path, fetched: dict[str, str],
         try:
             look.from_json(fetched[store.LOOK_CHOICES_NAME])
         except look.LookUnreadable:
-            warnings.warn(store.StoreNotice("notice.undo.look_kept"), stacklevel=2)
+            notify(store.StoreNotice("notice.undo.look_kept"), stacklevel=2)
             return
     for name in store.LOOK_FILES:
         _restore_one(folder, store.look_path_for(folder, name),

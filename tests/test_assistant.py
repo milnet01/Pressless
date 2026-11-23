@@ -50,6 +50,7 @@ from pressless import (
     undo,
     words,
 )
+from pressless.notices import notify
 
 DOOR_FILE = "assistant-door.json"
 SWITCH_FILE = "assistant.json"
@@ -586,12 +587,11 @@ def test_an_ask_says_its_notices(tmp_path, monkeypatch):
     """§ 4.3: the Store's notices raised while an ask is planned reach the AI
     app, as a read's or a write's do. Breaks when the plan's capture drops
     them."""
-    import warnings
     listed = store.list_files
 
     def noisy(folder):
-        warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
-                                        mode="644"), stacklevel=2)
+        notify(store.StoreNotice("notice.store.not_private", file="notes.txt",
+                                 mode="644"), stacklevel=2)
         return listed(folder)
 
     with _pressless(tmp_path) as pressless:
@@ -602,6 +602,29 @@ def test_an_ask_says_its_notices(tmp_path, monkeypatch):
         reply = pressless.ok("remove_file", {"name": "notes.txt"})
         assert reply["status"] == "waiting"
         assert any("notes.txt" in notice for notice in reply["notices"]), reply
+
+
+def test_insights_never_wait_for_a_save(tmp_path, monkeypatch):
+    """PRESS-0463: read_insights may wait on Google, and its screen takes no
+    editor.LOCK, so neither does the tool. Breaks when every read takes the
+    lock: a save would wait for Google too."""
+    @dataclasses.dataclass
+    class Figures:
+        visitors: int = 3
+
+    monkeypatch.setattr(assistant.dashboard, "figures", lambda folder, days: Figures())
+    door = assistant._Door(SimpleNamespace(capture=contextlib.nullcontext), tmp_path,
+                           tmp_path, None)
+    answered: list[dict] = []
+    with editor.LOCK:                       # a save under way
+        reading = threading.Thread(target=lambda: answered.append(
+            door.run("read_insights", {"days": assistant.dashboard.DEFAULT_DAYS})))
+        reading.start()
+        reading.join(5)
+        finished = not reading.is_alive()
+    reading.join(10)
+    assert finished
+    assert answered == [{"visitors": 3}]
 
 
 def test_an_ask_with_no_plan_or_press_raises(tmp_path):

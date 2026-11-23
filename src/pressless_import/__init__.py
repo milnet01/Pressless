@@ -38,6 +38,7 @@ from urllib.parse import unquote, urlparse
 from pressless import os_reason, store
 from pressless.marks import render
 from pressless.paths import PREVIEW_ASSETS
+from pressless.progress import count as count_progress
 
 from ._html import Lookup, autop, convert, is_markup, prepared, visible_lines, wordpress_markup
 
@@ -730,7 +731,22 @@ def _entry(item: _Item, body: str) -> store.Entry:
                        categories=item.categories, tags=item.tags, body=body, extra=())
 
 
-def _write_entries(work: Path, items: list[_Item], entries: dict[str, store.Entry]) -> None:
+class _Counted:
+    """How far a bring-in's writing has got, in files, for the note every
+    page shows (PRESS-0464): each file is forced to the drive, so a site of a
+    few hundred entries takes many seconds."""
+
+    def __init__(self, total: int) -> None:
+        self.done, self.total = 0, total
+        count_progress("progress.bringing", 0, total)
+
+    def one(self) -> None:
+        self.done += 1
+        count_progress("progress.bringing", self.done, self.total)
+
+
+def _write_entries(work: Path, items: list[_Item], entries: dict[str, store.Entry],
+                   counted: _Counted | None = None) -> None:
     """Each item's entry, as a draft where it is one, and its comments."""
     for item in items:
         with _writing(f"the entry {item.slug}"):
@@ -738,6 +754,8 @@ def _write_entries(work: Path, items: list[_Item], entries: dict[str, store.Entr
         if item.comments:
             with _writing(f"the comments on {item.slug}"):
                 store.write_comments(work, item.slug, item.comments)
+        if counted is not None:
+            counted.one()
 
 
 def _counts(items: list[_Item]) -> dict[str, int]:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import json
 import threading
+import time
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
@@ -307,6 +308,36 @@ def test_a_slow_endpoint_holds_nothing(tmp_path, monkeypatch):
             assert recorder.bodies == []          # still held when the page arrived
     finally:
         recorder.released.set()
+    assert _events(recorder) == ["screen"]
+
+
+def test_a_screen_is_sent_before_its_report_is_listed(tmp_path, monkeypatch):
+    """Breaks when `_answer` reports a screen before sending its page: the
+    page would wait for the list's forced write (PRESS-0463)."""
+    _keyed(monkeypatch)
+    _set_up(tmp_path)
+    usage.set_answer(tmp_path, True)
+    recorder = _Recorder()
+    listing, release = threading.Event(), threading.Event()
+    real_sent = usage.sent
+
+    def held(folder):
+        listing.set()
+        release.wait(30)
+        return real_sent(folder)
+
+    monkeypatch.setattr(usage, "sent", held)
+    try:
+        with _served(tmp_path, recorder) as browser:
+            browser.timeout = 5
+            assert browser.request("GET", "/")[0] == 200
+            assert listing.wait(10)           # the report was under way all along
+            release.set()
+            deadline = time.monotonic() + 10
+            while not recorder.bodies and time.monotonic() < deadline:
+                time.sleep(0.01)
+    finally:
+        release.set()
     assert _events(recorder) == ["screen"]
 
 

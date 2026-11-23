@@ -34,7 +34,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageCms, ImageOps, ImageSequence
 
-from pressless import blocks, jpegxl, marks, os_reason, store, votes, words
+from pressless import blocks, jpegxl, marks, os_reason, progress, store, votes, words
 from pressless.safe_write import patiently
 from pressless.settings import Settings
 
@@ -1102,9 +1102,10 @@ class _Build:
             try:
                 yield
             finally:
-                for made in self.made:
+                for done, made in enumerate(self.made, start=1):
                     try:
                         made.result()
+                        progress.count("progress.photographs", done, len(self.made))
                     except BaseException:
                         for later in self.made:
                             later.cancel()
@@ -1130,14 +1131,21 @@ class _Build:
         for entry in shown:
             self.refuse_an_unusable_name(entry)
 
+        # PRESS-0464: the pages, then the photographs' web copies, count.
+        written, total = 0, len(shown) + len(pages)
+        progress.count("progress.building", written, total)
         for entry in shown:
             self.entry_page(entry)
+            written += 1
+            progress.count("progress.building", written, total)
         self.forwards(entries, filtered)
         if journal:
             self.listings(shown)
             self.archive(shown)
         for name, text in pages.items():
             self.fixed_page(name, text)
+            written += 1
+            progress.count("progress.building", written, total)
         self.page_forwards(pages)
         self.content()
         self.sitemap(sorted(pages), shown, journal)

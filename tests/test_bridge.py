@@ -8,6 +8,8 @@ import ast
 import http.server
 import io
 import json
+import os
+import subprocess
 import sys
 import threading
 import time
@@ -66,6 +68,22 @@ def test_a_packaged_bridge_takes_no_folder(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as stopped:
         main_module.main(["--assistant", str(tmp_path)])
     assert stopped.value.code == 2
+
+
+def test_the_bridge_starts_before_the_other_parts_load(tmp_path):
+    """PRESS-0463: an AI app starts the bridge each time it opens, and the
+    bridge needs no other part. Breaks when `--assistant` loads the Face
+    first, as importing every part at the top of __main__ did."""
+    src = Path(main_module.__file__).resolve().parent.parent
+    ran = subprocess.run(  # noqa: S603 -- this interpreter, fixed arguments
+        [sys.executable, "-X", "importtime", "-m", "pressless", "--assistant", str(tmp_path)],
+        stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60,
+        env={**os.environ, "PYTHONPATH": str(src)}, check=False)
+    loaded = {line.rsplit("|", 1)[-1].strip() for line in ran.stderr.splitlines()
+              if line.startswith("import time:")}
+    assert ran.returncode == 0, ran.stderr[-2000:]
+    assert "pressless.bridge" in loaded
+    assert "pressless.face" not in loaded
 
 
 # ------------------------------------------------------------------ INV-8 ---

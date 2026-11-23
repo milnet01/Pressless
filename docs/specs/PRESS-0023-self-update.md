@@ -104,7 +104,8 @@ A new part, **the Updater**, joins `docs/design.md` § The parts:
 already names in `_NETWORK_MODULES`.
 
 **`updater.py` imports no part of Pressless but `update_key`, `installer`,
-`os_reason`, `zip_member` and `json_record`.** None of those imports
+`os_reason`, `zip_member`, `json_record` and `progress` (PRESS-0464).** None
+of those imports
 another Pressless module but `os_reason` and `safe_write`, which import
 none. So the Updater cannot reach the Store, Settings or Credentials even
 by import.

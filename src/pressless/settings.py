@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import json
 import re
-import warnings
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pressless.os_reason as os_reason
 import pressless.safe_write as safe_write
+from pressless.notices import notify
 from pressless.safe_write import write_whole
 from pressless.words import ENGLISH
 
@@ -417,8 +417,8 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
         return
     granted = safe_write.wider_than_owner(handle)
     if granted:
-        warnings.warn(SettingsNotice("notice.settings.not_private", mode=f"{granted:03o}"),
-                      stacklevel=2)
+        notify(SettingsNotice("notice.settings.not_private", mode=f"{granted:03o}"),
+               stacklevel=2)
 
 
 def _required(mapping: dict, key: str, kind: type, prefix: str = ""):

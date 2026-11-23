@@ -48,6 +48,7 @@ from . import (
     Report,
     _attachments,
     _convert,
+    _Counted,
     _counts,
     _entry,
     _field,
@@ -542,7 +543,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     made: list[Report] = []
 
     def write(work: Path, move: Callable[[Path, Path], None]) -> None:
-        _write_entries(work, items, entries)
+        counted = _Counted(len(items) + len(pages) + len(kept))
+        _write_entries(work, items, entries, counted)
         with _writing("the look"):
             look.save(work, look.defaults(layout), "")
             sheets = builder.stylesheets(work)
@@ -550,6 +552,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
             with _writing(f"the page {page.name}"):
                 store.write_html(work, store.PAGES_FOLDER, page.name,
                                  _page_html(page, sheets, web, old_site))
+            counted.one()
         if not pages:
             with _writing("the page index"):
                 # The name setup kept is the one the Builder shows as the
@@ -570,6 +573,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
                 move(media / place, store.photograph_path_for(work, name)
                      if folder == store.PHOTOGRAPHS_FOLDER
                      else store.file_path_for(work, name))
+            counted.one()
         # After the pages, which list what they dropped as they are written.
         made.append(Report(
             **_counts(items),

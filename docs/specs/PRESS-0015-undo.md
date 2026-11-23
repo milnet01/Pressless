@@ -148,9 +148,7 @@ unchanged, and `undo` passes both it and `capture` to `publishing.publish`.
 **`capture` wraps steps 4 and 5 — the read and the reconcile — and nothing
 else.** The reconcile writes many files, and PRESS-0005 § 4.1 emits a
 `StoreNotice` only a capturing caller sees, so those have to be inside one. The
-fetch is outside it for the reason PRESS-0013 § 4.1 gives about the upload: a
-capture holds a process-wide lock (PRESS-0011 § 4.4), and a fetch is minutes
-long, so one around it would stall setup's page. `publishing.publish` then
+fetch emits none, so it is outside it. `publishing.publish` then
 applies `capture` to its own steps as it already does.
 
 **`undo.register` is called from `pressless.__main__`**, beside
@@ -176,8 +174,7 @@ through. In order:
    notices=<the reply's list>, transport=…)`.
 
 Step 1 runs inside `face.capture()`; step 3 passes it on. Step 2 runs
-outside it: a renewal reaches GitHub, a capture holds a process-wide lock,
-and the key emits no notice. A failure at
+outside it: the key emits no notice. A failure at
 any step answers status 200 rather than an error status, so the page can render
 the failure beside what it already shows:
 

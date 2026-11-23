@@ -30,7 +30,6 @@ import subprocess
 import sys
 import threading
 import urllib.parse
-import warnings
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -61,6 +60,7 @@ from pressless import (
     usage,
     words,
 )
+from pressless.notices import gathered
 from pressless.words import say
 
 
@@ -687,11 +687,11 @@ _SCRIPT = """
 // The browser's own fetch, kept once per window so a second run does not
 // wrap the first run's wrapper.
 const sendFetch = window.presslessSendFetch ??= window.fetch.bind(window);
-let askingProgress = false;
+let askingProgress = false, downloading = false;
 async function askProgress() {
   if (askingProgress) return;
   askingProgress = true;
-  let missed = 0;
+  let missed = 0, idle = 0;
   while (missed < 5) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const note = document.getElementById("working-note");
@@ -702,6 +702,14 @@ async function askProgress() {
       continue;
     }
     missed = 0;
+    // A download's page stays, so the note goes once nothing has run for
+    // two asks running (PRESS-0464).
+    idle = now.running ? 0 : idle + 1;
+    if (downloading && idle >= 2) {
+      downloading = false;
+      note.remove();
+      break;
+    }
     if (!now.running || !now.said) continue;
     note.querySelector(".count").textContent = now.said;
     if (now.fraction !== null) note.querySelector("progress").value = now.fraction;
@@ -749,6 +757,15 @@ document.addEventListener("submit", (event) => {
   showWorking("script.working");
   const pressed = event.submitter;
   if (pressed) setTimeout(() => { pressed.disabled = true; pressed.dataset.working = ""; });
+});
+// A download link says so at once: Pressless packs the file before the
+// browser shows the download (PRESS-0464).
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href][download]");
+  if (!link || event.defaultPrevented || event.button !== 0
+      || link.closest("[data-quiet]")) return;
+  downloading = true;
+  showWorking("script.working");
 });
 // A link to a screen that takes a moment says so too, after a short wait,
 // so a quick screen never flashes it.
@@ -1458,11 +1475,6 @@ def _page(body: str, theme: str = themes.FOLLOW, site_name: str = "",
     )
 
 
-# catch_warnings swaps process-wide state, so every capture in the process
-# shares one lock (§ 4.4). Re-entrant so a capture nested on one thread works.
-_CAPTURE_LOCK = threading.RLock()
-
-
 class _Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
     face: Face
@@ -1494,7 +1506,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         super().setup()
 
     def do_GET(self) -> None:  # noqa: N802 -- the name http.server dispatches to
-        self._dispatch("GET")
+        # PRESS-0464: a download packs as a POST's job runs, and counts too.
+        with progress.job():
+            self._dispatch("GET")
 
     def do_POST(self) -> None:  # noqa: N802
         # PRESS-0435: a long job's loops report how far they have got into
@@ -1863,7 +1877,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send_download(face, body)
             return
         if request.method == "GET":
-            usage.report("screen", screen=request.path)   # the registered path, no query
+            # The registered path, no query. Reported once the page is sent,
+            # so no screen waits for the list's write (PRESS-0262 § 4.5).
+            screen = request.path
+            face.after_reply(lambda: usage.report("screen", screen=screen))
         self._send_page(face, 200, body)
 
     def _take_upload(self, face: Face, upload: _Upload, path: str,
@@ -2288,16 +2305,15 @@ class Face:
         with the path of the file that called it.
         """
         notices: list[str] = []
-        with _CAPTURE_LOCK, warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
+        # Gathered on this thread alone, so a capture holds no other request
+        # (PRESS-0463).
+        with gathered() as caught:
             try:
                 yield notices
             finally:
-                for warning in caught:
-                    if issubclass(warning.category, (store.StoreNotice, settings.SettingsNotice)):
-                        notice = warning.message
-                        notices.append(say(notice.key, **notice.slots))
-                        self._log.note(f"notice: {notice}")  # the log stays English
+                for notice in caught:
+                    notices.append(say(notice.key, **notice.slots))
+                    self._log.note(f"notice: {notice}")  # the log stays English
 
     def fail(self, failure: BaseException, *, publishing: bool, secret: str | None = None) -> str:
         """Note the failure's details in the log and return its fragment."""

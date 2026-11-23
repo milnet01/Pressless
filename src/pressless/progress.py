@@ -1,6 +1,6 @@
 """How far a long job has got, for the note every page shows (PRESS-0435).
 
-The Face holds a record for each POST while it runs (`job`); the loops that
+The Face holds a record for each request while it runs (`job`); the loops that
 download, send and pack report into the record their thread holds (`count`),
 or a job's helper threads into the job's (`counter`);
 GET /progress reads the one updated last (`now`). The contract is
