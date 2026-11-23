@@ -20,6 +20,7 @@ import json
 import os
 import shutil
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -76,6 +77,69 @@ def _fetching(folder: Path) -> _Fetching:
         return _FETCHING.setdefault(folder, _Fetching())
 
 
+def _missing(held: Path) -> dict[str, str]:
+    """Each place the fetch could not have, with why, once it has ended."""
+    try:
+        read_in = json.loads((held / _UNFETCHED).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {str(place): str(why) for place, why in read_in.items()} if isinstance(
+        read_in, dict) else {}
+
+
+def _start_fetching(face: Face, folder: Path) -> None:
+    """§ 4.4: fetch every file the held export names, on a thread beside the
+    Face, unless a fetch runs, failed and waits for Next, or has ended."""
+    held = folder / pressless_import.IMPORT_FOLDER
+    state = _fetching(folder)
+    with state.lock:
+        # A failed fetch waits for Next (check_media), so its page holds still.
+        if state.running or state.failed or (held / _UNFETCHED).exists():
+            return
+        state.running, state.done, state.total = True, 0, 0
+        # Which export this fetch is for: a newer one handed over meanwhile
+        # bumps state.export, and this fetch's answer is then not kept.
+        export = state.export
+
+    def progress(done: int, total: int) -> None:
+        with state.lock:
+            state.done, state.total = done, total
+
+    def run() -> None:
+        try:
+            left = fetch.fetch_all(pressless_import.read(held / _EXPORT),
+                                   held / pressless_import.MEDIA_FOLDER,
+                                   lambda: face_module._room(folder), progress=progress)
+            with state.lock:
+                if state.export == export:
+                    safe_write.write_whole(held / _UNFETCHED,
+                                           json.dumps(left, indent=1) + "\n",
+                                           prefix=".unfetched-")
+        except Exception as exc:
+            # Anything at all: a thread that dies unrecorded leaves the
+            # Media step waiting, and reloading, for good.
+            failed = face.fail(exc, publishing=False)
+            with state.lock:
+                if state.export == export:
+                    state.failed = failed
+        finally:
+            with state.lock:
+                state.running = False
+
+    threading.Thread(target=run, name="pressless-import-fetch", daemon=True).start()
+
+
+def _while_empty(empty: Callable[[], bool], handler: Callable[..., str | Reply]
+                 ) -> Callable[..., str | Reply]:
+    """`handler`, sending the browser back to the list instead once the
+    site's folder holds a site: Import writes only into an empty one."""
+    def guarded(*args: object) -> str | Reply:
+        if not empty():
+            return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
+        return handler(*args)
+    return guarded
+
+
 def register(face: Face, folder: Path) -> None:
     """Add /import, its two file boxes, and the list page's offer."""
     folder = Path(folder)
@@ -92,45 +156,10 @@ def register(face: Face, folder: Path) -> None:
         return face_module._room(folder)
 
     def missing() -> dict[str, str]:
-        try:
-            read_in = json.loads((held / _UNFETCHED).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {}
-        return {str(place): str(why) for place, why in read_in.items()} if isinstance(
-            read_in, dict) else {}
+        return _missing(held)
 
     def start_fetching() -> None:
-        state = _fetching(folder)
-        with state.lock:
-            # A failed fetch waits for Next (check_media), so its page holds still.
-            if state.running or state.failed or (held / _UNFETCHED).exists():
-                return
-            state.running, state.done = True, 0
-            export = state.export
-
-        def progress(done: int, total: int) -> None:
-            state.done, state.total = done, total
-
-        def run() -> None:
-            try:
-                left = fetch.fetch_all(pressless_import.read(held / _EXPORT), media,
-                                       room, progress=progress)
-                with state.lock:
-                    if state.export == export:
-                        safe_write.write_whole(held / _UNFETCHED,
-                                               json.dumps(left, indent=1) + "\n",
-                                               prefix=".unfetched-")
-            except Exception as exc:
-                # Anything at all: a thread that dies unrecorded leaves the
-                # Media step waiting, and reloading, for good.
-                failed = face.fail(exc, publishing=False)
-                with state.lock:
-                    if state.export == export:
-                        state.failed = failed
-            finally:
-                state.running = False
-
-        threading.Thread(target=run, name="pressless-import-fetch", daemon=True).start()
+        _start_fetching(face, folder)
 
     def check_export(answers: wizard.Answers):
         try:
@@ -148,6 +177,8 @@ def register(face: Face, folder: Path) -> None:
     def show_media(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
         start_fetching()
         state = _fetching(folder)
+        with state.lock:
+            done, fetching_total = state.done, state.total
         total = answers.get("files", "0")
         counts = say(
             "import.media.counts",
@@ -160,7 +191,10 @@ def register(face: Face, folder: Path) -> None:
         if state.failed:
             return counts + state.failed + f"<p>{say('import.media.retry')}</p>"
         if state.running or not (held / _UNFETCHED).exists():
-            fetching = say("import.media.fetching", done=str(state.done), total=total)
+            # The fetch's own count, once it has one: it can differ from
+            # the export's attachments.
+            fetching = say("import.media.fetching", done=str(done),
+                           total=str(fetching_total) if fetching_total else total)
             return counts + f"<p>{fetching}</p><script>{_RELOAD}</script>"
         left = len(missing())
         return counts + (f"<p>{say('import.media.missing', count=str(left))}</p>" if left
@@ -203,7 +237,7 @@ def register(face: Face, folder: Path) -> None:
         said: list[str] = []
 
         def keep(report: pressless_import.Report) -> None:
-            said[:] = _kept(face, held, report)
+            said[:] = _keep_report(face, held, report)
 
         try:
             # Moves an earlier press began, finished first (§ 4.7).
@@ -229,25 +263,16 @@ def register(face: Face, folder: Path) -> None:
     )
     flow = wizard.Wizard("import", steps, folder, ADDRESS)
 
-    def to_the_list() -> Reply:
-        return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
-
     def page(request: Request) -> str | Reply:
-        if not empty():
-            return to_the_list()
         return flow.page(face, request)
 
     def shown_again(said: str) -> str:
         return said + flow.page(face, Request("GET", ADDRESS, {}, b""))
 
     def export_too_large(request: Request) -> str | Reply:
-        if not empty():
-            return to_the_list()
         return shown_again(message_box("import-hint", say("import.export.too_large")))
 
     def export_file(taken: Path) -> str | Reply:
-        if not empty():
-            return to_the_list()
         try:
             pressless_import.read(taken)
         except pressless_import.ImportStopped:
@@ -263,8 +288,6 @@ def register(face: Face, folder: Path) -> None:
         return shown_again(f"<p>{say('import.export.held')}</p>")
 
     def media_file(taken: Path) -> str | Reply:
-        if not empty():
-            return to_the_list()
         state = _fetching(folder)
         with state.lock:
             # The gaps are the fetch's answer, so there are none to fill before it.
@@ -273,8 +296,13 @@ def register(face: Face, folder: Path) -> None:
         if not ended:
             return shown_again(message_box("import-hint", say("import.media.wait")))
         left = missing()
+        unwritten = ""
         try:
             filled = pressless_import.unpack_media(taken, media, tuple(left), room)
+        except pressless_import.MediaNotWritten as exc:
+            # Those written before the failure stay, so they leave the gaps.
+            filled = exc.filled
+            unwritten = message_box("import-hint", say("import.gaps.unwritten", why=exc.why))
         except pressless_import.ImportStopped:
             return shown_again(message_box("import-hint", say("import.gaps.refused")))
         for place in filled:
@@ -284,21 +312,21 @@ def register(face: Face, folder: Path) -> None:
                 safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
                                        prefix=".unfetched-")
         taken = _counted(len(filled), "import.gaps.filled.one", "import.gaps.filled.many")
-        return shown_again(f"<p>{taken}</p>")
+        return shown_again(unwritten + f"<p>{taken}</p>")
 
     def offer() -> str:
         return setup.import_offer() if empty() else ""
 
-    face.add_page("GET", ADDRESS, page)
-    face.add_page("POST", ADDRESS, page)
-    face.add_upload(f"{ADDRESS}/export", export_file, folder, largest=EXPORT_LARGEST,
-                    too_large=export_too_large)
-    face.add_upload(f"{ADDRESS}/media", media_file, folder)
+    face.add_page("GET", ADDRESS, _while_empty(empty, page))
+    face.add_page("POST", ADDRESS, _while_empty(empty, page))
+    face.add_upload(f"{ADDRESS}/export", _while_empty(empty, export_file), folder,
+                    largest=EXPORT_LARGEST, too_large=_while_empty(empty, export_too_large))
+    face.add_upload(f"{ADDRESS}/media", _while_empty(empty, media_file), folder)
     face.add_piece("site-notices", offer)
-    _register_folder(face, folder, empty, room, to_the_list)
+    _register_folder(face, folder, empty, room)
 
 
-def _kept(face: Face, held: Path, report: pressless_import.Report) -> list[str]:
+def _keep_report(face: Face, held: Path, report: pressless_import.Report) -> list[str]:
     """The Report's words, kept beside the import's other files."""
     said = import_report.lines(report)
     try:
@@ -310,10 +338,11 @@ def _kept(face: Face, held: Path, report: pressless_import.Report) -> list[str]:
 
 def _reported(face: Face, held: Path, report: pressless_import.Report) -> str:
     """The Report's page, its words kept beside the import's other files."""
-    return import_report.page(_kept(face, held, report))
+    return import_report.page(_keep_report(face, held, report))
 
 
-def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None:
+def _register_folder(face: Face, folder: Path, empty: Callable[[], bool],
+                     room: Callable[[], int]) -> None:
     """PRESS-0210 § 4.2: /import/folder, and its file box."""
     held = folder / pressless_import.IMPORT_FOLDER
     unpacked = held / pressless_import.FOLDER
@@ -351,16 +380,12 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
     flow = wizard.Wizard("import-folder", steps, folder, FOLDER_ADDRESS)
 
     def page(request: Request) -> str | Reply:
-        if not empty():
-            return to_the_list()
         return flow.page(face, request)
 
     def shown_again(said: str) -> str:
         return said + flow.page(face, Request("GET", FOLDER_ADDRESS, {}, b""))
 
     def zip_file(taken: Path) -> str | Reply:
-        if not empty():
-            return to_the_list()
         try:
             left = pressless_import.unpack_folder(taken, unpacked, room)
         except pressless_import.ImportStopped:
@@ -372,9 +397,9 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
         pressless_import.write_folder_left(held, left)
         return shown_again(f"<p>{say('import.folder.held')}</p>")
 
-    face.add_page("GET", FOLDER_ADDRESS, page)
-    face.add_page("POST", FOLDER_ADDRESS, page)
-    face.add_upload(f"{FOLDER_ADDRESS}/zip", zip_file, folder)
+    face.add_page("GET", FOLDER_ADDRESS, _while_empty(empty, page))
+    face.add_page("POST", FOLDER_ADDRESS, _while_empty(empty, page))
+    face.add_upload(f"{FOLDER_ADDRESS}/zip", _while_empty(empty, zip_file), folder)
 
 
 def _show_folder(unpacked: Path) -> str:
