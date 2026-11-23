@@ -22,9 +22,8 @@ if sys.platform != "linux":
     pytest.skip("the Linux tray runs on Linux", allow_module_level=True)
 
 from jeepney import DBusAddress, MessageType, new_method_call, new_method_return  # noqa: E402
-from jeepney.io.blocking import DBusConnection  # noqa: E402
 from jeepney.bus_messages import message_bus  # noqa: E402
-from jeepney.io.blocking import open_dbus_connection  # noqa: E402
+from jeepney.io.blocking import DBusConnection, open_dbus_connection  # noqa: E402
 
 from pressless import _tray_linux  # noqa: E402
 
