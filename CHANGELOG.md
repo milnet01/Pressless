@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-23
+
+**Theme:** It carries on where you were
+
 ### Added
 
 - **Pressless can start on a port you choose** (PRESS-0431)

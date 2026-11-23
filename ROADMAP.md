@@ -8899,6 +8899,8 @@ starts the way the local web-server manager asks.
   Shipped 2026-11-22: scripts/practice.py's reword() points every
   service's Unreachable sentence (GitHub, Google, YouTube) at the
   practice copy's own English words. The shipped program is unchanged.
+  Release note (1.2.0): no CHANGELOG entry -- only the practice copy
+  changed.
   **Layman:** Pressing Publish in the practice copy says it is a practice copy, instead of blaming your internet.
   Kind: ux.
   Source: user-2026-11-21.
@@ -8935,6 +8937,7 @@ starts the way the local web-server manager asks.
   released 1.1.1 AppImage: with BROWSER="<recorder> %s", the recorder
   received the /setup one-use link. The hand check in Brave belongs to
   LWSM-1586 and waits on an LWSM release.
+  Release note (1.2.0): no CHANGELOG entry -- no code changed.
   **Layman:** Pressless opens in the browser you picked in the web-server manager, not always the system default.
   Kind: feature.
   Source: user-2026-11-21.
@@ -9029,6 +9032,7 @@ starts the way the local web-server manager asks.
   something else running during it. A thread allocating 4 MiB fails the
   old test and not the new one; a publisher keeping every file's bytes
   still fails it (24.4 MiB).
+  Release note (1.2.0): no CHANGELOG entry -- a test only.
   **Layman:** A test that measures memory sometimes fails by chance; make it measure only what it means to.
   Kind: test.
   Source: gate-run-2026-11-21.
@@ -9057,6 +9061,7 @@ starts the way the local web-server manager asks.
   returns the whole tagged lines, so a location can never complete a
   match. tests/test_local_ci.py::test_a_location_never_completes_a_match
   was red before, green after; every surface swept clean.
+  Release note (1.2.0): no CHANGELOG entry -- the gate only.
   **Layman:** The check that keeps the writer's name out of this public project no longer raises false alarms because of a line number.
   Kind: review-fix.
   Source: review-contract-2026-11-22.
