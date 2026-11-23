@@ -19,3 +19,4 @@
 | amend | 2026-11-18 | none — PRESS-0423; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4, § 6: an absent furniture file fills as nothing; a missing header holds the menu alone. |
 | amend | 2026-11-20 | none — PRESS-0241; no reviewer dispatched | 0 | 0 | 0 | 0 | INV-11 admits `pressless.words`; INV-12's date is in the site's language, and `builder._MONTHS` is gone. |
 | amend | 2026-11-23 | none — PRESS-0460; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.6, § 13: web copies made on `PHOTOGRAPH_WORKERS` threads, earliest failure wins; a JPEG decoded at the scale it needs. |
+| amend | 2026-11-23 | none — PRESS-0491; no reviewer dispatched | 0 | 0 | 0 | 0 | § 13, § 10: as many web-copy workers as free memory holds, one where unread. |

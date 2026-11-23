@@ -719,6 +719,7 @@ mutation-probed once it lands.
 | INV-16 | `tests/test_builder.py::test_a_picture_only_entry_is_described_by_its_captions` |
 | INV-17 | `tests/test_builder.py::test_a_listing_lead_is_its_count_alone` |
 | §4.6's earliest failure; §13's worker bound and JPEG scale | `tests/test_builder.py::test_a_web_copy_fails_as_a_serial_build_would`, `::test_web_copies_are_made_side_by_side`, `::test_a_large_jpeg_is_decoded_at_the_scale_it_needs` |
+| §13's workers fit free memory | `tests/test_builder.py::test_the_workers_fit_free_memory`, `::test_a_build_makes_only_as_many_web_copies_as_memory_allows`, `::test_free_memory_it_cannot_read_is_none`, `::test_free_memory_reads_this_computer` |
 | That a publish build never passes `change` | **nothing here** — the Face's call; PRESS-0012 |
 | That the Face never hands the preview folder to the Publisher | **nothing here** — the Face's sequence (`docs/design.md` rule 1) |
 | That an ordinary non-dot stray in the site folder is refused | **nothing** — `Built.files` declares the output, and the Publisher does not read it yet (§9) |
@@ -756,10 +757,14 @@ Rows live in `../reviews/PRESS-0008-builder-loop-log.md`.
 ## 13. Resource cost
 
 A build holds every published entry in memory, one entry file at a time
-read and rendered. Web copies are made on `PHOTOGRAPH_WORKERS` threads, so
+read and rendered. Web copies are made on `photograph_workers()` threads, so
 at most that many pictures are decoded at once, each holding up to two
-full-size bitmaps: the constant, not the core count, bounds the memory
-(PRESS-0460). A JPEG is decoded at the smallest scale, ½, ¼ or ⅛, still
+full-size bitmaps (PRESS-0460). That count is read when a build starts: as
+many as free memory holds `WORKER_MEMORY`, two bitmaps of four bytes a pixel
+at Pillow's pixel limit, at least one and at most `PHOTOGRAPH_WORKERS`, four
+or fewer cores. Free memory is `MemAvailable` on Linux and
+`GlobalMemoryStatusEx` on Windows; a reading that fails gives one worker
+(PRESS-0491). A JPEG is decoded at the smallest scale, ½, ¼ or ⅛, still
 covering `LONGEST_SIDE`. It keeps nothing between builds. Every web copy is re-encoded on every publish build, so a build's
 time grows with the photographs published entries name; INV-15's run prints
 it. A preview build writes no web copies. New dependency: Pillow, already

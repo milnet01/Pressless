@@ -24,6 +24,7 @@ import io
 import os
 import re
 import shutil
+import sys
 import tempfile
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -52,10 +53,13 @@ SITE_SHEETS = (*STYLESHEETS, STYLE_CODE, EXTRA_CSS)   # the links a build may re
 PIECES_SCRIPT = "look/pieces.js"   # PRESS-0217 § 4.3; never under assets/ (decision 3)
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
-# Web copies made at once (§ 4.6): Pillow lets go of the interpreter while it
-# decodes, shrinks and encodes, so a press uses this many cores. Each one may
-# hold a full-size picture, so this, not the core count, bounds the memory.
+# Most web copies made at once (§ 4.6): Pillow lets go of the interpreter
+# while it decodes, shrinks and encodes, so a press uses this many cores.
 PHOTOGRAPH_WORKERS = min(4, os.cpu_count() or 1)
+# Free memory one web copy may need (§ 13): two full-size bitmaps (PRESS-0460)
+# of four bytes a pixel, at Pillow's pixel limit.
+WORKER_MEMORY = 2 * 4 * Image.MAX_IMAGE_PIXELS
+_MEMINFO = "/proc/meminfo"
 # The JPEG XL decoder runs once at a time: it uses every core itself, and its
 # memory limit is per run (PRESS-0275 § 4.4).
 _DECODING = threading.Lock()
@@ -268,6 +272,46 @@ def _relinked(text: str, depth: int, style_code: bool, extra: bool) -> str:
         at = end
     out.append(text[at:])
     return "".join(out)
+
+
+def free_memory() -> int:
+    """Bytes the computer can hand out without swapping, or 0 where it cannot
+    say: MemAvailable on Linux, GlobalMemoryStatusEx on Windows."""
+    if sys.platform == "win32":
+        return _free_memory_windows()
+    try:
+        with open(_MEMINFO, encoding="ascii") as info:
+            for line in info:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0
+
+
+def _free_memory_windows() -> int:
+    import ctypes
+
+    class Status(ctypes.Structure):   # MEMORYSTATUSEX
+        _fields_ = [("length", ctypes.c_uint32), ("load", ctypes.c_uint32),
+                    ("total", ctypes.c_uint64), ("available", ctypes.c_uint64),
+                    ("total_page_file", ctypes.c_uint64), ("page_file", ctypes.c_uint64),
+                    ("total_virtual", ctypes.c_uint64), ("virtual", ctypes.c_uint64),
+                    ("extended_virtual", ctypes.c_uint64)]
+
+    status = Status(length=ctypes.sizeof(Status))
+    try:
+        if ctypes.WinDLL("kernel32").GlobalMemoryStatusEx(ctypes.byref(status)):
+            return status.available
+    except OSError:
+        pass
+    return 0
+
+
+def photograph_workers() -> int:
+    """Web copies made at once (§ 13): as many as free memory holds, at least
+    one and at most PHOTOGRAPH_WORKERS."""
+    return max(1, min(PHOTOGRAPH_WORKERS, free_memory() // WORKER_MEMORY))
 
 
 def web_name(name: str) -> str:
@@ -1094,10 +1138,10 @@ class _Build:
 
     @contextlib.contextmanager
     def web_copies_made(self):
-        """Makes web copies on PHOTOGRAPH_WORKERS threads, and waits for them
-        all before the build is whole. A failure is the one a serial build
-        would meet first: the earliest-named web copy's, else the pages'."""
-        self.making = ThreadPoolExecutor(PHOTOGRAPH_WORKERS, thread_name_prefix="web-copy")
+        """Makes web copies on photograph_workers() threads, and waits for
+        them all before the build is whole. A failure is the one a serial
+        build would meet first: the earliest-named web copy's, else the pages'."""
+        self.making = ThreadPoolExecutor(photograph_workers(), thread_name_prefix="web-copy")
         try:
             try:
                 yield
