@@ -9776,17 +9776,22 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0481] **A YouTube video's frame title is in the site's language.**
+- ✅ [PRESS-0481] **A YouTube video's frame title is in the site's language.**
   Review type: Codebase. Queued by PRESS-0443 from review-code lane-04
   (blocks.py: the video frame's title is fixed English). Needs a new
   frozen video form (PRESS-0215 § 4.5) with a title field the page editor
   fills in; done once PRESS-0442 has merged.
+  Shipped 2026-11-23, 3311355 (merged 65b57a0). A YouTube video's frame
+  title, and a new back-to-top label, are written in the site's language
+  through a new frozen video form with a title the page editor fills in;
+  existing pages keep their bytes. PRESS-0215 amended. Full suite 2874
+  passed. Ledger: local-archive/reviews/2026-11-23/close-findings/0481.json.
   **Layman:** A screen reader announces an embedded video in the site's own language.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0482] **The site's look either keeps a draft until published, or design.md stops saying so.**
+- ✅ [PRESS-0482] **The site's look either keeps a draft until published, or design.md stops saying so.**
   Review type: Codebase, Document. Queued by PRESS-0443 from review-code
   lane-04's open question. design.md § Pages says the look has drafts
   (user, 2026-10-02), but look.save writes the live look files
@@ -9795,6 +9800,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   User decision 2026-11-23: the look waits for Publish. Build look drafts,
   so a saved look stays a draft until the look itself is published and an
   entry's publish never ships it. design.md § Pages stands.
+  Shipped 2026-11-23, e3172e6 and 03e44c4 (merged 65b57a0), as the user
+  decided. A saved look waits in look-waiting/ until the Look screen's
+  Press to site, which shows the change box first; an entry or page press
+  never ships it. Bin this look throws a saved look away; a line says
+  whether the look shown is waiting or live; the overview counts a waiting
+  look. An existing site's live look is its published look. A double-bin
+  of hand-made style code on the own route is fixed. PRESS-0196 amended
+  (new INV-13, INV-14), with PRESS-0345 and the English manual. Full suite
+  2874 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0482.json.
   **Layman:** Saving a new look either waits for Publish, or the design notes stop promising that it does.
   Kind: review-fix.
   Source: review-2026-11-23.
