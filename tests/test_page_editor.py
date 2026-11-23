@@ -1403,3 +1403,24 @@ def test_no_answer_says_why_saving_stopped(pages, tmp_path):
                          check=True, timeout=30)
     assert json.loads(run.stdout)["failure"] == "script.page.unreachable"
     assert page_editor._PAGE_SCRIPT.count('stop(say("script.page.unreachable"))') == 2
+
+
+def test_what_changes_on_a_choice_sits_below_the_controls(tmp_path):
+    """The user's fixed-layout rule (2026-10-05, 2026-10-16): controls keep
+    their place, and a choice changes only what is below it. #broken changes
+    on a switch of view, so it sits below the press row, Rename and Remove;
+    a picked section's own fields come and go, so they sit below Move and
+    Remove and the panel's status line. Breaks when either sits above."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        page = browser.request("GET", "/page?kind=pages&name=about")[2]
+    broken = page.index('id="broken"')
+    for control in ('data-editor="publish"', "data-undo", 'data-pages="rename"',
+                    'data-pages="remove"'):
+        assert page.index(control) < broken, control
+    assert broken < page.index('id="panel"')
+    panel = page_editor._panel("pages", "about", [], ())
+    fields = panel.index("data-for=")
+    for control in ('data-act="up"', 'data-act="down"', 'data-act="remove"',
+                    'data-act="move-to"', 'id="panel-said"'):
+        assert panel.index(control) < fields, control

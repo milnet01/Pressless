@@ -604,7 +604,6 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
 <p data-when="0"{' hidden' if waiting else ''}>{say("page_editor.standing")}</p>
 </div>
 {switch}{picker}
-<div id="broken">{opened.broken or ""}</div>
 {message_box("notices")}
 <p id="save-hint"></p>
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
@@ -614,7 +613,9 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-{reshape}{_menu_panel(opened.links or [], held, hidden=view == CODE) if menu_file
+{reshape}
+<div id="broken">{opened.broken or ""}</div>
+{_menu_panel(opened.links or [], held, hidden=view == CODE) if menu_file
           else _panel(kind, name, opened.sections, opened.photographs, opened.kept,
                       hidden=view == CODE)}
 {_code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(opened.text)}</textarea>',
@@ -663,7 +664,8 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
            hidden: bool = False) -> str:
     """PRESS-0260 § 4.3: the side panel, every control in place from the
     start; the script shows the ones the picked section's kind uses, inside a
-    panel of fixed size, so nothing beside it moves."""
+    panel of fixed size, so nothing beside it moves. Those come last, below
+    the controls every section has, so a pick moves none of them."""
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -705,6 +707,13 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
  list="photograph-list"></label>
 <button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
 <p id="add-where">{say("script.visual.end")}</p></div>
+<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
+<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
+<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
+<p class="panel-row"><label>{say("page_editor.panel.move_to")}
+ <select id="move-to"></select></label>
+<button type="button" data-act="move-to">{say("page_editor.panel.move")}</button></p>
+<p id="panel-said" role="status"></p>
 <div class="panel-row" data-for="text heading">
 <button type="button" data-act="bold"><b>{say("page_editor.panel.bold")}</b></button>
 <button type="button" data-act="italic"><i>{say("page_editor.panel.italic")}</i></button>
@@ -738,13 +747,6 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <label data-for="code script style">{say("page_editor.panel.code")}
 {_code_box('<textarea data-field="code" rows="10" spellcheck="false"></textarea>')}</label>
 <p data-for="style">{say("page_editor.panel.style_note")}</p>
-<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
-<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
-<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
-<p class="panel-row"><label>{say("page_editor.panel.move_to")}
- <select id="move-to"></select></label>
-<button type="button" data-act="move-to">{say("page_editor.panel.move")}</button></p>
-<p id="panel-said" role="status"></p>
 </aside>"""
 
 
