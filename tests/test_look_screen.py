@@ -18,6 +18,7 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+import _marked_language
 import pytest
 from test_editor import _binned, _Browser, _folder, _said
 
@@ -96,6 +97,27 @@ def test_hard_to_read_text_is_warned_about_and_still_saved(tmp_path):
     for scheme in ("light", "dark"):
         slot = re.search(rf'data-warn="{scheme}\.ink"[^>]*>([^<]*)<', page)
         assert slot and "1.00:1" in slot.group(1), scheme
+
+
+def test_a_contrast_ratio_has_the_languages_decimal_mark(tmp_path, monkeypatch):
+    """PRESS-0241: a warning's ratio is a number in the language in use, so
+    one marking a decimal with a comma reads 1,00:1, on the page and in the
+    preview alike. Breaks when either writes Python's or JavaScript's full
+    stop whatever the language."""
+    folder = _site(tmp_path)
+    plain = starter_look.defaults("sunrise")
+    unreadable = dataclasses.replace(plain, light={**plain.light, "ink": plain.light["paper"]})
+    with _marked_language.speaking(tmp_path / "languages", monkeypatch), \
+            _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        form = _form(unreadable, "", _base(page))
+        _, _, text = browser.request("POST", "/look/preview", form)
+        ratios = {ratio for *_, ratio in json.loads(text)["warnings"]}
+        browser.request("POST", "/look/save", form)
+        _, _, page = browser.request("GET", "/look")
+    assert "1,00" in ratios and not any("." in ratio for ratio in ratios), ratios
+    slot = re.search(r'data-warn="light\.ink"[^>]*>([^<]*)<', page)
+    assert slot and "1,00:1" in slot.group(1), slot
 
 
 # ------------------------------------------------------------------ INV-7 ---
@@ -356,6 +378,7 @@ def test_a_site_before_setup_offers_no_route(tmp_path):
     with _served(folder) as browser:
         status, _, page = browser.request("GET", "/look")
     assert status == 200, page
+    assert '<form id="look"' in page
     assert 'type="radio" name="route"' not in page
 
 

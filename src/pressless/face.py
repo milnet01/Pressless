@@ -360,8 +360,7 @@ def _said_bytes(count: int) -> str:
         if value < 1024:
             break
         value, unit = value / 1024, bigger
-    decimal = "." if words.number(1000) == "1,000" else ","
-    return f"{value:.1f}".replace(".", decimal) + f" {unit}"
+    return f"{words.decimal(value, 1)} {unit}"
 
 
 def progress_said(counted: progress.Counted) -> dict:
