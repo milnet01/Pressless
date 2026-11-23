@@ -159,6 +159,10 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
 def root_entries(settings: Settings, token: str,
                  transport: Transport | None = None) -> tuple[str, ...]: ...
 
+def remote_paths(settings: Settings, token: str,
+                 transport: Transport | None = None) -> tuple[str, ...]: ...
+    # every file on the default branch, () for an empty repository (PRESS-0446)
+
 def fetch_previous(settings: Settings, token: str, into: Path,
                    prefix: str = "",
                    transport: Transport | None = None) -> Fetched: ...
@@ -551,9 +555,11 @@ and `default_branch` are added.
   other than `pressless.settings` and `pressless.https`, the HTTPS client
   it shares with Insights and usage reports (PRESS-0331), and
   `pressless.os_reason`, which gives a failure its reason without its path
-  (PRESS-0401), and `pressless.progress`, which a long fetch or publish
-  tells how far it has got (PRESS-0435). None imports a `pressless` module
-  itself, so no route to Credentials runs through them.
+  (PRESS-0401), `pressless.progress`, which a long fetch or publish
+  tells how far it has got (PRESS-0435), and `pressless.safe_write`, whose
+  Windows device names and rename retry the Store shares (PRESS-0446).
+  None imports a `pressless` module itself, so no route to Credentials runs
+  through them.
   *Test:* `tests/test_publisher.py::test_publisher_imports_no_forbidden_sibling`,
   walking the module's imports as
   `tests/test_settings.py::test_settings_imports_nothing_forbidden` does,
@@ -727,7 +733,12 @@ and `default_branch` are added.
   whose message names the later path, the double records no blob read,
   and `into` holds no file. Plus
   `::test_a_path_windows_cannot_hold_fetches_elsewhere`: with it cleared,
-  on a host that is not Windows, the `con.txt` listing fetches.
+  on a host that is not Windows, the `con.txt` listing fetches. A write
+  refused for a path too long for Windows is `UnfetchablePath` too: an
+  `OSError` on a path of MAX_PATH less 12 or longer, or the `ValueError`
+  Python raises past 32,767 characters
+  (`::test_a_path_too_long_for_windows_is_named`); a shorter one refused
+  stays `FetchNotWritten`.
   *Breaks when:* the check runs after staging, so a clash overwrites one
   file with the other in silence; or it runs everywhere, and Linux loses
   undo for a site holding such a path.
@@ -735,17 +746,17 @@ and `default_branch` are added.
 - **INV-12** — The reference update or the start write answered with a
   2xx other than 200 or 201, or with a body that does not parse, raises
   `OutcomeUnknown`, and so does a start-write answer naming no commit. Any
-  write answered 307 or 308 raises `RepositoryMoved` and is not sent again.
+  write answered 301, 302, 303, 307 or 308 raises `RepositoryMoved` and is
+  not sent again.
   *Test:* `tests/test_publisher.py::test_an_odd_success_is_unknown`: the
   reference update answered 202, then answered 200 with a body that is
   not JSON, each raises `OutcomeUnknown`; so do the start write answered
   204 and the start write answered 201 with `{}`.
-  `::test_a_redirected_write_names_the_move`: a blob write answered 307
-  and the reference update answered 308 each raise `RepositoryMoved`, and
-  neither request is sent again. `::test_the_client_follows_no_redirected_write`
-  drives the module's own client against a fake opener: a POST, a PATCH
-  and a PUT answered 307 and 308 each come back as that status, with one
-  request made.
+  `::test_a_redirected_write_names_the_move`: writes answered each of
+  those raise `RepositoryMoved`, and no request is sent again.
+  `::test_the_client_follows_no_redirected_write` drives the module's own
+  client against a loopback server: a POST, a PATCH and a PUT answered
+  each of them come back as that status, with one request made.
   *Breaks when:* an odd 2xx falls to the base type, whose row says
   unchanged; or a redirected write is followed, publishing to a
   repository the settings do not name.
@@ -774,7 +785,7 @@ and `default_branch` are added.
 | No answer from GitHub, **during** the reference update or PRESS-0127's start write | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | GitHub answers a server error **to** the reference update or PRESS-0127's start write | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | GitHub answers the reference update or PRESS-0127's start write with a 2xx other than 200 or 201, or with a body that is not JSON; or answers the start write without naming its commit | `OutcomeUnknown` | **unknown — may or may not have changed** |
-| GitHub answers a write with a 307 or 308 redirect — its answer for a repository that was renamed or moved | `RepositoryMoved` | unchanged |
+| GitHub answers a write with a redirect — 307 or 308 for a repository that was renamed or moved, and 301, 302 or 303 treated alike | `RepositoryMoved` | unchanged |
 | Key rejected, or no write access | `Refused` | unchanged |
 | The same, where the key is a GitHub App sign-in's pass (it starts `ghu_`) | `SignInRefused`, a `Refused` | unchanged |
 | `settings.repository` resolves to nothing, on the request that names the repository itself | `RepositoryMissing` | unchanged |
@@ -802,8 +813,9 @@ the repository's new name, which `RepositoryMissing`'s *check the name*
 does not tell him.
 
 **A redirect on a write is never followed.** A read follows GitHub's
-redirect to the new name; a write comes back as the 307 or 308 itself,
-because `urllib` follows neither for POST or PATCH. Following it would
+redirect to the new name; a write comes back as the redirect's own status,
+because `https.NoCrossOriginAuth` follows no write, where `urllib` alone
+would follow a POST answered 301, 302 or 303 as a GET. Following it would
 publish to a repository Settings does not name, so the writer is told
 instead, and nothing was written: GitHub redirects before it acts.
 
@@ -920,7 +932,7 @@ code, so a green INV-1 says nothing about the rest.
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` and `::test_each_write_is_preceded_by_its_own_pace`, which asserts the wait sequence rather than a count |
 | What the Face branches on to tell §6's own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten`, `RemoteStateMissing`, `UnfetchablePath` and `RepositoryMoved`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
-| INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` and `::test_a_path_windows_cannot_hold_fetches_elsewhere` |
+| INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named`, `::test_a_path_windows_cannot_hold_fetches_elsewhere` and `::test_a_path_too_long_for_windows_is_named` |
 | INV-12 | `tests/test_publisher.py::test_an_odd_success_is_unknown`, `::test_a_redirected_write_names_the_move` and `::test_the_client_follows_no_redirected_write` |
 | INV-13 | `tests/test_publisher.py::test_a_publish_holds_one_file_at_a_time` and `::test_a_file_changed_during_the_publish_is_refused` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |

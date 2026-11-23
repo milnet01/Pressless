@@ -88,8 +88,8 @@ HTML (`face.fail`'s output, or None), and `done`, whether the press
 succeeded. `pressing.ended(kind, done, failure)` makes one with the
 press kind's own words. `pressing.quiet()` makes one with no words, for a
 press that published nothing and failed at nothing, such as a takeover
-finding the switch already made; pages then show their standing words. `forget` does nothing while a press
-runs, since every publish saves first. Nothing is written to disk; a restart
+finding the switch already made; pages then show their standing words. `start` clears the outcome, so
+while a press runs `forget` has none to clear. Nothing is written to disk; a restart
 starts with no record.
 
 ### 4.2 `GET /press`

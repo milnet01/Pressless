@@ -2,8 +2,9 @@
 
 The contract is docs/specs/PRESS-0009-publisher.md, an umbrella covering
 PRESS-0009 and PRESS-0010. This module imports no other part of Pressless
-than Settings (§5 INV-1): it is handed the publishing key as an argument and
-never reaches Credentials, which is what keeps docs/design.md rule 10 true.
+than Settings, and only the modules §5 INV-1 names beside it, which import
+none: it is handed the publishing key as an argument and never reaches
+Credentials, which is what keeps docs/design.md rule 10 true.
 
 Its core is three requests: make the repository match this folder, report
 what sits at the repository root, and fetch back an earlier state. Beside
@@ -30,8 +31,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from pressless import https, os_reason, progress
-from pressless.settings import Settings
+from pressless import https, os_reason, progress, safe_write
+from pressless.settings import Settings, root_key
 
 API = "https://api.github.com"
 
@@ -233,27 +234,17 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     folder, written through the Contents API (PRESS-0127 §4.3). That write
     precedes the blobs; there is no earlier site for it to damage.
     """
-    folder = Path(folder)
-    if not folder.is_dir():
-        # Checked first and typed: a walk that read a missing folder as empty
-        # would have §4.4 read every unprotected remote path as a deletion
-        # the writer asked for, and report the wipe as a successful publish
-        # (PRESS-0043).
-        raise SiteFolderMissing(
-            "the site folder is not a directory, so there is nothing to publish"
-        )
-
+    folder = _site_folder(folder)
     session = _Session(transport or _Urllib(), token)
     branch = _default_branch(session, settings.repository)
-    head_url = _repo_url(settings.repository, f"commits/{_segment(branch)}")
     untouchable = settings.untouchable
     started: _Started | None = None
-    head = session.read(head_url, empty_ok=True)
+    head = _head(session, settings.repository, branch)
     if head is None:
         started = _start(session, settings.repository, folder, untouchable, message)
         if started is None:
             return Outcome(commit="", uploaded=(), removed=())
-        head = session.read(head_url, empty_ok=True)
+        head = _head(session, settings.repository, branch)
         if head is None:
             # The start is made once (PRESS-0127 INV-6), never retried.
             raise RemoteStateMissing(
@@ -266,7 +257,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
 
     local = started.local if started else _local_files(folder, untouchable)
 
-    uploaded, removed, unprotected = _compare(local, remote, untouchable)
+    uploaded, removed = _compare(local, remote, untouchable)
 
     if not uploaded and not removed:
         # Nothing differed, so nothing is written at all (§5 INV-4) -- unless
@@ -274,15 +265,6 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         if started:
             return Outcome(commit=started.commit, uploaded=(started.path,), removed=())
         return Outcome(commit="", uploaded=(), removed=())
-
-    if not uploaded and len(removed) == len(unprotected):
-        # Every unprotected path deleted and nothing written. A finished
-        # build is never empty, and §3 decision 1 makes the commit
-        # unrecoverable from inside Pressless (PRESS-0043).
-        raise SiteWouldBeEmptied(
-            "publishing the site folder would delete every file on the site "
-            "and add none, so it is refused"
-        )
 
     entries = []
     whole = sum(file.size for file in uploaded.values())
@@ -385,31 +367,66 @@ def plan(settings: Settings, folder: Path, token: str,
          named: frozenset[str] = frozenset()) -> Plan:
     """PRESS-0345 § 4.1: the reads `publish` makes before its first write, and
     no write. `named` paths are files the folder does not carry, compared by
-    presence alone: uploaded where the listing lacks one, never removed."""
+    presence alone: uploaded where the listing lacks one, never removed. A
+    repository with no commits plans every unprotected file as uploaded, which
+    is what `publish` sends once it has started one."""
+    folder = _site_folder(folder)
+    session = _Session(transport or _Urllib(), token)
+    local: dict[str, _Local | None] = {
+        **_local_files(folder, settings.untouchable), **dict.fromkeys(named)}
+    uploaded, removed = _compare(local, _remote(session, settings.repository),
+                                 settings.untouchable)
+    return Plan(tuple(uploaded), tuple(removed))
+
+
+def remote_paths(settings: Settings, token: str,
+                 transport: Transport | None = None) -> tuple[str, ...]:
+    """Every file on the default branch, sorted; () for a repository with no
+    commits. It decides nothing: rule 5 leaves this module unable to tell an
+    entry page from any other file (PRESS-0446)."""
+    session = _Session(transport or _Urllib(), token)
+    return tuple(sorted(_remote(session, settings.repository)))
+
+
+def _site_folder(folder: Path) -> Path:
+    """`folder`, checked first and typed by `publish` and `plan` alike: a walk
+    that read a missing folder as empty would have §4.4 read every unprotected
+    remote path as a deletion the writer asked for, and report the wipe as a
+    successful publish (PRESS-0043)."""
     folder = Path(folder)
     if not folder.is_dir():
         raise SiteFolderMissing(
             "the site folder is not a directory, so there is nothing to publish"
         )
-    session = _Session(transport or _Urllib(), token)
-    branch = _default_branch(session, settings.repository)
-    head = session.read(_repo_url(settings.repository, f"commits/{_segment(branch)}"),
-                        empty_ok=True)
-    remote = ({} if head is None else _blobs_in(
-        _tree(session, settings.repository, _required(head, "sha", "the head commit"))))
-    local: dict[str, _Local | None] = {
-        **_local_files(folder, settings.untouchable), **dict.fromkeys(named)}
-    uploaded, removed, _ = _compare(local, remote, settings.untouchable)
-    return Plan(tuple(uploaded), tuple(removed))
+    return folder
+
+
+def _head(session: _Session, repository: str, ref: str = "HEAD") -> dict | None:
+    """The commit `ref` stands at, or None for a repository with no commits.
+    Each caller says what an empty repository means to it."""
+    return session.read(_repo_url(repository, f"commits/{_segment(ref)}"), empty_ok=True)
+
+
+def _remote(session: _Session, repository: str) -> dict[str, str]:
+    """Each file on the default branch and its blob hash; {} for a repository
+    with no commits."""
+    head = _head(session, repository, _default_branch(session, repository))
+    if head is None:
+        return {}
+    return _blobs_in(_tree(session, repository, _required(head, "sha", "the head commit")))
 
 
 def _compare(local: dict[str, _Local | None], remote: dict[str, str],
              untouchable: tuple[str, ...]
-             ) -> tuple[dict[str, _Local | None], list[str], list[str]]:
+             ) -> tuple[dict[str, _Local | None], list[str]]:
     """What differs (§4.2, INV-4): the unprotected files whose hash the listing
-    does not hold, the unprotected remote paths the folder lacks, and every
-    unprotected remote path. A file with no `_Local` is compared by presence
-    (PRESS-0345 § 4.1)."""
+    does not hold, and the unprotected remote paths the folder lacks. A file
+    with no `_Local` is compared by presence (PRESS-0345 § 4.1).
+
+    Raises SiteWouldBeEmptied where every unprotected remote path would go and
+    nothing would be written: a finished build is never empty, and §3 decision
+    1 makes the commit unrecoverable from inside Pressless (PRESS-0043). `plan`
+    shares it, so a preview refuses as the press would."""
     uploaded: dict[str, _Local | None] = {}
     for path, file in sorted(local.items()):
         if _is_protected(path, untouchable):
@@ -419,7 +436,12 @@ def _compare(local: dict[str, _Local | None], remote: dict[str, str],
         uploaded[path] = file
     unprotected = [path for path in remote if not _is_protected(path, untouchable)]
     removed = sorted(path for path in unprotected if path not in local)
-    return uploaded, removed, unprotected
+    if not uploaded and removed and len(removed) == len(unprotected):
+        raise SiteWouldBeEmptied(
+            "publishing the site folder would delete every file on the site "
+            "and add none, so it is refused"
+        )
+    return uploaded, removed
 
 
 def root_entries(settings: Settings, token: str | None,
@@ -438,7 +460,7 @@ def root_entries(settings: Settings, token: str | None,
 
 def _root_names(session: _Session, repository: str) -> tuple[str, ...]:
     """root_entries' answer over `session`; () for an empty repository."""
-    head = session.read(_repo_url(repository, "commits/HEAD"), empty_ok=True)
+    head = _head(session, repository)
     if head is None:
         return ()
     listing = _tree(session, repository, _required(head, "sha", "the head commit"),
@@ -542,8 +564,18 @@ def switch_pages_to_branch(repository: str, token: str, domain: str | None,
     if domain:
         switch["cname"] = domain
     session.write("PUT", _repo_url(repository, "pages"), switch, no_content=True)
-    session.write("POST", _repo_url(repository, "pages/builds"), {})
+    _request_build(session, repository)
     return _pages(session, repository)
+
+
+def request_build(repository: str, token: str, transport: Transport | None = None) -> None:
+    """PRESS-0333 § 4.5 step 3: ask Pages to build again, for a switch whose
+    own request for one may never have landed."""
+    _request_build(_Session(transport or _Urllib(), token), repository)
+
+
+def _request_build(session: _Session, repository: str) -> None:
+    session.write("POST", _repo_url(repository, "pages/builds"), {})
 
 
 def set_domain(repository: str, token: str, domain: str,
@@ -567,9 +599,9 @@ def kept_on_a_branch(untouchable: tuple[str, ...], domain: str | None) -> tuple[
     """What a branch build needs a publish to leave alone. A `CNAME` with no domain behind
     it comes off the list, so a publish removes it, or the build would read it as one."""
     wanted = {NO_JEKYLL, *([CNAME] if domain else [])}
-    held = {name.rstrip("/").casefold() for name in untouchable}
+    held = {root_key(name) for name in untouchable}
     kept = [name for name in untouchable if domain
-            or name.rstrip("/").casefold() != CNAME.casefold()]
+            or root_key(name) != CNAME.casefold()]
     return (*kept, *sorted(name for name in wanted if name.casefold() not in held))
 
 
@@ -591,8 +623,7 @@ def _write_cname(session: _Session, repository: str, domain: str) -> None:
 def head_commit(settings: Settings, token: str, transport: Transport | None = None) -> str:
     """The commit the default branch stands at. A repository with no commits
     raises RemoteStateMissing, as fetch_state does."""
-    session = _Session(transport or _Urllib(), token)
-    head = session.read(_repo_url(settings.repository, "commits/HEAD"), empty_ok=True)
+    head = _head(_Session(transport or _Urllib(), token), settings.repository)
     if head is None:
         raise RemoteStateMissing("the repository has no commits to read")
     return _required(head, "sha", "the head commit")
@@ -621,6 +652,8 @@ def _pages(session: _Session, repository: str) -> Pages:
         return Pages(on=False, address=None, serves_root=False)
     source = answer.get("source") if isinstance(answer.get("source"), dict) else {}
     address = answer.get("html_url")
+    # An answer with no build_type predates the field, when every Pages site
+    # was built from a branch, so it is read as one.
     served = source.get("branch") if answer.get("build_type") in (None, "legacy") else None
     default = _default_branch(session, repository) if isinstance(served, str) and served else None
     serves_root = default is not None and served == default and source.get("path") == "/"
@@ -656,8 +689,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     (PRESS-0046).
     """
     session = _Session(transport or _Urllib(), token)
-    current = session.read(_repo_url(settings.repository, "commits/HEAD"),
-                           empty_ok=True)
+    current = _head(session, settings.repository)
     if current is None:
         raise NoPreviousState(
             "the repository has no commits, so there is no state before it"
@@ -685,8 +717,7 @@ def fetch_state(settings: Settings, token: str, into: Path,
     """
     session = _Session(transport or _Urllib(), token)
     if not commit:
-        current = session.read(_repo_url(settings.repository, "commits/HEAD"),
-                               empty_ok=True)
+        current = _head(session, settings.repository)
         if current is None:
             raise RemoteStateMissing("the repository has no commits to read")
         commit = _required(current, "sha", "the head commit")
@@ -715,6 +746,16 @@ def _fetch(session: _Session, repository: str, commit: str,
         return FetchNotWritten(
             f"the fetched state could not be written to the fetch area: {os_reason.of(exc)}")
 
+    def cannot_hold(path: str, target: Path, exc: OSError | ValueError) -> PublishError:
+        # A path too long for Windows is no reason to free space (PRESS-0160):
+        # past MAX_PATH where long paths are off, an OSError; past 32,767
+        # characters, a ValueError before the system is asked.
+        if isinstance(exc, ValueError) or (_ON_WINDOWS
+                                           and len(str(target)) >= _WINDOWS_LONGEST):
+            return UnfetchablePath(
+                f"the fetched state names {path!r}, which this computer cannot hold")
+        return not_written(exc)
+
     try:
         # Staged inside `into` rather than beside it, so the move at the end
         # is a rename on one filesystem rather than a copy that can fail
@@ -738,16 +779,18 @@ def _fetch(session: _Session, repository: str, commit: str,
                 _repo_url(repository, f"git/blobs/{_segment(sha)}")
             )
             target = staging / path
-            if not _within_folder(target, staging):
+            try:
+                inside = _within_folder(target, staging)
+                if inside:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(_content_of(blob))
+            except (OSError, ValueError) as exc:
+                raise cannot_hold(path, target, exc) from exc
+            if not inside:
                 raise PublishError(
                     f"the repository listing names {path!r}, which would be "
                     f"written outside the folder asked for"
                 )
-            try:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(_content_of(blob))
-            except OSError as exc:
-                raise not_written(exc) from exc
             written.append(path)
             size += entry["size"] if isinstance(entry.get("size"), int) else 0
             progress.count("progress.downloading", len(written), len(wanted), size, whole)
@@ -767,22 +810,19 @@ def _fetch(session: _Session, repository: str, commit: str,
     return Fetched(commit=commit, paths=tuple(sorted(written)))
 
 
-# On Windows a scanner briefly holding a newly written file refuses its rename
-# with a sharing error, which is no reason to free space. safe_write.patiently
-# answers the same way, and INV-1 forbids importing it.
-_WINDOWS_TRIES = 10
-_WINDOWS_PAUSE = 0.1
-
-
 def _replace_patiently(session: _Session, source: Path, target: Path) -> None:
-    for attempt in range(_WINDOWS_TRIES):
+    """On Windows a scanner briefly holding a newly written file refuses its
+    rename with a sharing error, which is no reason to free space. This is
+    safe_write.patiently on the session's clock, so a test sees each pause
+    (§4.1's `wait`) rather than sleeping."""
+    for attempt in range(safe_write.WINDOWS_TRIES):
         try:
             os.replace(source, target)
             return
         except PermissionError:
-            if not _ON_WINDOWS or attempt == _WINDOWS_TRIES - 1:
+            if not _ON_WINDOWS or attempt == safe_write.WINDOWS_TRIES - 1:
                 raise
-            session.pause(_WINDOWS_PAUSE)
+            session.pause(safe_write.WINDOWS_PAUSE)
 
 
 class _Session:
@@ -877,9 +917,9 @@ class _Session:
                 )
                 continue
 
-            if status in (307, 308) and method != "GET":
+            if status in (301, 302, 303, 307, 308) and method != "GET":
                 # GitHub's answer to a write for a renamed or moved
-                # repository. urllib follows neither for a write, and
+                # repository. https.Client follows none for a write, and
                 # following would publish where Settings does not point
                 # (§6, PRESS-0167).
                 raise RepositoryMoved(
@@ -1187,7 +1227,8 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     The comparison folds case, and with `str.casefold` rather than
     `str.lower` because §4.4 pins the operation by name: the two differ on
     non-ASCII names, and PRESS-0021's derivation of the list has to agree
-    with this one. GitHub's paths are case-sensitive and the Windows and
+    with this one, so both fold through `settings.root_key`. GitHub's paths
+    are case-sensitive and the Windows and
     macOS local filesystems are not, so a stored entry and a live path can
     differ only in case and still be one address. Compared exactly it
     breaks in both directions and only one of them deletes: an entry the
@@ -1196,21 +1237,18 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     entry the LOCAL path's cannot match uploads a second file claiming the
     same address and removes nothing (PRESS-0078).
     """
-    first = path.split("/", 1)[0].casefold()
-    return any(first == entry.rstrip("/").casefold() for entry in untouchable)
+    first = root_key(path.split("/", 1)[0])
+    return any(first == root_key(entry) for entry in untouchable)
 
 
-# §4.5's Windows check, measured on a Windows 10 box with CreateFileW
-# (PRESS-0164). A device is judged on the part before the first dot with
-# trailing spaces removed, case ignored, so `nul .jpg` reaches one. store.py
-# keeps the same list, and INV-1 forbids importing it: a newly measured
-# device goes into both. The backslash is forbidden here because a fetched
+# §4.5's Windows check. Its device names are the Store's, by
+# safe_write.windows_device. The backslash is forbidden here because a fetched
 # path segment has had no other check.
 _ON_WINDOWS = os.name == "nt"
-_WINDOWS_DEVICES = frozenset(
-    ["con", "prn", "aux", "nul", "conin$", "conout$"]
-    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789¹²³"])
 _WINDOWS_FORBIDDEN = set('<>:"|?*\\') | {chr(n) for n in range(32)}
+# MAX_PATH less the 12 characters Windows keeps for a name inside a folder:
+# with long paths off, a fetched path this long or longer fails as an OSError.
+_WINDOWS_LONGEST = 260 - 12
 
 
 def _refuse_what_windows_cannot_hold(listing: dict, prefixes: tuple[str, ...]) -> None:
@@ -1241,7 +1279,7 @@ def _refuse_what_windows_cannot_hold(listing: dict, prefixes: tuple[str, ...]) -
 def _windows_can_hold(segment: str) -> bool:
     if not segment or segment[-1] in ". " or _WINDOWS_FORBIDDEN & set(segment):
         return False
-    return segment.split(".")[0].rstrip(" ").casefold() not in _WINDOWS_DEVICES
+    return not safe_write.windows_device(segment)
 
 
 def _within_prefix(path: str, prefix: str) -> bool:

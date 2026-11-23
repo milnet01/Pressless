@@ -27,3 +27,6 @@
 | fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0377 amended § 4.3: a 403 whose message names the rate limit is a hint, waited out at GitHub's documented minute. § 4.4: nothing on the untouchable list is read. Two § 10 rows added. The log moved here from § 12. No direction changed, so no gate. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0401: INV-1 admits `pressless.os_reason`, which imports nothing. |
 | amend | 2026-11-21 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0435: INV-1 admits `pressless.progress`, which imports nothing. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: § 4.1 gains `remote_paths`. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: INV-11 covers a path too long for Windows; INV-12 and § 6 treat a write answered 301, 302 or 303 as moved. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: INV-1 admits `pressless.safe_write`, which imports no `pressless` module. |

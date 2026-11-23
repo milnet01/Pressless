@@ -743,6 +743,9 @@ loading or saving does anything.
   that import. Each module keeps its own error type.
 - **PRESS-0008 INV-11 admits `pressless.safe_write`** (PRESS-0365): the
   Builder's folder swap calls `patiently`.
+- **PRESS-0009 INV-1 admits `pressless.safe_write`** (PRESS-0446): the
+  Publisher's fetch reads `windows_device`, the Store's device rule, and
+  retries its renames on `WINDOWS_TRIES` and `WINDOWS_PAUSE`.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log
@@ -772,3 +775,4 @@ loading or saving does anything.
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0406: § 1 and § 4.1 stop counting the credentials as two. |
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0398: § 11 names `json_record.py`, which writes the small versioned records, in place of `themes.py` and `updater.py`. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0447: § 4.4 names `safe_write`'s reading steps, which Settings and Credentials share; § 4.3 refuses what is not an ordinary file; INV-1 and § 10 follow. |
+| amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0446: § 11 names the Publisher as a caller of `safe_write`, whose Windows device rule and retry constants it now shares. |

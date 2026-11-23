@@ -347,6 +347,9 @@ def test_nothing_moves_without_a_key(tmp_path, monkeypatch):
                                        folder=folder)
     assert status == 200, text
     assert json.loads(text)["published"] is False
+    # press_failure names the secret: "that secret" sends him looking for one.
+    assert "Pressless does not have your publishing key yet." in html.unescape(
+        json.loads(text)["failure"])
     assert store.list_slugs(folder, draft=True) == ("seaside",)
     assert store.read(store.path_for(folder, "seaside", draft=True)).date == datetime(
         2014, 11, 9, 21, 32)
@@ -402,19 +405,40 @@ def test_a_site_that_never_had_an_entry_publishes(tmp_path):
 
 
 def test_a_site_never_built_here_is_refused(tmp_path):
-    """PRESS-0358. Breaks when no site folder is read as no entries lost: a
-    Store restored without its entries has no last build to show for them."""
+    """PRESS-0358, PRESS-0446. Breaks when no site folder is read as no
+    entries lost where the repository still holds an entry page: a Store
+    restored without its entries has no last build to show for them."""
     folder = _folder(tmp_path)
     saved = _settings(folder)
-    github = _github()
+    github = _Transport(reads=_reads(_listing([("blog/2014/11/09/seaside/index.html", "s")])),
+                        writes=_writes())
     with pytest.raises(publishing.NothingToPublish):
         publishing.publish(folder, saved, KEY, entry=None, transport=github)
     assert not saved.site_folder.exists()
-    assert github.requests == []
+    assert not any(_is_write(method) for method, *_ in github.requests)
 
     saved.site_folder.mkdir()
     with pytest.raises(publishing.NothingToPublish):
         publishing.publish(folder, saved, KEY, entry=None, transport=github)
+    with pytest.raises(publishing.NothingToPublish):
+        publishing.preview(folder, saved, KEY, transport=github)
+    assert not any(_is_write(method) for method, *_ in github.requests)
+
+
+def test_a_site_started_blank_publishes(tmp_path):
+    """PRESS-0446: setup without the starter leaves the journal on, no entry
+    and no site folder, and a repository holding no entry page has none to
+    lose. Breaks when the guard refuses it, or reads a page beside an entry
+    page's address as one."""
+    folder = _folder(tmp_path)
+    saved = _settings(folder)
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About.</p>")
+    github = _Transport(reads=_reads(_listing([("blog/index.html", "s"),
+                                               ("blog/2014/11/09/index.html", "s")])),
+                        writes=_writes())
+    assert publishing.preview(folder, saved, KEY, transport=github).pages
+    publishing.publish(folder, saved, KEY, entry=None, transport=github)
+    assert any(_is_reference_update(method, url) for method, url, *_ in github.requests)
 
 
 def test_the_preview_refuses_as_the_press_does(tmp_path):
@@ -878,7 +902,7 @@ def test_the_plan_route_holds_the_editor_lock(tmp_path, monkeypatch):
         held.append(editor.LOCK.locked())
         return publishing.Preview({}, 0, 0)
 
-    monkeypatch.setattr(publishing, "plan", planned)
+    monkeypatch.setattr(publishing, "press_preview", planned)
     with _pressless(folder, _github()) as browser:
         browser.request("POST", publishing.PLAN_ADDRESS, {})
     assert held == [True]

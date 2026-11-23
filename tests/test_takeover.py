@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import html
 import json
 import re
 import shutil
@@ -76,7 +77,7 @@ class _Built(_Repository):
         super().__init__(SOURCE if files is None else files, **kwargs)
         self.build, self.cname, self.branch = build, cname, branch
         self.sent_pages: dict | None = None
-        self.refuse_switch = self.refuse_publish = False
+        self.refuse_switch = self.refuse_publish = self.refuse_build = False
         self.tree_paths: list[str] = []
 
     def request(self, method, url, body, headers):
@@ -89,6 +90,8 @@ class _Built(_Repository):
         if method == "POST" and path == f"{REPOSITORY}pages/builds":
             # GitHub's "request a GitHub Pages build": 201, the build queued.
             self.calls.append((method, url, headers.get("Authorization", "")))
+            if self.refuse_build:
+                return 403, {}, b'{"message": "refused"}'
             return 201, {}, b'{"status": "queued"}'
         if path == f"{REPOSITORY}pages":
             self.calls.append((method, url, headers.get("Authorization", "")))
@@ -289,7 +292,7 @@ def test_no_publish_passes_the_marker(tmp_path, monkeypatch, route):
 
 def test_the_refusal_links_to_the_takeover():
     """§ 4.5: the way on, beside the failure, as a replace has."""
-    link = publishing.replace_link(publishing.TakeoverOwed("owed"))
+    link = publishing.way_on(publishing.TakeoverOwed("owed"))
     assert f'href="{publishing.TAKEOVER_ADDRESS}"' in link
 
 
@@ -383,7 +386,9 @@ def test_a_re_point_by_hand_keeps_the_files(tmp_path, monkeypatch):
     github.calls.clear()
     pressed = _press(folder, github)
     assert "already been changed" in pressed
-    assert github.repository_writes() == []
+    # Only a build is asked for: Pressless cannot tell this switch from one its
+    # own step 5 made before the build request was lost.
+    assert github.repository_writes() == [("POST", f"{REPOSITORY}pages/builds")]
     assert not takeover.owed(folder)
     publishing.publish(folder, settings.load(folder), KEY, entry=None, transport=github)
     assert "CNAME" in github.holds()
@@ -417,6 +422,50 @@ def test_a_failure_can_be_pressed_again(tmp_path, monkeypatch):
     assert github.build == "legacy" and not takeover.owed(folder)
     assert github.head == head, "the second press made a new commit"
     assert "earlier press" in pressed
+
+
+def test_a_lost_build_request_is_asked_again(tmp_path, monkeypatch):
+    """INV-8: step 5's switch landed and its build request did not, so the old
+    site stays up and the marker stays. The next press finds Pages switched,
+    asks for the build, and only then removes the marker. Breaks when the
+    already-changed answer skips the build."""
+    _site(monkeypatch)
+    github = _Built()
+    folder = _finished(tmp_path, monkeypatch, github)
+    github.remove()
+    github.refuse_build = True
+    pressed = _press(folder, github)
+    assert github.build == "legacy" and takeover.owed(folder)
+    assert "not yet on the web" in pressed
+
+    github.calls.clear()
+    _press(folder, github)
+    assert takeover.owed(folder), "the marker went though the build was refused"
+    github.refuse_build = False
+    github.calls.clear()
+    _press(folder, github)
+    assert [call[0] for call in github.calls if call[1].endswith("pages/builds")] == ["POST"]
+    assert not takeover.owed(folder)
+
+
+def test_a_marker_that_will_not_go_is_a_notice(tmp_path, monkeypatch):
+    """design.md § Errors: once the publish and the switch have landed, a
+    marker Pressless cannot remove is said beside the report, which says the
+    site changed. Breaks when it is reported as a failure that changed nothing."""
+    _site(monkeypatch)
+    github = _Built()
+    folder = _finished(tmp_path, monkeypatch, github)
+    github.remove()
+
+    def held(folder: Path) -> None:
+        raise PermissionError(13, "held by another program")
+
+    monkeypatch.setattr(takeover, "unmark", held)
+    pressed = html.unescape(_press(folder, github))
+    assert github.build == "legacy"
+    assert "Your site now publishes from Pressless" in pressed
+    assert "change away from GitHub Actions is done" in pressed
+    assert '<section class="failure">' not in pressed
 
 
 # ----------------------------------------------------------------- INV-9 ---
@@ -775,7 +824,7 @@ def test_a_takeover_refused_for_a_site_shows_the_way_on(tmp_path, monkeypatch):
 
 
 def test_an_undo_refused_for_the_takeover_links_to_it(tmp_path, monkeypatch):
-    """§ 4.5: replace_link supplies the way on beside a TakeoverOwed. Breaks
+    """§ 4.5: way_on supplies the way on beside a TakeoverOwed. Breaks
     when the undo route shows the failure without it."""
     from test_publishing import _key
     github, folder = _publishable(tmp_path)

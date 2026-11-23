@@ -105,6 +105,14 @@ class Settings:
     youtube_channel: str | None = None
 
 
+def root_key(name: str) -> str:
+    """A repository-root name as every comparison of one reads it: its trailing
+    slash dropped and its case folded with `str.casefold`, the fold PRESS-0009
+    § 4.4 pins. The Publisher's protection and setup's derivation of the
+    untouchable list must agree, so each compares through this."""
+    return name.rstrip("/").casefold()
+
+
 class NotSetUp(Exception):
     """No settings file yet — run setup."""
 

@@ -4157,6 +4157,10 @@
    "448962aa",
    "Pressless konnte nicht vermerken, dass deine Starter-Website jetzt veröffentlicht ist. Bei deiner nächsten Veröffentlichung fragt es deshalb noch einmal, bevor es eine Website ersetzt."
   ],
+  "notice.publishing.takeover_kept": [
+   "ab9b83b0",
+   "Pressless konnte nicht vermerken, dass der Wechsel weg von GitHub Actions abgeschlossen ist. Deine nächste Veröffentlichung schickt dich deshalb dorthin zurück. Drücke dort noch einmal, um ihn abzuschließen."
+  ],
   "notice.settings.not_private": [
    "9827a6cb",
    "Die Einstellungsdatei konnte nicht privat gemacht werden: Dieses Dateisystem hat den Modus {mode} statt nur für den Besitzer vergeben, deshalb können andere mit einem Konto auf diesem Rechner sie lesen"

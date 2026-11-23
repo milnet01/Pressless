@@ -369,3 +369,34 @@ def test_a_page_stops_asking_once_pressless_has_gone(tmp_path):
                          check=False, timeout=30)
     assert run.returncode == 0, "the page was still asking after a thousand tries"
     assert json.loads(run.stdout) == {"said": "<script.press.unreachable>", "disabled": False}
+
+
+_PLAN_HARNESS = """const window = globalThis;
+const say = (key) => key;
+const element = (tag) => {
+  const node = {tag, children: [], dataset: {}, classList: {add: () => {}},
+    append: (...nodes) => node.children.push(...nodes), addEventListener: () => {},
+    focus: () => {}, close: () => {}, remove: () => {},
+    showModal: () => { throw new Error("InvalidStateError"); }};
+  return node;
+};
+const document = {createElement: element, body: {append: () => {}}};
+%s
+window.presslessPlan({pages: [], added: 1, removed: 0}).then(
+  (answer) => process.stdout.write(JSON.stringify(answer)),
+  () => process.stdout.write(JSON.stringify("rejected")));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_plan_box_that_cannot_open_answers_not_yet(tmp_path):
+    """PRESS-0345 § 4.4: presslessPlan answers false for a box that cannot
+    open, as its comment promises. Breaks when showModal's throw rejects the
+    promise, which the press reads as a dropped connection."""
+    plan = pressing.SCRIPT[pressing.SCRIPT.index("window.presslessPlan ="):]
+    harness = tmp_path / "plan.js"
+    harness.write_text(_PLAN_HARNESS % plan, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    assert json.loads(run.stdout) is False
+

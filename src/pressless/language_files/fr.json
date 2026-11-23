@@ -4158,6 +4158,10 @@
    "448962aa",
    "Pressless n'a pas pu noter que votre site de départ est maintenant publié, donc votre prochaine publication vous demandera encore une fois avant de remplacer un site."
   ],
+  "notice.publishing.takeover_kept": [
+   "ab9b83b0",
+   "Pressless n'a pas pu noter que le passage hors de GitHub Actions est terminé, donc votre prochaine publication vous y renverra. Appuyez-y encore une fois pour terminer."
+  ],
   "notice.settings.not_private": [
    "9827a6cb",
    "le fichier des réglages n'a pas pu être rendu privé : ce système de fichiers a accordé le mode {mode} au lieu du mode réservé au propriétaire, donc les autres comptes de cet ordinateur peuvent le lire"
