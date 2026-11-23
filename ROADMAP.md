@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=474 -->
+<!-- ants-roadmap-id-high-water: PRESS=475 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9152,7 +9152,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Store.
 
-- 🚧 [PRESS-0446] **Second-round review fixes: publishing.**
+- ✅ [PRESS-0446] **Second-round review fixes: publishing.**
   Subject 07. Review types: Codebase, Test.
   Findings: review-code lane-07, review-readability lane-07, and the
   performance and test reviews' findings on these files and their tests.
@@ -9163,6 +9163,15 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   with NothingToPublish: the journal stays on after a blank setup, no
   entry exists, and the site folder was never built into. The suite
   misses it because test_pages' blank-site test seeds a published entry.
+  Shipped 2026-11-23, 8dca784..4f77eec (merged 6197766). 33 findings: 25
+  fixed, 2 queued (PRESS-0471, PRESS-0472), 6 dismissed; review-code
+  lane-07's open questions are PRESS-0474. A site started blank publishes
+  its first page: _guard reads the repository when the site folder was
+  never built into, and still refuses where an entry page is there. A lost
+  takeover build is asked for again; a stuck marker is a notice; redirected
+  writes are reported as a moved repository. design.md, PRESS-0009, 0013,
+  0235, 0333, 0337, 0345 and 0001 amended. Full suite 2604 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/07.json.
   **Layman:** Bug fixes and tidy-ups in sending your site to GitHub.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9484,6 +9493,15 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: investigate.
   Source: review-2026-11-23.
   Lanes: Publisher.
+
+- 📋 [PRESS-0475] **The Windows gate clears run folders an interrupted run left on the box.**
+  Review type: Codebase. Queued by PRESS-0457 from review-code lane-18
+  (windows-gate.sh). The clean-up is PowerShell that runs only on the box,
+  and a mistake there fails every gated push, so it is tried on the box.
+  **Layman:** The Windows check before a push tidies up after a run that was cut short.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Pipeline.
 
 ## 1.3.0 — a home other than GitHub
 
