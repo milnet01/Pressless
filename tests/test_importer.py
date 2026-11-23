@@ -328,8 +328,16 @@ _ROWS = [
     ('<img src="https://elsewhere.example.org/p.jpg">',
      "{link: https://elsewhere.example.org/p.jpg}https://elsewhere.example.org/p.jpg{/}",
      "missing from the export"),
-    (f'<p><a href="{UPLOADS}/2012/05/song.mp3">my song</a></p>', "my song", "not a picture"),
-    (f'<video src="{UPLOADS}/2012/05/clip.mp4"></video>', "", "a video from a file"),
+    # PRESS-0483: the lookup answers for a picture too, so the report names
+    # neither kind; it once called a held picture "not a picture".
+    (f'<p><a href="{UPLOADS}/2012/05/song.mp3">my song</a></p>', "my song",
+     "a link to one of the site's own pictures or files"),
+    (f'<p><a href="{UPLOADS}/2012/05/a.jpg">the photo</a></p>', "the photo",
+     "a link to one of the site's own pictures or files"),
+    (f'<video src="{UPLOADS}/2012/05/clip.mp4"></video>', "",
+     "a video from one of the site's own pictures or files"),
+    (f'<video src="{UPLOADS}/2012/05/a.jpg"></video>', "",
+     "a video from one of the site's own pictures or files"),
     ("<div>a</div><div>b</div>", "a\n\nb", None),
     ("<h2>A heading</h2><p>x</p>", "A heading\n\nx", "heading"),
     ("<figure><p>x</p></figure>", "x", None),

@@ -219,7 +219,7 @@ table's rows make a line or a paragraph.
 | `[gallery ids="…"]` | one picture mark per id, in order |
 | `<blockquote>`, and a pull-quote `<figure>` holding one | its lines, each beginning `> `; a line holding only `>` between its paragraphs |
 | a video or embed that is not an attachment | `{link: address}address{/}` on its own line |
-| a link or a video pointing at an attachment that is not a picture | its words, without the link; listed |
+| a link, or a video or embed, pointing at an attachment | its words, without the link; listed |
 | `<div>` | its contents, as a paragraph of their own |
 | `<h1>` to `<h6>` | its words, as a paragraph of their own; listed, since Marks has no heading |
 | `<figure>` otherwise | its contents |

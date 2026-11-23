@@ -501,8 +501,10 @@ class _Converter:
         if not href:
             self._children(node, style, blocks)
         elif self._by_address(href) is not None:
-            self.dropped.append(
-                f"a link to a file that is not a picture, kept as plain words: {href}")
+            # An entry cannot link into photographs/ or files/ (PRESS-0483),
+            # and the lookup answers for a picture as well as a file.
+            self.dropped.append(f"a link to one of the site's own pictures or files, "
+                                f"kept as plain words: {href}")
             self._children(node, style, blocks)
         elif self._old_site and _host(href) == self._old_site:
             self.dropped.append(f"a link to the old site, kept as plain words: {href}")
@@ -588,7 +590,8 @@ class _Converter:
 
     def _address(self, address: str, what: str, blocks: _Blocks):
         if self._by_address(address) is not None:
-            self.dropped.append(f"{what} from a file that is not a picture, left out: {address}")
+            self.dropped.append(
+                f"{what} from one of the site's own pictures or files, left out: {address}")
         else:
             self._address_line(address, blocks)
 
