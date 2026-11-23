@@ -2882,13 +2882,15 @@ ENGLISH: dict[str, str] = {
     **{f"mark.{row.name}.example": _literal(row.example) for row in marks.MARKS},
 }
 
-# The table in front of ENGLISH, for the whole process: every server thread
-# reads the same one (spec § 4.1).
-_in_use: dict[str, str] = {}
+# The language in use and its table in front of ENGLISH, for the whole
+# process: every server thread reads the same one (spec § 4.1). One tuple,
+# replaced whole, so no thread sees one language's words with another's
+# plural forms or thousands mark.
+_current: tuple[str, dict[str, str]] = ("en", {})
 
 
-def _lookup(key: str) -> str:
-    found = _in_use.get(key)
+def _lookup(key: str, held: dict[str, str] | None = None) -> str:
+    found = (_current[1] if held is None else held).get(key)
     return found if found is not None else ENGLISH[key]
 
 
@@ -2911,23 +2913,24 @@ def say_count(amount: int, one: str, many: str, *, code: str | None = None,
 
     A one form writes `{count}`, never "1": a language's one form may cover
     other amounts, as French's covers 0 (PRESS-0241 INV-8)."""
-    language = _chosen if code is None else code
+    language, held = _current if code is None else (code, table(code))
     slots.setdefault("count", number(amount, language))
     key = one if amount in _ones(language) else many
-    return say(key, **slots) if code is None else say_in(code, key, **slots)
+    return _lookup(key, held).format_map(slots)
 
 
 @contextlib.contextmanager
 def use(table: dict[str, str]) -> Iterator[None]:
     """Put `table` in front of ENGLISH for the whole process while the block
-    runs."""
-    global _in_use
-    before = _in_use
-    _in_use = dict(table)
+    runs. A table names no language, so the one in use keeps its plural
+    forms and thousands mark."""
+    global _current
+    before = _current
+    _current = (before[0], dict(table))
     try:
         yield
     finally:
-        _in_use = before
+        _current = before
 
 
 def for_scripts() -> str:
@@ -2936,7 +2939,8 @@ def for_scripts() -> str:
 
     Every `<` is written as its JSON escape, so no entry can close the block
     (`</script>`) or open a comment that hides its close (`<!--<script`)."""
-    chosen = {key: _lookup(key) for key in ENGLISH if key.startswith("script.")}
+    held = _current[1]
+    chosen = {key: _lookup(key, held) for key in ENGLISH if key.startswith("script.")}
     return json.dumps(chosen).replace("<", "\\u003c")
 
 
@@ -2948,7 +2952,7 @@ FOLDER = Path(str(importlib.resources.files("pressless") / "language_files"))
 # The order the pickers show; each language § 4.6 adds puts its code here.
 LANGUAGES: tuple[str, ...] = ("en", "es", "af", "fr", "de")
 
-_chosen = "en"
+# Keyed by folder as well as code because tests point FOLDER elsewhere.
 _files: dict[tuple[Path, str], dict] = {}     # a file as read, by folder and code
 _tables: dict[tuple[Path, str], dict[str, str]] = {}
 _unreadable: set[str] = set()
@@ -3016,20 +3020,18 @@ def name(code: str) -> str:
 def choose(code: str) -> None:
     """Put `code`'s table in front of ENGLISH from now on, every thread
     included, and make `code` the language in use."""
-    global _in_use, _chosen
-    _in_use = dict(table(code))
-    _chosen = code
+    global _current
+    _current = (code, dict(table(code)))
 
 
 def in_use() -> str:
     """The code chosen; "en" before any."""
-    return _chosen
+    return _current[0]
 
 
 def say_in(code: str, key: str, **slots: str) -> str:
     """`say` with `code`'s table in front of ENGLISH, whatever is in use."""
-    found = table(code).get(key)
-    return (found if found is not None else ENGLISH[key]).format_map(slots)
+    return _lookup(key, table(code)).format_map(slots)
 
 
 def _ones(code: str) -> frozenset[int]:
@@ -3043,7 +3045,7 @@ def _ones(code: str) -> frozenset[int]:
 def number(value: int, code: str | None = None) -> str:
     """`value` with its thousands marked as `code` (default: the language in
     use) marks them."""
-    given = _file(_chosen if code is None else code).get("thousands")
+    given = _file(_current[0] if code is None else code).get("thousands")
     mark = given if isinstance(given, str) else ","
     return f"{value:,}".replace(",", mark)
 

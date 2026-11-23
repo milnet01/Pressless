@@ -192,6 +192,29 @@ def _asked() -> dict[str, str]:
     return asked
 
 
+def _repeated_keys(source: str) -> list[str]:
+    """Each key written twice in one dict literal of `source`, where the
+    later silently replaces the earlier."""
+    repeated = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Dict):
+            seen: set[str] = set()
+            for key in node.keys:
+                if isinstance(key, ast.Constant):
+                    if key.value in seen:
+                        repeated.append(key.value)
+                    seen.add(key.value)
+    return repeated
+
+
+def test_no_key_is_written_twice() -> None:
+    """§ 4.1. A screen's keys sit in several places in the table, so a key
+    added in one place can replace another's English unseen. The planted
+    source shows the check can fail."""
+    assert _repeated_keys('t = {"a.b": "x", "c": "y", "a.b": "z"}') == ["a.b"]
+    assert _repeated_keys((SOURCE / "words.py").read_text(encoding="utf-8")) == []
+
+
 def test_every_key_is_in_the_table() -> None:
     """INV-4. Breaks when a key is misspelled."""
     missing = {key: where for key, where in _asked().items() if key not in words.ENGLISH}
@@ -667,7 +690,7 @@ def _counted_pairs() -> dict[tuple[str, str], str]:
                 run = node.args if isinstance(node, ast.Call) else node.elts
             else:
                 continue
-            for first, second in zip(run, run[1:]):
+            for first, second in zip(run, run[1:], strict=False):
                 keys = [part.value for part in (first, second)
                         if isinstance(part, ast.Constant) and part.value in words.ENGLISH]
                 if len(keys) == 2 and (direct or _ONE.search(keys[0])):

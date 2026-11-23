@@ -77,5 +77,5 @@ def _an_english_computer(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("LANG", "en_GB.UTF-8")
     monkeypatch.setattr(languages, "_ui_language", lambda: 0x0809)   # English (UK)
-    monkeypatch.setattr(words, "_in_use", {})
-    monkeypatch.setattr(words, "_chosen", "en")
+    monkeypatch.setattr(words, "_current", ("en", {}))
+    monkeypatch.setattr(words, "_unreadable", set())
