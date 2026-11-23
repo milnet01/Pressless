@@ -49,6 +49,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    details_for,
     gatherer,
     message_box,
     nothing_captured,
@@ -157,7 +158,7 @@ def _path(value: object, held: dict) -> tuple[int, ...]:
     if (not isinstance(value, list) or len(value) not in (1, 3)
             or not all(isinstance(at, int) and not isinstance(at, bool) for at in value)
             or tuple(value) not in held):
-        raise SectionsUnreadable(f"{value!r} names no section of the page")
+        raise SectionsUnreadable("a kept section's path names no section of the page")
     return tuple(value)
 
 
@@ -172,7 +173,7 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
 
     def built(item: object) -> blocks.Section:
         if not isinstance(item, dict):
-            raise SectionsUnreadable(f"{item!r} is not a section")
+            raise SectionsUnreadable(f"a posted {type(item).__name__} is not a section")
         if "keep" in item:
             path = _path(item["keep"], held)
             kept.append(path)
@@ -185,7 +186,7 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
         fields, parts = item.get("fields", {}), item.get("parts", [])
         if (not isinstance(fields, dict) or not isinstance(parts, list)
                 or not all(isinstance(part, list) for part in parts)):
-            raise SectionsUnreadable(f"{item!r} is not a section")
+            raise SectionsUnreadable("a posted section's fields or parts are not a section's")
         fields = dict(fields)
         for field in ("html", "caption"):
             if field in fields:
@@ -456,9 +457,15 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
         except store.StoreError as exc:
             broken = face.fail(exc, publishing=False)
     preview, failure = _preview(face, folder, kind, name, shown, show,
-                                marks=sections is not None)
+                                marks=_keeps_marks(kind, name, view))
     return _Opened(view, text, base, waiting, show, held, bool(entries), sections, links,
                    photographs, kept, broken, preview, failure)
+
+
+def _keeps_marks(kind: str, name: str, view: str) -> bool:
+    """Whether the preview keeps the section marks: for the visual view's
+    script to pair, which the menu's view does not (PRESS-0260 § 4.2)."""
+    return view == VISUAL and not is_menu(kind, name)
 
 
 def _remember(folder: Path, kind: str, name: str, request: Request) -> None:
@@ -601,7 +608,6 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
 <p data-when="0"{' hidden' if waiting else ''}>{say("page_editor.standing")}</p>
 </div>
 {switch}{picker}
-<div id="broken">{opened.broken or ""}</div>
 {message_box("notices")}
 <p id="save-hint"></p>
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
@@ -611,7 +617,9 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-{reshape}{_menu_panel(opened.links or [], held, hidden=view == CODE) if menu_file
+{reshape}
+<div id="broken">{opened.broken or ""}</div>
+{_menu_panel(opened.links or [], held, hidden=view == CODE) if menu_file
           else _panel(kind, name, opened.sections, opened.photographs, opened.kept,
                       hidden=view == CODE)}
 {_code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(opened.text)}</textarea>',
@@ -660,7 +668,8 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
            hidden: bool = False) -> str:
     """PRESS-0260 § 4.3: the side panel, every control in place from the
     start; the script shows the ones the picked section's kind uses, inside a
-    panel of fixed size, so nothing beside it moves."""
+    panel of fixed size, so nothing beside it moves. Those come last, below
+    the controls every section has, so a pick moves none of them."""
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -702,6 +711,13 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
  list="photograph-list"></label>
 <button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
 <p id="add-where">{say("script.visual.end")}</p></div>
+<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
+<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
+<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
+<p class="panel-row"><label>{say("page_editor.panel.move_to")}
+ <select id="move-to"></select></label>
+<button type="button" data-act="move-to">{say("page_editor.panel.move")}</button></p>
+<p id="panel-said" role="status"></p>
 <div class="panel-row" data-for="text heading">
 <button type="button" data-act="bold"><b>{say("page_editor.panel.bold")}</b></button>
 <button type="button" data-act="italic"><i>{say("page_editor.panel.italic")}</i></button>
@@ -735,13 +751,6 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <label data-for="code script style">{say("page_editor.panel.code")}
 {_code_box('<textarea data-field="code" rows="10" spellcheck="false"></textarea>')}</label>
 <p data-for="style">{say("page_editor.panel.style_note")}</p>
-<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
-<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
-<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
-<p class="panel-row"><label>{say("page_editor.panel.move_to")}
- <select id="move-to"></select></label>
-<button type="button" data-act="move-to">{say("page_editor.panel.move")}</button></p>
-<p id="panel-said" role="status"></p>
 </aside>"""
 
 
@@ -796,11 +805,13 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
             failure: Exception | None = exc
         else:
             failure = None
+            # Only a page carries the markers the Builder fills from the header
+            # and footer, and the visual view writes inside its main area alone.
             if kind == store.PAGES_FOLDER and not visual and stray_furniture(name, new):
                 notices.append(say("notice.page_editor.stray"))
             preview, preview_failure = _preview(
                 face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")),
-                marks=visual)
+                marks=_keeps_marks(kind, name, VISUAL if visual else CODE))
     if failure is not None:
         return editor.failed(face, notices, failure)
     reply = {"waiting": True, "base": base, "preview": preview, "failure": preview_failure,
@@ -869,7 +880,8 @@ def press_page(folder: Path, form: dict[str, str], *,
 
 def _press_written(folder: Path, kind: str, name: str, new: str, *,
                    capture: Callable[[], AbstractContextManager[list[str]]],
-                   notices: list, transport: publisher.Transport | None
+                   notices: list, transport: publisher.Transport | None,
+                   noted: Callable[[str], None] = lambda _line: None
                    ) -> publishing.Published:
     """`press_page` after its write, which the screen's press splits from the
     write to answer each failure differently. Adds the menu's notices, and the
@@ -877,7 +889,8 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
 
     The waiting copy goes to the bin when the publish succeeds, and when its
     outcome is unknown (through `unknown`), since the site may hold it. On any
-    other failure everything is put back and the copy stays (§ 4.7 step 5)."""
+    other failure everything is put back and the copy stays (§ 4.7 step 5).
+    Why a copy could not be binned goes to `noted`, the Face's log."""
     said: list[str] = []
     gathered = gatherer(capture, notices)
     copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -887,7 +900,8 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
         binned and is left behind."""
         try:
             gathered(lambda: store.move_to_bin(folder, copy))
-        except Exception:  # noqa: BLE001 -- never replaces the publish's result
+        except Exception as exc:  # noqa: BLE001 -- never replaces the publish's result
+            noted(details_for(exc))
             return True
         return False
 
@@ -919,9 +933,9 @@ def _press_written(folder: Path, kind: str, name: str, new: str, *,
                                       gathered, unknown, capture=capture)
         kept = kept_after_binning()
     except Exception as exc:
-        notices.extend(_menu_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
+        notices.extend(_site_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
         raise
-    notices.extend(_menu_said(said, True, False))
+    notices.extend(_site_said(said, True, False))
     if kept:
         notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
     return publishing.Published(result.outcome, kept)
@@ -942,7 +956,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             return editor.failed(face, notices, exc)
         try:
             _press_written(folder, kind, name, new, capture=face.capture, notices=notices,
-                           transport=transport)
+                           transport=transport, noted=face.note)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = publishing.press_failure(face, exc)
             published = False
@@ -1031,8 +1045,9 @@ def _edit_menu(folder: Path, changes: _Changes, edit: Callable[[str], str]) -> b
     return usual
 
 
-def _menu_said(said: list[str], published: bool, unknown: bool) -> list[Notice]:
-    """§ 4.3, § 4.4: a press's menu notices, saying what became of the site.
+def _site_said(said: list[str], published: bool, unknown: bool) -> list[Notice]:
+    """§ 4.3, § 4.4: a press's notices about the menu, header and footer,
+    each saying what became of the site.
     An empty list where the press failed and everything was put back."""
     if not (published or unknown):
         return []
@@ -1152,6 +1167,8 @@ def _add(face: Face, folder: Path, lock: threading.Lock, kind: str, name: str,
                                               (store.StoreError,))
     if failure is not None:
         return editor.failed_page(face, notices, failure)
+    # `is False`, not `not`: add_home returns None, and only add_menu's False
+    # means the menu could not be added.
     location = (editor.PAGES_ADDRESS + "?page_hint=menu_empty" if added is False
                 else editor.page_address(kind, name))
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
@@ -1267,10 +1284,10 @@ def reshape(folder: Path, name: str, to: str, *, renaming: bool,
         result = _publish_or_put_back(folder, saved, key, changes, gathered_notices,
                                       transport, gathered, capture=capture)
     except Exception as exc:
-        gathered_notices.extend(_menu_said(said, False,
+        gathered_notices.extend(_site_said(said, False,
                                            isinstance(exc, publisher.OutcomeUnknown)))
         raise
-    gathered_notices.extend(_menu_said(said, True, False))
+    gathered_notices.extend(_site_said(said, True, False))
     return result
 
 
@@ -1297,9 +1314,11 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
             address = editor.page_address(store.PAGES_FOLDER, editor.name_address(to))
         else:
             address = editor.PAGES_ADDRESS  # § 4.4: the list, as after a discard
+        # Gone where it published, and where its outcome is unknown.
+        moved = not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file()
     published = hint is None and failure is None
     told(pressing.ended(pressing.PUBLISH, published, failure))
-    return editor.json_reply({"published": published, "failure": failure,
+    return editor.json_reply({"published": published, "moved": moved, "failure": failure,
                   "hint": say(hint) if hint else None,
                   "notices": render_notices(notices), "busy": False, "address": address})
 
@@ -1462,7 +1481,7 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
         document.getElementById("failure").innerHTML = reply.failure || "";
         frame.src = reply.preview ? reply.preview + "?n=" + Date.now() : "about:blank";
       } catch (error) {
-        stop("");
+        stop(say("script.page.unreachable"));
       } finally {
         free();
         release();
@@ -1520,28 +1539,34 @@ _PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
         document.getElementById("failure").innerHTML = reply.failure || "";
         said.textContent = reply.published ? say("script.press.published")
           : reply.hint ? standing() : say("script.press.not_published");
-        if (reply.published && renaming) {
-          state.name = new URLSearchParams(reply.address.split("?")[1]).get("name");
-        } else if (reply.published) {
-          stopped = true;
+        // Published, or an outcome unknown with the old file already gone:
+        // the page is no longer where this window saves. A renamed page saves
+        // on under its new name, unless a failure says how the press ended:
+        // the answer to a save would write over it.
+        if (reply.moved) {
+          const now = new URLSearchParams(reply.address.split("?")[1] || "").get("name");
+          if (renaming && now && !reply.failure) state.name = now; else stopped = true;
         }
       } catch (error) {
-        said.textContent = standing(); stop("");
+        said.textContent = standing(); stop(say("script.page.unreachable"));
       } finally {
         pressing = false;
         release();
       }
-      if (!reply || reply.busy || !reply.published) return;
+      if (!reply || reply.busy || !reply.moved) return;
       await settle(true);
       release();
-      if (!reply.notices) window.location.href = reply.address;
       // Read first, then on: this page's own editor may name a page that has
       // gone, and a save there would bring it back.
-      else {
-        stopped = true;
-        document.getElementById("notices").closest("dialog").addEventListener(
-          "close", () => { window.location.href = reply.address; }, {once: true});
-      }
+      const reading = ["notices", "failure"].filter((id) => reply[id])
+        .map((id) => document.getElementById(id).closest("dialog"));
+      if (!reading.length) { window.location.href = reply.address; return; }
+      stopped = true;
+      let open = reading.length;
+      reading.forEach((box) => box.addEventListener("close", () => {
+        open -= 1;
+        if (!open) window.location.href = reply.address;
+      }, {once: true}));
     });
   });
 })();
@@ -1568,6 +1593,9 @@ _CODE_SCRIPT = r"""
     "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth"];
   const NAME = /<\/?([A-Za-z][\w:.-]*)/y;
   const ATTRIBUTE = /(\s+)|([^\s"'>\/=]+)(?:(\s*=\s*)("[^"]*"?|'[^']*'?|[^\s>]*))?|(\/)|(>)/y;
+  // Where a style or script ends: its closing tag in any case, found in the
+  // text itself, so no lower-cased copy is made per tag.
+  const CLOSING = {style: /<\/style/gi, script: /<\/script/gi};
   const CSS = new RegExp(String.raw`/\*[\s\S]*?(?:\*/|$)|"(?:[^"\\\n]|\\.)*"?|` +
                          String.raw`'(?:[^'\\\n]|\\.)*'?|[{}:;]|[^{}:;"'/]+|/`, "g");
 
@@ -1606,8 +1634,9 @@ _CODE_SCRIPT = r"""
       }
       const tag = name[1].toLowerCase();
       if (closed && name[0][1] !== "/" && (tag === "style" || tag === "script")) {
-        const end = text.toLowerCase().indexOf("</" + tag, at);
-        const inner = text.slice(at, end < 0 ? text.length : end);
+        CLOSING[tag].lastIndex = at;
+        const found = CLOSING[tag].exec(text);
+        const inner = text.slice(at, found ? found.index : text.length);
         if (tag === "style") pieces.push(...sheet(inner)); else put(inner);
         at += inner.length;
       }
@@ -1682,8 +1711,8 @@ _CODE_SCRIPT = r"""
     });
     paint(box);
   }
-  // A script that sets a box's value repaints it here.
-  window.presslessCode = {colour, paint: () => boxes.forEach(paint)};
+  // A script that sets the value of a box repaints it here, or every box.
+  window.presslessCode = {colour, paint: (box) => (box ? [box] : boxes).forEach(paint)};
 })();
 """
 
@@ -1698,6 +1727,11 @@ _MENU_SCRIPT = r"""
   const row = document.getElementById("link-row");
   const frame = document.getElementById("preview");
   const links = [];
+  // A link the save posts: one the file held, or a new one with words and an
+  // address. menu.arranged refuses a save posting none, so the last such
+  // link cannot be removed.
+  const sends = (link) => Boolean(link.kept || (link.words.trim() && link.href.trim()));
+  const lastSent = (link) => sends(link) && links.filter(sends).length === 1;
   // PRESS-0285 § 4.5: the links are taken at load, and again at each switch
   // into this view.
   function open(given) {
@@ -1716,8 +1750,15 @@ _MENU_SCRIPT = r"""
       item.link = each;
       return item;
     }));
+    guard();
     const shown = [...list.children].find((item) => item.link === link);
     if (shown) shown.querySelector(act ? "[data-act=" + act + "]" : "input").focus();
+  }
+  function guard() {
+    for (const item of list.children) {
+      const remove = item.querySelector("[data-act=remove]");
+      remove.disabled = lastSent(item.link);
+    }
   }
   const changed = () => window.presslessPage.changed();
 
@@ -1725,6 +1766,7 @@ _MENU_SCRIPT = r"""
     const item = event.target.closest("li");
     if (!item || !event.target.dataset.link) return;
     item.link[event.target.dataset.link] = event.target.value;
+    guard();
     changed();
   });
   list.addEventListener("click", (event) => {
@@ -1734,6 +1776,7 @@ _MENU_SCRIPT = r"""
     const at = links.indexOf(link);
     const act = button.dataset.act;
     if (act === "remove") {
+      if (lastSent(link)) return;
       links.splice(at, 1);
       draw(links[Math.min(at, links.length - 1)], "remove");
     } else {
@@ -1753,8 +1796,7 @@ _MENU_SCRIPT = r"""
   });
 
   function post() {
-    const sent = links.filter((link) => link.kept
-      || (link.words.trim() && link.href.trim()));
+    const sent = links.filter(sends);
     const entries = sent.map((link) => ({
       at: link.at,
       words: link.words.trim() || link.kept.words,
@@ -1809,6 +1851,8 @@ _VISUAL_SCRIPT = r"""
     kind, fields: {...fields}, path, marked, code, parts, parent,
     changed: path === null, rev: 0, start: null, end: null, el: null});
   const model = [];
+  // A load-time index, for `open` alone: a save gives sections new paths, so
+  // anything later looks a path up through `byPathNow()`.
   const byPath = new Map();
   let removed = [];
   let picked = null;
@@ -1845,6 +1889,24 @@ _VISUAL_SCRIPT = r"""
   open(given.sections);
 
   const listOf = (item) => item.parent ? item.parent.parts[item.column] : model;
+  // What a holder keeps, as Blocks checks it: a row of pictures a picture,
+  // and a question its words first, then an answer (PRESS-0217). Up, Down,
+  // Remove, Backspace and a drag all ask these, so none of them leaves a page
+  // the save refuses.
+  const asking = (item) => Boolean(item && item.parent && item.parent.kind === "questions");
+  const words = (item) => asking(item) && listOf(item).indexOf(item) === 0;
+  // Whether `item` may leave its list, for another or for good.
+  const leaves = (item) => !item.parent || (ROWS.includes(item.parent.kind)
+    ? listOf(item).length > 1 : !asking(item) || (!words(item) && listOf(item).length > 2));
+  // What Remove takes: the section, or the holder its going would empty (the
+  // last picture of a row, the words of the only question); the words of a
+  // question take the question. Null for the last section of an answer.
+  function taken(item) {
+    if (!item) return null;
+    if (words(item)) return item.parent.parts.length > 1 ? item : item.parent;
+    if (leaves(item)) return item;
+    return ROWS.includes(item.parent.kind) ? item.parent : null;
+  }
   const each = (list, visit) => list.forEach((item) => {
     visit(item);
     item.parts.forEach((part) => each(part, visit));
@@ -1913,6 +1975,18 @@ _VISUAL_SCRIPT = r"""
     + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}"
     // PRESS-0287: a player's own controls keep its click, so the frame takes it.
     + "audio,video,iframe{pointer-events:none}";
+  // The closing mark of each opening one, or -1: the next closing mark of its name
+  // not taken by one opened after it. One pass, a stack for each name.
+  function partners(marks) {
+    const found = marks.map(() => -1), open = new Map();
+    marks.forEach((mark, at) => {
+      if (!open.has(mark.name)) open.set(mark.name, []);
+      const stack = open.get(mark.name);
+      if (!mark.closing) stack.push(at);
+      else if (stack.length) found[stack.pop()] = at;
+    });
+    return found;
+  }
   function pair() {
     const doc = frame.contentDocument;
     // PRESS-0285 § 4.5: idle while the code view shows.
@@ -1926,25 +2000,21 @@ _VISUAL_SCRIPT = r"""
       const found = /^ (\/?)pressless:([a-z]+) $/.exec(walker.currentNode.data);
       if (found) marks.push({at: walker.currentNode, closing: found[1] === "/", name: found[2]});
     }
-    const partner = (from) => {
-      let depth = 0;
-      for (let at = from + 1; at < marks.length; at++) {
-        if (marks[at].name !== marks[from].name) continue;
-        if (!marks[at].closing) depth++;
-        else if (depth === 0) return at;
-        else depth--;
-      }
-      return -1;
-    };
+    const partner = partners(marks);
     each(model, (item) => { item.start = item.end = item.el = null; });
     const order = frameSections.filter((entry) => entry.marked);
+    const current = byPathNow();
     let next = 0, skip = -1;
     marks.forEach((mark, at) => {
+      // `page` and `column` marks wrap lists of sections, not a section, so
+      // the outline has no entry for them.
       if (at <= skip || mark.closing || mark.name === "page" || mark.name === "column") return;
-      const closing = partner(at);
+      const closing = partner[at];
       if (closing < 0 || next >= order.length) return;
       const entry = order[next++];
-      const item = byPathNow().get(key(entry.path));
+      const item = current.get(key(entry.path));
+      // The outline lists a section that holds no others as one entry, so
+      // any mark inside it is passed over.
       if (!HOLDERS.includes(entry.kind)) skip = closing;
       if (!item || item.kind !== entry.kind) return;
       item.start = mark.at; item.end = marks[closing].at;
@@ -2082,18 +2152,17 @@ _VISUAL_SCRIPT = r"""
           }
         }
       });
-      window.presslessCode.paint();
+      // The box in the panel alone: the one in the code view holds the whole page.
+      window.presslessCode.paint(field("code").closest(".code-box"));
       panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
         button.hidden = kind !== "columns" || Number(button.dataset.column) >= picked.parts.length;
       });
     }
     const list = picked ? listOf(picked) : model;
     const at = picked ? list.indexOf(picked) : -1;
-    // PRESS-0217: a question's words stay first in it, above its answer.
-    const asked = picked && picked.parent && picked.parent.kind === "questions";
-    act("up").disabled = !picked || at <= (asked ? 1 : 0);
-    act("down").disabled = !picked || at >= list.length - 1 || (asked && at === 0);
-    act("remove").disabled = !picked;
+    act("up").disabled = !picked || at <= (asking(picked) ? 1 : 0);
+    act("down").disabled = !picked || at >= list.length - 1 || words(picked);
+    act("remove").disabled = !taken(picked);
     destinations = places(picked);
     const where = document.getElementById("move-to");
     where.replaceChildren(...(destinations.length ? destinations.map((spot, at) => new Option(
@@ -2233,8 +2302,9 @@ _VISUAL_SCRIPT = r"""
   }
   // PRESS-0282: a section playing or offering a file is added by choosing
   // the file, so Add with no address asks for it, and the upload's answer
-  // is the address. Every other kind needs its address typed.
-  const FILED = ["video", "music", "download"];
+  // is the address. Every other kind needs its address typed. The kinds are
+  // the keys of files.ACCEPT.
+  const FILED = Object.keys(given.accept);
   let adding = null;
   function asked(kind, address, column) {
     if (!ADDRESSED.includes(kind) || address) return false;
@@ -2349,11 +2419,11 @@ _VISUAL_SCRIPT = r"""
     if (item.parent) touch(item.parent); else window.presslessPage.changed();
   }
   act("remove").addEventListener("click", () => {
-    if (!picked) return;
-    const gone = picked;
+    const gone = taken(picked);
+    if (!gone) return;
     show(null, false);
     const container = gone.parent;
-    if (container && container.kind === "questions" && listOf(gone).indexOf(gone) === 0) {
+    if (words(gone)) {
       // A question's words go with the whole question, answer and all.
       const column = gone.column;
       [...container.parts[column]].forEach(drop);
@@ -2372,7 +2442,7 @@ _VISUAL_SCRIPT = r"""
   // The handle sits at the picked section's top right corner. Dragged, a line shows
   // where the section will land: before or after the section under the
   // pointer, in that section's list, where its kind fits there; else beside
-  // the columns or row holding it. A row of pictures keeps its last picture.
+  // the columns or row holding it. Each holder keeps what `leaves` says.
   function box(item) {
     const rects = between(item).filter((at) => at.nodeType === Node.ELEMENT_NODE)
       .map((at) => at.getBoundingClientRect()).filter((at) => at.width || at.height);
@@ -2416,8 +2486,8 @@ _VISUAL_SCRIPT = r"""
     const list = listOf(target);
     const next = list[list.indexOf(target) + (after ? 1 : -1)];
     if (next === item) return null;
-    const row = item.parent && ROWS.includes(item.parent.kind) ? item.parent : null;
-    if (row && row !== target.parent && row.parts[0].length === 1) return null;
+    if (words(item) || (words(target) && !after)) return null;
+    if (list !== listOf(item) && !leaves(item)) return null;
     return {target, after, edges};
   }
   function relocate(item, target, after) {
@@ -2470,9 +2540,12 @@ _VISUAL_SCRIPT = r"""
   }
 
   // ---- typing (§ 4.4) --------------------------------------------------
+  // The handle follows a section as it grows, measured once a frame rather
+  // than on every key.
+  let placing = 0;
   function typed(event) {
     if (picked && picked.el && picked.el.contains(event.target)) touch(picked);
-    placeHandle();
+    if (!placing) placing = requestAnimationFrame(() => { placing = 0; placeHandle(); });
   }
   function pasted(event) {
     if (picked && picked.el) paste(frame.contentDocument, event);
@@ -2498,7 +2571,7 @@ _VISUAL_SCRIPT = r"""
       above() {
         const list = listOf(picked);
         const above = list[list.indexOf(picked) - 1];
-        return above && above.kind === "text" && above.el ? above : null;
+        return above && above.kind === "text" && above.el && leaves(picked) ? above : null;
       },
       join(above) {
         const gone = picked;
@@ -2554,8 +2627,8 @@ _VISUAL_SCRIPT = r"""
     }
     const reply = await window.presslessUpload("/file", file, window.presslessPage.stop, said);
     if (!reply) return;
-    const name = reply.name;
-    const address = up + "files/" + encodeURIComponent(name);
+    const {name, address: published} = reply;
+    const address = up + published;
     const suffix = name.slice(name.lastIndexOf("."));
     Object.keys(given.accept).forEach((section) => {
       const list = document.getElementById(section + "-list");
