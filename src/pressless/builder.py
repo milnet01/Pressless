@@ -32,7 +32,7 @@ from datetime import date, datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, unquote, urljoin, urlsplit
 
-from PIL import Image, ImageOps, ImageSequence
+from PIL import Image, ImageCms, ImageOps, ImageSequence
 
 from pressless import blocks, jpegxl, marks, os_reason, store, votes, words
 from pressless.safe_write import patiently
@@ -275,8 +275,9 @@ def web_photograph(name: str) -> str:
 @contextlib.contextmanager
 def open_original(path: Path):
     """The one place the Builder opens an original (PRESS-0275 § 4.5). A
-    JPEG XL file is decoded by the extra into a work directory, and the PNG
-    it gives is yielded with `format` "JXL"; anything else is Image.open's.
+    JPEG XL file is decoded by the extra into a work directory, and the
+    picture it gives is yielded with `format` "JXL"; anything else is
+    Image.open's.
     Raises jpegxl.NotInstalled where the extra is missing."""
     with open(path, "rb") as source:
         head = source.read(16)
@@ -291,11 +292,60 @@ def open_original(path: Path):
     try:
         with _DECODING:
             decoded = jpegxl.decode(program, Path(path), work)
-        with Image.open(decoded) as picture:
+        with _from_pam(decoded, work / jpegxl.PROFILE) as picture:
             picture.format = "JXL"
             yield picture
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+# The PAM tuple types jpegxl.COMMAND writes. It writes the original's own bit
+# depth, so MAXVAL is anything from 1 to 65535.
+_PAM_MODES = {(b"1", b"GRAYSCALE"): "L", (b"2", b"GRAYSCALE_ALPHA"): "LA",
+              (b"3", b"RGB"): "RGB", (b"4", b"RGB_ALPHA"): "RGBA"}
+# How the decoder describes the sRGB profile it writes for a picture with
+# none of its own: dropped, as a web copy with no profile already means sRGB.
+_DECODER_SRGB = re.compile(r"sRGB|RGB_D65_SRG_(Per|Rel|Sat|Abs)_SRG")
+
+
+def _from_pam(decoded: Path, profile: Path) -> Image.Image:
+    """The decoder's PAM as an eight-bit picture, with its colour profile
+    (PRESS-0275 § 4.4 step 5). The file is deleted once read, so the picture
+    is not held twice. ValueError where it is not a PAM jpegxl.COMMAND
+    writes; DecompressionBombError past Pillow's limit."""
+    data = decoded.read_bytes()
+    decoded.unlink()
+    header, ended, pixels = data.partition(b"\nENDHDR\n")
+    lines = header.split(b"\n")
+    fields = dict(line.split(b" ", 1) for line in lines[1:] if b" " in line)
+    mode = _PAM_MODES.get((fields.get(b"DEPTH"), fields.get(b"TUPLTYPE")))
+    if lines[0] != b"P7" or not ended or mode is None:
+        raise ValueError("the JPEG XL decoder gave no picture Pressless reads")
+    size = (int(fields[b"WIDTH"]), int(fields[b"HEIGHT"]))
+    top = int(fields[b"MAXVAL"])
+    if not 0 < top < 65536:
+        raise ValueError("the JPEG XL decoder gave no picture Pressless reads")
+    Image._decompression_bomb_check(size)  # as Image.open applies it
+    if top == 255:
+        picture = Image.frombytes(mode, size, pixels)
+    elif top == 65535:   # each sample's high byte, as Pillow reads a 16-bit PNG
+        picture = Image.frombytes(mode, size, pixels, "raw", mode + ";16B")
+    else:                # another depth: every sample scaled to 0-255
+        samples = (size[0] * len(mode), size[1])
+        if top > 255:    # point() truncates on "I", so a half is added
+            wide = Image.frombytes("I;16B", samples, pixels).convert("I")
+            scaled = wide.point(lambda value: value * (255 / top) + 0.5).convert("L")
+        else:            # and rounds on "L"
+            scaled = Image.frombytes("L", samples, pixels).point(lambda value: value * (255 / top))
+        picture = Image.frombytes(mode, size, scaled.tobytes())
+    if profile.is_file():
+        icc = profile.read_bytes()
+        described = ImageCms.ImageCmsProfile(io.BytesIO(icc))
+        # A grey profile cannot describe the RGB a WebP holds.
+        if (described.profile.xcolor_space.strip() == "RGB" and not _DECODER_SRGB.fullmatch(
+                ImageCms.getProfileDescription(described).strip())):
+            picture.info["icc_profile"] = icc
+    return picture
 
 
 def webp_copy(original: Path, target: Path) -> None:

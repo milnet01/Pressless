@@ -742,7 +742,7 @@ _ALLOWED_IMPORTS = {
     "shutil", "tempfile", "threading",
     "concurrent", "concurrent.futures",   # PRESS-0460: web copies on several cores
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
-    "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
+    "PIL", "PIL.Image", "PIL.ImageCms", "PIL.ImageOps", "PIL.ImageSequence",
     "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
     "pressless.votes",                       # PRESS-0211 § 4.3: text alone, no disk or network
     "pressless.jpegxl",                      # PRESS-0275 § 4.1: runs the decoder, no network
@@ -2507,3 +2507,73 @@ def test_the_jpeg_xl_decoder_runs_once_at_a_time(tmp_path, monkeypatch):
     assert sorted(p.name for p in (into / "photographs").iterdir()) == [
         "harbour.jxl.webp", "seaside.jxl.webp"]
 
+
+# ------------------------------------------------------------- PRESS-0485 ---
+# PRESS-0275 § 4.4 step 5: the decoder's PAM read as an eight-bit picture,
+# its colour profile beside it.
+
+
+def _pam(path: Path, kind: str, top: int, samples: list[int], width: int, height: int) -> Path:
+    depth = {"GRAYSCALE": 1, "GRAYSCALE_ALPHA": 2, "RGB": 3, "RGB_ALPHA": 4}[kind]
+    wide = top > 255
+    head = (f"P7\nWIDTH {width}\nHEIGHT {height}\nDEPTH {depth}\nMAXVAL {top}\n"
+            f"TUPLTYPE {kind}\nENDHDR\n").encode("ascii")
+    path.write_bytes(head + b"".join(v.to_bytes(2 if wide else 1, "big") for v in samples))
+    return path
+
+
+@pytest.mark.parametrize("kind, top, samples, mode, pixels", [
+    ("RGB", 255, [10, 20, 30, 40, 50, 60], "RGB", [(10, 20, 30), (40, 50, 60)]),
+    ("RGB_ALPHA", 65535, [0xFF01, 0x8000, 0x00FF, 0x7F7F] * 2, "RGBA", [(255, 128, 0, 127)] * 2),
+    ("GRAYSCALE", 4095, [4095, 2049], "L", [255, 128]),
+    ("GRAYSCALE_ALPHA", 3, [3, 1, 0, 2], "LA", [(255, 85), (0, 170)]),
+])
+def test_a_pam_of_any_depth_reads_as_eight_bits(tmp_path, kind, top, samples, mode, pixels):
+    """PRESS-0485: the decoder writes the original's own depth; a 16-bit
+    sample keeps its high byte, as a 16-bit PNG's does, and any other depth
+    is scaled to 0-255. The file is gone once read."""
+    decoded = _pam(tmp_path / "decoded.pam", kind, top, samples, 2, 1)
+    picture = builder._from_pam(decoded, tmp_path / "none.icc")
+    assert picture.mode == mode
+    assert [picture.getpixel((x, 0)) for x in range(2)] == pixels
+    assert "icc_profile" not in picture.info
+    assert not decoded.exists()
+
+
+@pytest.mark.parametrize("head", [
+    b"P6\n2 1\n255\n", b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 3\nMAXVAL 255\nTUPLTYPE RGB\n",
+    b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 3\nMAXVAL 255\nTUPLTYPE CMYK\nENDHDR\n",
+    b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 3\nMAXVAL 0\nTUPLTYPE RGB\nENDHDR\n",
+    b"P7\nWIDTH 9\nHEIGHT 9\nDEPTH 3\nMAXVAL 255\nTUPLTYPE RGB\nENDHDR\n",
+], ids=["not-pam", "no-end", "unknown-kind", "no-depth", "cut-short"])
+def test_a_pam_it_cannot_read_is_a_picture_error(tmp_path, head):
+    """§ 4.4 step 4's sentence, through _PICTURE_ERRORS: a ValueError."""
+    decoded = tmp_path / "decoded.pam"
+    decoded.write_bytes(head + bytes(6))
+    with pytest.raises(ValueError):
+        builder._from_pam(decoded, tmp_path / "none.icc")
+
+
+def test_a_grey_profile_is_dropped(tmp_path):
+    """A WebP holds RGB, which a grey profile cannot describe."""
+    grey = ImageCms.ImageCmsProfile(ImageCms.createProfile("LAB"))   # not RGB
+    (tmp_path / "decoded.icc").write_bytes(grey.tobytes())
+    decoded = _pam(tmp_path / "decoded.pam", "GRAYSCALE", 255, [1, 2], 2, 1)
+    assert "icc_profile" not in builder._from_pam(decoded, tmp_path / "decoded.icc").info
+
+
+def test_jpeg_xl_keeps_its_colour_profile_and_alpha(tmp_path, monkeypatch):
+    """PRESS-0485: a PAM holds no profile; the one the decoder writes beside
+    it reaches the web copy, and so does the alpha."""
+    folder = _jxl_store(tmp_path, monkeypatch)
+    profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    picture = Image.new("RGBA", (3000, 1500), (200, 40, 40, 255))
+    picture.paste((0, 0, 255, 128), (1500, 0, 3000, 1500))
+    picture.save(tmp_path / "decoded.png", icc_profile=profile)   # what the stand-in hands back
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    with Image.open(into / "photographs" / "seaside.jxl.webp") as web:
+        assert web.mode == "RGBA"
+        assert web.info.get("icc_profile") == profile
+        assert web.getpixel((100, 400))[3] == 255
+        assert abs(web.getpixel((1500, 400))[3] - 128) <= 2

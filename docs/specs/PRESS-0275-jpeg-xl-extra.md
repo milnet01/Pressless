@@ -183,12 +183,15 @@ installed".** The line in § 4.6 then offers the download again.
    and `cwd=work`:
 
    ```python
-   [str(program), "original.jxl", "decoded.png"]
+   [str(program), "original.jxl", "decoded.pam", "--icc_out=decoded.icc"]
    ```
 
    `work` is a fresh directory from `tempfile.mkdtemp()`, removed by the
-   caller. The two names are fixed and plain, so no Windows code page can
-   mangle a path, and neither can read as an option.
+   caller. The names are fixed and plain, so no Windows code page can
+   mangle a path, and neither file name can read as an option. A PAM is
+   written rather than a PNG because nothing compresses it, which makes
+   the decoder several times quicker (PRESS-0485). A PAM holds no colour
+   profile, so the decoder writes the picture's beside it.
    stdin, stdout and stderr go to `DEVNULL`. The timeout is
    `DECODE_SECONDS`. On Windows, `creationflags` is `CREATE_NO_WINDOW`, read
    with `getattr(subprocess, ..., 0)`.
@@ -205,16 +208,24 @@ installed".** The line in § 4.6 then offers the download again.
    process starts, so for that moment it runs unlimited: stated, not
    defended.
 4. A non-zero exit, a timeout (the process is killed) or no
-   `decoded.png` raises `Unreadable`. Nothing from the process's output
+   `decoded.pam` raises `Unreadable`. Nothing from the process's output
    reaches the log.
-5. Returns `work / "decoded.png"`. The caller opens it with Pillow, whose
-   own decompression-bomb limit applies as it does to any PNG.
+5. Returns `work / "decoded.pam"`. `builder.open_original` reads it with
+   `_from_pam`, which applies Pillow's decompression-bomb limit as
+   `Image.open` would. The PAM holds the original's own bit depth; it is
+   read as eight bits a channel, a 16-bit sample keeping its high byte as
+   Pillow reads a 16-bit PNG, any other depth scaled to 0–255. Alpha is
+   kept. `decoded.icc` becomes the picture's profile, except the sRGB one
+   the decoder writes for a picture with none, which a web copy means
+   without it, and a grey one, which cannot describe the RGB a WebP holds.
+   The Builder runs the decoder once at a time: it uses every core itself,
+   and its memory limit is per run.
 
 ### 4.5 Where photographs are read
 
 **`builder.open_original(path)`**, a new context manager, is the one place
 the Builder opens an original. For a JPEG XL file it decodes the file into a
-work directory and yields the PNG opened by Pillow, with `format` reported as
+work directory and yields the decoded picture, with `format` reported as
 `"JXL"`. For anything else it yields `Image.open(path)`. It raises
 `jpegxl.NotInstalled` where `jpegxl.find_program()` is `None`. The three places that
 call `Image.open` on an original use it: `photograph_format`, the web copy
@@ -236,7 +247,7 @@ and the site icon.
 - **Publishing.** PRESS-0008 § 4.6 step 3 gains JXL: the decoded picture is
   rotated, shrunk and stripped as a PNG is, and saved as WebP with Pillow's
   defaults and any ICC profile. The decoder is told nothing about
-  orientation, and the decoded PNG passes through `ImageOps.exif_transpose`
+  orientation, and the decoded picture passes through `ImageOps.exif_transpose`
   like every other format.
 - **The published name.** `builder.web_name(name)` is `name + ".webp"` for a
   name ending `.jxl`, ignoring case, and `name` otherwise. `web_photograph`,
@@ -339,7 +350,7 @@ published.** The pre-release mark keeps it away from the updater:
   name before the hash is compared, or `install` re-implements the download
   instead of calling `updater.download`.
 - **INV-3** — The decoder runs with no shell, in the work directory with
-  two fixed names, a timeout, and no output kept. *Test:*
+  fixed names and a fixed option, a timeout, and no output kept. *Test:*
   `tests/test_jpegxl.py::test_decode_runs_one_fixed_command` — the argv
   recorded by a stand-in equals § 4.4's list, for paths with and without
   accented letters. A stand-in that sleeps past a
@@ -381,8 +392,10 @@ published.** The pre-release mark keeps it away from the updater:
   `tests/test_jpegxl_real.py`, skipped unless `PRESSLESS_DJXL` names a file
   matching this platform's pin. It decodes the fixtures in `tests/jxl/`,
   made once by `scripts/make-jxl-fixtures.py` with `cjxl` — a lossy
-  still, a JPEG recompressed with EXIF orientation 6, and an animation —
-  and checks size, upright orientation and first frame. Run on Linux and on
+  still, a JPEG recompressed with EXIF orientation 6, an animation, and a
+  lossless picture with alpha and a profile that is not sRGB — and checks
+  size, upright orientation, first frame, alpha, and which profile the web
+  copy keeps. Run on Linux and on
   the Windows box before shipping. *Breaks when:* a pin names a build that
   cannot run on that system, or the decoder's output differs from what
   § 4.5 assumes.
@@ -408,7 +421,7 @@ published.** The pre-release mark keeps it away from the updater:
 | The installed decoder is changed or damaged on disk | The line offers the download again; nothing runs |
 | A Pressless update moves the pin | The same |
 | The decoder crashes, fails or runs past `DECODE_SECONDS` | *Could not be read as a picture*, today's sentence |
-| The decoder writes its animation as numbered files, not `decoded.png` | INV-9's animation fixture fails before shipping, and § 4.4 is amended to read the first file, keeping decision 6 |
+| The decoder writes its animation as numbered files, not `decoded.pam` | INV-9's animation fixture fails before shipping, and § 4.4 is amended to read the first file, keeping decision 6 |
 | The file's header claims more than `MAX_PIXELS`, or has none | *Could not be read as a picture*; the decoder never runs (§ 4.4 step 2) |
 | The decoder needs more than its memory limit: many frames, or many extra channels | *Could not be read as a picture* (§ 4.4 step 3) |
 | A computer no pin runs on (§ 4.1) | The line says JPEG XL photographs cannot be read here, with no button; nothing is downloaded or run |
@@ -423,7 +436,8 @@ Pressless itself. It is stated, not defended.
 ## 7. Tests
 
 The suite uses a **stand-in decoder**: a small program, written by the test,
-that copies a PNG fixture to its second argument. Its hash replaces the pin
+that writes a PNG fixture's picture to its second argument as a PAM, and
+its profile to `--icc_out`. Its hash replaces the pin
 through `monkeypatch`. INV-1 to INV-7 and INV-10 run everywhere, the
 Windows box included. INV-8 runs the script with `gh`
 replaced.
@@ -504,8 +518,9 @@ Rows live in `../reviews/PRESS-0275-jpeg-xl-extra-loop-log.md`.
 ## 13. Resource cost
 
 About 5 MB on disk once the decoder is installed. One view copy per JPEG XL
-photograph per site, no larger than the web copy. The decoded PNG in the
-work directory is deleted after each use. While it runs, the decoder may
+photograph per site, no larger than the web copy. The decoded PAM in the
+work directory is larger than a PNG, since nothing compresses it, and is
+deleted as soon as it is read. While it runs, the decoder may
 use up to `MEMORY_BASE` plus `MEMORY_PER_PIXEL` bytes a pixel (§ 4.4 step 3). No new Python dependency.
 
 ## 14. Open questions

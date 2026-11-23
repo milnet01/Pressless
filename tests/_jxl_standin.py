@@ -3,7 +3,9 @@
 # It is a small program the test writes: on Linux a script whose first line
 # names this Python, on Windows a batch file calling this Python on the
 # script. It reads what to do from `standin.json` beside the script, records
-# the arguments it was given, and copies a PNG to its second argument. Its
+# the arguments it was given, and writes the picture it is told of to its
+# second argument as a PAM, its colour profile to `--icc_out`, as djxl does
+# for jpegxl.COMMAND. Its
 # size and hash replace this system's pin through monkeypatch, so the real
 # decoder is never needed.
 from __future__ import annotations
@@ -27,7 +29,7 @@ CONTAINER = (b"\x00\x00\x00\x0cJXL \r\n\x87\x0a"
              + (8 + len(CODESTREAM)).to_bytes(4, "big") + b"jxlc" + CODESTREAM)
 
 _SCRIPT = """\
-import json, os, shutil, sys, time
+import json, os, sys, time
 from pathlib import Path
 
 here = Path(__file__).resolve().parent
@@ -42,14 +44,25 @@ if told.get("sleep"):
 if told.get("fail"):
     sys.exit(1)
 if told.get("png"):
-    shutil.copyfile(told["png"], sys.argv[2])
+    from PIL import Image
+    with Image.open(told["png"]) as picture:
+        profile = picture.info.get("icc_profile")
+        mode = picture.mode if picture.mode in ("L", "LA", "RGBA") else "RGB"
+        pixels = picture.convert(mode)
+    kind = {"L": "GRAYSCALE", "LA": "GRAYSCALE_ALPHA", "RGB": "RGB", "RGBA": "RGB_ALPHA"}[mode]
+    head = (f"P7\\nWIDTH {pixels.width}\\nHEIGHT {pixels.height}\\nDEPTH {len(mode)}\\n"
+            f"MAXVAL 255\\nTUPLTYPE {kind}\\nENDHDR\\n")
+    Path(sys.argv[2]).write_bytes(head.encode("ascii") + pixels.tobytes())
+    for argument in sys.argv[3:]:
+        if argument.startswith("--icc_out=") and profile:
+            Path(argument.split("=", 1)[1]).write_bytes(profile)
 """
 
 PLATFORM = "windows" if sys.platform == "win32" else "linux"
 
 
 def png(path: Path, size=(40, 30), colour=(30, 90, 200)) -> Path:
-    """A PNG for the stand-in to hand back as the decoded picture."""
+    """A PNG holding the picture the stand-in hands back, as a PAM."""
     out = io.BytesIO()
     Image.new("RGB", size, colour).save(out, "PNG")
     path.write_bytes(out.getvalue())
