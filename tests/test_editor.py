@@ -20,7 +20,6 @@ import re
 import shutil
 import subprocess
 import threading
-import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -148,6 +147,23 @@ def test_a_published_entry_is_untouched_by_its_edits(tmp_path):
         status, headers, _ = browser.request("GET", "/edit?slug=seaside")
         assert status == 303
         assert headers["Location"] == f"/edit?slug={reply['slug']}"
+
+
+def test_a_store_failure_drawing_the_editor_is_shown(tmp_path, monkeypatch):
+    """PRESS-0012 § 4.4: the editor page's own Store reads run inside the
+    capture, so their failure is the Face's sentence. Breaks when the page
+    is drawn after the capture ends, and the failure reaches the last
+    resort instead."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+
+    def unreadable(folder: Path) -> tuple[str, ...]:
+        raise store.StoreError("the photographs folder could not be read")
+
+    monkeypatch.setattr(store, "list_photographs", unreadable)
+    with _editor(folder) as browser:
+        status, _, text = browser.request("GET", "/edit?slug=seaside")
+    assert status == 200 and _said(store.StoreError) in text
 
 
 # ------------------------------------------------------------------ INV-2 ---
@@ -1018,34 +1034,98 @@ _UPLOAD_HARNESS = """
 const shown = {};
 globalThis.document = {getElementById: (id) => shown[id] || (shown[id] = {innerHTML: ""})};
 globalThis.window = globalThis;
+globalThis.say = (key) => key;
+const said = {textContent: ""}, during = [];
 const answers = [
   () => Promise.resolve({status: 409, text: async () => "refused"}),
   () => Promise.reject(new TypeError("no connection")),
   () => Promise.resolve({status: 200,
                          text: async () => JSON.stringify({name: "a.jpg", notices: "noted"})}),
 ];
-globalThis.fetch = () => answers.shift()();
+globalThis.fetch = () => { during.push(said.textContent); return answers.shift()(); };
 %s
 (async () => {
   const stopped = [];
   const stop = (text) => stopped.push(text);
   const file = {name: "a b.jpg"};
-  const refused = await window.presslessUpload("/photograph", file, stop);
+  const refused = await window.presslessUpload("/photograph", file, stop, said);
   const failure = shown.failure.innerHTML;
-  const dropped = await window.presslessUpload("/photograph", file, stop);
-  const kept = await window.presslessUpload("/file", file, stop);
-  process.stdout.write(JSON.stringify({refused, failure, dropped, stopped, kept,
+  const dropped = await window.presslessUpload("/photograph", file, stop, said);
+  const kept = await window.presslessUpload("/file", file, stop, said);
+  process.stdout.write(JSON.stringify({refused, failure, dropped, stopped, kept, during,
+                                       after: said.textContent,
                                        notices: shown.notices.innerHTML}));
 })();
 """
+
+
+_STOP_HARNESS = """
+const shown = {};
+globalThis.document = {getElementById: (id) => shown[id] || (shown[id] = {})};
+globalThis.window = globalThis;
+globalThis.say = (key) => key;
+%s
+let stopped = false;
+window.presslessStop(() => { stopped = true; })("refused");
+process.stdout.write(JSON.stringify({stopped, status: shown["save-status"].textContent,
+                                     failure: shown.failure.innerHTML}));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_undo_row_leads_with_its_buttons_and_says_a_press_runs():
+    """PRESS-0015 § 4.6 and PRESS-0353 § 4.3: what Your site puts before Undo
+    shares its row, and a running press marks the status line. Breaks when
+    `before` lands outside the row, or the running mark is dropped."""
+    row = editor.undo_row("Undoing <now>", running=True, before="<a>Publish</a>")
+    assert row.startswith('<p><a>Publish</a><button type="button" data-undo>')
+    assert ('<p id="undo-status" class="press-status" role="status" data-press="running">'
+            "Undoing &lt;now&gt;</p>") in row
+    assert ' data-press="running"' not in editor.undo_row("", running=False)
+
+
+
+def test_both_editors_stop_saving_alike(tmp_path):
+    """PRESS-0012 § 4.8: saving stops with its flag set, "not saved" on the
+    status line and the failure shown, in either editor. Breaks when the
+    shared stop leaves one of the three out, or an editor keeps its own."""
+    harness = tmp_path / "stop.js"
+    harness.write_text(_STOP_HARNESS % editor.SAVING_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
+                         timeout=30)
+    assert json.loads(run.stdout) == {"stopped": True, "status": "script.editor.not_saved",
+                                      "failure": "refused"}
+    for script in (editor._EDITOR_SCRIPT, page_editor._PAGE_SCRIPT):
+        assert script.count("window.presslessStop(") == 1
+        assert script.count('"script.editor.not_saved"') == 1    # SAVING_SCRIPT's own
+
+
+def _arguments(script: str, call: str) -> list[list[str]]:
+    """Each call's arguments in `script`, split at its own commas."""
+    found = []
+    for start in [m.end() for m in re.finditer(re.escape(call), script)]:
+        depth, args, at = 0, [], start
+        for i in range(start, len(script)):
+            if script[i] in "([{":
+                depth += 1
+            elif script[i] in ")]}" and depth:
+                depth -= 1
+            elif script[i] == ")" or (script[i] == "," and not depth):
+                args.append(script[at:i].strip())
+                at = i + 1
+                if script[i] == ")":
+                    break
+        found.append(args)
+    return found
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_every_upload_says_how_it_ended(tmp_path):
     """A photograph or file posted from either editor's view shows a refusal,
     stops saving where the Face cannot be reached, and shows a kept file's
-    notices. Breaks when a view posts on its own and a dropped connection
-    says nothing, or the notices are dropped."""
+    notices. Each says it is adding while it posts. Breaks when a view posts
+    on its own and a dropped connection says nothing, the notices are
+    dropped, or an upload shows nothing until it ends."""
     harness = tmp_path / "upload.js"
     harness.write_text(_UPLOAD_HARNESS % editor.UPLOAD_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
@@ -1054,8 +1134,11 @@ def test_every_upload_says_how_it_ended(tmp_path):
     assert (seen["refused"], seen["failure"]) == (None, "refused")
     assert (seen["dropped"], seen["stopped"]) == (None, [""])
     assert seen["kept"] == {"name": "a.jpg", "notices": "noted"} and seen["notices"] == "noted"
+    assert seen["during"] == ["script.editor.adding_photograph"] * 2 + ["script.editor.adding_file"]
+    assert seen["after"] == ""
     for script in (editor._VISUAL_SCRIPT, editor._EDITOR_SCRIPT, page_editor._VISUAL_SCRIPT):
         assert '"/photograph?name=' not in script and "presslessUpload(" in script
+        assert all(len(args) == 4 for args in _arguments(script, "presslessUpload("))
     assert '"/file?name=' not in page_editor._VISUAL_SCRIPT
 
 
@@ -1073,13 +1156,144 @@ def test_press_says_publishing_the_instant_it_is_clicked(answer, tmp_path):
     seen = json.loads(run.stdout)
     assert seen["clicked"] == ["script.press.checking", True]
     # PRESS-0345 INV-6: the press is posted only after Publish now.
-    assert seen["posted"][-1] == "check" if answer == "wait" else "/publish"
+    assert seen["posted"][-2:] == (["/save", "check"] if answer == "wait"
+                                   else ["check", "/publish"])
     if answer == "go":
         assert seen["shown"] == ["script.press.checking", "script.press.publishing",
                                  "script.press.published"]
     else:
         assert seen["shown"] == ["script.press.checking", "script.standing.off_site"]
         assert seen["off"] is False
+
+
+# PRESS-0346 § 4.5: the visual view's model, driven through a frame with
+# just enough of a document to pair, pick, type and remove. The case to run
+# comes from the command line.
+_VISUAL_HARNESS = _STAND_IN + r"""
+class El {
+  constructor(doc, localName, own = "") {
+    Object.assign(this, {ownerDocument: doc, localName, own, children: [], parent: null,
+                         attrs: {}});
+  }
+  get textContent() { return this.own + this.children.map((c) => c.textContent).join(""); }
+  set textContent(text) { this.own = text; this.children = []; }
+  get innerHTML() { return this.textContent; }
+  set innerHTML(text) { this.textContent = text; }
+  append(...added) {
+    for (const e of added) { e.remove(); e.parent = this; this.children.push(e); }
+  }
+  appendChild(e) { this.append(e); }
+  remove() {
+    if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1);
+    this.parent = null;
+  }
+  after(e) { e.remove(); e.parent = this.parent;
+             this.parent.children.splice(this.parent.children.indexOf(this) + 1, 0, e); }
+  before(e) { e.remove(); e.parent = this.parent;
+              this.parent.children.splice(this.parent.children.indexOf(this), 0, e); }
+  contains(e) { for (; e; e = e.parent) if (e === this) return true; return false; }
+  setAttribute(name, value) { this.attrs[name] = value; }
+  removeAttribute(name) { delete this.attrs[name]; }
+  getAttribute(name) { return name in this.attrs ? this.attrs[name] : null; }
+  focus() {}
+  querySelector(tag) {
+    for (const c of this.children) {
+      const found = c.localName === tag ? c : c.querySelector(tag);
+      if (found) return found;
+    }
+    return null;
+  }
+}
+const kase = process.argv[2];
+const paragraph = (marks) => ({kind: "paragraph", typed: true, marks});
+const doc = {readyState: "complete", body: {}, URL: "http://face/preview/", handlers: {},
+             head: {appendChild() {}},
+             createElement: (name) => new El(doc, name),
+             addEventListener(type, handler) { this.handlers[type] = handler; },
+             getSelection: () => ({rangeCount: 0, collapse() {}})};
+const holder = new El(doc, "div");
+holder.setAttribute("class", "entry-body");
+const blocks = kase === "reshaped-list"
+  ? [paragraph("one"), {kind: "list", typed: false, marks: "- a"}, paragraph("three")]
+  : [paragraph("one"), paragraph("two")];
+holder.append(...blocks.map((block) => new El(doc, "p", block.marks)));
+doc.querySelectorAll = () => kase === "no-body" ? [] : [holder];
+Object.assign(element("#preview"), {contentDocument: doc,
+                                     contentWindow: {scrollY: 0, scrollTo() {}}});
+form.dataset.view = "visual";
+element("#blocks").textContent = JSON.stringify({
+  blocks, body_class: "entry-body", link: "^https?://",
+  colours: {named: {}, picked: null}, originals: "/originals/"});
+const panel = element("#panel");
+panel.querySelector = (selector) => element(selector);
+panel.querySelectorAll = () => [];
+globalThis.Node = {ELEMENT_NODE: 1};
+window.presslessTyping = {text: (t) => t, inline: (el) => el.textContent};
+window.presslessEntryPage = {changed() {}, switchTo() {}, stop() {}};
+%s
+const entry = window.presslessEntry;
+const [one, two] = holder.children;
+const pick = (el) => doc.handlers.click({target: el, preventDefault() {}});
+const type = (el, words) => { el.textContent = words; doc.handlers.input({target: el}); };
+const mark = (value) => panel.handlers.input({stopPropagation() {},
+                                             target: {dataset: {field: "marks"}, value}});
+const posts = [];
+const post = () => { const p = entry.post(); posts.push({blocks: p.blocks, removed: p.removed});
+                     return p; };
+if (kase === "removed") {
+  pick(two);
+  type(two, "");
+  const first = post();
+  element("[data-act=remove]").handlers.click();
+  first.saved({outline: [paragraph("one")], preview: ""});
+} else if (kase === "no-body") {
+  element("#add-kind").value = "paragraph";
+  element("[data-act=add]").handlers.click();
+} else if (kase === "reshaped-list") {
+  pick(one); mark("x\n\ny");
+  pick(holder.children[2]); mark("z");
+  const first = post();
+  pick(one); mark("x2");
+  first.saved({outline: [paragraph("x"), paragraph("y"), blocks[1], paragraph("z")],
+               preview: "/preview/a.html"});
+} else {
+  pick(one); mark("x\n\ny");
+  const first = post();
+  if (kase === "reshaped-typed") { pick(two); type(two, "two typed"); }
+  first.saved({outline: [paragraph("x"), paragraph("y"), paragraph("two")],
+               preview: "/preview/a.html"});
+}
+post();
+process.stdout.write(JSON.stringify(posts));
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize(("case", "last"), [
+    ("removed", {"blocks": [{"keep": 0}], "removed": []}),
+    ("no-body", {"blocks": [{"keep": 0}, {"keep": 1}], "removed": []}),
+    ("reshaped", {"blocks": [{"keep": 0}, {"keep": 1}, {"keep": 2}], "removed": []}),
+    ("reshaped-typed", {"blocks": [{"marks": "x\n\ny"}, {"paragraph": "two typed"}],
+                        "removed": [0, 1, 2]}),
+    ("reshaped-list", {"blocks": [{"marks": "x2"}, {"marks": "- a"}, {"marks": "z"}],
+                       "removed": [0, 1, 2, 3]}),
+])
+def test_a_visual_save_keeps_saving_what_the_page_shows(case, last, tmp_path):
+    """PRESS-0346 § 4.5: each block index is named once, and what is typed
+    while a save is out is posted by the next. Breaks when a block emptied by
+    one save and removed while it was out is named again by the next, which
+    the Face refuses; when a block added while the preview has no body throws
+    and stops saving; or when a marks box saved as more blocks throws away
+    words typed meanwhile in another block, or posts a list between two
+    marks boxes as a paragraph."""
+    harness = tmp_path / "visual.js"
+    harness.write_text(_VISUAL_HARNESS % editor._VISUAL_SCRIPT,
+                       encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), case], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    seen = [{"blocks": json.loads(p["blocks"]), "removed": json.loads(p["removed"])}
+            for p in json.loads(run.stdout)]
+    assert seen[-1] == last
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
@@ -1463,28 +1677,56 @@ def test_the_editor_page_fetches_nothing_from_the_web(tmp_path):
 
 def test_two_requests_make_one_view_copy(tmp_path, monkeypatch):
     """PRESS-0275 § 4.7: the frame and the panel ask for the same view copy
-    at once, and it is made once. Breaks when a second request remakes it
-    over the file the first is sending, which Windows refuses (a 404)."""
+    at once, and it is made once, both getting it. Breaks when a second
+    request remakes it over the file the first is sending, which Windows
+    refuses (a 404)."""
     folder = _folder(tmp_path)
     original = store.photograph_path_for(folder, "seaside.jxl")
     original.parent.mkdir(parents=True)
     original.write_bytes(b"a stand-in original")
-    made = []
+    made, second = [], threading.Event()
 
-    def slow_copy(_original: Path, target: Path) -> None:
+    class Watched:
+        """The lock, saying when the second request reaches it."""
+        def __init__(self) -> None:
+            self.lock, self.asked = threading.Lock(), 0
+
+        def __enter__(self) -> None:
+            self.asked += 1
+            if self.asked == 2:
+                second.set()
+            self.lock.acquire()
+
+        def __exit__(self, *_: object) -> None:
+            self.lock.release()
+
+    def held_copy(_original: Path, target: Path) -> None:
+        # The first copy waits for the second request: at the lock, or here
+        # where nothing holds it off.
         made.append(target)
-        time.sleep(0.2)
+        if len(made) == 2:
+            second.set()
+        assert second.wait(10)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"a stand-in view")
 
-    monkeypatch.setattr(builder, "webp_copy", slow_copy)
-    asked = [threading.Thread(target=editor.photograph_file, args=(folder, "seaside.jxl"))
-             for _ in range(2)]
+    monkeypatch.setattr(editor, "_VIEWS_LOCK", Watched())
+    monkeypatch.setattr(builder, "webp_copy", held_copy)
+    answers: list[object] = []
+
+    def ask() -> None:
+        try:
+            answers.append(editor.photograph_file(folder, "seaside.jxl"))
+        except Exception as exc:  # noqa: BLE001 -- the assertion below names it
+            answers.append(exc)
+
+    asked = [threading.Thread(target=ask) for _ in range(2)]
     for thread in asked:
         thread.start()
     for thread in asked:
         thread.join()
     assert len(made) == 1
+    assert answers == [made[0], made[0]]
 
 
 def test_a_view_copy_is_remade_when_the_original_is_newer(tmp_path, monkeypatch):

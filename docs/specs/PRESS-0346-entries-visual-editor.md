@@ -195,7 +195,11 @@ page to be typed into.
 body as written and its outline, so either view can open from the
 reply after a switch. After a visual save, block indices are the new outline's, and
 the frame is rebuilt from the reply's preview except while the caret is
-in a block (PRESS-0260 § 4.5).
+in a block (PRESS-0260 § 4.5). Where a marks box was written as more or
+fewer blocks and the page changed while the save was out, the blocks
+between the first and last marks box are posted again from the page,
+and the next save rebuilds the frame
+(`test_a_visual_save_keeps_saving_what_the_page_shows`).
 
 ### 4.6 What this item never does
 

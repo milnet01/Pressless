@@ -218,6 +218,9 @@ def wider_than_owner(handle: int) -> int:
 
 def _is_windows() -> bool:
     """Read at call time, so the platform is what a test patches (§ 4.4).
+    Underscored, but the platform test the whole program shares: other
+    modules call it and tests patch it by this name, which PRESS-0001 and
+    PRESS-0005 cite, so search them before changing it.
 
     `os.name` would be the obvious signal and cannot be patched in a test:
     `pathlib` branches on it to choose a path class, so setting it strands
