@@ -102,7 +102,7 @@ _WORDS: dict[str, str] = {
     ),
     "failure.settings.NotSetUp.what": "Pressless is not set up yet.",
     "failure.settings.NotSetUp.next": "Go through setup first.",
-    "failure.settings.SettingsError.what": "Pressless could not read its settings.",
+    "failure.settings.SettingsError.what": "Pressless could not read or save its settings.",
     "failure.settings.SettingsError.next": (
         "Pressless changed nothing in them. Send the details below to whoever helps you."
     ),

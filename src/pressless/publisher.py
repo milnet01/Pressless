@@ -190,7 +190,8 @@ class RepositoryMoved(PublishError):
 
 
 class Transport(Protocol):
-    """The one seam. Tests are its only other caller (§4.1).
+    """The one seam to the network (§4.1). Tests hand in a double, and the other
+    modules that call a web service take the same shape.
 
     Three things about it are part of the contract, because a test double
     must supply all three. It returns the response HEADERS, which is where a
