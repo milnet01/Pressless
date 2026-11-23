@@ -718,6 +718,53 @@ def test_a_style_is_coloured_as_css(tmp_path):
                      ("/* c */", "note")]
 
 
+_CHANGED = """const window = {};
+const document = {querySelectorAll: () => []};
+%s
+const code = window.presslessCode;
+const [old, now] = JSON.parse(require("fs").readFileSync(0, "utf8"))
+  .map((text) => code.lines(code.colour(text)));
+const change = code.changed(old.map(code.key), now.map(code.key));
+process.stdout.write(JSON.stringify([old, now, change]));
+"""
+
+_LONG = "".join(f'<section>\n<h2 id="s{n}">Part {n}</h2>\n<p>Words, <em>stress</em>.</p>\n'
+                f"<style>.p{n} {{\n  color: red;\n}}</style>\n</section>\n" for n in range(200))
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize(("old", "now", "most"), [
+    (_LONG, _LONG.replace("Part 100<", "Part 1000<"), 2),
+    (_LONG, _LONG.replace("<em>stress</em>.</p>\n<style>.p50 ",
+                          "<em>stress</em></p>\n<style>.p50 "), 2),
+    (_LONG, _LONG.replace('<h2 id="s7"', '<h2\nid="s7"'), 3),
+    (_LONG, _LONG + "<p>", 2),
+    ("<p>a</p>\n<p>a</p>\n", "<p>a</p>\n<p>a</p>\n<p>a</p>\n", 1),
+    ("<p>a</p>", "<p>a</p>", 0),
+    # The same letters, coloured as a property's value, then as a property.
+    ("<style>a{b:c}</style>", "<style>a{b;c}</style>", 2),
+    # A note opened above a line colours that line, though its letters stay.
+    ("<p>\nx", "<!--<p>\nx", 4),
+    ("", _LONG, None), (_LONG, "", None), ("<p>a</p>", "<div>b</div>", None),
+])
+def test_a_change_rebuilds_only_the_lines_it_touches(old, now, most, tmp_path):
+    """PRESS-0479. Breaks when the lines kept on either side of a change do
+    not join back into the new text's own lines, which would put the colours
+    out of step with the letters, when the lines do not join back into the
+    text, or when a small change rebuilds the page."""
+    script = tmp_path / "changed.js"
+    script.write_text(_CHANGED % page_editor._CODE_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(script)], input=json.dumps([old, now]).encode("utf-8"),  # noqa: S603
+                         capture_output=True, check=True, timeout=30)
+    before, after, change = json.loads(run.stdout)
+    assert "".join(words for line in after for words, _ in line) == now
+    assert all(line[-1] == ["\n", ""] for line in after[:-1])
+    at, gone, added = change["at"], change["gone"], len(change["added"])
+    assert before[:at] + after[at:at + added] + before[at + gone:] == after
+    if most is not None:
+        assert gone + added <= most, (at, gone, added)
+
+
 # ------------------------------------------------------------- PRESS-0264 ---
 
 

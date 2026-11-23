@@ -1672,19 +1672,65 @@ _CODE_SCRIPT = r"""
     return pieces;
   }
 
-  function paint(box) {
-    const copy = box.firstElementChild, area = box.lastElementChild;
-    const made = document.createDocumentFragment();
-    for (const [words, kind] of colour(area.value)) {
+  // PRESS-0479: the pieces cut into lines, each holding its line break but
+  // the last, so the copy can hold a block per line and a keystroke lays out
+  // only the lines it changed, not the whole page.
+  function lines(pieces) {
+    const cut = [[]];
+    for (const [words, kind] of pieces) {
+      words.split("\n").forEach((part, n) => {
+        if (n > 0) { cut[cut.length - 1].push(["\n", ""]); cut.push([]); }
+        if (part) cut[cut.length - 1].push([part, kind]);
+      });
+    }
+    return cut;
+  }
+  const key = (line) => line.map(([words, kind]) => kind + "\u0000" + words).join("\u0001");
+
+  // What turns the `old` lines into `now`, both as keys: from line `at`,
+  // `gone` old lines give way to `added` new ones. Only the stretch between
+  // the lines both start and end with.
+  function changed(old, now) {
+    let at = 0, end = 0;
+    while (at < old.length && at < now.length && old[at] === now[at]) at += 1;
+    while (end < old.length - at && end < now.length - at
+           && old[old.length - 1 - end] === now[now.length - 1 - end]) end += 1;
+    return {at, gone: old.length - at - end, added: now.slice(at, now.length - end)};
+  }
+
+  // One line's block. A last empty line still takes its height in the box.
+  function block(line) {
+    const made = document.createElement("div");
+    if (!line.length) made.append(" ");
+    for (const [words, kind] of line) {
       if (!kind) { made.append(words); continue; }
       const span = document.createElement("span");
       span.className = "k-" + kind;
       span.textContent = words;
       made.append(span);
     }
-    // A last empty line still takes its height in the box.
-    if (area.value.endsWith("\n")) made.append(" ");
-    copy.replaceChildren(made);
+    return made;
+  }
+
+  // Each box's lines as painted, as keys, one block each in its copy.
+  const painted = new WeakMap();
+  function paint(box) {
+    const copy = box.firstElementChild, area = box.lastElementChild;
+    const now = lines(colour(area.value));
+    const keys = now.map(key);
+    if (!painted.has(box)) copy.replaceChildren();
+    const {at, gone, added} = changed(painted.get(box) || [], keys);
+    const after = copy.children[at + gone] || null;
+    if (gone) {
+      const going = document.createRange();
+      going.setStartBefore(copy.children[at]);
+      if (after) going.setEndBefore(after); else going.setEndAfter(copy.lastChild);
+      going.deleteContents();
+    }
+    const made = document.createDocumentFragment();
+    for (const line of now.slice(at, at + added.length)) made.append(block(line));
+    copy.insertBefore(made, after);
+    painted.set(box, keys);
     copy.scrollTop = area.scrollTop;
     copy.scrollLeft = area.scrollLeft;
   }
@@ -1712,7 +1758,8 @@ _CODE_SCRIPT = r"""
     paint(box);
   }
   // A script that sets the value of a box repaints it here, or every box.
-  window.presslessCode = {colour, paint: (box) => (box ? [box] : boxes).forEach(paint)};
+  window.presslessCode = {colour, lines, key, changed,
+                          paint: (box) => (box ? [box] : boxes).forEach(paint)};
 })();
 """
 
