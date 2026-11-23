@@ -168,6 +168,18 @@ def _why_not_kept(path: str, size: int, taken: _Paths) -> str | None:
     return say(twin) if twin else None
 
 
+def write_folder_left(held: Path, left) -> None:
+    """Record what laying the folder out left out, in the import folder `held`:
+    a JSON list of (path, why) pairs."""
+    safe_write.write_whole(held / FOLDER_LEFT, json.dumps(left, indent=1) + "\n",
+                           prefix=".folder-left-")
+
+
+def forget_folder_left(held: Path) -> None:
+    """The import folder `held` without its record of what was left out."""
+    (held / FOLDER_LEFT).unlink(missing_ok=True)
+
+
 def read_folder_left(held: Path) -> tuple[tuple[str, str], ...]:
     """What laying the folder out left out, from the import folder `held`."""
     try:

@@ -1367,7 +1367,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         taking_over = answers.get("take_over") == "yes"
         try:
             address = answers.get("site_address", "") if taking_over else ""
-            found = takein.found_held(folder, reading, key, commit, transport, address=address)
+            found = takein.read_held_or_fetch(folder, reading, key, commit, transport,
+                                              address=address)
             entries = publisher.root_entries(reading, key, transport)
             if taking_over:
                 shown = publisher.pages(reading.repository, key, transport)

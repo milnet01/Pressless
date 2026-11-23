@@ -161,7 +161,8 @@ segment each.
 
 `take_in` refuses with `TakeInStopped` where `store.holds_a_site(folder)` is
 true: it fills an empty Store only, as Import does (`docs/design.md` rule 9).
-Otherwise it fetches `commit` — the state `look` read, so what is written is
+It asks before the fetch and again inside the capture that writes, since the
+fetch holds no lock. Otherwise it fetches `commit` — the state `look` read, so what is written is
 what was shown — and writes it through the Store's own calls:
 
 1. Every entry, page, furniture piece, template, comment file, forwards
@@ -296,7 +297,8 @@ takes in the same state it showed.
   made elsewhere; the test keeps its name.*
 - **INV-3** — `take_in` writes only into a Store that holds no site.
   *Test:* `tests/test_takein.py::test_a_take_in_needs_an_empty_store`.
-  *Breaks when:* the check is dropped, or tested after the first write.
+  *Breaks when:* the check is dropped, tested after the first write, or
+  not asked again after the fetch.
 - **INV-4** — A take-in carries every Store file a publish put in
   `content/`, and every photograph and kept file the publish wrote, byte
   for byte as the repository holds it. A Store published to a recording

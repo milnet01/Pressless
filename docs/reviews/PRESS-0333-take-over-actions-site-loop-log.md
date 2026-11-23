@@ -14,3 +14,4 @@
 | amend-0379 | 2026-11-17 | none — no reviewer dispatched; an amendment | – | – | – | – | PRESS-0379: § 4.1 and step 6 — `takeover.done` is `takeover.unmark`; the test note names `fetch.addresses`. |
 | impl | 2026-11-23 | none — amendment for PRESS-0446; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5 step 3 asks for a build while the marker stands; step 6's marker that will not go is a notice. INV-8 names the build test. |
 | impl | 2026-11-23 | none — amendment for PRESS-0446; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.5: `replace_link` is named `way_on`, since it also answers the takeover link. |
+| impl | 2026-11-23 | none — amendment for PRESS-0448; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.2: `folder-left.json` is written before `folder.json`, through `write_folder_left`; § 4.3: `found_held` is named `read_held_or_fetch`. |
