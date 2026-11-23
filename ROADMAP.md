@@ -9540,25 +9540,40 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0465] **The test suite runs faster and lighter.**
+- ✅ [PRESS-0465] **The test suite runs faster and lighter.**
   Review type: Test. From review-tests dimension 12.
   Four test_main tests wait out RETURN_SECONDS: about 24 s of an 80 s
   suite, measured at 1.26 s with it patched. Nine fixed negative waits
   cost about 5 s; test_words re-parses the source tree; test_log writes
   about 8.8 MB; test_dashboard starts a server it never uses;
   test_publish_jpeg_xl makes a folder above the repository.
+  Shipped 2026-11-23, 8220c11 (merged 23bc16c). 14 instances fixed. The
+  suite ran 66 s against 111 s before (2026-11-23, /usr/bin/time, with
+  other projects' work on the machine), peak memory unchanged. test_main
+  patches RETURN_SECONDS; test_words parses each source once; test_log
+  patches MAX_BYTES; test_dashboard starts no Face; test_credentials waits
+  on a signalled lock. Each changed test went red against a mutation.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0465.json.
   **Layman:** The checks that run before every push finish sooner.
   Kind: optimize.
   Source: review-2026-11-23.
   Lanes: Tests.
 
-- 📋 [PRESS-0466] **Tests for the shipped promises that have none.**
+- ✅ [PRESS-0466] **Tests for the shipped promises that have none.**
   Review type: Test. From verify-delivery and review-tests U3.
   No test found for: PRESS-0372's empty-body save, PRESS-0373's three
   sentences, PRESS-0381's stricter unpacking, PRESS-0382's answer,
   PRESS-0414's failure pages, PRESS-0415's footer name and PRESS-0429's
   setup top bar. Also the untested branches review-tests lists by lane,
   where the owning subject item does not take them.
+  Shipped 2026-11-23, d3ce452 (merged 23bc16c). 13 rows: 5 fixed, 8
+  dismissed as already covered, each proven by a mutation going red.
+  Before this, dropping TYPING_SCRIPT from either editor left the whole
+  suite green; now both load it once and take keys from it. A caption
+  holding a link is read-only (node test plus a by-hand row); the setup top
+  bar's Usage link opens a new tab; _said_bytes's decimal mark and
+  log.owner_only on a mode-refusing drive are tested. Full suite 2839
+  passed. Ledger: local-archive/reviews/2026-11-23/close-findings/0466.json.
   **Layman:** Promises made in the release notes get a check that runs every time.
   Kind: review-fix.
   Source: review-2026-11-23.
