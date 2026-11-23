@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=487 -->
+<!-- ants-roadmap-id-high-water: PRESS=488 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9797,10 +9797,17 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0484] **A media ZIP that turns out corrupt partway keeps the places it already filled.**
+- ✅ [PRESS-0484] **A media ZIP that turns out corrupt partway keeps the places it already filled.**
   Review type: Codebase. Surfaced by PRESS-0453's sweep: unpack_media
   keeps its filled places after a failed write on this computer, but
   still loses them when the ZIP proves corrupt partway through.
+  Shipped 2026-11-23, 4298211 (merged 8c280ea). A media ZIP cut short or
+  damaged partway raises MediaDamaged carrying the places it filled; the
+  gaps step keeps them, says the ZIP is damaged, and rewrites
+  unfetched.json. Before, the places were forgotten, or an uncaught zlib
+  error broke the page. The ZIP read errors are one list, in _bring.py.
+  PRESS-0125 amended. Full suite 2858 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0484.json.
   **Layman:** A damaged media ZIP no longer makes Pressless forget the files it already saved.
   Kind: review-fix.
   Source: review-2026-11-23.
@@ -9848,6 +9855,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: investigate.
   Source: review-2026-11-23.
   Lanes: Publisher.
+
+- 📋 [PRESS-0488] **The AI helper says when a publish left a copy behind.**
+  Review type: Codebase. Surfaced by PRESS-0480's sweep: assistant._press
+  discards Published.copy_kept, so a publish the AI helper runs never says
+  a copy stayed. Needs new screen words and a place in the helper's answer
+  or the waiting-request box (PRESS-0337 § 4.6).
+  **Layman:** After an AI app publishes, you are told when an entry's working copy was kept, as the Publish button already tells you.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Assistant.
 
 ## 1.3.0 — a home other than GitHub
 
