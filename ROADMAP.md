@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=488 -->
+<!-- ants-roadmap-id-high-water: PRESS=489 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9904,6 +9904,18 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Assistant.
+
+- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
+  Review type: Codebase. Queued by PRESS-0461 from review-code
+  --performance lane-05 (takein.py). Keeping the files on disk until
+  Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
+  copy, its cleanup, Windows holding files open), so the spec changes
+  first. The re-fetch now costs one parallel fetch: measured 4.23 s per 40
+  files against a stand-in, 2026-11-23.
+  **Layman:** Finishing taking a site in no longer downloads it once more.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Setup.
 
 ## 1.3.0 — a home other than GitHub
 
