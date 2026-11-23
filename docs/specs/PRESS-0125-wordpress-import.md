@@ -278,7 +278,10 @@ becomes `index` sits at the root, its links without `../`, as
 `starter.fill` writes it. Addresses under the old site's uploads folder
 whose file Import holds are rewritten to the page's `../`, or nothing for
 `index`, + `builder.web_photograph(name)`, or `builder.web_file(name)` for
-a file in `files/`; others stay and are listed. Blocks
+a file in `files/`; others stay and are listed. The body is
+carried as written, so each kind of code in it a browser runs is listed:
+a `<script>`, an `<iframe>`, `<embed>` or `<object>`, an `on…` attribute,
+and a `javascript:` address. Blocks
 reads what sections it can, and the rest is a code section (design.md
 § Pages, and how they are held).
 

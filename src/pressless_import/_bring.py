@@ -20,6 +20,7 @@ import unicodedata
 import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -189,6 +190,7 @@ def _page_html(page: _Page, sheets: tuple[str, ...], web: Mapping[str, str],
     and the rest is code."""
     root = page.name == "index"
     body = prepared(page.body, wordpress_markup)
+    page.dropped.extend(_code(body))
     body, listed = _addresses(body, "" if root else "../", web, old_site)
     page.dropped.extend(listed)
     text = starter.new_page(builder.HOME_NAV if root else page.name, page.title, sheets,
@@ -198,6 +200,43 @@ def _page_html(page: _Page, sheets: tuple[str, ...], web: Mapping[str, str],
     except builder.BuildStopped:
         adopted = None
     return adopted or text
+
+
+# Code a page's body carries as written (§ 4.6). It runs wherever the page
+# is shown, and an old site's pages can hold code someone else put there,
+# so each kind is listed, in this order.
+_SCRIPT = "a script, carried as written: check you trust it"
+_FRAME = "an embedded frame or object, carried as written: check you trust it"
+_ON = "an attribute that runs a script (on…), carried as written: check you trust it"
+_SCRIPT_ADDRESS = "a javascript: address, carried as written: check you trust it"
+# What a browser leaves out of an address before reading its scheme.
+_IGNORED_IN_ADDRESS = re.compile(r"[\x00-\x20]")
+
+
+class _CodeFinder(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.found: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "script":
+            self.found.add(_SCRIPT)
+        elif tag in ("iframe", "embed", "object"):
+            self.found.add(_FRAME)
+        for name, value in attrs:
+            if name.startswith("on"):
+                self.found.add(_ON)
+            elif _IGNORED_IN_ADDRESS.sub("", value or "").lower().startswith("javascript:"):
+                self.found.add(_SCRIPT_ADDRESS)
+
+
+def _code(body: str) -> list[str]:
+    """Each kind of code in a page's body that runs in a browser, as a
+    Report line."""
+    finder = _CodeFinder()
+    finder.feed(body)
+    finder.close()
+    return [what for what in (_SCRIPT, _FRAME, _ON, _SCRIPT_ADDRESS) if what in finder.found]
 
 
 # ----------------------------------------------------------- the menu ----

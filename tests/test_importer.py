@@ -1799,6 +1799,26 @@ def test_pages_come_across_in_the_starter_shape(tmp_path):
     assert report.pages == ("about", "index")
 
 
+def test_code_a_page_carries_is_listed(tmp_path):
+    """PRESS-0125 § 4.6: a page's body comes across as written, so each kind
+    of code in it that runs in a browser is listed: a script, an embedded
+    frame, an attribute that runs a script, and a javascript: address.
+
+    Breaks when a page carries code from the export and nothing says so."""
+    site, report = _bring(tmp_path, _export(
+        _item(10, kind="page", slug="welcome", title="A site", body="<p>Hello.</p>"),
+        _item(11, kind="page", slug="about", title="About",
+              body='<p>Us.</p><script>steal()</script>'
+                   '<iframe src="https://video.example.org/v/1"></iframe>'
+                   '<img src="x.png" onerror="steal()"><a href="javascript:steal()">go</a>')))
+
+    about = [dropped.what for dropped in report.dropped if dropped.slug == "pages/about"]
+    for named in ("a script,", "an embedded frame", "an attribute that runs a script",
+                  "a javascript: address"):
+        assert any(what.startswith(named) for what in about), (named, about)
+    assert not any(dropped.slug == "pages/index" for dropped in report.dropped), report.dropped
+
+
 def test_an_export_with_no_pages_or_posts_takes_the_starter_home(tmp_path):
     """§ 4.6: where the export holds no page, the starter's index is written;
     with no post, the journal is off (§ 6)."""
