@@ -524,6 +524,7 @@ WRONG_RULES = "votes_setup.check.rules_wrong"
 NO_DATABASE = "votes_setup.check.database"
 UNREACHABLE = "votes_setup.check.unreachable"
 KEY_REFUSED = "votes_setup.check.key"
+BUSY = "votes_setup.check.busy"
 # The shape Google's Auth answers in (firebase.google.com/docs/reference/rest/auth).
 BAD_KEY = (400, {"error": {"code": 400, "message": "API key not valid. Please pass a valid "
                                                    "API key."}})
@@ -552,12 +553,19 @@ ANONYMOUS_OFF = (400, {"error": {"code": 400, "message": "OPERATION_NOT_ALLOWED 
     ({"delete": 403}, WRONG_RULES, True),
     ({"delete": NO_ANSWER}, UNREACHABLE, True),
     ({"second": 200, "delete": NO_ANSWER}, WRONG_RULES, True),
+    ({"first": 400}, UNREACHABLE, True),
+    ({"signup": 429}, BUSY, False),
+    ({"first": 429}, BUSY, True),
+    ({"second": 429}, BUSY, True),
+    ({"count": 429}, BUSY, True),
+    ({"delete": 429}, BUSY, True),
 ])
 def test_check_answers(tmp_path: Path, answers: dict, said: str, delete_sent: bool) -> None:
     """INV-10: § 4.6's answer for each reply, and the test vote removed on every
-    path where the first write was sent and not refused. Breaks when a 403 on
-    the first write reads as "could not reach Google", or a failure skips the
-    delete."""
+    path where the first write was sent and not refused as 403 or 404. Breaks
+    when a 403 on the first write reads as "could not reach Google", a 429
+    (Google's limit) reads as wrong rules or a refused sign-in, or a failure
+    skips the delete."""
     _saved(tmp_path, votes=VOTES)
     google = _Google(**answers)
     with _screen(tmp_path, google) as browser:
@@ -565,7 +573,7 @@ def test_check_answers(tmp_path: Path, answers: dict, said: str, delete_sent: bo
     assert status == 200, page
     assert say(said) in page, (answers, page)
     others = {READY, ANONYMOUS, NO_RULES, WRONG_RULES, NO_DATABASE, UNREACHABLE,
-              KEY_REFUSED} - {said}
+              KEY_REFUSED, BUSY} - {said}
     for other in others:
         assert say(other) not in page, other
     assert ("delete" in google.steps) is delete_sent, google.steps

@@ -91,12 +91,16 @@ _FULL = frozenset(code for code in (errno.ENOSPC, getattr(errno, "EDQUOT", None)
 _HANDLE_DISK_FULL = 39
 
 
-def download_failure(exc: BaseException, what: str) -> DownloadFailed:
-    """DiskFull for a full disk, else DownloadFailed, naming `what` and the
+def download_failure(exc: BaseException, what: str, *, folder: bool = False) -> DownloadFailed:
+    """DiskFull for a full disk; NotWritable where `folder` is set and the
+    folder refused the file; else DownloadFailed. Names `what` and the
     error's reason, never its message, which quotes a path."""
+    said = f"{what}: {os_reason.of(exc)}"
+    if folder and isinstance(exc, OSError) and exc.errno in _NOT_WRITABLE:
+        return NotWritable(said)
     full = isinstance(exc, OSError) and (
         exc.errno in _FULL or getattr(exc, "winerror", None) == _HANDLE_DISK_FULL)
-    return (DiskFull if full else DownloadFailed)(f"{what}: {os_reason.of(exc)}")
+    return (DiskFull if full else DownloadFailed)(said)
 
 
 class UpdateRejected(UpdateError):
@@ -417,10 +421,8 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
         handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL
                          | getattr(os, "O_BINARY", 0), 0o600)
     except OSError as exc:
-        what = "the download could not be made beside the program"
-        if exc.errno in _NOT_WRITABLE:
-            raise NotWritable(f"{what}: {os_reason.of(exc)}") from exc
-        raise download_failure(exc, what) from exc
+        raise download_failure(exc, "the download could not be made beside the program",
+                               folder=True) from exc
     kept = False
     try:
         try:

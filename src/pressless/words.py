@@ -2182,6 +2182,10 @@ _WORDS: dict[str, str] = {
         "There is not enough room on this computer for JPEG XL support. Free some space, then "
         "try again."
     ),
+    "jpegxl.not_writable": (
+        "JPEG XL support could not be saved, because Pressless may not change the folder it "
+        "runs from."
+    ),
     "jpegxl.rejected": "The download was not the expected file, so it was thrown away.",
     "jpegxl.no_decoder": (
         "JPEG XL photographs cannot be read on this computer. Pressless's decoder runs on "
@@ -2615,6 +2619,9 @@ _WORDS: dict[str, str] = {
     "votes_setup.check.database": "There is no database yet. Create it (step 2).",
     "votes_setup.check.unreachable": (
         "Pressless could not reach Google, so nothing is wrong yet. Try again later."
+    ),
+    "votes_setup.check.busy": (
+        "Google asked Pressless to wait, so nothing is wrong yet. Try again in a few minutes."
     ),
     "votes_setup.check.recaptcha": (
         "With App Check on, this cannot be checked from your computer. Try the buttons on your "
