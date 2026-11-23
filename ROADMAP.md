@@ -9261,10 +9261,20 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Setup.
 
-- 📋 [PRESS-0449] **Second-round review fixes: Insights, Your site and usage reports.**
+- ✅ [PRESS-0449] **Second-round review fixes: Insights, Your site and usage reports.**
   Subject 10. Review types: Codebase, Test.
   Findings: review-code lane-10, review-readability lane-10, and the
   performance and test reviews' findings on these files and their tests.
+  Shipped 2026-11-23, 902c3e6..1955fdc (merged 7046587). 27 findings: 25
+  fixed, 0 queued, 2 dismissed (a measured 1.2 ms cache parse; logging a
+  cache write would break design.md § Logging). Visitors asks Google for
+  no token while its numbers are under an hour old, waits an hour after
+  "too many requests", shows the sign-in-again link under kept numbers,
+  ignores a damaged cache, and escapes the strip's end labels. The tile
+  says when its figure was fetched. PRIVACY.md names the fixed value each
+  report always carried. PRESS-0019 and PRESS-0353 amended. Full suite
+  2699 passed; ruff clean.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/10.json.
   **Layman:** Bug fixes and tidy-ups in visitor figures, the Your site screen and usage reports.
   Kind: review-fix.
   Source: review-2026-11-23.
