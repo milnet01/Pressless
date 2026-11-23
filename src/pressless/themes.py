@@ -152,16 +152,18 @@ def known(key: str) -> bool:
     return key == FOLLOW or key in _BY_KEY
 
 
-def _read(folder: Path) -> dict:
-    """The file's choices; missing, unreadable or another version is none."""
-    return json_record.read(Path(folder) / FILE_NAME)
+def _read(folder: Path, *, strict: bool = False) -> dict:
+    """The file's choices; missing, unreadable or another version is none.
+    `strict` raises where the file is there but cannot be read now."""
+    return json_record.read(Path(folder) / FILE_NAME, strict=strict)
 
 
 def _write(folder: Path, **choice: str | int) -> None:
     """Replace the file whole, keeping the choices `choice` does not name.
-    Locked: /theme and /text-size are answered on threads of their own."""
+    Locked: /theme and /text-size are answered on threads of their own. A
+    file that cannot be read now raises OSError rather than lose the rest."""
     with _LOCK:
-        json_record.write(Path(folder) / FILE_NAME, {**_read(folder), **choice})
+        json_record.write(Path(folder) / FILE_NAME, {**_read(folder, strict=True), **choice})
 
 
 def read_choice(folder: Path) -> str:
