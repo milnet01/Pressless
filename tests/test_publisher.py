@@ -3112,6 +3112,7 @@ class _Overlapping(_Transport):
                     self._together.wait()
                 except threading.BrokenBarrierError:
                     pass
+                time.sleep(0.1)     # long enough for every reader to be under way
             with self._lock:
                 return super().request(method, url, body, headers)
         finally:

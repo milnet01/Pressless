@@ -531,7 +531,7 @@ Rows live in `../reviews/PRESS-0333-take-over-actions-site-loop-log.md`.
 
 ## 13. Resource cost
 
-- A site is downloaded once, one file at a time, into `import/folder/`, then moved into
+- A site is downloaded once, a few files at a time (§ 4.2), into `import/folder/`, then moved into
   the Store by rename as PRESS-0210 § 13 says. A Next press holds the page for as long
   as that takes, as `look_folder` does.
 - `build_files` reads only `.github/workflows/`, one blob request a file, twice per
