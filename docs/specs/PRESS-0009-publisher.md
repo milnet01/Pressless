@@ -331,7 +331,16 @@ an ordinary refusal and must not be retried. Reading only
 `Retry-After` made that an ordinary refusal, which sends the writer to
 replace a key that is perfectly good. A hint naming longer than a publish
 will block for raises `RateLimited` rather than being slept out, so the
-writer is told rather than left waiting. A limit naming no usable interval
+writer is told rather than left waiting. **One exception: a `publish` past
+the hourly allowance waits for the reset GitHub names** (user,
+2026-11-23, PRESS-0471). Failing there came late, and the next attempt sent
+every file again, so a publish larger than the allowance could never land.
+The wait is counted down a second at a time on the progress record
+(PRESS-0435 § 4.2), then the request is retried and the publish stays one
+commit. It is taken once per request, and only for a reset no further off
+than `MAX_RESET_WAIT_SECONDS`, a little over the hour. A further reset, a
+second one on the same request, a long `Retry-After`, and every request
+outside `publish` still raise `RateLimited`. A limit naming no usable interval
 waits GitHub's documented minimum rather than the pacing interval, which
 would spend the whole retry bound in seconds (PRESS-0046).
 
@@ -792,7 +801,7 @@ and `default_branch` are added.
 | Something asked for INSIDE a repository that answers is absent — a deleted branch, a missing blob | `RemoteStateMissing` | unchanged |
 | Branch moved since the listing was read — not a read GitHub answers as an empty repository, which PRESS-0127 §4.1 owns | `Conflict` | unchanged |
 | A documented GitHub limit was hit | `TooLarge` | unchanged |
-| Retry hints exhausted | `RateLimited` | unchanged |
+| Retry hints exhausted, or an hourly reset too far off or not cleared | `RateLimited` | unchanged |
 | Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
 | GitHub answers a status no row above names — a server error before the reference update, the start write aside, among them — or a file in the handed folder cannot be read, or changes between its hashing and its sending | `PublishError` itself | unchanged |
@@ -943,6 +952,7 @@ code, so a green INV-1 says nothing about the rest.
 | §4.3's two hint shapes, and the bound on one | `tests/test_publisher.py::test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal`, `::test_a_rate_limit_naming_no_interval_waits_the_documented_minute` and `::test_a_wait_longer_than_the_bound_is_refused_rather_than_slept` |
 | §4.3's third hint shape, a 403 whose message names the rate limit | `tests/test_publisher.py::test_a_secondary_limit_naming_no_interval_is_waited_out`, with `::test_a_plain_refusal_is_still_a_refusal` holding a 403 that names none to `Refused` |
 | §4.4's untouchable entries left unread | `tests/test_publisher.py::test_nothing_on_the_untouchable_list_is_read` |
+| §4.3's wait for the hourly reset during a publish, and its bounds | `tests/test_publisher.py::test_a_spent_hourly_allowance_is_waited_out_with_a_countdown`, `::test_a_reset_too_far_off_or_that_does_not_clear_is_refused` and `::test_only_a_publish_waits_out_the_hourly_reset` |
 | §4.3's growth between successive retries, and its clamp | `tests/test_publisher.py::test_successive_retry_waits_grow_rather_than_repeating` and `::test_grown_retry_waits_stop_at_the_bound_rather_than_raising` |
 | §4.5's all-or-nothing fetch | `tests/test_publisher.py::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` |
 | Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |

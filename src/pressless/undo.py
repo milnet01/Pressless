@@ -9,11 +9,13 @@ Store as undo made it, because GitHub may already show the older state
 """
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import json
 import shutil
+import threading
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -89,12 +91,10 @@ def undo(folder: Path, saved: settings.Settings, key: str, *,
     """
     folder = Path(folder)
     gathered = notices if notices is not None else []
-    fetch = folder / FETCH_FOLDER
 
     captured = gatherer(capture, gathered)
 
-    empty_fetch(fetch)                                                   # step 1
-    try:
+    with fetch_area(folder) as fetch:                                    # steps 1 and 7
         fetched = publisher.fetch_previous(saved, key, fetch, CONTENT, transport)  # step 2
         if not fetched.paths:                                            # step 3
             raise NothingToUndo("the state before this commit holds no site")
@@ -124,8 +124,6 @@ def undo(folder: Path, saved: settings.Settings, key: str, *,
             # GitHub (§ 4.3).
             captured(lambda: reverse(reversals))
             raise
-    finally:
-        empty_fetch_quietly(fetch)                                       # step 7
 
     return Undone(published.outcome, tuple(changed.restored),
                   tuple(changed.demoted), tuple(changed.kept), tuple(changed.waiting))
@@ -141,6 +139,27 @@ def empty_fetch(fetch: Path) -> None:
     fetch.mkdir(parents=True, exist_ok=True)
     if any(fetch.iterdir()):
         raise FetchAreaInUse("the fetch area could not be emptied")
+
+
+# Held for the length of each sequence in the fetch area. editor.LOCK does not
+# serve: the takeover page reads the build files from a GET, which holds no
+# editor.LOCK, and emptied the area under an undo in it (PRESS-0474). Taken
+# before any capture, never inside one.
+_FETCH_LOCK = threading.RLock()
+
+
+@contextlib.contextmanager
+def fetch_area(folder: Path) -> Iterator[Path]:
+    """The fetch area in `folder` for the length of a sequence, held from every
+    other: emptied before (`empty_fetch`, which may raise) and quietly after.
+    Undo, a take-in and a takeover's read all use it."""
+    fetch = Path(folder) / FETCH_FOLDER
+    with _FETCH_LOCK:
+        empty_fetch(fetch)
+        try:
+            yield fetch
+        finally:
+            empty_fetch_quietly(fetch)
 
 
 def empty_fetch_quietly(fetch: Path) -> None:

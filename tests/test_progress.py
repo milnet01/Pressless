@@ -155,6 +155,9 @@ def test_progress_answers_during_a_press(folder):  # noqa: F811
     (progress.Counted("progress.downloading", 4, None, 2048),
      "Downloading your site: 4 files so far, 2.0 KB.", None),
     (progress.Counted("progress.building"), "Building your pages.", None),
+    (progress.Counted("progress.sending", 3, 10, seconds_left=2480),
+     SENDING + "3 of 10 files. GitHub's hourly allowance is used up; "
+     "carrying on in 41:20.", 0.3),
 ])
 def test_the_count_is_said_in_words(counted, said, fraction):
     """§ 4.3: a number not known leaves its part out."""
