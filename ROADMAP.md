@@ -9693,7 +9693,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0472] **Blob spacing is measured on a real publish before the pause is shortened.**
+- ✅ [PRESS-0472] **Blob spacing is measured on a real publish before the pause is shortened.**
   Review type: Codebase. Queued by PRESS-0446 from review-code
   --performance lane-05 (publisher.py's pause between uploads). Needs real
   GitHub, and a clock on the Transport seam PRESS-0009 § 4.1 pins.
@@ -9704,6 +9704,10 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   on a scratch repository, which the user approves. Ledger: 0472.json.
   User decision 2026-11-23: yes, measure with a real publish to a scratch
   repository, then delete the test files.
+  Shipped 2026-11-24, 6cf25bd. Blob starts are spaced 0.75 s, reply time
+  included; measured on a test repository: gap 1.068 s down to 0.752 s.
+  Full suite 2927 passed, 34 skipped.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0472.json.
   **Layman:** Publishing many files may get faster once a real publish is timed.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9935,7 +9939,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0487] **A publish where a file becomes a folder of the same name is tried on a scratch repository.**
+- ✅ [PRESS-0487] **A publish where a file becomes a folder of the same name is tried on a scratch repository.**
   Review type: Codebase. From PRESS-0474 (review-code lane-07's open
   question). GitHub does not document how it orders a removal and an
   addition of the same name in one tree write, so only a real repository
@@ -9943,6 +9947,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   the final branch update. Needs a publish to a scratch repository, which
   the user approves.
   User decision 2026-11-23: yes, try it on a scratch repository.
+  Closed 2026-11-24 by measurement: no defect found. The probe and its
+  log are in local-archive/reviews/2026-11-23/close-findings/ (0487-probe).
+  Ledger: 0487.json, dismissed with the probe.
   **Layman:** An unusual publish is checked against real GitHub so it cannot fail unexpectedly.
   Kind: investigate.
   Source: review-2026-11-23.
