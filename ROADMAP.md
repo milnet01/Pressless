@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=492 -->
+<!-- ants-roadmap-id-high-water: PRESS=493 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -9731,7 +9731,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0473] **Relay CPU near the size cap is measured on the deployed Worker.**
+- ✅ [PRESS-0473] **Relay CPU near the size cap is measured on the deployed Worker.**
   Review type: Codebase. Queued by PRESS-0459 from review-code lane-21
   (relay/src/index.js: a body near the 2.2 MiB cap took 92 ms of CPU
   locally). Settle with one near-limit test send to the deployed relay;
@@ -9739,6 +9739,12 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   User decision 2026-11-23: redeploy the relay at push time, then one
   near-limit test send to measure its CPU. Over the free limit, the choice
   goes back to the user.
+  Measured 2026-11-24 after redeploying the relay (version f4fa95f5): one
+  send of 2,113,071 bytes, 98% of sendlog.LARGEST, answered 200 with a
+  reference in 7.4 s; wrangler tail gave cpuTime 105 ms, outcome ok. That
+  is over the free plan's per-request CPU allowance, so the choice (a
+  cheaper base64 pass, or the paid plan) goes to the user: PRESS-0493.
+  The test issue was closed.
   **Layman:** A big log sent with Send my log is checked to fit the relay's free limits.
   Kind: perf.
   Source: review-2026-11-23.
@@ -10095,6 +10101,16 @@ A site can be published to a free host other than GitHub Pages.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
+
+- 📋 [PRESS-0493] **A near-limit log fits the relay's CPU allowance, or the plan is changed.**
+  From PRESS-0473: a 2,113,071-byte send took 105 ms of relay CPU on
+  2026-11-24 and succeeded, over the free plan's per-request allowance.
+  The user chooses: a cheaper encoding pass in relay/src/index.js, a
+  lower app cap (sendlog.LARGEST), or Cloudflare's paid plan.
+  **Layman:** A very big log sent with Send my log should stay within what the relay's free plan allows.
+  Kind: perf.
+  Source: PRESS-0473-measure-2026-11-24.
+  Lanes: Tray.
 
 ## 1.4.0 — music figures
 
