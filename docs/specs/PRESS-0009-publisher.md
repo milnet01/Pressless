@@ -300,11 +300,14 @@ figure is larger, so the hourly budget beyond 550 is measured by nothing and
 the primary limit is what would answer if it bit. So the second is not what GitHub
 requires of blob creation, and a first publish is almost all blobs: at a
 second each, ADR-0002's figure puts over fourteen minutes of a first publish
-in deliberate waiting. **Blobs are paced at half a second**, which holds the
-rate under the 136 a minute that was measured accepted rather than removing
-the pace. **The tree, the commit and the reference update keep the full
-second**: those three are plausibly the content-generating requests the
-documented limits are about, nothing has measured them, and there are three
+in deliberate waiting. **Blob starts are spaced three quarters of a second
+apart**, 80 a minute: the documented figure, under the 136 measured accepted.
+**GitHub's reply time is part of that spacing, not added to it.** A
+half-second pause after each reply measured a second between starts on a
+real publish (PRESS-0472, 2026-11-23). **The tree, the commit and the
+reference update keep the full second after the write before them**: those
+three are plausibly the content-generating requests the documented limits
+are about, nothing has measured them, and there are three
 of them per publish, so pacing them costs nothing worth having.
 
 **The pace before a write is the pace THAT write requires**, not the one
@@ -696,8 +699,10 @@ and `default_branch` are added.
   parent as soon as anything is merged.
 
 - **INV-9** — Successive write requests are separated by the pacing wait
-  **the FOLLOWING write requires** — half a second before a blob, a full
-  second before the tree, the commit and the reference update (§4.3) — and a
+  **the FOLLOWING write requires** — a blob starts three quarters of a
+  second after the previous write started, its reply time included; the
+  tree, the commit and the reference update wait a full second after the
+  write before them (§4.3) — and a
   retry hint short enough to honour is waited out and retried rather than
   raised.
   *Test:* `tests/test_publisher.py::test_writes_are_paced_and_hints_retried`
@@ -705,14 +710,19 @@ and `default_branch` are added.
   answering the first write with a retry hint; assert the write is retried
   and that `RateLimited` is raised once the bound is exhausted. §4.3 owns
   the hint too long to honour, which is refused without waiting at all.
-  Plus `::test_each_write_is_preceded_by_its_own_pace` — a two-file publish,
-  asserting the recorded wait SEQUENCE is `[0.5, 1.0, 1.0, 1.0]`. **The
+  Plus `::test_each_write_is_preceded_by_its_own_pace` — a two-file publish
+  on a clock that never moves, asserting the recorded wait SEQUENCE is
+  `[0.75, 1.0, 1.0, 1.0]`. **The
   sequence, not a count and not a set**: a count passes a single flat pace,
   and a set passes the split applied AFTER each write instead of before the
   next — which under-paces the TREE write, the first of the three slow ones,
   and is the ordering §4.3 warns of. Only the tree: the commit and the
   reference update still follow a slow write and still get their second.
-  *Breaks when:* an implementer writes as fast as the loop allows; or keeps
+  Plus `::test_a_blobs_own_round_trip_counts_towards_its_spacing` — a clock
+  each request advances: a half-second reply leaves a quarter second to
+  wait, and a reply as long as the spacing leaves none.
+  *Breaks when:* an implementer writes as fast as the loop allows; or waits
+  the blob spacing after the reply instead of from the start; or keeps
   one flat pace for all four, which is what shipped before PRESS-0114 and
   passes any assertion about how MANY waits there were; or inverts the two
   values.

@@ -29,7 +29,7 @@ and keeps its size while the count changes.
    that takes. A first-time user gave up there (PRESS-0433). The user's
    `pressless.log` has not been read; the cause is from the code.
 2. **The same holds for every long job.** `publisher.publish` sends one blob
-   per request with `BLOB_PACE_SECONDS` between them. `undo.undo` fetches
+   per request, spaced `BLOB_SPACING_SECONDS` apart. `undo.undo` fetches
    through `publisher.fetch_previous` and then publishes.
    `pressless_import.fetch.fetch_site` downloads one file at a time. `sitefile.save` and `sitefile._unpack` walk every member. None
    says how far it has got.
