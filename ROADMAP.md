@@ -9579,6 +9579,9 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   as its answer's headers go out (tested). PRESS-0435 amended. A by-hand
   browser check of the download note is still owed. Full suite 2916 passed.
   Ledger: local-archive/reviews/2026-11-23/close-findings/0464.json.
+  2026-11-24: the by-hand browser check is done, 6aac79f. In headless
+  Chrome, Save's note is up at once and goes once the download ends;
+  by-hand-browser-checks.py 192 passed.
   **Layman:** Long jobs such as publishing and importing show how far they have got.
   Kind: perf.
   Source: review-2026-11-23.
@@ -9987,21 +9990,29 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: user-2026-11-23.
   Lanes: Publisher.
 
-- 📋 [PRESS-0491] **The photograph workers fit the memory the computer has free.**
+- ✅ [PRESS-0491] **The photograph workers fit the memory the computer has free.**
   Review type: Codebase. User decision 2026-11-23, following PRESS-0460:
   up to 4 workers, fewer when free memory is low, so peak memory stays
   within what the computer has. Measure the bound on Linux and Windows;
   amend PRESS-0008 § 13.
+  Shipped 2026-11-24, ecc9ef0. Photograph workers are what free memory
+  holds at 716 MB each, from 1 to 4; measured on Linux and the Windows
+  box. Full suite 2948 passed, 34 skipped.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0491.json.
   **Layman:** Fast photograph publishing on a big computer, and safe on a small laptop.
   Kind: perf.
   Source: user-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0492] **Opening a large page in the visual view is measured and made quicker.**
+- ✅ [PRESS-0492] **Opening a large page in the visual view is measured and made quicker.**
   Review type: Codebase. Surfaced by PRESS-0477's measures (2026-11-23,
   headless Chrome): a 200 KB page takes 486-643 ms to first byte in the
   visual view, of which the preview is only 25 ms. The cost is elsewhere in
   page_editor._opening; profile it first.
+  Shipped 2026-11-24, b211a49. A big page opens in the editor twice as
+  fast or more: one scan per opening, and choices.json is not rewritten
+  when unchanged. Full suite 2948 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0492.json.
   **Layman:** A big page opens faster in the editor.
   Kind: perf.
   Source: user-2026-11-23.
