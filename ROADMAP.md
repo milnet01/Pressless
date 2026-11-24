@@ -9646,11 +9646,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Face.
 
-- 📋 [PRESS-0469] **The screens' language is read once per request.**
+- ✅ [PRESS-0469] **The screens' language is read once per request.**
   Review type: Codebase. Queued by PRESS-0440 from review-code
   (face.py: words.choose switches the process-wide language while other
   threads render). The fix is in words.py, and PRESS-0241 says choose
   covers every thread, so the spec is amended first.
+  Shipped 2026-11-24, 10ee8a1. Each request holds the language it started
+  in (words.held); work a request hands to another thread carries it
+  (words.carried). Background work reads the chosen language as before.
+  PRESS-0241 § 4.2 and PRESS-0242 § 4.1 amended. Full suite 2955 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0469.json.
   **Layman:** Two people's screens can no longer briefly swap languages.
   Kind: review-fix.
   Source: review-2026-11-23.
