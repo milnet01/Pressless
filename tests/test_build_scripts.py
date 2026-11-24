@@ -47,6 +47,10 @@ def _build(tmp_path: Path, script: str,
         shutil.copy(ROOT / "scripts" / name, repository / "scripts")
     (repository / "scripts" / "freeze_flags.py").write_text(_FREEZE_FLAGS, encoding="utf-8")
     (repository / "PyInstaller").mkdir()
+    # A regular package: without __init__.py it is a namespace package, which
+    # an installed PyInstaller beats wherever it sits on the path, as in the
+    # release job.
+    (repository / "PyInstaller" / "__init__.py").write_text("", encoding="utf-8")
     (repository / "PyInstaller" / "__main__.py").write_text(_PYINSTALLER, encoding="utf-8")
     shutil.copytree(ROOT / "packaging" / "linux", repository / "packaging" / "linux")
     (repository / "packaging" / "icons").mkdir()
