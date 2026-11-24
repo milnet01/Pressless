@@ -115,8 +115,14 @@ def table(code: str) -> dict[str, str]: ...
 def name(code: str) -> str: ...   # the file's "name"; "English" for "en"
 
 def choose(code: str) -> None: ...
-    # Puts table(code) in front of ENGLISH from now on, every thread
-    # included, and makes `code` the language in use.
+    # Puts table(code) in front of ENGLISH from now on and makes `code`
+    # the language in use. A thread holding a language keeps it.
+
+def held() -> contextlib.AbstractContextManager: ...
+    # Keeps the language in use for this thread while the block runs.
+
+def carried[T](work: Callable[..., T]) -> Callable[..., T]: ...
+    # `work`, speaking the caller's language on whichever thread runs it.
 
 def in_use() -> str: ...          # the code chosen, "en" before any
 
@@ -134,6 +140,11 @@ def number(value: int, code: str | None = None) -> str: ...
   one covers 0.
 - **The Builder's counts keep today's unmarked digits** in every language,
   passing their own `count`.
+- **A request speaks one language** (PRESS-0469). The Face answers each
+  request inside `held()`, so a language chosen meanwhile waits for the
+  next request. Work a request hands to another thread is `carried`: the
+  import's fetch thread, and the fetchers it and a site download run at
+  once. Any other thread speaks the language chosen.
 - **`words.use` stays the tests' seam.** `choose` is what startup and the
   picker call.
 - **Months and days are entries**: `date.month.1` … `date.month.12`,

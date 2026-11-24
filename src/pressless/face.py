@@ -1508,13 +1508,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 -- the name http.server dispatches to
         # PRESS-0464: a download packs as a POST's job runs, and counts too.
-        with progress.job():
+        # PRESS-0469: one language for the whole answer.
+        with progress.job(), words.held():
             self._dispatch("GET")
 
     def do_POST(self) -> None:  # noqa: N802
         # PRESS-0435: a long job's loops report how far they have got into
         # this request's record, which GET /progress reads.
-        with progress.job():
+        with progress.job(), words.held():
             self._dispatch("POST")
 
     def send_header(self, keyword: str, value: str) -> None:

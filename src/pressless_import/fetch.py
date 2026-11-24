@@ -29,7 +29,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
 import certifi
 
-from pressless import __version__, blocks, builder, os_reason
+from pressless import __version__, blocks, builder, os_reason, words
 from pressless.progress import count as count_progress
 from pressless.words import say
 
@@ -358,7 +358,7 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
         by_place.setdefault(place.casefold(), []).append((address, place))
     done = 0
     with ThreadPoolExecutor(FETCHES_AT_ONCE, thread_name_prefix="import-fetch") as pool:
-        for answers in pool.map(get_each, by_place.values()):
+        for answers in pool.map(words.carried(get_each), by_place.values()):
             for place, why in answers:
                 if why is not None:
                     missing[place] = why
@@ -557,8 +557,8 @@ class _Crawl:
         fetched = [asked for asked in batch if not self._climbs(asked)]
         self.asked += len(fetched)
         parts = dict(zip(fetched, self.parts, strict=False))
-        got = dict(zip(fetched, pool.map(lambda asked: self.get(asked, parts[asked]),
-                                         fetched), strict=True))
+        each = words.carried(lambda asked: self.get(asked, parts[asked]))
+        got = dict(zip(fetched, pool.map(each, fetched), strict=True))
         for asked in batch:
             if asked in got:
                 self._land(asked, *got[asked], parts[asked])

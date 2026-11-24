@@ -4,8 +4,8 @@ English is `ENGLISH`; every other language is a JSON file in
 `language_files`, whose entries count only while the English they were
 made from is unchanged (PRESS-0241 § 4.1). Each word is looked up when it
 is shown, so the table `choose` puts in front of English changes every
-screen at once. A key is a dotted name grouped by screen, never the
-English words, so rewording English changes no key.
+screen from the next request on. A key is a dotted name grouped by
+screen, never the English words, so rewording English changes no key.
 
 A word a page script reads lives under `script.`, once, and Python reads
 that same key where it shows the word too. An entry holds words and the
@@ -23,6 +23,7 @@ modules.
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import hashlib
 import importlib.resources
 import json
@@ -2972,15 +2973,48 @@ ENGLISH: dict[str, str] = {
     **{f"mark.{row.name}.example": _literal(row.example) for row in marks.MARKS},
 }
 
-# The language in use and its table in front of ENGLISH, for the whole
-# process: every server thread reads the same one (spec § 4.1). One tuple,
-# replaced whole, so no thread sees one language's words with another's
-# plural forms or thousands mark.
+# The language chosen and its table in front of ENGLISH, for every thread
+# holding none of its own (spec § 4.1). One tuple, replaced whole, so no
+# thread sees one language's words with another's plural forms or
+# thousands mark.
 _current: tuple[str, dict[str, str]] = ("en", {})
+# The one a request's thread holds while it is answered (PRESS-0469), so a
+# language chosen meanwhile waits for the next request.
+_held: contextvars.ContextVar[tuple[str, dict[str, str]] | None] = (
+    contextvars.ContextVar("pressless_words_held", default=None))
+
+
+def _in_force() -> tuple[str, dict[str, str]]:
+    return _held.get() or _current
+
+
+@contextlib.contextmanager
+def held() -> Iterator[None]:
+    """Keep the language in use now for this thread while the block runs,
+    whatever is chosen meanwhile. The Face holds one for each request."""
+    token = _held.set(_in_force())
+    try:
+        yield
+    finally:
+        _held.reset(token)
+
+
+def carried[T](work: Callable[..., T]) -> Callable[..., T]:
+    """`work`, speaking on whichever thread runs it the language in use
+    where carried() is called: for work a request hands to another thread."""
+    language = _in_force()
+
+    def run(*args: object, **kwargs: object) -> T:
+        token = _held.set(language)
+        try:
+            return work(*args, **kwargs)
+        finally:
+            _held.reset(token)
+    return run
 
 
 def _lookup(key: str, held: dict[str, str] | None = None) -> str:
-    found = (_current[1] if held is None else held).get(key)
+    found = (_in_force()[1] if held is None else held).get(key)
     return found if found is not None else ENGLISH[key]
 
 
@@ -3003,7 +3037,7 @@ def say_count(amount: int, one: str, many: str, *, code: str | None = None,
 
     A one form writes `{count}`, never "1": a language's one form may cover
     other amounts, as French's covers 0 (PRESS-0241 INV-8)."""
-    language, held = _current if code is None else (code, table(code))
+    language, held = _in_force() if code is None else (code, table(code))
     slots.setdefault("count", number(amount, language))
     key = one if amount in _ones(language) else many
     return _lookup(key, held).format_map(slots)
@@ -3011,9 +3045,9 @@ def say_count(amount: int, one: str, many: str, *, code: str | None = None,
 
 @contextlib.contextmanager
 def use(table: dict[str, str]) -> Iterator[None]:
-    """Put `table` in front of ENGLISH for the whole process while the block
-    runs. A table names no language, so the one in use keeps its plural
-    forms and thousands mark."""
+    """Put `table` in front of ENGLISH while the block runs, for every thread
+    holding no language of its own. A table names no language, so the one
+    in use keeps its plural forms and thousands mark."""
     global _current
     before = _current
     _current = (before[0], dict(table))
@@ -3029,7 +3063,7 @@ def for_scripts() -> str:
 
     Every `<` is written as its JSON escape, so no entry can close the block
     (`</script>`) or open a comment that hides its close (`<!--<script`)."""
-    held = _current[1]
+    held = _in_force()[1]
     chosen = {key: _lookup(key, held) for key in ENGLISH if key.startswith("script.")}
     return json.dumps(chosen).replace("<", "\\u003c")
 
@@ -3108,15 +3142,16 @@ def name(code: str) -> str:
 
 
 def choose(code: str) -> None:
-    """Put `code`'s table in front of ENGLISH from now on, every thread
-    included, and make `code` the language in use."""
+    """Put `code`'s table in front of ENGLISH from now on, and make `code`
+    the language in use, for every thread but one holding its own: a request
+    under way keeps the one it started with (PRESS-0469)."""
     global _current
     _current = (code, dict(table(code)))
 
 
 def in_use() -> str:
-    """The code chosen; "en" before any."""
-    return _current[0]
+    """The code in use on this thread; "en" before any is chosen."""
+    return _in_force()[0]
 
 
 def say_in(code: str, key: str, **slots: str) -> str:
@@ -3135,7 +3170,7 @@ def _ones(code: str) -> frozenset[int]:
 def number(value: int, code: str | None = None) -> str:
     """`value` with its thousands marked as `code` (default: the language in
     use) marks them."""
-    given = _file(_current[0] if code is None else code).get("thousands")
+    given = _file(_in_force()[0] if code is None else code).get("thousands")
     mark = given if isinstance(given, str) else ","
     return f"{value:,}".replace(",", mark)
 

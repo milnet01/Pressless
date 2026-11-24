@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 from _mode_support import TOO_DEEP
 
-from pressless import __version__, builder
+from pressless import __version__, builder, words
 from pressless.words import say
 from pressless_import import fetch
 
@@ -351,6 +351,30 @@ def test_fetching_an_export_resumes_and_lists_what_failed(tmp_path):
     assert seen[-1] == (3, 3), seen
 
 
+def test_each_fetcher_says_why_in_its_requests_language(tmp_path):
+    """PRESS-0469: the fetchers fetch_all runs at once speak its caller's
+    language, not one put in use since. Breaks when they start without it."""
+    from test_importer import _export, _item
+
+    import pressless_import
+
+    export = tmp_path / "export.xml"
+    export.write_text(_export(
+        _item(1, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+        _item(2, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
+    ), encoding="utf-8")
+    base = "old.example.org/wp-content/uploads"
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {f"{base}/2012/05/a.jpg": _Answer(404),
+                        f"{base}/2012/05/b.jpg": _Answer(404)})
+    with words.use({"import.fetch.why.answered": "held {status}"}), words.held(), \
+            words.use({}):
+        missing = fetch.fetch_all(pressless_import.read(export), tmp_path / "media",
+                                  lambda: 10**12, resolve=network.resolve,
+                                  connect=network.connect)
+    assert missing == {"2012/05/a.jpg": "held 404", "2012/05/b.jpg": "held 404"}
+
+
 def test_a_place_a_folder_cannot_hold_is_never_fetched(tmp_path):
     """§ 4.4: a place is checked as `_attachments` checks it. A decoded
     backslash is a separator on Windows, so `..%5C` would climb out of the
@@ -468,6 +492,18 @@ def test_a_scheme_and_its_default_port_are_one_site(tmp_path):
     _download(network, "https://sites.example.org/", into)
     assert {"a.html", "b.html"} <= _landed(into)
     assert all(secure for _address, _host, _port, secure in network.connected)
+
+
+def test_a_site_downloads_fetchers_say_why_in_its_requests_language(tmp_path):
+    """PRESS-0469: the fetchers a site download runs at once speak its
+    caller's language. Breaks when they start without it."""
+    home = _html('<html><body><a href="/a.html">A</a><a href="/b.html">B</a></body></html>')
+    network = _live({"sites.example.org": [GLOBAL]}, {"sites.example.org/": home})
+    with words.use({"import.fetch.why.answered": "held {status}"}), words.held(), \
+            words.use({}):
+        crawled = _download(network, "https://sites.example.org/", tmp_path / "folder")
+    left = dict(crawled.left)
+    assert left["a.html"] == left["b.html"] == "held 404", left
 
 
 def test_a_front_page_it_cannot_read_keeps_nothing(tmp_path):

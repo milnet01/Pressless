@@ -34,6 +34,7 @@ from pressless import (
     sitefile,
     sites,
     store,
+    words,
 )
 from pressless_import import ImportStopped
 
@@ -383,6 +384,35 @@ def test_a_failed_fetch_stays_shown_until_next_tries_it_again(tmp_path, monkeypa
     finally:
         served.stop()
     assert asked == ["one", "one"], asked
+
+
+def test_the_fetch_says_why_in_the_language_of_its_request(tmp_path, monkeypatch):
+    """PRESS-0469: the fetch's own thread speaks the language of the request
+    that started it, though another is put in use meanwhile. Breaks when
+    the thread starts without it."""
+    import threading
+
+    let_go = threading.Event()
+
+    def fetch_all(export, media, room, *, progress):
+        let_go.wait(5)
+        return {"2012/05/a.jpg": words.say("import.fetch.why.answered", status="404")}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        with words.use({"import.fetch.why.answered": "held {status}"}):
+            _next(browser, "export")
+        let_go.set()
+        _fetch_ended(folder)
+    finally:
+        let_go.set()
+        served.stop()
+    assert "held 404" in (folder / "import" / "unfetched.json").read_text(encoding="utf-8")
 
 
 def test_a_media_download_before_the_fetch_ends_is_refused(tmp_path, monkeypatch):

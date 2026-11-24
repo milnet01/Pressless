@@ -88,9 +88,9 @@ def say_count(number: int, one: str, many: str, **slots: str) -> str: ...
     # passes its own (PRESS-0413).
 
 def use(table: dict[str, str]) -> contextlib.AbstractContextManager: ...
-    # Puts `table` in front of ENGLISH for the whole process, every server
-    # thread included, while the block runs. The tests' seam; startup
-    # calls PRESS-0241's `choose` instead.
+    # Puts `table` in front of ENGLISH while the block runs, for every
+    # thread holding no language of its own (PRESS-0241's `held`). The
+    # tests' seam; startup calls PRESS-0241's `choose` instead.
 
 def for_scripts() -> str: ...
     # Every "script." entry, as a JSON object safe inside <script>.

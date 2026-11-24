@@ -159,6 +159,27 @@ def test_a_sentence_with_an_unfilled_gap_says_the_unforeseen_one(monkeypatch) ->
     assert sentence == face.sentence_for(RuntimeError(), publishing=True)
 
 
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_a_page_keeps_the_language_its_request_started_in(tmp_path: Path, method: str) -> None:
+    """PRESS-0469: a language put in use while a page is drawn does not
+    reach that page. Breaks when the Face's answer holds no language, and a
+    page mixes two."""
+    served = face.serve(tmp_path)
+
+    def drawn(request: face.Request) -> str:
+        before = words.say("face.running")
+        with words.use({"face.running": "another language"}):
+            return f"<p>{before}|{words.say('face.running')}</p>"
+
+    try:
+        served.add_page(method, "/drawn", drawn)
+        status, _, body = _Client(served).request(method, "/drawn")
+    finally:
+        served.stop()
+    english = words.say("face.running")
+    assert status == 200 and f"<p>{english}|{english}</p>" in body, body
+
+
 def test_a_part_failing_on_every_page_still_lets_the_page_through(tmp_path: Path,
                                                                   monkeypatch) -> None:
     """PRESS-0337 § 4.6: what a part adds to every page is drawn for every

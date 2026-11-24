@@ -35,6 +35,7 @@ from pressless import (
     store,
     takein,
     wizard,
+    words,
 )
 from pressless.face import Face, Reply, Request, message_box
 from pressless.import_report import counted as _counted
@@ -126,7 +127,9 @@ def _start_fetching(face: Face, folder: Path) -> None:
             with state.lock:
                 state.running = False
 
-    threading.Thread(target=run, name="pressless-import-fetch", daemon=True).start()
+    # PRESS-0469: its reasons, kept for the gaps step, in this request's language.
+    threading.Thread(target=words.carried(run), name="pressless-import-fetch",
+                     daemon=True).start()
 
 
 def _while_empty(empty: Callable[[], bool], handler: Callable[..., str | Reply]

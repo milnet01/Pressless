@@ -112,6 +112,59 @@ def test_the_table_in_use_reaches_every_thread(entry) -> None:
     assert seen == ["Un"]
 
 
+def test_a_request_keeps_its_language_while_another_thread_chooses(
+        entry, tmp_path, monkeypatch) -> None:
+    """PRESS-0469: two requests on two threads, a language chosen between
+    them, each speaking the language it started in. Breaks when held()
+    keeps nothing, so `say` reads the language chosen since."""
+    entry("test.one", "One")
+    monkeypatch.setattr(words, "FOLDER", tmp_path)
+    for code, said in (("fr", "Un"), ("de", "Eins")):
+        (tmp_path / f"{code}.json").write_text(json.dumps(
+            {"name": code, "words": {"test.one": [words.made_from("One"), said]}}),
+            encoding="utf-8")
+    words.choose("fr")
+    holding, chosen = threading.Event(), threading.Event()
+    seen: dict[str, tuple[str, str]] = {}
+
+    def request(name: str, wait: bool) -> None:
+        with words.held():
+            if wait:
+                holding.set()
+                chosen.wait(5)
+            seen[name] = (words.in_use(), words.say("test.one"))
+
+    first = threading.Thread(target=request, args=("first", True))
+    first.start()
+    holding.wait(5)
+    words.choose("de")
+    second = threading.Thread(target=request, args=("second", False))
+    second.start()
+    second.join()
+    chosen.set()
+    first.join()
+    assert seen == {"first": ("fr", "Un"), "second": ("de", "Eins")}
+    assert words.say("test.one") == "Eins", "no request: the language chosen"
+
+
+def test_work_a_request_hands_on_keeps_its_language(entry) -> None:
+    """PRESS-0469: carried() work speaks its request's language on any
+    thread; a thread no request started speaks the one chosen. Breaks when
+    carried() hands the language over unheld."""
+    entry("test.one", "One")
+    seen: list[str] = []
+
+    def run(target) -> None:
+        thread = threading.Thread(target=target)
+        thread.start()
+        thread.join()
+
+    with words.use({"test.one": "Un"}), words.held(), words.use({}):
+        run(words.carried(lambda: seen.append(words.say("test.one"))))
+        run(lambda: seen.append(words.say("test.one")))
+    assert seen == ["Un", "One"]
+
+
 def test_scripts_get_every_script_entry_and_nothing_else(entry) -> None:
     """§ 4.3. Breaks when a script entry is left out, a server-only entry is
     sent, or the JSON can close the <script> it sits in."""
