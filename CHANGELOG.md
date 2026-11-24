@@ -12,6 +12,141 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **A saved look waits until you publish it** (PRESS-0482)
+  Saving a new look no longer goes out with the next entry you publish.
+  It waits until you press Press to site on the Look screen, which shows
+  what will change first. Bin this look throws a saved look away, and a
+  line says whether the look you see is waiting or live.
+
+- **An AI app is told when a publish left a copy behind** (PRESS-0488)
+  After an AI app publishes a site, an entry or a page, its answer says
+  when a working copy was kept, in the words the Publish button uses.
+
+- **An embedded video has a title in your site's language** (PRESS-0481)
+  A screen reader announces a YouTube video on your site in the site's
+  language. The page editor has a title field for new videos.
+
+### Changed
+
+- **Publishing many photographs is about four times faster** (PRESS-0460, PRESS-0485)
+  A press of 24 camera photographs and 4 large PNGs went from 16.3 s to
+  about 4.1 s; five JPEG XL photographs went from 20 s to about 4.4 s.
+  The first publish after this sends large JPEGs again, because their
+  bytes change.
+
+- **Photographs fit the memory your computer has free** (PRESS-0491)
+  Pressless uses up to four photograph helpers, and fewer when little
+  memory is free, so a small laptop no longer risks running out.
+
+- **GitHub's hourly allowance is waited out, not a failure** (PRESS-0471, PRESS-0490)
+  A publish too big for the allowance pauses, counts down in the working
+  note, and finishes as one commit. Taking a site in, Undo and the
+  takeover page wait the same way.
+
+- **Talking to GitHub is several times faster** (PRESS-0461, PRESS-0472)
+  Pressless reuses its connections and fetches several things at once.
+  Against a stand-in, setup's reads went from 26.9 s to 4.2 s and a take-in
+  from 80.5 s to 12.7 s.
+
+- **Every long job shows how far it has got** (PRESS-0464)
+  Publishing counts files checked, pages built and photographs readied;
+  bringing a site in counts files written; an update counts what it has
+  downloaded. Save site shows its working note at once.
+
+- **Screens, saves and builds answer faster** (PRESS-0462, PRESS-0463)
+  A build of 300 entries went from 12.5 s to 3.3 s. One slow job, such as
+  a publish, no longer holds up the other screens.
+
+- **A large page opens in the editor twice as fast or more** (PRESS-0492, PRESS-0478, PRESS-0479)
+  The code view stays smooth in a very big page, and saving in the visual
+  view no longer downloads every full-size photograph again.
+
+- **Saving a site file or a backup no longer makes other work wait** (PRESS-0452)
+  A save that would leave under 1 GiB free stops and writes nothing. A
+  damaged settings file is left out of a saved site, and a removed site's
+  number is never reused.
+
+- **The screens and manuals are up to date in every language** (PRESS-0456)
+  Afrikaans, German, Spanish and French have every new message, and their
+  manuals describe the new way a look is published.
+
+### Fixed
+
+- **A page never mixes two languages** (PRESS-0469)
+  Changing the language while a page is being drawn no longer swaps some
+  of its words; the new language shows from the next page on.
+
+- **A page written over a Pressless screen keeps its buttons** (PRESS-0440)
+  A choice saved over an unreadable file keeps your other choices.
+
+- **A site started blank can publish its first page** (PRESS-0446)
+  A lost takeover build is asked for again, and a stuck marker shows as a
+  notice.
+
+- **The editors keep saving, and say when they cannot** (PRESS-0441, PRESS-0442, PRESS-0480)
+  The visual view keeps saving after a removal or a failed preview. A
+  refused Remove or Rename keeps its message on screen, and a removed or
+  renamed page that is gone says so.
+
+- **Layouts, countdowns and decimal marks** (PRESS-0443)
+  Columns sit side by side on a wide screen and a button looks like one.
+  A countdown set in a far or mistyped year saves as typed. Sizes and
+  ratios use your language's decimal mark.
+
+- **Archived captions and links, and long animated GIFs, work** (PRESS-0444)
+  Captions and links containing & come through, and long GIFs are made
+  smaller frame by frame.
+
+- **Undo and the bin are more reliable** (PRESS-0445)
+  A move cut short is finished or settled by the next write or Undo.
+
+- **Settings keep what other screens saved meanwhile** (PRESS-0447)
+  A settings file from somewhere else opens setup from any section.
+
+- **Signing in to GitHub and Google, and the domain wizard** (PRESS-0448)
+  A Google return address with non-English letters works, and a failed
+  Settings save puts the old sign-in back. GitHub accounts with over 100
+  installations work. The domain wizard accepts other alphabets' full
+  stops.
+
+- **Visitor figures are fetched less often and say how old they are** (PRESS-0449)
+  Pressless does not ask Google again while its numbers are under an hour
+  old, and the Your site tile says when its figure was fetched.
+
+- **Restart and Update now are safer** (PRESS-0450)
+  A restart or a site switch waits for an update under way. A folder
+  Pressless may not change gets its own message. On Windows, updates
+  unpack through long paths.
+
+- **The AI helper is steadier and safer** (PRESS-0451)
+  Long plans no longer drop the connection, a malformed call is refused
+  in your language, and the helper sends nothing until the program on the
+  other end proves it is the right one.
+
+- **Importing is more robust** (PRESS-0453, PRESS-0454, PRESS-0483, PRESS-0484)
+  A hostile or huge WordPress export can no longer use too much memory. A
+  media ZIP damaged partway says so and keeps what was taken. A slow
+  download is cut at 30 minutes, and why a file was not fetched is said in
+  your language. The list of what was lost no longer calls a kept picture
+  "a file that is not a picture".
+
+- **Like buttons and JPEG XL photographs** (PRESS-0455)
+  The votes check tells Google's limit apart. 16-bit grey JPEG XL
+  photographs keep their real tones instead of coming out almost white, and
+  an animation with very many frames is refused instead of using all your
+  memory.
+
+- **Counting words in French and other languages** (PRESS-0456)
+  French no longer says "1 brouillon" for no drafts, and every language's
+  cheat sheet is checked.
+
+- **Send my log removes key and token shapes first** (PRESS-0459)
+  The tray icon also survives odd messages and outside close requests.
+
+- **Opening the takeover page during an Undo or take-in keeps their files** (PRESS-0474)
+
 ## [1.2.0] - 2026-11-23
 
 **Theme:** It carries on where you were
