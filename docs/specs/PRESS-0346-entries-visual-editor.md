@@ -121,7 +121,7 @@ posts to `/photograph` as today.
 
 PRESS-0260 § 4.4's keys, paste and reading of the words are shared,
 not copied: they move out of `page_editor._VISUAL_SCRIPT` into one
-script both editors load, `editor.TYPING_SCRIPT`. For entries the
+script both editors load, `editor_scripts.TYPING_SCRIPT`. For entries the
 words read also keep a colour mark's `span`, as `to_html` wrote it. In
 a quotation, Enter starts a new paragraph of the same quotation, and
 words a browser leaves loose in it are a paragraph of their own.
@@ -129,8 +129,8 @@ words a browser leaves loose in it are a paragraph of their own.
 ### 4.5 Saving
 
 The save keeps `/save`, its timing and its fields (PRESS-0012 § 4.8),
-and the press and leaving hooks with them (`editor.SAVING_SCRIPT`,
-`editor.LEAVING_SCRIPT`). In the visual view the form carries `view=visual`,
+and the press and leaving hooks with them (`editor_scripts.SAVING_SCRIPT`,
+`editor_scripts.LEAVING_SCRIPT`). In the visual view the form carries `view=visual`,
 `blocks` and `removed` in place of `body`:
 
 ```

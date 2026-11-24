@@ -28,6 +28,7 @@ from test_setup import _answers, _GitHub, _saved, _setup_page, _Store
 from pressless import (
     credentials,
     editor,
+    editor_scripts,
     face,
     overview,
     page_editor,
@@ -282,7 +283,7 @@ def test_every_page_asks_about_the_press():
     held = pressing.holding()
     assert held is not None
     for name, script in (("entry", editor._EDITOR_SCRIPT), ("page", page_editor._PAGE_SCRIPT),
-                         ("undo", editor.UNDO_SCRIPT), ("holding", held)):
+                         ("undo", editor_scripts.UNDO_SCRIPT), ("holding", held)):
         assert 'fetch("/press")' in script, name
         assert "Keep this page open." not in script, name
 

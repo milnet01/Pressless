@@ -12,3 +12,4 @@
 | fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0377 amended §§ 4.1, 4.3, 4.5, 6 and 10: `pressing.quiet()` for a press that published nothing; a page stops asking after five unanswered asks and says so. No direction changed, so no gate. |
 | fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0373: `editor._UNDO_SCRIPT` is now `editor.UNDO_SCRIPT`, since other parts load it (design.md rule 7). § 2 and INV-7 name the new spelling; nothing else changed. |
 | impl | 2026-11-23 | none — amendment for PRESS-0446; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.1: `forget` has nothing to clear while a press runs, since `start` cleared it; the old reason was not one. |
+| amend | 2026-11-24 | none — PRESS-0476; no reviewer dispatched | 0 | 0 | 0 | 0 | § 2 item 4 and INV-7: `UNDO_SCRIPT` is in `editor_scripts.py`, moved out of `editor.py` with its bytes unchanged. |

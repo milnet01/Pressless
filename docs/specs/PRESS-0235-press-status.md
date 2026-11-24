@@ -37,7 +37,7 @@ once instead of queuing behind it.
    `editor.LOCK`, then saves and publishes again. An Undo pressed mid-press
    waits, then reverses the press that just landed.
 4. **The pages tell the user to stay.** Both editors' scripts and
-   `editor.UNDO_SCRIPT` say "Keep this page open." while a press runs.
+   `editor_scripts.UNDO_SCRIPT` say "Keep this page open." while a press runs.
 
 ## 3. Scope decisions (agreed with the user)
 
@@ -211,7 +211,7 @@ ends what decision 6 shows.
   `tests/test_pressing.py::test_the_outcome_shows_until_a_save`.
   *Breaks when:* the server renders standing words over an unforgotten
   outcome, or `forget` is not called by a save.
-- **INV-7** — Each editor script, `editor.UNDO_SCRIPT` and the holding
+- **INV-7** — Each editor script, `editor_scripts.UNDO_SCRIPT` and the holding
   page's script fetch `/press`, and none says "Keep this page open." *Test:*
   `tests/test_pressing.py::test_every_page_asks_about_the_press`, by script
   text. *Breaks when:* a script drops the ask or keeps the old words.

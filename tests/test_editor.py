@@ -32,6 +32,7 @@ from pressless import (
     builder,
     checklist,
     editor,
+    editor_scripts,
     face,
     face_scripts,
     marks,
@@ -1163,7 +1164,7 @@ def test_a_save_clears_only_the_failure_a_save_showed(tmp_path):
     or Rename, until it is read. Breaks when a clean save empties the failure
     box whatever it holds, or stops clearing its own."""
     harness = tmp_path / "send.js"
-    harness.write_text(_SEND_HARNESS % editor.SAVING_SCRIPT, encoding="utf-8")
+    harness.write_text(_SEND_HARNESS % editor_scripts.SAVING_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
                          timeout=30)
     assert json.loads(run.stdout) == {"own": "no preview", "cleared": "", "kept": "refused"}
@@ -1175,7 +1176,7 @@ def test_both_editors_stop_saving_alike(tmp_path):
     status line and the failure shown, in either editor. Breaks when the
     shared stop leaves one of the three out, or an editor keeps its own."""
     harness = tmp_path / "stop.js"
-    harness.write_text(_STOP_HARNESS % editor.SAVING_SCRIPT, encoding="utf-8")
+    harness.write_text(_STOP_HARNESS % editor_scripts.SAVING_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
                          timeout=30)
     assert json.loads(run.stdout) == {"stopped": True, "status": "script.editor.not_saved",
@@ -1212,7 +1213,7 @@ def test_every_upload_says_how_it_ended(tmp_path):
     on its own and a dropped connection says nothing, the notices are
     dropped, or an upload shows nothing until it ends."""
     harness = tmp_path / "upload.js"
-    harness.write_text(_UPLOAD_HARNESS % editor.UPLOAD_SCRIPT, encoding="utf-8")
+    harness.write_text(_UPLOAD_HARNESS % editor_scripts.UPLOAD_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
                          timeout=30)
     seen = json.loads(run.stdout)

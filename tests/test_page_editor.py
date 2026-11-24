@@ -34,6 +34,7 @@ from pressless import (
     builder,
     credentials,
     editor,
+    editor_scripts,
     face,
     face_style,
     menu,
@@ -1082,7 +1083,7 @@ def test_the_visual_view_refuses_every_link_the_save_refuses(tmp_path):
     blocks.address_allowed, so a link it accepts is never refused at the save.
     Breaks when the browser reads the scheme without removing a tab, a line
     break or a leading control first."""
-    script = editor.TYPING_SCRIPT  # PRESS-0346: shared by both visual views
+    script = editor_scripts.TYPING_SCRIPT  # PRESS-0346: shared by both visual views
     start = script.index("const allowed = ")
     end = script.index("\n  function inline(", start)
     harness = tmp_path / "allowed.js"
@@ -1146,11 +1147,11 @@ process.stdout.write(JSON.stringify(seen));
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_both_editors_type_through_the_same_keys(tmp_path):
     """PRESS-0346 § 4.4: Enter, Backspace, Ctrl+B/I/K and Link live once, in
-    editor.TYPING_SCRIPT, which both visual views load. Breaks when Enter
+    editor_scripts.TYPING_SCRIPT, which both visual views load. Breaks when Enter
     carries an emptied Bold into the new paragraph, Backspace with nothing
     above it is swallowed, or a refused link address is dropped silently."""
     harness = tmp_path / "keys.js"
-    harness.write_text(_KEYS_HARNESS % editor.TYPING_SCRIPT, encoding="utf-8")
+    harness.write_text(_KEYS_HARNESS % editor_scripts.TYPING_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness)], capture_output=True, check=True,  # noqa: S603
                          timeout=30)
     seen = json.loads(run.stdout)
@@ -1486,7 +1487,7 @@ def test_a_caption_holding_a_tag_is_read_only(tmp_path):
 
 def test_both_editors_type_through_one_script(tmp_path):
     """PRESS-0373, PRESS-0346 § 4.4: typing in pages and in entries behaves
-    the same, because both visual views load editor.TYPING_SCRIPT and take
+    the same, because both visual views load editor_scripts.TYPING_SCRIPT and take
     their keys and formatting from it. Breaks when either editor stops
     loading it, or handles a key or a format of its own."""
     folder = _folder(tmp_path)
@@ -1494,7 +1495,7 @@ def test_both_editors_type_through_one_script(tmp_path):
         shown = {address: browser.request("GET", address)[2]
                  for address in ("/edit?slug=seaside", "/page?kind=pages&name=about")}
     for address, page in shown.items():
-        assert page.count(f"<script>{editor.TYPING_SCRIPT}</script>") == 1, address
+        assert page.count(f"<script>{editor_scripts.TYPING_SCRIPT}</script>") == 1, address
     for visual in (editor._VISUAL_SCRIPT, page_editor._VISUAL_SCRIPT):
         assert "const typing = window.presslessTyping;" in visual
         assert "typing.keyed(event, frame.contentDocument" in visual

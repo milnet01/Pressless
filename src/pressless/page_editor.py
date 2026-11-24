@@ -29,6 +29,7 @@ from pressless import (
     builder,
     choices,
     editor,
+    editor_scripts,
     files,
     github_setup,
     languages,
@@ -642,10 +643,10 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(opened.preview or 'about:blank')}"></iframe>{"" if menu_file else _drag()}</div>
 <script>{_PAGE_SCRIPT}</script>
-<script>{editor.TYPING_SCRIPT}</script>
+<script>{editor_scripts.TYPING_SCRIPT}</script>
 <script>{_CODE_SCRIPT}</script>
 <script>{_MENU_SCRIPT if menu_file else _VISUAL_SCRIPT}</script>
-<script>{editor.UNDO_SCRIPT}</script>"""
+<script>{editor_scripts.UNDO_SCRIPT}</script>"""
 
 
 # PRESS-0265: the handle that drags the picked section, and the line that
@@ -1368,14 +1369,16 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
 # The page's script (§ 4.5), PRESS-0012 § 4.7's. A change saves about a second
 # after the last one, never two saves at once, and on leaving only where a
 # change is unsaved. Its twin is editor._EDITOR_SCRIPT; both save through
-# editor.SAVING_SCRIPT, press through editor.PUBLISH_SCRIPT, upload through
-# editor.UPLOAD_SCRIPT and leave through editor.LEAVING_SCRIPT. They differ in
+# editor_scripts.SAVING_SCRIPT, press through editor_scripts.PUBLISH_SCRIPT,
+# upload through editor_scripts.UPLOAD_SCRIPT and leave through
+# editor_scripts.LEAVING_SCRIPT. They differ in
 # their fields and in what a reply updates. A switch of view, a picker link,
 # Remove and Rename save an unsaved change first. In the visual view,
 # _VISUAL_SCRIPT supplies what is posted and is told what was saved
 # (PRESS-0260 § 4.5).
-_PAGE_SCRIPT = (pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT
-                + editor.PUBLISH_SCRIPT + editor.UPLOAD_SCRIPT + """
+_PAGE_SCRIPT = (pressing.SCRIPT + editor_scripts.LEAVING_SCRIPT
+                + editor_scripts.SAVING_SCRIPT + editor_scripts.PUBLISH_SCRIPT
+                + editor_scripts.UPLOAD_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {kind: form.dataset.kind, name: form.dataset.name, view: form.dataset.view,

@@ -339,8 +339,6 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     },
     "editor.py": {
         "REPLACES": _FIELDS, "UNDONE": _FIELDS,
-        "Enter": "a key's name, as the browser reports it",
-        "Backspace": "a key's name, as the browser reports it",
         "Escape": "a key's name, as the browser reports it",
     },
     "face.py": {
@@ -358,6 +356,10 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "Location", "Host", "Origin", "Cookie", "Authorization",
                          "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),
+    },
+    "editor_scripts.py": {
+        "Enter": "a key's name, as the browser reports it",
+        "Backspace": "a key's name, as the browser reports it",
     },
     "face_style.py": {"STYLE": _CSS, "SHAPES": _CSS},
     "face_scripts.py": {
@@ -439,7 +441,8 @@ _SELECTOR = re.compile(r"[#.]?[\w-]+(?:\[[^\]]*\])?(?: [#.]?[\w-]+(?:\[[^\]]*\])
 def _screen_modules() -> list[Path]:
     """Every module importing face or words but builder.py, plus starter.py,
     templates.py and sites.py, whose failure __main__ prints (PRESS-0223 § 4.3),
-    and face_scripts.py and face_style.py, which hold the Face's scripts and sheet."""
+    face_scripts.py and face_style.py, which hold the Face's scripts and sheet, and
+    editor_scripts.py, which holds the scripts both editors load."""
     chosen = []
     for path in sorted(SOURCE.glob("*.py")):
         names = set()
@@ -455,7 +458,7 @@ def _screen_modules() -> list[Path]:
             continue
         if names & {"face", "words"} or path.name in ("starter.py", "templates.py",
                                                          "sites.py", "face_scripts.py",
-                                                         "face_style.py"):
+                                                         "face_style.py", "editor_scripts.py"):
             chosen.append(path)
     return chosen
 
