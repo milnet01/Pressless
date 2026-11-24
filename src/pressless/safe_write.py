@@ -133,7 +133,17 @@ def read_ordinary(target: Path, *, follow: bool = True,
     flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
     if not follow:
         flags |= getattr(os, "O_NOFOLLOW", 0)
-    handle = os.open(target, flags)
+    try:
+        handle = os.open(target, flags)
+    except (PermissionError, IsADirectoryError):
+        # Windows refuses to open a folder at all, so ask what is there.
+        try:
+            found = os.stat(target, follow_symlinks=follow).st_mode
+        except OSError:
+            found = stat.S_IFREG
+        if not stat.S_ISREG(found):
+            return None
+        raise
     try:
         ordinary = stat.S_ISREG(os.fstat(handle).st_mode)
         if ordinary and check is not None:
