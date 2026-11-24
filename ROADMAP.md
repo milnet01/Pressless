@@ -10044,6 +10044,34 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: user-2026-11-23.
   Lanes: Editor.
 
+- 📋 [PRESS-0493] **A near-limit log fits the relay's CPU allowance, or the plan is changed.**
+  From PRESS-0473: a 2,113,071-byte send took 105 ms of relay CPU on
+  2026-11-24 and succeeded, over the free plan's per-request allowance.
+  The user chooses: a cheaper encoding pass in relay/src/index.js, a
+  lower app cap (sendlog.LARGEST), or Cloudflare's paid plan.
+  User decision 2026-11-24: a cheaper encoding first, then a lower
+  sendlog.LARGEST if still over; moved into 1.2.1 with the review's
+  other fixes. c2f59aa: 130.6 ms -> 9.1 ms of CPU locally (best of
+  seven, GitHub stubbed). The deployed figure is still owed.
+  **Layman:** A very big log sent with Send my log should stay within what the relay's free plan allows.
+  Kind: perf.
+  Source: PRESS-0473-measure-2026-11-24.
+  Lanes: Tray.
+
+- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
+  Review type: Codebase. Queued by PRESS-0461 from review-code
+  --performance lane-05 (takein.py). Keeping the files on disk until
+  Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
+  copy, its cleanup, Windows holding files open), so the spec changes
+  first. The re-fetch now costs one parallel fetch: measured 4.23 s per 40
+  files against a stand-in, 2026-11-23.
+  2026-11-24: moved into 1.2.1 by the user's call that the review's
+  fixes finish before 1.2.1 is released.
+  **Layman:** Finishing taking a site in no longer downloads it once more.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Setup.
+
 ## 1.3.0 — a home other than GitHub
 
 A site can be published to a free host other than GitHub Pages.
@@ -10073,18 +10101,6 @@ A site can be published to a free host other than GitHub Pages.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
 
-- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
-  Review type: Codebase. Queued by PRESS-0461 from review-code
-  --performance lane-05 (takein.py). Keeping the files on disk until
-  Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
-  copy, its cleanup, Windows holding files open), so the spec changes
-  first. The re-fetch now costs one parallel fetch: measured 4.23 s per 40
-  files against a stand-in, 2026-11-23.
-  **Layman:** Finishing taking a site in no longer downloads it once more.
-  Kind: perf.
-  Source: review-2026-11-23.
-  Lanes: Setup.
-
 - 📋 [PRESS-0483] **Imported entries link a held non-picture file to its kept copy, not the old site.**
   Review type: Codebase. Queued by PRESS-0453 from a review-readability
   lead (_html.py: a link to a held non-picture file is misreported and
@@ -10101,16 +10117,6 @@ A site can be published to a free host other than GitHub Pages.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
-
-- 📋 [PRESS-0493] **A near-limit log fits the relay's CPU allowance, or the plan is changed.**
-  From PRESS-0473: a 2,113,071-byte send took 105 ms of relay CPU on
-  2026-11-24 and succeeded, over the free plan's per-request allowance.
-  The user chooses: a cheaper encoding pass in relay/src/index.js, a
-  lower app cap (sendlog.LARGEST), or Cloudflare's paid plan.
-  **Layman:** A very big log sent with Send my log should stay within what the relay's free plan allows.
-  Kind: perf.
-  Source: PRESS-0473-measure-2026-11-24.
-  Lanes: Tray.
 
 ## 1.4.0 — music figures
 
