@@ -60,7 +60,7 @@ def _stand_ins(bin_dir: Path, kept: Path, *, ssh_fails: str = "", scp_fails: str
         (bin_dir / name).chmod(0o755)
 
 
-def _gate(tmp_path: Path, change=None,
+def _gate(tmp_path: Path, change=None, given: tuple[str, ...] = (),
           **failing: str) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """The gate run against a stand-in box. `change` gets the repository
     first. Returns the run, the repository and the folder holding what scp
@@ -72,7 +72,7 @@ def _gate(tmp_path: Path, change=None,
     if change:
         change(repo)
     env = {**_git_env(tmp_path), "PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin"}
-    ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box"], cwd=repo, env=env,  # noqa: S603
+    ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box", *given], cwd=repo, env=env,  # noqa: S603
                          capture_output=True, text=True, timeout=60, check=False)
     return ran, repo, kept
 
@@ -179,3 +179,18 @@ def test_each_run_first_clears_what_runs_cut_short_left(tmp_path: Path):
         assert not re.search(folders, near) and not re.search(files, near), near
     assert re.search(r"-LiteralPath \$gate -Directory", script)
     assert re.search(r"-LiteralPath \$userHome -File", script)
+
+
+def test_tests_named_are_what_the_box_runs(tmp_path: Path):
+    """`--tests` hands its arguments to pytest, each quoted, and refuses one
+    holding anything PowerShell could read. Breaks when they are dropped or
+    passed unchecked."""
+    ran, _, kept = _gate(tmp_path, given=("--tests", "tests/test_a.py::t[folder]", "-k", "x"))
+    assert ran.returncode == 0, ran.stderr
+    script = next(kept.glob("*.ps1")).read_text(encoding="utf-8")
+    assert 'pytest -ra -q -p no:cacheprovider "tests/test_a.py::t[folder]" "-k" "x"' in script
+    for unsafe in ('a"b', "a$b", "a b", "a`b"):
+        apart = tmp_path / unsafe.encode().hex()
+        apart.mkdir()
+        refused, _, _ = _gate(apart, given=("--tests", unsafe))
+        assert refused.returncode == 64, unsafe

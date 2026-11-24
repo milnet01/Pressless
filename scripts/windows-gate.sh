@@ -3,6 +3,11 @@
 #
 #   scripts/windows-gate.sh <ssh-host>
 #   scripts/windows-gate.sh <ssh-host> --browsers edge firefox
+#   scripts/windows-gate.sh <ssh-host> --tests tests/test_usage.py
+#
+# With --tests the suite runs only what follows, handed to pytest as written:
+# files, node ids or options. Each is letters, digits and `_ . / : [ ] = -`,
+# so nothing in one can reach the PowerShell it is pasted into.
 #
 # With --browsers it runs scripts/by-hand-browser-checks.py instead of the
 # suite, once per browser named: chrome, edge or firefox (PRESS-0292). They
@@ -32,17 +37,25 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
-usage="usage: windows-gate.sh <ssh-host> [--browsers <browser>...]"
+usage="usage: windows-gate.sh <ssh-host> [--browsers <browser>... | --tests <pytest argument>...]"
 host=${1:?$usage}
 shift
 browsers=()
+tests=()
 if (($#)); then
-    [[ $1 == --browsers && $# -gt 1 ]] || { echo "$usage" >&2; exit 64; }
+    [[ ($1 == --browsers || $1 == --tests) && $# -gt 1 ]] || { echo "$usage" >&2; exit 64; }
+    option=$1 plain='^[][A-Za-z0-9_./:=-]+$'
     shift
-    for browser; do
-        case $browser in
-            chrome|edge|firefox) browsers+=("\"$browser\"") ;;
-            *) echo "windows gate: no browser called $browser" >&2; exit 64 ;;
+    for given; do
+        if [[ $option == --tests ]]; then
+            [[ $given =~ $plain ]] ||
+                { echo "windows gate: a test argument holds more than it may: $given" >&2; exit 64; }
+            tests+=("\"$given\"")
+            continue
+        fi
+        case $given in
+            chrome|edge|firefox) browsers+=("\"$given\"") ;;
+            *) echo "windows gate: no browser called $given" >&2; exit 64 ;;
         esac
     done
 fi
@@ -74,7 +87,7 @@ if ((${#browsers[@]} == 0)); then
     & \$python -m pip install --quiet --disable-pip-version-check --upgrade --upgrade-strategy eager $deps
     if (\$LASTEXITCODE -ne 0) { throw "pip could not install the dependencies" }
     & \$python -m pytest --version
-    & \$python -m pytest -ra -q -p no:cacheprovider
+    & \$python -m pytest -ra -q -p no:cacheprovider ${tests[*]}
     \$code = \$LASTEXITCODE
 EOF
 )
