@@ -232,7 +232,7 @@ def _held(folder: Path) -> dict[str, bytes]:
     """Every file in a folder § 4.3 writes into, by relative path."""
     return {p.relative_to(folder).as_posix(): p.read_bytes()
             for p in folder.rglob("*") if p.is_file() and p.parent != folder
-            and p.relative_to(folder).parts[0] not in ("wizards", "bin", "fetch")}
+            and p.relative_to(folder).parts[0] not in ("wizards", "bin", "fetch", "import")}
 
 
 def _empty_store(tmp_path: Path, name: str = "taken") -> Path:
@@ -336,10 +336,12 @@ def test_a_take_in_needs_an_empty_store(tmp_path):
 
 def test_a_site_that_arrives_during_the_fetch_stops_the_take_in(tmp_path, monkeypatch):
     """INV-3. Breaks when the empty-Store check is not asked again after the
-    fetch, which holds no lock, so a site saved meanwhile is written over."""
+    fetch, which holds no lock, so a site saved meanwhile is written over.
+    The look's copy is forgotten, so the take-in fetches."""
     github, _ = _published(tmp_path)
     folder = _empty_store(tmp_path)
     found = takein.look(folder, _settings(folder), KEY, transport=github)
+    takein.forget_look(folder)
     fetched = publisher.fetch_state
 
     def fetch_then_a_site_arrives(*args, **kwargs):
@@ -439,6 +441,24 @@ def test_the_state_shown_is_the_state_taken(tmp_path, monkeypatch):
         done = _next(browser, page)
     assert _step(done) is None and settings.path_for(folder).exists(), done
     assert store.list_slugs(folder, draft=False) == ("hello",)
+
+
+def test_finish_takes_in_the_state_the_pages_step_read(tmp_path, monkeypatch):
+    """PRESS-0489, § 4.3: Finish writes the copy the pages step fetched, and
+    the copy is gone once the take-in lands. Breaks when `take_in` fetches a
+    commit `look` holds, or leaves the held copy behind."""
+    github, _ = _published(tmp_path)
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "site")
+        github.calls.clear()
+        done = _next(browser, page)
+    assert _step(done) is None and settings.path_for(folder).exists(), done
+    assert not [url for _method, url, _key in github.calls
+                if "/git/blobs/" in url or "recursive=1" in url], github.calls
+    assert store.list_slugs(folder, draft=False) == ("hello",)
+    assert not any((folder / pressless_import.IMPORT_FOLDER).glob("looked*"))
 
 
 # ----------------------------------------------------------------- INV-7 ---
@@ -619,11 +639,6 @@ def _finished(tmp_path: Path, monkeypatch, github: _Repository) -> Path:
     return folder
 
 
-def _store_held(folder: Path) -> dict[str, bytes]:
-    return {path: data for path, data in _held(folder).items()
-            if not path.startswith("import/")}
-
-
 def test_a_plain_site_goes_on_and_writes_nothing_to_github(tmp_path, monkeypatch):
     """INV-13. Breaks when a step adopts the repository by writing to it."""
     from test_setup import _Clock
@@ -675,11 +690,11 @@ def test_the_screen_says_what_a_publish_will_change(tmp_path, monkeypatch):
     folder = _empty_store(tmp_path, "setup")
     _Store(monkeypatch)
     with _setup(folder, github) as browser:
-        before = _store_held(folder)
+        before = _held(folder)
         page = _walk_to(browser, "site")
-        assert _store_held(folder) == before
+        assert _held(folder) == before
         browser.get()
-        assert _store_held(folder) == before
+        assert _held(folder) == before
     for path in ("CNAME", "README.md", "google123.html", "sitemap.xml", "downloads/tool.exe",
                  "images/old.exe"):
         assert path in page, path
@@ -849,3 +864,27 @@ def test_a_held_folder_that_cannot_be_emptied_is_never_read_again(tmp_path, monk
     monkeypatch.setattr(shutil, "rmtree", lambda path, ignore_errors=False: None)
     with pytest.raises(undo.FetchAreaInUse):
         takein.look_folder(folder, _settings(folder), KEY, transport=github)
+
+
+def test_a_kept_look_that_cannot_be_emptied_is_never_taken_in(tmp_path, monkeypatch):
+    """PRESS-0489, Windows: a file held open in import/looked/ survives being
+    forgotten. Breaks when the next look keeps its copy on top of it, or
+    `take_in` reads it, so a file from the state read before comes in."""
+    github, _ = _published(tmp_path)
+    folder = _empty_store(tmp_path)
+    stale = folder / pressless_import.IMPORT_FOLDER / "looked" / "content" / "published"
+    stale.mkdir(parents=True)
+    (stale / "old.txt").write_text("Title: Old\nSlug: old\n\nOld.", encoding="utf-8")
+    real = shutil.rmtree
+
+    def held_open(path, ignore_errors=False):
+        if Path(path).name != "looked":
+            real(path, ignore_errors=ignore_errors)
+
+    monkeypatch.setattr(shutil, "rmtree", held_open)
+    found = takein.look(folder, _settings(folder), KEY, transport=github)
+    assert not (folder / pressless_import.IMPORT_FOLDER / "looked.json").exists()
+    github.calls.clear()
+    takein.take_in(folder, _settings(folder), KEY, found.commit, transport=github)
+    assert [url for _method, url, _key in github.calls if "/git/blobs/" in url]
+    assert store.list_slugs(folder, draft=False) == ("hello",)

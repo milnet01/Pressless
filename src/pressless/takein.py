@@ -1,10 +1,11 @@
 """Take in a Pressless site already in a GitHub repository (PRESS-0218).
 
 The Face owns the order (docs/design.md rule 1). `look` fetches a state and
-says what it holds, writing nothing to the Store. `take_in` fetches that same
-state again and fills an empty Store from it through the Store's own calls,
-recording a reversal for each write so a failure leaves the Store empty. The
-contract is docs/specs/PRESS-0218-take-in-github-site.md.
+says what it holds, writing nothing to the Store, and keeps the copy it read.
+`take_in` fills an empty Store from that copy, or fetches the state again where
+none is kept, through the Store's own calls, recording a reversal for each
+write so a failure leaves the Store empty. The contract is
+docs/specs/PRESS-0218-take-in-github-site.md.
 
 A repository holding plain pages comes in another way (PRESS-0210 § 4.11):
 `look_folder` lays it out where a ZIP would be, and `bring_folder` brings that
@@ -15,6 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import shutil
 import threading
 from collections.abc import Callable
@@ -33,6 +35,8 @@ from pressless_import import fetch
 PREFIXES = (undo.CONTENT, f"{store.PHOTOGRAPHS_FOLDER}/", f"{store.FILES_FOLDER}/",
             builder.SITE_ICON)
 _FOLDER_RECORD = "folder.json"   # in the import folder: the commit import/folder/ holds
+_LOOKED_FOLDER = "looked"        # in the import folder: the state `look` read (PRESS-0489)
+_LOOKED_RECORD = "looked.json"   # in the import folder: its repository, commit and paths
 # The last state `look` read, by site folder, repository and commit. A commit
 # names one state, so the site step shows what the pages step read without
 # downloading it again (PRESS-0461).
@@ -86,20 +90,26 @@ class _Read:
     photographs: tuple[str, ...]
     files: tuple[str, ...]
     icon: bool                        # the repository holds site-icon.png
+    paths: tuple[str, ...]            # every path fetched
 
 
 def look(folder: Path, settings: Settings, key: str, commit: str = "",
          transport: publisher.Transport | None = None) -> Found:
     """§ 4.2: what the state at `commit`, or the branch's current one, holds.
-    Writes nothing to the Store; the fetch area is emptied before and after.
-    A commit the last look read is answered from it."""
+    Writes nothing to the Store. A Pressless site's copy is kept for
+    `take_in`; the fetch area is emptied before and after. A commit the last
+    look read is answered from it."""
     where = str(Path(folder).resolve())
     with _LOOKED_LOCK:
         known = _LOOKED.get((where, settings.repository, commit)) if commit else None
     if known is not None:
         return known
     with undo.fetch_area(folder) as fetch_area:
-        found = _fetch_and_read(fetch_area, settings, key, commit, transport).found
+        forget_look(folder)
+        read = _fetch_and_read(fetch_area, settings, key, commit, transport)
+        found = read.found
+        if found.made_here:
+            _keep_look(folder, fetch_area, settings.repository, read)
     with _LOOKED_LOCK:
         _LOOKED.clear()
         _LOOKED[(where, settings.repository, found.commit)] = found
@@ -110,7 +120,8 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
             capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str] | None = None,
             transport: publisher.Transport | None = None) -> TakenIn:
-    """§ 4.3: refuse a Store holding a site, fetch `commit`, and write it.
+    """§ 4.3: refuse a Store holding a site, and write `commit` from the copy
+    `look` kept of it, or fetched again where none is kept.
 
     `capture` wraps the Store reads and writes and never the fetch, which
     raises no Store notice, as undo's does.
@@ -122,15 +133,22 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
 
     reversals: list[Callable[[], None]] = []
     with undo.fetch_area(folder) as fetch_area:
-        read = _fetch_and_read(fetch_area, settings, key, commit, transport, captured)
+        paths = _kept_look(folder, settings.repository, commit)
+        if paths is None:
+            source = fetch_area
+            read = _fetch_and_read(fetch_area, settings, key, commit, transport, captured)
+        else:
+            source = _imports(folder) / _LOOKED_FOLDER
+            read = _read(source, commit, paths, captured)
         try:
             # Asked again under the writes' own capture: the fetch held no
             # capture, and anything may have filled the Store meanwhile (INV-3).
-            captured(lambda: (_refuse_a_site(folder), _write(folder, fetch_area, read,
+            captured(lambda: (_refuse_a_site(folder), _write(folder, source, read,
                                                               reversals)))
         except BaseException:
             captured(lambda: undo.reverse(reversals))
             raise
+        forget_look(folder)
     return TakenIn(read.found, lambda: captured(lambda: undo.reverse(reversals)))
 
 
@@ -143,21 +161,66 @@ def _fetch_and_read(fetch_area: Path, settings: Settings, key: str, commit: str,
                     transport: publisher.Transport | None,
                     captured: Callable = lambda step: step()) -> _Read:
     fetched = publisher.fetch_state(settings, key, fetch_area, PREFIXES, commit, transport)
-    state = captured(lambda: undo.read_state(fetch_area, fetched.paths))
+    return _read(fetch_area, fetched.commit, fetched.paths, captured)
+
+
+def _read(source: Path, commit: str, paths: tuple[str, ...],
+          captured: Callable = lambda step: step()) -> _Read:
+    """The state at `commit`, its `paths` laid out in `source`."""
+    state = captured(lambda: undo.read_state(source, paths))
     kept_photographs, refused_photographs = _named(
-        fetched.paths, store.PHOTOGRAPHS_FOLDER, store.photograph_path_for)
-    kept_files, refused_files = _named(fetched.paths, store.FILES_FOLDER, store.file_path_for)
+        paths, store.PHOTOGRAPHS_FOLDER, store.photograph_path_for)
+    kept_files, refused_files = _named(paths, store.FILES_FOLDER, store.file_path_for)
     # § 4.2: a published entry, fixed page or furniture piece in the Store's
     # own layout, or an identity file, and never a content/ folder alone.
     made_here = (state.identity is not None
                  or bool(state.entries or state.pages or state.furniture))
     found = Found(
-        commit=fetched.commit, made_here=made_here, entries=len(state.entries),
+        commit=commit, made_here=made_here, entries=len(state.entries),
         pages=len(state.pages), comments=len(state.comments),
         photographs=len(kept_photographs), files=len(kept_files), identity=state.identity,
         left=tuple(sorted((*state.skipped, *refused_photographs, *refused_files))))
     return _Read(found, state, kept_photographs, kept_files,
-                 icon=builder.SITE_ICON in fetched.paths)
+                 icon=builder.SITE_ICON in paths, paths=tuple(paths))
+
+
+def _keep_look(folder: Path, fetch_area: Path, repository: str, read: _Read) -> None:
+    """The fetched copy moved to import/looked/ for `take_in`, the record
+    last, so a record names a whole copy. Where Windows holds a file in the
+    way, the move fails, nothing is kept and `take_in` fetches again."""
+    looked = _imports(folder) / _LOOKED_FOLDER
+    try:
+        looked.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(fetch_area, looked)
+        safe_write.write_whole(
+            _imports(folder) / _LOOKED_RECORD,
+            json.dumps({"repository": repository, "commit": read.found.commit,
+                        "paths": list(read.paths)}, indent=1) + "\n",
+            prefix=".looked-")
+    except OSError:
+        forget_look(folder)
+
+
+def _kept_look(folder: Path, repository: str, commit: str) -> tuple[str, ...] | None:
+    """The paths of the copy `look` kept, where it is `commit` of `repository`."""
+    try:
+        record = json.loads((_imports(folder) / _LOOKED_RECORD).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if (not isinstance(record, dict) or record.get("repository") != repository
+            or record.get("commit") != commit or not commit):
+        return None
+    paths = record.get("paths")
+    if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+        return None
+    return tuple(paths)
+
+
+def forget_look(folder: Path) -> None:
+    """The copy `look` kept, gone: the record first, so a copy Windows holds
+    open is never read again."""
+    (_imports(folder) / _LOOKED_RECORD).unlink(missing_ok=True)
+    shutil.rmtree(_imports(folder) / _LOOKED_FOLDER, ignore_errors=True)
 
 
 def _named(paths: tuple[str, ...], folder_name: str,
@@ -178,17 +241,17 @@ def _named(paths: tuple[str, ...], folder_name: str,
     return tuple(kept), tuple(refused)
 
 
-def _write(folder: Path, fetch_area: Path, read: _Read,
+def _write(folder: Path, source: Path, read: _Read,
            reversals: list[Callable[[], None]]) -> None:
     """§ 4.3 steps 1 to 3, each write recording its reversal as it lands."""
     undo.reconcile(folder, read.state, reversals)                        # step 1
 
     for name in read.photographs:                                        # step 2
-        placed = _place(fetch_area / store.PHOTOGRAPHS_FOLDER / name, name,
+        placed = _place(source / store.PHOTOGRAPHS_FOLDER / name, name,
                         lambda n: store.photograph_path_for(folder, n))
         reversals.append(lambda p=placed: store.unplace_photograph(folder, p))
     for name in read.files:
-        kept = _place(fetch_area / store.FILES_FOLDER / name, name,
+        kept = _place(source / store.FILES_FOLDER / name, name,
                       lambda n: store.file_path_for(folder, n))
         reversals.append(lambda k=kept: store.move_to_bin(folder, store.file_path_for(folder, k)))
 
@@ -200,7 +263,7 @@ def _write(folder: Path, fetch_area: Path, read: _Read,
     # icon either, the name is dropped, or the next build would stop on it.
     icon = ""
     if read.icon:
-        icon = _place(fetch_area / builder.SITE_ICON, builder.SITE_ICON,
+        icon = _place(source / builder.SITE_ICON, builder.SITE_ICON,
                       lambda n: store.photograph_path_for(folder, n))
         reversals.append(lambda: store.unplace_photograph(folder, icon))
     store.write_identity(folder, dataclasses.replace(identity, icon=icon))
@@ -290,6 +353,7 @@ def _cleared_held(folder: Path) -> Path:
 
 def forget_folder(folder: Path) -> None:
     """A repository read and refused, or one read again, leaves no copy behind."""
+    forget_look(folder)
     shutil.rmtree(_held_folder(folder), ignore_errors=True)
     _record_path(folder).unlink(missing_ok=True)
     pressless_import.forget_folder_left(_imports(folder))

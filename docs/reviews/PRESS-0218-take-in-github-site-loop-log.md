@@ -12,3 +12,4 @@
 | impl | 2026-11-03 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | § 4.4: the hand check found a publish after a take-in dropped the vote buttons unwarned. The always-said settings now name them and the YouTube channel, and warn of the next publish. |
 | impl | 2026-11-23 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0448: § 4.3 and INV-3 — `take_in` asks whether the Store holds a site again inside the capture that writes. |
 | amend | 2026-11-23 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0461: § 4.2 a `look` at the commit the last one read answers from it without downloading. |
+| amend | 2026-11-24 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0489: § 4.2 and § 4.3 — `look` keeps a Pressless site's copy in `import/looked/`, and `take_in` writes from it; INV-6 reads "writes". |

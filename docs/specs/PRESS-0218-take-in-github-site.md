@@ -140,7 +140,11 @@ holds a process-wide lock.
 
 `look` empties the fetch area (`undo.FETCH_FOLDER`), calls `fetch_state`
 with `PREFIXES` and `commit`, reads what landed, empties the fetch area
-again and returns `Found`. It writes nothing to the Store. A commit names
+again and returns `Found`. It writes nothing to the Store. Where `made_here`
+is true it first moves what landed to `import/looked/`, with a record of the
+repository, the commit and the paths written last, for `take_in`
+(PRESS-0489). A look that fetches forgets the copy before it, and a copy
+that cannot be moved, such as one Windows holds open, is not kept. A commit names
 one state, so a `look` at the commit the last one read, for the same folder
 and repository, answers from it without downloading (PRESS-0461). The *site*
 step then shows the *pages* step's state however often it is drawn
@@ -166,8 +170,12 @@ segment each.
 `take_in` refuses with `TakeInStopped` where `store.holds_a_site(folder)` is
 true: it fills an empty Store only, as Import does (`docs/design.md` rule 9).
 It asks before the fetch and again inside the capture that writes, since the
-fetch holds no lock. Otherwise it fetches `commit` — the state `look` read, so what is written is
-what was shown — and writes it through the Store's own calls:
+fetch holds no lock. Otherwise it reads `commit` — the state `look` read, so what is written is
+what was shown — from the copy `look` kept where the record names that
+repository and commit, and fetches it otherwise
+(`tests/test_takein.py::test_finish_takes_in_the_state_the_pages_step_read`,
+`tests/test_takein.py::test_a_kept_look_that_cannot_be_emptied_is_never_taken_in`).
+It writes the state through the Store's own calls:
 
 1. Every entry, page, furniture piece, template, comment file, forwards
    file, option, look file and the identity, through undo's reconcile
@@ -203,7 +211,9 @@ def unplace_photograph(folder: Path, name: str) -> None:
 
 `move_to_bin` still refuses a photograph, and `store.unplace_photograph`
 has one caller, `takein` (INV-12).
-The fetch area is emptied when the sequence ends, whatever happened.
+The fetch area is emptied when the sequence ends, whatever happened. The
+kept copy is forgotten once the take-in lands; after a failure it stays, so
+Finish pressed again reads it.
 
 ### 4.4 What does not come across
 
@@ -319,7 +329,7 @@ takes in the same state it showed.
   *Test:* `tests/test_takein.py::test_looking_writes_nothing`.
   *Breaks when:* `look` fills the Store, or the *site* step's body does.
 - **INV-6** — What is written is the state that was shown: `take_in`
-  fetches `take_in_commit`, not the branch's current commit.
+  writes `take_in_commit`, fetched or kept, not the branch's current commit.
   *Test:* `tests/test_takein.py::test_the_state_shown_is_the_state_taken`,
   where the double's branch moves between *pages* and Finish.
   *Breaks when:* `take_in` calls `fetch_state` with no commit.

@@ -30,6 +30,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Taking in your site downloads it once, not twice** (PRESS-0489)
+  Setup keeps the copy it read to show you your site, and Finish
+  writes from it instead of downloading the site again.
+
 - **Publishing many photographs is about four times faster** (PRESS-0460, PRESS-0485)
   A press of 24 camera photographs and 4 large PNGs went from 16.3 s to
   about 4.1 s; five JPEG XL photographs went from 20 s to about 4.4 s.

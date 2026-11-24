@@ -10058,7 +10058,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: PRESS-0473-measure-2026-11-24.
   Lanes: Tray.
 
-- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
+- ✅ [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
   Review type: Codebase. Queued by PRESS-0461 from review-code
   --performance lane-05 (takein.py). Keeping the files on disk until
   Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
@@ -10067,6 +10067,12 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   files against a stand-in, 2026-11-23.
   2026-11-24: moved into 1.2.1 by the user's call that the review's
   fixes finish before 1.2.1 is released.
+  2026-11-24: `look` keeps a Pressless site's copy in import/looked/
+  with a record of repository, commit and paths; `take_in` writes from
+  it and forgets it once landed. PRESS-0218 § 4.2, § 4.3 and INV-6
+  amended. Tests: test_finish_takes_in_the_state_the_pages_step_read
+  (red first: Finish fetched every blob again) and
+  test_a_kept_look_that_cannot_be_emptied_is_never_taken_in.
   **Layman:** Finishing taking a site in no longer downloads it once more.
   Kind: perf.
   Source: review-2026-11-23.
