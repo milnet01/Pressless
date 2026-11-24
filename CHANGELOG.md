@@ -12,7 +12,7 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
-## [1.2.1] - 2026-11-24
+## [1.2.2] - 2026-11-24
 
 **Theme:** the 2026-11-23 review's fixes
 
@@ -160,6 +160,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   The tray icon also survives odd messages and outside close requests.
 
 - **Opening the takeover page during an Undo or take-in keeps their files** (PRESS-0474)
+
+## [1.2.1] - 2026-11-24
+
+Tagged but never released: its release build failed on Linux and
+Windows. Everything meant for it is in 1.2.2.
 
 ## [1.2.0] - 2026-11-23
 
