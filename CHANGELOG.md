@@ -103,7 +103,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   A move cut short is finished or settled by the next write or Undo.
 
 - **Settings keep what other screens saved meanwhile** (PRESS-0447)
-  A settings file from somewhere else opens setup from any section.
+  A settings file from somewhere else opens setup from any section. On
+  Windows, a folder where the settings file belongs is now called "not an
+  ordinary file", not "Permission denied".
 
 - **Signing in to GitHub and Google, and the domain wizard** (PRESS-0448)
   A Google return address with non-English letters works, and a failed
