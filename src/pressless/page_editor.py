@@ -488,7 +488,8 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     # PRESS-0263: an address that names no view, or no page to show the
     # furniture on, takes the one he chose last.
     remembered = choices.read(folder)
-    with lock, face.capture() as notices:
+    # PRESS-0492: each text of the page is scanned once, by whichever reads it first.
+    with lock, face.capture() as notices, blocks.kept_scans():
         try:
             opened = _opening(face, folder, kind, name, request.query.get("view", remembered.view),
                               request.query.get("show", remembered.shown_on), notices)
@@ -522,7 +523,8 @@ def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) ->
     read."""
     kind, name = request.query.get("kind", ""), request.query.get("name", "")
     remembered = choices.read(folder)
-    with lock, face.capture() as notices:
+    # PRESS-0492: each text of the page is scanned once, by whichever reads it first.
+    with lock, face.capture() as notices, blocks.kept_scans():
         try:
             opened = _opening(face, folder, kind, name, request.query.get("view", ""),
                               request.query.get("show", remembered.shown_on), notices)

@@ -42,6 +42,18 @@ def test_a_choice_is_kept_beside_the_others(tmp_path) -> None:
         page=("pages", "about"), view="code", entry_view="marks", true_colours=True)
 
 
+def test_a_choice_already_held_is_not_written_again(tmp_path, monkeypatch) -> None:
+    """PRESS-0492: opening the page he was on writes nothing. Breaks when every
+    opening rewrites the file, which waits on the disk twice."""
+    assert choices.remember(tmp_path, view="code", page=("pages", "about"))
+    written = []
+    monkeypatch.setattr(choices.json_record, "write", lambda *args: written.append(args))
+    assert choices.remember(tmp_path, page=("pages", "about"))
+    assert written == []
+    assert choices.remember(tmp_path, page=("pages", "index"))
+    assert len(written) == 1
+
+
 def test_a_choice_that_cannot_be_written_is_only_forgotten(tmp_path) -> None:
     """Breaks when a full disk or a locked folder stops a page opening."""
     missing = tmp_path / "gone"

@@ -739,7 +739,8 @@ def test_writing_renders_through_marks(tmp_path, monkeypatch):
 _ALLOWED_IMPORTS = {
     "__future__",
     "contextlib", "dataclasses", "datetime", "fnmatch", "html", "io", "os", "pathlib", "re",
-    "shutil", "tempfile", "threading",
+    "shutil", "sys", "tempfile", "threading",
+    "ctypes",                               # PRESS-0491: free memory on Windows
     "concurrent", "concurrent.futures",   # PRESS-0460: web copies on several cores
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
     "PIL", "PIL.Image", "PIL.ImageCms", "PIL.ImageOps", "PIL.ImageSequence",
@@ -2481,6 +2482,7 @@ def test_web_copies_are_made_side_by_side(tmp_path, monkeypatch):
     """§ 13: web copies are made PHOTOGRAPH_WORKERS at a time, never more.
     Breaks when they are made one after another, or the pool is unbounded."""
     monkeypatch.setattr(builder, "PHOTOGRAPH_WORKERS", 2)
+    monkeypatch.setattr(builder, "free_memory", lambda: 100 * builder.WORKER_MEMORY)
     folder = _store(tmp_path)
     names = [f"p{k}.jpg" for k in range(6)]
     for name in names:
@@ -2546,6 +2548,83 @@ def test_the_jpeg_xl_decoder_runs_once_at_a_time(tmp_path, monkeypatch):
     assert most[0] == 1
     assert sorted(p.name for p in (into / "photographs").iterdir()) == [
         "harbour.jxl.webp", "seaside.jxl.webp"]
+
+
+# ------------------------------------------------------------- PRESS-0491 ---
+# PRESS-0008 § 13: no more web copies at once than free memory holds.
+
+
+@pytest.mark.parametrize(("free", "workers"), [
+    (0, 1),                                             # no reading: one
+    (builder.WORKER_MEMORY - 1, 1),                     # too little for one: still one
+    (2 * builder.WORKER_MEMORY + 1, 2),
+    (3 * builder.WORKER_MEMORY, 3),
+    (100 * builder.WORKER_MEMORY, 4),                   # never past the ceiling
+])
+def test_the_workers_fit_free_memory(monkeypatch, free, workers):
+    """§ 13: as many workers as free memory has WORKER_MEMORY for, at least
+    one and at most PHOTOGRAPH_WORKERS."""
+    monkeypatch.setattr(builder, "PHOTOGRAPH_WORKERS", 4)
+    monkeypatch.setattr(builder, "free_memory", lambda: free)
+    assert builder.photograph_workers() == workers
+
+
+def test_a_worker_budgets_two_bitmaps_at_pillows_limit():
+    """§ 13: each worker holds at most two full-size bitmaps (PRESS-0460), of
+    at most four bytes a pixel, at Pillow's pixel limit."""
+    assert builder.WORKER_MEMORY == 2 * 4 * Image.MAX_IMAGE_PIXELS
+
+
+def test_a_build_makes_only_as_many_web_copies_as_memory_allows(tmp_path, monkeypatch):
+    """§ 13: the build asks for the count when it starts. Breaks when the pool
+    takes PHOTOGRAPH_WORKERS whatever memory is free."""
+    monkeypatch.setattr(builder, "PHOTOGRAPH_WORKERS", 4)
+    monkeypatch.setattr(builder, "free_memory", lambda: 2 * builder.WORKER_MEMORY)
+    real, sizes = builder.ThreadPoolExecutor, []
+
+    def pool(workers, **kwargs):
+        sizes.append(workers)
+        return real(workers, **kwargs)
+
+    monkeypatch.setattr(builder, "ThreadPoolExecutor", pool)
+    folder = _store(tmp_path)
+    _photograph(folder, "seaside.jpg", _image("JPEG"))
+    _pictures_entry(folder, ["seaside.jpg"])
+    build(folder, _settings(), tmp_path / "site")
+    assert sizes == [2]
+
+
+@pytest.mark.parametrize("meminfo", [
+    None,                                                # no file
+    "MemTotal:       32000000 kB\n",                     # no MemAvailable line
+    "MemAvailable:   lots kB\n",                         # not a number
+    "MemAvailable:\n",                                   # no value
+])
+def test_free_memory_it_cannot_read_is_none(tmp_path, monkeypatch, meminfo):
+    """§ 13: a reading that fails is 0, so one worker."""
+    monkeypatch.setattr(builder.sys, "platform", "linux")
+    path = tmp_path / "meminfo"
+    if meminfo is not None:
+        path.write_text(meminfo, encoding="ascii")
+    monkeypatch.setattr(builder, "_MEMINFO", str(path))
+    assert builder.free_memory() == 0
+
+
+def test_free_memory_reads_memavailable(tmp_path, monkeypatch):
+    """§ 13: on Linux, the kernel's MemAvailable, in bytes."""
+    monkeypatch.setattr(builder.sys, "platform", "linux")
+    path = tmp_path / "meminfo"
+    path.write_text("MemTotal:       32000000 kB\nMemFree:  1000 kB\n"
+                    "MemAvailable:   17000000 kB\n", encoding="ascii")
+    monkeypatch.setattr(builder, "_MEMINFO", str(path))
+    assert builder.free_memory() == 17000000 * 1024
+
+
+@pytest.mark.skipif(sys.platform not in ("linux", "win32"), reason="Linux and Windows read it")
+def test_free_memory_reads_this_computer():
+    """§ 13: the real reading on Linux and Windows is some memory, and no
+    more than a terabyte (a misread structure gives nonsense)."""
+    assert 0 < builder.free_memory() < 2 ** 40
 
 
 # ------------------------------------------------------------- PRESS-0485 ---

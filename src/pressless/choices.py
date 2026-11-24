@@ -49,8 +49,10 @@ def remember(folder: Path, **changes: object) -> bool:
     could not be read or written, which costs only the choice."""
     with _LOCK:
         try:
-            held = dataclasses.replace(read(folder, strict=True), **changes)
-            json_record.write(Path(folder) / FILE_NAME, dataclasses.asdict(held))
+            now = read(folder, strict=True)
+            held = dataclasses.replace(now, **changes)
+            if held != now:   # PRESS-0492: an unchanged choice waits on no disk
+                json_record.write(Path(folder) / FILE_NAME, dataclasses.asdict(held))
         except OSError:
             return False
     return True
