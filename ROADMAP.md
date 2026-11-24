@@ -9878,20 +9878,6 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Builder.
 
-- 📋 [PRESS-0483] **Imported entries link a held non-picture file to its kept copy, not the old site.**
-  Review type: Codebase. Queued by PRESS-0453 from a review-readability
-  lead (_html.py: a link to a held non-picture file is misreported and
-  points at the old site). PRESS-0125 § 4.5 says the lookups answer
-  nothing for a file kept in files/, and marks has no way to address
-  files/ relative to an entry, so the spec changes first.
-  User decision 2026-11-23: the misleading import-report wording is fixed
-  now; entries linking a kept file is a new feature, moved to 1.3.0 with its
-  own spec and review (a contract and security boundary: PRESS-0004 INV-11).
-  **Layman:** A brought-in post's links to its own files point at the copies Pressless kept.
-  Kind: review-fix.
-  Source: review-2026-11-23.
-  Lanes: Import.
-
 - ✅ [PRESS-0484] **A media ZIP that turns out corrupt partway keeps the places it already filled.**
   Review type: Codebase. Surfaced by PRESS-0453's sweep: unpack_media
   keeps its filled places after a failed write on this computer, but
@@ -9979,23 +9965,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Assistant.
 
-- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
-  Review type: Codebase. Queued by PRESS-0461 from review-code
-  --performance lane-05 (takein.py). Keeping the files on disk until
-  Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
-  copy, its cleanup, Windows holding files open), so the spec changes
-  first. The re-fetch now costs one parallel fetch: measured 4.23 s per 40
-  files against a stand-in, 2026-11-23.
-  **Layman:** Finishing taking a site in no longer downloads it once more.
-  Kind: perf.
-  Source: review-2026-11-23.
-  Lanes: Setup.
-
-- 📋 [PRESS-0490] **Fetches wait out GitHub's hourly reset as a publish does.**
+- ✅ [PRESS-0490] **Fetches wait out GitHub's hourly reset as a publish does.**
   Review type: Codebase. User decision 2026-11-23, following PRESS-0471:
   take-in, undo's fetch and the takeover read wait for the reset GitHub
   names, with the same countdown and MAX_RESET_WAIT_SECONDS bound, instead
   of failing at once. Amend PRESS-0009 § 4.3.
+  Shipped 2026-11-24, f1711a9 and 8584aaf. Undo, both take-in fetches,
+  the look-folder read and the takeover read wait out the hourly reset
+  with a countdown, as a publish does; a page load waits only within
+  PAGE_RESET_WAIT_SECONDS. Full suite 2924 passed, 34 skipped.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0490.json.
   **Layman:** Taking a site in, Undo and the takeover page wait for GitHub's limit to reset instead of failing.
   Kind: review-fix.
   Source: user-2026-11-23.
@@ -10049,6 +10028,35 @@ A site can be published to a free host other than GitHub Pages.
   Kind: enhancement.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
+
+- 📋 [PRESS-0489] **Take-in's Finish keeps the state its pages step read, not a third download.**
+  Review type: Codebase. Queued by PRESS-0461 from review-code
+  --performance lane-05 (takein.py). Keeping the files on disk until
+  Finish changes PRESS-0218 § 4.3 and the basis of INV-6 and INV-10 (a held
+  copy, its cleanup, Windows holding files open), so the spec changes
+  first. The re-fetch now costs one parallel fetch: measured 4.23 s per 40
+  files against a stand-in, 2026-11-23.
+  **Layman:** Finishing taking a site in no longer downloads it once more.
+  Kind: perf.
+  Source: review-2026-11-23.
+  Lanes: Setup.
+
+- 📋 [PRESS-0483] **Imported entries link a held non-picture file to its kept copy, not the old site.**
+  Review type: Codebase. Queued by PRESS-0453 from a review-readability
+  lead (_html.py: a link to a held non-picture file is misreported and
+  points at the old site). PRESS-0125 § 4.5 says the lookups answer
+  nothing for a file kept in files/, and marks has no way to address
+  files/ relative to an entry, so the spec changes first.
+  User decision 2026-11-23: the misleading import-report wording is fixed
+  now; entries linking a kept file is a new feature, moved to 1.3.0 with its
+  own spec and review (a contract and security boundary: PRESS-0004 INV-11).
+  2026-11-24: the import report's wording is fixed in de7e998 (a kept
+  picture is no longer called a file that is not a picture). The entry
+  links to files/ stay open, moved to 1.3.0 by the user's decision.
+  **Layman:** A brought-in post's links to its own files point at the copies Pressless kept.
+  Kind: review-fix.
+  Source: review-2026-11-23.
+  Lanes: Import.
 
 ## 1.4.0 — music figures
 
