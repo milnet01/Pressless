@@ -33,6 +33,7 @@ from pressless import (
     checklist,
     editor,
     face,
+    face_scripts,
     marks,
     overview,
     page_editor,
@@ -974,7 +975,7 @@ def test_messages_open_over_the_page_and_status_lines_keep_room(tmp_path):
                          (listing, "failure")):
         assert re.search(rf'<dialog class="message"[^>]*><div id="{inner}">', shown), inner
     assert '<p id="undo-status" class="press-status"' in listing
-    assert "dialog.message" in face._SCRIPT and "showModal" in face._SCRIPT
+    assert "dialog.message" in face_scripts.SCRIPT and "showModal" in face_scripts.SCRIPT
 
 
 # ------------------------------------------------------------- PRESS-0309 ---

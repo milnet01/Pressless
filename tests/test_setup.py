@@ -28,6 +28,7 @@ from pressless import (
     credentials,
     editor,
     face,
+    face_style,
     github_setup,
     github_signin,
     look_screen,
@@ -2005,7 +2006,7 @@ def test_every_drawing_wears_its_palettes_colours():
     for style, drawn in styles.items():
         own = starter_look.palette(style, False)
         assert drawn == {name: own[name] for name in _DRAWN}, style
-    rules = re.findall(r"(\.mini[^{}]*)\{([^}]*)\}", face._STYLE)
+    rules = re.findall(r"(\.mini[^{}]*)\{([^}]*)\}", face_style.STYLE)
     assert rules, "the Face draws no layout"
     for selector, body in rules:
         assert "#" not in body, selector

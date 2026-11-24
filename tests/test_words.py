@@ -344,13 +344,11 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Escape": "a key's name, as the browser reports it",
     },
     "face.py": {
-        "_STYLE": _CSS, "_SHAPES": _CSS,
         "FILES_POLICY": "a Content-Security-Policy value",
         "_FRAMES_POLICY": "a Content-Security-Policy value",
         "_ANCESTORS_POLICY": "a Content-Security-Policy value",
         "cookie": "a cookie's attributes",
         "Page": "a type annotation",
-        "_SAY": "the script's own error for a missing key, read by whoever helps",
         "_ICON": "the app's name, in its icon",
         "Pressless": "the app's name", "Press less": "the app's name, in the bar",
         "Escape": "a key's name, as the browser reports it",
@@ -360,6 +358,11 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "Location", "Host", "Origin", "Cookie", "Authorization",
                          "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),
+    },
+    "face_style.py": {"STYLE": _CSS, "SHAPES": _CSS},
+    "face_scripts.py": {
+        "SAY": "the script's own error for a missing key, read by whoever helps",
+        "Escape": "a key's name, as the browser reports it",
     },
     "page_editor.py": {
         "Enter": "a key's name, as the browser reports it",
@@ -435,7 +438,8 @@ _SELECTOR = re.compile(r"[#.]?[\w-]+(?:\[[^\]]*\])?(?: [#.]?[\w-]+(?:\[[^\]]*\])
 
 def _screen_modules() -> list[Path]:
     """Every module importing face or words but builder.py, plus starter.py,
-    templates.py and sites.py, whose failure __main__ prints (PRESS-0223 § 4.3)."""
+    templates.py and sites.py, whose failure __main__ prints (PRESS-0223 § 4.3),
+    and face_scripts.py and face_style.py, which hold the Face's scripts and sheet."""
     chosen = []
     for path in sorted(SOURCE.glob("*.py")):
         names = set()
@@ -450,7 +454,8 @@ def _screen_modules() -> list[Path]:
         if path.name == "builder.py":
             continue
         if names & {"face", "words"} or path.name in ("starter.py", "templates.py",
-                                                         "sites.py"):
+                                                         "sites.py", "face_scripts.py",
+                                                         "face_style.py"):
             chosen.append(path)
     return chosen
 

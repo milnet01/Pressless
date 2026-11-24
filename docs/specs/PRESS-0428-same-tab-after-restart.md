@@ -118,7 +118,7 @@ why the command line, which other accounts can read, never carries it.
 
 ### 4.4 Telling that a tab came back
 
-Every Face page's script (`face._SCRIPT`) asks `GET /alive` every two
+Every Face page's script (`face_scripts.SCRIPT`) asks `GET /alive` every two
 seconds. The route is one of the Face's own (`_OWN`), so it needs the
 session cookie, and answers:
 
