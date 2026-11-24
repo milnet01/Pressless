@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=494 -->
+<!-- ants-roadmap-id-high-water: PRESS=495 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -10152,6 +10152,19 @@ A site can be published to a free host other than GitHub Pages.
   Kind: perf.
   Source: PRESS-0493-measure-2026-11-24.
   Lanes: Tray.
+
+- 📋 [PRESS-0495] **The gate runs the suite under the release lock's versions before a tag.**
+  v1.2.1's release build failed on two defects the gate passed: the
+  gate's .venv resolves the newest versions (pytest 9.2.0, no
+  PyInstaller), while the release jobs install
+  packaging/release-requirements.txt (pytest 9.1.1, PyInstaller). Fixed
+  in 5302b3d and 7a8e6fd; v1.2.1 is a tag with no release. A scratch
+  venv from the lock ran the whole suite green on 2026-11-24 in about a
+  minute. Decide where it runs: a pre-tag step in .claude/bump.json, or
+  a local-ci.sh mode the release path calls.
+  **Layman:** A release build can no longer fail on a test that passed every check before it.
+  Kind: test.
+  Source: v1.2.1-release-failure-2026-11-24.
 
 ## 1.4.0 — music figures
 
