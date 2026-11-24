@@ -272,9 +272,12 @@ picture look.png | Der Bildschirm Aussehen, mit den Layouts und Farbstilen zur A
 3. Klicke auf Speichern.
 video changing-the-look.webm | Auf dem Bildschirm Aussehen eine andere Überschriftenschrift wählen, die Vorschau ändert sich passend, und auf Speichern klicken.
 
-Deine Website zeigt das neue Aussehen, nachdem du das nächste Mal
-veröffentlicht hast. Jede Farbe hat eine helle und eine dunkle Wahl: Ein
-Besucher, dessen Computer auf dunkel eingestellt ist, sieht die dunkle.
+Deine Website behält ihr jetziges Aussehen, bis du auf dem Bildschirm
+Aussehen auf Auf die Website stellen klickst. Eine Seite oder einen
+Eintrag zu veröffentlichen schickt es nicht mit. Dieses Aussehen in den
+Papierkorb legen wirft ein gespeichertes Aussehen weg. Jede Farbe hat
+eine helle und eine dunkle Wahl: Ein Besucher, dessen Computer auf dunkel
+eingestellt ist, sieht die dunkle.
 
 Jedes Layout und jeder Farbstil sagt, zu welcher Art von Website er
 passt. Jedes Layout kann jeden Farbstil tragen. Wenn du einen Farbstil

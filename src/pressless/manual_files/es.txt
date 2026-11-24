@@ -264,9 +264,11 @@ picture look.png | La pantalla Aspecto, con los diseños y estilos de color para
 3. Haz clic en Guardar.
 video changing-the-look.webm | Elegir otro tipo de letra para los títulos en la pantalla Aspecto, la vista previa cambiando para coincidir, y hacer clic en Guardar.
 
-Tu sitio muestra el aspecto nuevo después de tu próxima publicación. Cada
-color tiene una opción clara y una oscura: un visitante cuyo ordenador
-esté en modo oscuro ve la oscura.
+Tu sitio conserva su aspecto actual hasta que hagas clic en Enviar al
+sitio en la pantalla Aspecto. Publicar una página o una entrada no lo
+envía. Tirar este aspecto a la papelera descarta un aspecto guardado.
+Cada color tiene una opción clara y una oscura: un visitante cuyo
+ordenador esté en modo oscuro ve la oscura.
 
 Cada diseño y cada estilo de color dice para qué tipo de sitio sirve.
 Cualquier diseño puede llevar cualquier estilo de color. Al elegir un

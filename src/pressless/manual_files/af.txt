@@ -262,9 +262,11 @@ picture look.png | Die Voorkoms-skerm, met die uitlegte en kleurstyle om uit te 
 3. Klik Stoor.
 video changing-the-look.webm | 'n Ander opskrif-lettertipe op die Voorkoms-skerm kies, die voorskou verander om te pas, en Stoor klik.
 
-Jou werf wys die nuwe voorkoms nadat jy volgende publiseer. Elke kleur het
-'n lig en 'n donker keuse: 'n besoeker wie se rekenaar op donker gestel
-is, sien die donker een.
+Jou werf hou sy huidige voorkoms totdat jy op die Voorkoms-skerm Pers na
+werf klik. As jy 'n bladsy of 'n inskrywing publiseer, stuur dit nie saam
+nie. Gooi hierdie voorkoms in die snippermandjie gooi 'n gestoorde
+voorkoms weg. Elke kleur het 'n lig en 'n donker keuse: 'n besoeker wie
+se rekenaar op donker gestel is, sien die donker een.
 
 Elke uitleg en elke kleurstyl sê watter soort werf dit pas. Enige uitleg
 kan enige kleurstyl dra. As jy 'n kleurstyl kies, vul dit die

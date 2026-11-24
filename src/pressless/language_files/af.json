@@ -46,20 +46,20 @@
    "Of, waar die toep sy instellings as teks vra:"
   ],
   "assistant.box.bin": [
-   "8cfa54ae",
-   "Sit {name} in die snippermandjie."
+   "ba43bdf3",
+   "Sit “{name}” in die snippermandjie."
   ],
   "assistant.box.discard": [
-   "5d4ac414",
-   "Gooi die veranderings weg wat op {name} wag."
+   "aa257907",
+   "Gooi die veranderings weg wat op “{name}” wag."
   ],
   "assistant.box.remove": [
-   "01ca3786",
-   "Verwyder die bladsy {name} nou van jou werf af."
+   "0843c732",
+   "Verwyder nou die bladsy “{name}” van jou werf af."
   ],
   "assistant.box.rename": [
-   "8a3f497e",
-   "Hernoem die bladsy {name} nou na {to}."
+   "bfda25ea",
+   "Hernoem nou die bladsy “{name}” na “{to}”."
   ],
   "assistant.box.undo": [
    "7d062601",
@@ -252,6 +252,42 @@
   "assistant.title": [
    "c22bf759",
    "KI-helper"
+  ],
+  "assistant.unopened": [
+   "ad8af321",
+   "Pressless kon nie die lêer waardeur 'n KI-toep dit vind, in Pressless se eie gids skryf nie, so geen KI-toep kan koppel nie. Kyk of daar in die gids geskryf kan word, en skakel die helper dan weer aan."
+  ],
+  "assistant.why.items": [
+   "e72f0c6e",
+   "elke item van {argument} moet {type} wees"
+  ],
+  "assistant.why.needs": [
+   "5748723a",
+   "{tool} het {argument} nodig"
+  ],
+  "assistant.why.no_tool": [
+   "994fa304",
+   "daar is geen gereedskap {tool} nie"
+  ],
+  "assistant.why.not_object": [
+   "3d81c78c",
+   "die argumente is nie 'n voorwerp nie"
+  ],
+  "assistant.why.one_of": [
+   "b66196ca",
+   "{argument} moet een van {choices} wees"
+  ],
+  "assistant.why.takes_no": [
+   "45e29d26",
+   "{tool} neem geen {argument} nie"
+  ],
+  "assistant.why.type": [
+   "6b88340d",
+   "{argument} moet {type} wees"
+  ],
+  "assistant.why.whole_number": [
+   "c5a752f6",
+   "{argument} moet 'n heelgetal wees"
   ],
   "backups.trouble": [
    "0bf0fd99",
@@ -1458,8 +1494,8 @@
    "As Google nie meer die aanmelding aanvaar nie, <a href=\"{page}\">meld weer aan</a>."
   ],
   "dashboard.stale": [
-   "79bc2748",
-   "Pressless kon sopas nie Google bereik nie, so dit is die syfers van {when}."
+   "83994e7d",
+   "Google het sopas geen nuwe syfers gegee nie, so dit is die syfers van {when}."
   ],
   "dashboard.time_on_page": [
    "b0a87c6b",
@@ -1720,6 +1756,10 @@
   "domain.field": [
    "4cbcc019",
    "Jou domeinnaam"
+  ],
+  "domain.hint.alphabet": [
+   "50e36ff0",
+   "Pressless kan nog nie 'n naam in hierdie alfabet nagaan nie. Tik dit soos jou domeinverkoper dit wys, in die letters a tot z, in die vorm wat met xn-- begin."
   ],
   "domain.hint.certificate_failed": [
    "bcb86cb8",
@@ -2754,8 +2794,8 @@
    "Pressless het niks daarin verander nie. Stuur die besonderhede hieronder aan wie jou ook al help."
   ],
   "failure.settings.SettingsError.what": [
-   "4b0de841",
-   "Pressless kon nie sy instellings lees nie."
+   "a8a38f0a",
+   "Pressless kon nie sy instellings lees of stoor nie."
   ],
   "failure.shortcuts.ShortcutError.what": [
    "a0f1bcf8",
@@ -2860,6 +2900,14 @@
   "failure.updater.DownloadFailed.what": [
    "e0e68c42",
    "Pressless kon nie die nuwe weergawe aflaai nie."
+  ],
+  "failure.updater.NotWritable.next": [
+   "701c1207",
+   "Vra wie ook al na hierdie rekenaar omsien om jou toe te laat om daardie gids te verander, en klik dan weer op Dateer nou op."
+  ],
+  "failure.updater.NotWritable.what": [
+   "1d081379",
+   "Pressless kan nie die nuwe weergawe stoor nie, want dit mag nie die gids verander waaruit dit loop nie."
   ],
   "failure.updater.UpdateRejected.next": [
    "4c1823b8",
@@ -3257,6 +3305,66 @@
    "da5e2ab9",
    "Daardie lêer is groter as enige WordPress-uitvoer wat Pressless lees, so dit is nie gehou nie."
   ],
+  "import.fetch.why.answered": [
+   "e87f1b57",
+   "die ou werf het {status} geantwoord"
+  ],
+  "import.fetch.why.connection": [
+   "154bb526",
+   "die verbinding het misluk ({what})"
+  ],
+  "import.fetch.why.cut_short": [
+   "d4619ed2",
+   "die ou werf het opgehou stuur voor die einde"
+  ],
+  "import.fetch.why.inside": [
+   "1dfb87e9",
+   "sy adres lei binne-in hierdie rekenaar of sy netwerk in"
+  ],
+  "import.fetch.why.moved_nowhere": [
+   "4cd4c85c",
+   "die ou werf het {status} geantwoord en geen adres genoem nie"
+  ],
+  "import.fetch.why.no_room": [
+   "4de57391",
+   "daar was nie meer plek op hierdie skyf nie"
+  ],
+  "import.fetch.why.not_found": [
+   "842ad00e",
+   "die ou werf se naam kon nie gevind word nie"
+  ],
+  "import.fetch.why.not_web": [
+   "86aaf4e2",
+   "sy adres is nie 'n webadres nie"
+  ],
+  "import.fetch.why.out_of_the_site": [
+   "d7921a10",
+   "dit het uit die werf uit herlei"
+  ],
+  "import.fetch.why.parent": [
+   "57b5e5e9",
+   "sy adres klim uit die werf uit"
+  ],
+  "import.fetch.why.port": [
+   "86292a9f",
+   "sy adres noem geen poort wat Pressless kan gebruik nie"
+  ],
+  "import.fetch.why.redirects": [
+   "c32123bd",
+   "die ou werf het dit meer as {most} keer herlei"
+  ],
+  "import.fetch.why.silent": [
+   "df9cb956",
+   "die ou werf het vir {seconds} sekondes niks gestuur nie"
+  ],
+  "import.fetch.why.too_many": [
+   "2a24a50b",
+   "die werf bevat te veel lêers om heel in te bring"
+  ],
+  "import.fetch.why.too_slow": [
+   "c1037c24",
+   "dit was na {minutes} minute nog besig om aan te kom"
+  ],
   "import.folder.base": [
    "6cd52d56",
    "dit het 'n basiselement, wat verander wat sy skakels beteken, so hulle is gelaat soos geskryf"
@@ -3453,6 +3561,10 @@
    "d4d9d3c5",
    "Kies die ZIP-lêer"
   ],
+  "import.gaps.damaged": [
+   "393e8288",
+   "Daardie ZIP-lêer is halfpad beskadig, so Pressless het opgehou om lêers daaruit te neem. Die wat dit geneem het, word behou."
+  ],
   "import.gaps.filled.many": [
    "4ca9a647",
    "{count} is uit die ZIP-lêer geneem."
@@ -3480,6 +3592,10 @@
   "import.gaps.refused": [
    "319be7f2",
    "Daardie lêer kon nie gebruik word nie. Kies 'n ZIP-lêer van die uploads-gids."
+  ],
+  "import.gaps.unwritten": [
+   "64ef27d2",
+   "Pressless kon nie elke lêer uit daardie ZIP-lêer op hierdie rekenaar stoor nie: {why}. Die wat dit gestoor het, word behou."
   ],
   "import.look": [
    "67434d3f",
@@ -3641,6 +3757,10 @@
    "5d310a82",
    "JPEG XL-foto's kan nie op hierdie rekenaar gelees word nie. Pressless se ontkodeerder loop op Windows, en op Linux op 64-bis Intel of AMD."
   ],
+  "jpegxl.not_writable": [
+   "7c1f60df",
+   "JPEG XL-ondersteuning kon nie gestoor word nie, omdat Pressless nie die gids mag verander waaruit dit loop nie."
+  ],
   "jpegxl.ready": [
    "15422327",
    "JPEG XL-foto's: gereed."
@@ -3674,12 +3794,16 @@
    "Jou werf se voorkoms, gemaak deur Pressless se Voorkoms-skerm. Verander dit daar: 'n verandering wat hier met die hand gemaak word, word by die volgende stoor vervang, met 'n kopie in die snippermandjie gehou."
   ],
   "look_screen.about": [
-   "139563aa",
-   "Verander 'n keuse en die voorskou daarnaas wys dit dadelik. Stoor hou dit, en jou webwerf wys dit nadat jy volgende publiseer."
+   "b4bb3417",
+   "Verander 'n keuse en die voorskou langsaan wys dit dadelik. Stoor hou dit hier, en jou werf wys dit sodra jy die voorkoms na jou werf pers."
   ],
   "look_screen.back": [
-   "5e49efc3",
-   "As jy stoor, kom jou werf se eie stylblaaie terug. Pressless hou 'n kopie van die huidige stylkode in die snippermandjie."
+   "a008eb46",
+   "As jy dit na die werf pers, kom die werf se eie style-bladsye terug. Pressless sit 'n kopie van die huidige stylkode in die snippermandjie."
+  ],
+  "look_screen.bin": [
+   "b3893164",
+   "Gooi hierdie voorkoms in die snippermandjie"
   ],
   "look_screen.body_font": [
    "b39fa052",
@@ -3805,6 +3929,10 @@
    "a5119091",
    "Uitleg"
   ],
+  "look_screen.live": [
+   "18237b48",
+   "Dit is jou werf se voorkoms. Jou veranderings bly op hierdie rekenaar totdat jy die voorkoms na jou werf pers."
+  ],
   "look_screen.own_colours": [
    "eac98611",
    "Gebruik hierdie uitleg se eie kleure"
@@ -3814,8 +3942,8 @@
    "Jou tuisblad met hierdie voorkoms"
   ],
   "look_screen.replaces": [
-   "ccce5e62",
-   "As jy stoor, vervang dit jou werf se huidige stylkode met een wat uit hierdie keuses gemaak is. Pressless hou 'n kopie van die huidige een in die snippermandjie."
+   "d05dc3a7",
+   "As jy dit na die werf pers, word die werf se huidige stylkode vervang deur een wat uit hierdie keuses gemaak is. Pressless sit 'n kopie van die huidige een in die snippermandjie."
   ],
   "look_screen.restart": [
    "b1cbeef3",
@@ -3838,8 +3966,8 @@
    "Stoor"
   ],
   "look_screen.saved": [
-   "b66205b8",
-   "Gestoor. Jou webwerf wys hierdie voorkoms nadat jy volgende publiseer."
+   "39d4e96b",
+   "Gestoor. Jou werf hou sy huidige voorkoms totdat jy hierdie een na jou werf pers."
   ],
   "look_screen.size.large": [
    "ab80540d",
@@ -3960,6 +4088,10 @@
   "look_screen.type": [
    "38ecfc9a",
    "Teks en wydte"
+  ],
+  "look_screen.waiting": [
+   "22516bb0",
+   "Hierdie voorkoms is nog nie op jou werf nie."
   ],
   "look_screen.width": [
    "217fbef1",
@@ -4096,6 +4228,14 @@
   "notice.editor.left_out.tags": [
    "ba2839a2",
    "“{name}” is uit die etikette gelaat: Pressless kan dit nie deel van 'n webadres maak nie. Gee dit 'n ander naam."
+  ],
+  "notice.look_screen.kept": [
+   "b05c6afb",
+   "Jou voorkoms is gepubliseer, maar sy wagkopie is op sy plek gelaat. Jy kan dit in die snippermandjie gooi."
+  ],
+  "notice.look_screen.kept_unknown": [
+   "b5f4fc6b",
+   "Pressless kan nie sê of jou voorkoms gepubliseer is nie, en sy wagkopie is op sy plek gelaat. Jy kan dit in die snippermandjie gooi."
   ],
   "notice.next": [
    "913ee744",
@@ -4260,6 +4400,10 @@
   "overview.waiting.entries.one": [
    "fdb3e667",
    "{count} joernaalinskrywing"
+  ],
+  "overview.waiting.look": [
+   "5e5076e7",
+   "die voorkoms"
   ],
   "overview.waiting.many": [
    "20f7e292",
@@ -4433,6 +4577,10 @@
    "541b7167",
    "Jou veranderings bly op hierdie rekenaar totdat jy hierdie bladsy publiseer."
   ],
+  "page_editor.video_title": [
+   "4d78938a",
+   "YouTube-video"
+  ],
   "page_hint.changes": [
    "0ee20088",
    "Pers jou veranderings na jou werf, of gooi dit weg, en hernoem dan hierdie bladsy."
@@ -4477,9 +4625,17 @@
    "b21944cb",
    "{what}."
   ],
+  "progress.bringing": [
+   "34c2391a",
+   "Bring jou werf in"
+  ],
   "progress.building": [
    "5062673c",
    "Bou jou bladsye"
+  ],
+  "progress.checking": [
+   "979ee491",
+   "Kyk watter lêers verander het"
   ],
   "progress.downloading": [
    "becedb76",
@@ -4497,6 +4653,10 @@
    "d706dcd8",
    "Pak die werflêer"
   ],
+  "progress.photographs": [
+   "1b76bb3b",
+   "Maak jou foto's reg vir die web"
+  ],
   "progress.sending": [
    "cacd2f5e",
    "Stuur jou werf na GitHub"
@@ -4512,6 +4672,14 @@
   "progress.unpacking": [
    "b017713c",
    "Pak die werflêer uit"
+  ],
+  "progress.updating": [
+   "8de06159",
+   "Laai die nuwe weergawe af"
+  ],
+  "progress.waiting": [
+   "090cb4fd",
+   "GitHub se uurlikse toelaag is op; gaan voort oor {left}."
   ],
   "publishing.hint": [
    "9567d670",
@@ -4725,6 +4893,10 @@
    "a9549d7d",
    "Nog nie"
   ],
+  "script.editor.adding_file": [
+   "cc95c83a",
+   "Voeg die lêer by…"
+  ],
   "script.editor.adding_photograph": [
    "5788f365",
    "Voeg tans die foto by…"
@@ -4852,6 +5024,10 @@
   "script.opening": [
    "c926c2c5",
    "Maak oop…"
+  ],
+  "script.page.unreachable": [
+   "e852d035",
+   "Pressless het nie geantwoord nie, so hierdie bladsy het opgehou stoor. Kyk of Pressless nog loop, en maak die bladsy dan weer oop."
   ],
   "script.pages.ask_rename": [
    "a36a0f29",
@@ -6772,6 +6948,10 @@
   "votes_setup.check.anonymous": [
    "faad4ebd",
    "Google het 'n anonieme aanmelding geweier. Skakel Anonymous-aanmelding aan (stap 4)."
+  ],
+  "votes_setup.check.busy": [
+   "d33997f8",
+   "Google het Pressless gevra om te wag, so niks is nog verkeerd nie. Probeer oor 'n paar minute weer."
   ],
   "votes_setup.check.database": [
    "2056fe1c",

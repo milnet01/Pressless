@@ -270,9 +270,12 @@ picture look.png | L'écran Apparence, avec les mises en page et les styles de c
 3. Cliquez sur Enregistrer.
 video changing-the-look.webm | Le choix d'une autre police des titres sur l'écran Apparence, l'aperçu qui change en conséquence, et un clic sur Enregistrer.
 
-Votre site montre la nouvelle apparence après votre prochaine
-publication. Chaque couleur a un choix clair et un choix sombre : un
-visiteur dont l'ordinateur est réglé sur sombre voit le sombre.
+Votre site garde son apparence actuelle jusqu'à ce que vous cliquiez
+sur Envoyer sur le site dans l'écran Apparence. Publier une page ou une
+entrée ne l'envoie pas. Mettre cette apparence à la corbeille jette une
+apparence enregistrée. Chaque couleur a un choix clair et un choix
+sombre : un visiteur dont l'ordinateur est réglé sur sombre voit le
+sombre.
 
 Chaque mise en page et chaque style de couleurs dit à quel genre de site
 il convient. N'importe quelle mise en page peut porter n'importe quel

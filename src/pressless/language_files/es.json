@@ -46,20 +46,20 @@
    "O, donde la aplicación pida sus ajustes como texto:"
   ],
   "assistant.box.bin": [
-   "8cfa54ae",
-   "Tirar {name} a la papelera."
+   "ba43bdf3",
+   "Tirar “{name}” a la papelera."
   ],
   "assistant.box.discard": [
-   "5d4ac414",
-   "Tirar los cambios que esperan en {name}."
+   "aa257907",
+   "Descartar los cambios que esperan en “{name}”."
   ],
   "assistant.box.remove": [
-   "01ca3786",
-   "Quitar ahora la página {name} de tu sitio."
+   "0843c732",
+   "Quitar ahora la página “{name}” de tu sitio."
   ],
   "assistant.box.rename": [
-   "8a3f497e",
-   "Cambiar ahora el nombre de la página {name} a {to}."
+   "bfda25ea",
+   "Cambiar ahora el nombre de la página “{name}” a “{to}”."
   ],
   "assistant.box.undo": [
    "7d062601",
@@ -252,6 +252,42 @@
   "assistant.title": [
    "c22bf759",
    "Ayudante de IA"
+  ],
+  "assistant.unopened": [
+   "ad8af321",
+   "Pressless no pudo escribir, en su propia carpeta, el archivo con el que una aplicación de IA lo encuentra, así que ninguna aplicación de IA puede conectarse. Comprueba que se puede escribir en la carpeta y vuelve a activar el ayudante."
+  ],
+  "assistant.why.items": [
+   "e72f0c6e",
+   "cada elemento de {argument} debe ser {type}"
+  ],
+  "assistant.why.needs": [
+   "5748723a",
+   "{tool} necesita {argument}"
+  ],
+  "assistant.why.no_tool": [
+   "994fa304",
+   "no existe la herramienta {tool}"
+  ],
+  "assistant.why.not_object": [
+   "3d81c78c",
+   "los argumentos no son un objeto"
+  ],
+  "assistant.why.one_of": [
+   "b66196ca",
+   "{argument} debe ser uno de {choices}"
+  ],
+  "assistant.why.takes_no": [
+   "45e29d26",
+   "{tool} no admite {argument}"
+  ],
+  "assistant.why.type": [
+   "6b88340d",
+   "{argument} debe ser {type}"
+  ],
+  "assistant.why.whole_number": [
+   "c5a752f6",
+   "{argument} debe ser un número entero"
   ],
   "backups.trouble": [
    "0bf0fd99",
@@ -1458,8 +1494,8 @@
    "Si Google ya no acepta el inicio de sesión, <a href=\"{page}\">inicia sesión de nuevo</a>."
   ],
   "dashboard.stale": [
-   "79bc2748",
-   "Pressless no pudo conectarse con Google ahora mismo, así que estas son las cifras de {when}."
+   "83994e7d",
+   "Google no dio cifras nuevas hace un momento, así que estas son las cifras de {when}."
   ],
   "dashboard.time_on_page": [
    "b0a87c6b",
@@ -1720,6 +1756,10 @@
   "domain.field": [
    "4cbcc019",
    "Tu nombre de dominio"
+  ],
+  "domain.hint.alphabet": [
+   "50e36ff0",
+   "Pressless todavía no puede comprobar un nombre en este alfabeto. Escríbelo como lo muestra quien te vende el dominio, con las letras de la a a la z, en la forma que empieza por xn--."
   ],
   "domain.hint.certificate_failed": [
    "bcb86cb8",
@@ -2754,8 +2794,8 @@
    "Pressless no cambió nada en ellos. Envía los detalles de abajo a quien te ayude."
   ],
   "failure.settings.SettingsError.what": [
-   "4b0de841",
-   "Pressless no pudo leer sus ajustes."
+   "a8a38f0a",
+   "Pressless no pudo leer ni guardar sus ajustes."
   ],
   "failure.shortcuts.ShortcutError.what": [
    "a0f1bcf8",
@@ -2860,6 +2900,14 @@
   "failure.updater.DownloadFailed.what": [
    "e0e68c42",
    "Pressless no pudo descargar la nueva versión."
+  ],
+  "failure.updater.NotWritable.next": [
+   "701c1207",
+   "Pide a quien se ocupa de este ordenador que te deje modificar esa carpeta y haz clic de nuevo en Actualizar ahora."
+  ],
+  "failure.updater.NotWritable.what": [
+   "1d081379",
+   "Pressless no puede guardar la nueva versión, porque no puede modificar la carpeta desde la que se ejecuta."
   ],
   "failure.updater.UpdateRejected.next": [
    "4c1823b8",
@@ -3257,6 +3305,66 @@
    "da5e2ab9",
    "Ese archivo es más grande que cualquier exportación de WordPress que lea Pressless, así que no se guardó."
   ],
+  "import.fetch.why.answered": [
+   "e87f1b57",
+   "el sitio antiguo respondió {status}"
+  ],
+  "import.fetch.why.connection": [
+   "154bb526",
+   "la conexión falló ({what})"
+  ],
+  "import.fetch.why.cut_short": [
+   "d4619ed2",
+   "el sitio antiguo dejó de enviar antes del final"
+  ],
+  "import.fetch.why.inside": [
+   "1dfb87e9",
+   "su dirección lleva al interior de este ordenador o de su red"
+  ],
+  "import.fetch.why.moved_nowhere": [
+   "4cd4c85c",
+   "el sitio antiguo respondió {status} y no indicó ninguna dirección"
+  ],
+  "import.fetch.why.no_room": [
+   "4de57391",
+   "ya no quedaba espacio en esta unidad"
+  ],
+  "import.fetch.why.not_found": [
+   "842ad00e",
+   "no se encontró el nombre del sitio antiguo"
+  ],
+  "import.fetch.why.not_web": [
+   "86aaf4e2",
+   "su dirección no es una dirección web"
+  ],
+  "import.fetch.why.out_of_the_site": [
+   "d7921a10",
+   "redirigía fuera del sitio"
+  ],
+  "import.fetch.why.parent": [
+   "57b5e5e9",
+   "su dirección sale del sitio"
+  ],
+  "import.fetch.why.port": [
+   "86292a9f",
+   "su dirección no indica ningún puerto que Pressless pueda usar"
+  ],
+  "import.fetch.why.redirects": [
+   "c32123bd",
+   "el sitio antiguo la redirigió más de {most} veces"
+  ],
+  "import.fetch.why.silent": [
+   "df9cb956",
+   "el sitio antiguo no envió nada durante {seconds} segundos"
+  ],
+  "import.fetch.why.too_many": [
+   "2a24a50b",
+   "el sitio contiene demasiados archivos para traerlo entero"
+  ],
+  "import.fetch.why.too_slow": [
+   "c1037c24",
+   "seguía llegando después de {minutes} minutos"
+  ],
   "import.folder.base": [
    "6cd52d56",
    "tiene un elemento base, que cambia lo que significan sus enlaces, así que se dejaron como estaban escritos"
@@ -3453,6 +3561,10 @@
    "d4d9d3c5",
    "Elegir el archivo ZIP"
   ],
+  "import.gaps.damaged": [
+   "393e8288",
+   "Ese archivo ZIP está dañado a medias, así que Pressless dejó de tomar archivos de él. Los que tomó se conservan."
+  ],
   "import.gaps.filled.many": [
    "4ca9a647",
    "{count} se tomaron del archivo ZIP."
@@ -3480,6 +3592,10 @@
   "import.gaps.refused": [
    "319be7f2",
    "No se pudo usar ese archivo. Elige un archivo ZIP de la carpeta uploads."
+  ],
+  "import.gaps.unwritten": [
+   "64ef27d2",
+   "Pressless no pudo guardar en este ordenador todos los archivos de ese archivo ZIP: {why}. Los que guardó se conservan."
   ],
   "import.look": [
    "67434d3f",
@@ -3641,6 +3757,10 @@
    "5d310a82",
    "Las fotografías JPEG XL no se pueden leer en este ordenador. El decodificador de Pressless funciona en Windows, y en Linux con Intel o AMD de 64 bits."
   ],
+  "jpegxl.not_writable": [
+   "7c1f60df",
+   "No se pudo guardar la compatibilidad con JPEG XL, porque Pressless no puede modificar la carpeta desde la que se ejecuta."
+  ],
   "jpegxl.ready": [
    "15422327",
    "Fotografías JPEG XL: listas."
@@ -3674,12 +3794,16 @@
    "El aspecto de tu sitio, hecho por la pantalla Aspecto de Pressless. Cámbialo allí: un cambio hecho aquí a mano se reemplaza en el próximo guardado, y se guarda una copia en la papelera."
   ],
   "look_screen.about": [
-   "139563aa",
-   "Cambia una opción y la vista previa de al lado la muestra al instante. Guardar la conserva, y tu sitio web la muestra después de tu próxima publicación."
+   "b4bb3417",
+   "Cambia una opción y la vista previa de al lado la muestra al instante. Guardar la conserva aquí, y tu sitio la muestra cuando envíes el aspecto al sitio."
   ],
   "look_screen.back": [
-   "5e49efc3",
-   "Al guardar se restauran las hojas de estilo propias de tu sitio. Pressless guarda en la papelera una copia del código de estilo actual."
+   "a008eb46",
+   "Al enviarlo al sitio, se restauran las hojas de estilo propias de tu sitio. Pressless guarda una copia del código de estilo actual en la papelera."
+  ],
+  "look_screen.bin": [
+   "b3893164",
+   "Tirar este aspecto a la papelera"
   ],
   "look_screen.body_font": [
    "b39fa052",
@@ -3805,6 +3929,10 @@
    "a5119091",
    "Diseño"
   ],
+  "look_screen.live": [
+   "18237b48",
+   "Este es el aspecto de tu sitio. Tus cambios se quedan en este ordenador hasta que envíes el aspecto al sitio."
+  ],
   "look_screen.own_colours": [
    "eac98611",
    "Usar los colores propios de este diseño"
@@ -3814,8 +3942,8 @@
    "Tu página de inicio con este aspecto"
   ],
   "look_screen.replaces": [
-   "ccce5e62",
-   "Al guardar se reemplaza el código de estilo actual de tu sitio por uno hecho con estas opciones. Pressless guarda en la papelera una copia del actual."
+   "d05dc3a7",
+   "Al enviarlo al sitio, el código de estilo actual de tu sitio se sustituye por uno hecho con estas opciones. Pressless guarda una copia del actual en la papelera."
   ],
   "look_screen.restart": [
    "b1cbeef3",
@@ -3838,8 +3966,8 @@
    "Guardar"
   ],
   "look_screen.saved": [
-   "b66205b8",
-   "Guardado. Tu sitio web muestra este aspecto después de tu próxima publicación."
+   "39d4e96b",
+   "Guardado. Tu sitio conserva su aspecto actual hasta que envíes este al sitio."
   ],
   "look_screen.size.large": [
    "ab80540d",
@@ -3960,6 +4088,10 @@
   "look_screen.type": [
    "38ecfc9a",
    "Texto y ancho"
+  ],
+  "look_screen.waiting": [
+   "22516bb0",
+   "Este aspecto todavía no está en tu sitio."
   ],
   "look_screen.width": [
    "217fbef1",
@@ -4096,6 +4228,14 @@
   "notice.editor.left_out.tags": [
    "ba2839a2",
    "“{name}” se dejó fuera de las etiquetas: Pressless no puede convertirlo en parte de una dirección web. Dale otro nombre."
+  ],
+  "notice.look_screen.kept": [
+   "b05c6afb",
+   "Tu aspecto se publicó, pero su copia en espera se dejó en su sitio. Puedes tirarla a la papelera."
+  ],
+  "notice.look_screen.kept_unknown": [
+   "b5f4fc6b",
+   "Pressless no puede saber si tu aspecto se publicó, y su copia en espera se dejó en su sitio. Puedes tirarla a la papelera."
   ],
   "notice.next": [
    "913ee744",
@@ -4260,6 +4400,10 @@
   "overview.waiting.entries.one": [
    "fdb3e667",
    "{count} entrada del diario"
+  ],
+  "overview.waiting.look": [
+   "5e5076e7",
+   "el aspecto"
   ],
   "overview.waiting.many": [
    "20f7e292",
@@ -4433,6 +4577,10 @@
    "541b7167",
    "Tus cambios se quedan en este ordenador hasta que publiques esta página."
   ],
+  "page_editor.video_title": [
+   "4d78938a",
+   "Vídeo de YouTube"
+  ],
   "page_hint.changes": [
    "0ee20088",
    "Envía tus cambios a tu sitio, o tíralos, y luego cambia el nombre de esta página."
@@ -4477,9 +4625,17 @@
    "b21944cb",
    "{what}."
   ],
+  "progress.bringing": [
+   "34c2391a",
+   "Trayendo tu sitio"
+  ],
   "progress.building": [
    "5062673c",
    "Creando tus páginas"
+  ],
+  "progress.checking": [
+   "979ee491",
+   "Comprobando qué archivos han cambiado"
   ],
   "progress.downloading": [
    "becedb76",
@@ -4497,6 +4653,10 @@
    "d706dcd8",
    "Empaquetando el archivo del sitio"
   ],
+  "progress.photographs": [
+   "1b76bb3b",
+   "Preparando tus fotografías para la web"
+  ],
   "progress.sending": [
    "cacd2f5e",
    "Enviando tu sitio a GitHub"
@@ -4512,6 +4672,14 @@
   "progress.unpacking": [
    "b017713c",
    "Desempaquetando el archivo del sitio"
+  ],
+  "progress.updating": [
+   "8de06159",
+   "Descargando la nueva versión"
+  ],
+  "progress.waiting": [
+   "090cb4fd",
+   "Se agotó el límite por hora de GitHub; se continúa en {left}."
   ],
   "publishing.hint": [
    "9567d670",
@@ -4725,6 +4893,10 @@
    "a9549d7d",
    "Todavía no"
   ],
+  "script.editor.adding_file": [
+   "cc95c83a",
+   "Añadiendo el archivo…"
+  ],
   "script.editor.adding_photograph": [
    "5788f365",
    "Añadiendo la fotografía…"
@@ -4852,6 +5024,10 @@
   "script.opening": [
    "c926c2c5",
    "Abriendo…"
+  ],
+  "script.page.unreachable": [
+   "e852d035",
+   "Pressless no respondió, así que esta página ha dejado de guardar. Comprueba que Pressless sigue en marcha y abre la página de nuevo."
   ],
   "script.pages.ask_rename": [
    "a36a0f29",
@@ -6772,6 +6948,10 @@
   "votes_setup.check.anonymous": [
    "faad4ebd",
    "Google rechazó un inicio de sesión anónimo. Activa el inicio de sesión Anonymous (paso 4)."
+  ],
+  "votes_setup.check.busy": [
+   "d33997f8",
+   "Google pidió a Pressless que esperara, así que todavía no hay ningún fallo. Inténtalo de nuevo en unos minutos."
   ],
   "votes_setup.check.database": [
    "2056fe1c",
