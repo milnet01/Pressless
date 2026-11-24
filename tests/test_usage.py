@@ -36,12 +36,14 @@ class _Recorder:
         self.bodies: list[dict] = []
         self.urls: list[str] = []
         self.released = threading.Event()
+        self.asked = threading.Event()   # a report has reached the transport
         if not hold:
             self.released.set()
         self._lock = threading.Lock()
 
     def request(self, method: str, url: str, body: bytes | None,
                 headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+        self.asked.set()
         self.released.wait(10)
         with self._lock:
             self.urls.append(url)
@@ -306,6 +308,9 @@ def test_a_slow_endpoint_holds_nothing(tmp_path, monkeypatch):
             browser.timeout = 3
             assert browser.request("GET", "/usage")[0] == 200
             assert recorder.bodies == []          # still held when the page arrived
+            # The report goes once the answer is sent, so the page can arrive
+            # first; stopping the Face before it starts would lose it.
+            assert recorder.asked.wait(10)
     finally:
         recorder.released.set()
     assert _events(recorder) == ["screen"]
