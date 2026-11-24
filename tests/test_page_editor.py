@@ -750,6 +750,9 @@ _LONG = "".join(f'<section>\n<h2 id="s{n}">Part {n}</h2>\n<p>Words, <em>stress</
     # A note opened above a line colours that line, though its letters stay.
     ("<p>\nx", "<!--<p>\nx", 4),
     ("", _LONG, None), (_LONG, "", None), ("<p>a</p>", "<div>b</div>", None),
+], ids=[   # short: Windows refuses PYTEST_CURRENT_TEST past 32,767 characters
+    "heading", "full-stop", "split-tag", "tail", "added-line", "same", "style-colour",
+    "note-above", "from-empty", "to-empty", "different",
 ])
 def test_a_change_rebuilds_only_the_lines_it_touches(old, now, most, tmp_path):
     """PRESS-0479. Breaks when the lines kept on either side of a change do

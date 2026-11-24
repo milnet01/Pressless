@@ -9,6 +9,18 @@ from pressless import face, github_signin, languages, pressing, tray, usage, wor
 # The suite stops hundreds of them, and waited about a minute on that alone.
 face._POLL_SECONDS = 0.02
 
+# pytest puts each test's id in PYTEST_CURRENT_TEST, and Windows refuses a
+# variable past 32,767 characters, so a long parameter errors there alone.
+# Refused at collection on every system instead; give the case an id.
+_LONGEST_ID = 1000
+
+
+def pytest_collection_modifyitems(items):
+    long = [item.nodeid[:120] for item in items if len(item.nodeid) > _LONGEST_ID]
+    if long:
+        raise pytest.UsageError(
+            f"test ids over {_LONGEST_ID} characters (give them ids=): {long}")
+
 
 @pytest.fixture(autouse=True)
 def _no_registered_app(monkeypatch):
