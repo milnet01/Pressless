@@ -117,6 +117,8 @@ def _store(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(google_signin, "CLIENT_ID", "client.apps.googleusercontent.com")
     monkeypatch.setattr(google_signin, "CLIENT_SECRET", "sentinel-client-secret")
     monkeypatch.setattr(credentials, "read", lambda kind, folder, account: REFRESH)
+    # Each test registers its own Google client; another test's is never used.
+    monkeypatch.setattr(google_setup, "_state", None)
 
 
 def test_only_the_three_windows_are_ever_asked_for(tmp_path: Path) -> None:
@@ -138,7 +140,8 @@ def test_the_door_asks_only_for_the_three_windows_too(tmp_path: Path) -> None:
     a days value outside the set reaches Google as it was passed."""
     _saved(tmp_path)
     google = _Google()
-    dashboard.figures(tmp_path, 90, client=google)
+    with _served(tmp_path, google):
+        dashboard.figures(tmp_path, 90, client=google)
     assert google.windows_asked() == [f"{dashboard.DEFAULT_DAYS}daysAgo"]
 
 
