@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-24
+
+**Theme:** the 2026-11-23 review's fixes
+
 ### Added
 
 - **A saved look waits until you publish it** (PRESS-0482)
