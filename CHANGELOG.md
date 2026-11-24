@@ -135,7 +135,7 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   in your language, and the helper sends nothing until the program on the
   other end proves it is the right one.
 
-- **Importing is more robust** (PRESS-0453, PRESS-0454, PRESS-0483, PRESS-0484)
+- **Importing is more robust** (PRESS-0453, PRESS-0454, PRESS-0484; part of PRESS-0483)
   A hostile or huge WordPress export can no longer use too much memory. A
   media ZIP damaged partway says so and keeps what was taken. A slow
   download is cut at 30 minutes, and why a file was not fetched is said in
