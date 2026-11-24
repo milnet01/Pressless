@@ -9626,11 +9626,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Tests.
 
-- 📋 [PRESS-0467] **The word table moves out of words.py into its own module.**
+- ✅ [PRESS-0467] **The word table moves out of words.py into its own module.**
   Review type: Codebase. Queued by PRESS-0456 from review-readability
   (words.py's table). Done after the subjects merge, because every
   subject edits words.py. PRESS-0242 names words.py as the table's home,
   so the spec is amended in the same change.
+  Shipped 2026-11-24, 5d7e259 and a follow-up test fix. The English table
+  is in english_words.py; words.py keeps the lookup and re-exports
+  ENGLISH. No word or key changed (translations.py --report identical).
+  PRESS-0242 amended. Full suite 2955 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0467.json.
   **Layman:** The list of every word the screens show gets its own file, so the code around it is easier to follow.
   Kind: refactor.
   Source: review-2026-11-23.
