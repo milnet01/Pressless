@@ -886,12 +886,21 @@ def site_file(page, origin: str, folder: Path) -> None:
     store.write(shown, tp._entry("saved-and-opened"), draft=True)
     before = len(RESTARTS)
     page.goto(f"{origin}/sites", wait_until="networkidle")
+    from playwright.sync_api import TimeoutError as PlaywrightTimeout
     with page.expect_download() as saving:
         page.get_by_text("Save this site to a file").click()
+        shown_at_once = page.locator("#working-note").count() == 1
     saved = Path(saving.value.path())
     check("PRESS-0224: Save downloads the site as a .zip",
           saving.value.suggested_filename.endswith(".zip") and saved.stat().st_size > 0,
           saving.value.suggested_filename)
+    check("PRESS-0464: Save's working note shows at once", shown_at_once)
+    try:
+        page.wait_for_selector("#working-note", state="detached", timeout=6000)
+        gone = True
+    except PlaywrightTimeout:
+        gone = False
+    check("PRESS-0464: the working note goes once the download ends", gone)
     with page.expect_file_chooser() as chooser:
         page.locator("button[data-file=site-file]").click()
     chooser.value.set_files(str(saved))
@@ -1634,7 +1643,9 @@ _MANUAL = """\
 
 # ---- PRESS-0435: the note's bar and count -----------------------------------
 
-_SLOW_BLOB_COUNT = 8     # files in _SlowBlobs' listing
+# Files in _SlowBlobs' listing. Read FETCH_WORKERS at a time, enough of them
+# that the read outlasts several of the note's one-second asks.
+_SLOW_BLOB_COUNT = 8 * publisher.FETCH_WORKERS
 
 
 class _SlowBlobs(tpub._Transport):
