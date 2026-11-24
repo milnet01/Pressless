@@ -9641,11 +9641,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Words.
 
-- 📋 [PRESS-0468] **The Face's stylesheet and page scripts move out of face.py.**
+- ✅ [PRESS-0468] **The Face's stylesheet and page scripts move out of face.py.**
   Review type: Codebase. Queued by PRESS-0440 from review-readability
   (face.py's stylesheet and scripts change for different reasons than its
   request handling). Done after the subjects merge. PRESS-0428 names
   face._SCRIPT, so the spec is amended in the same change.
+  Shipped 2026-11-24, 40b13e9. The stylesheet is in face_style.py and the
+  page scripts in face_scripts.py; everything served is byte-identical
+  (cmp of before and after dumps). test_words scans both new modules.
+  PRESS-0428 § 4.4 amended. Full suite 2955 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0468.json.
   **Layman:** The look and the browser scripts of Pressless's screens get their own files.
   Kind: refactor.
   Source: review-2026-11-23.
