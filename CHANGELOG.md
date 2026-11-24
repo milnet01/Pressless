@@ -30,6 +30,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Send my log's relay does less than half the work on a very large log** (PRESS-0493)
+  The service that files your log now builds each upload in one pass,
+  so a very large log is filed with less risk of being refused.
+
 - **Taking in your site downloads it once, not twice** (PRESS-0489)
   Setup keeps the copy it read to show you your site, and Finish
   writes from it instead of downloading the site again.

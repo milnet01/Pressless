@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=493 -->
+<!-- ants-roadmap-id-high-water: PRESS=494 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -10044,7 +10044,7 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: user-2026-11-23.
   Lanes: Editor.
 
-- 📋 [PRESS-0493] **A near-limit log fits the relay's CPU allowance, or the plan is changed.**
+- ✅ [PRESS-0493] **A near-limit log costs the relay less than half the CPU it did.**
   From PRESS-0473: a 2,113,071-byte send took 105 ms of relay CPU on
   2026-11-24 and succeeded, over the free plan's per-request allowance.
   The user chooses: a cheaper encoding pass in relay/src/index.js, a
@@ -10053,6 +10053,10 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   sendlog.LARGEST if still over; moved into 1.2.1 with the review's
   other fixes. c2f59aa: 130.6 ms -> 9.1 ms of CPU locally (best of
   seven, GitHub stubbed). The deployed figure is still owed.
+  2026-11-24: deployed (version 84d05977); a 2,289,551-byte send took
+  44 ms of CPU (wrangler tail) and was filed, down from 105 ms. Still
+  over the free plan's 10 ms; the user accepted it for now. Further
+  work is the follow-up item in 1.3.0.
   **Layman:** A very big log sent with Send my log should stay within what the relay's free plan allows.
   Kind: perf.
   Source: PRESS-0473-measure-2026-11-24.
@@ -10123,6 +10127,22 @@ A site can be published to a free host other than GitHub Pages.
   Kind: review-fix.
   Source: review-2026-11-23.
   Lanes: Import.
+
+- 📋 [PRESS-0494] **A near-limit log is filed within the relay's free CPU allowance.**
+  From PRESS-0493: after c2f59aa a 2,289,551-byte send took 44 ms of
+  deployed CPU (wrangler tail, 2026-11-24), against the free plan's
+  10 ms. Accepted for now by the user, who asked for improvements.
+  Leads: the app compresses each log before sending and the relay files
+  the compressed files, so the relay parses and encodes a fraction of
+  the bytes; or the app posts the logs as raw bytes, not JSON, so the
+  relay skips parsing them. Either changes PRESS-0436's wire format and
+  the files a developer reads, so the spec changes first. Measure the
+  deployed CPU again on a warm Worker; the 44 ms send was the first
+  after a deploy.
+  **Layman:** A very big log sent with Send my log costs the relay little enough to stay within its free plan.
+  Kind: perf.
+  Source: PRESS-0493-measure-2026-11-24.
+  Lanes: Tray.
 
 ## 1.4.0 — music figures
 
