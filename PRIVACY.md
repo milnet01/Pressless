@@ -175,6 +175,17 @@ sent; the relay does not store it.
 Nothing deletes a sent log on a schedule. It stays in that repository
 until the makers delete it.
 
+## Checking for updates
+
+Each time the downloaded Pressless starts, it asks GitHub, over HTTPS,
+which version of Pressless is newest. The request names Pressless and
+nothing about you or your site; GitHub sees your internet address, as it
+does for any web request. Nothing goes to Pressless's makers.
+
+The check is on until you turn it off: in Settings, press **Stop
+looking**. Pressless then asks GitHub nothing until you press **Look when
+Pressless starts**.
+
 ## Questions
 
 Open an issue at <https://github.com/milnet01/Pressless/issues>.
