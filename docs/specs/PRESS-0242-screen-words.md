@@ -17,7 +17,7 @@ that list.
 
 After this ships, every word Pressless shows on its own screens, in its
 console window and in the sample pages it writes for a new site comes from
-one English table, `src/pressless/words.py`. Each word is looked up when it
+one English table, `src/pressless/english_words.py`. Each word is looked up when it
 is shown, so PRESS-0241 can put a second table in front of it. A test fails
 when someone writes English straight into a screen. Every page reads exactly
 as it does today.
@@ -74,9 +74,11 @@ Every "(decided here)" is open to the maintainer to overturn.
 and `say_count`'s `code`, whose language decides its one form.*
 
 ```python
-# src/pressless/words.py — new
+# src/pressless/english_words.py — new; `words` imports ENGLISH, so
+# `words.ENGLISH` is the same table
 ENGLISH: dict[str, str]          # key -> words; the only table
 
+# src/pressless/words.py — new
 def say(key: str, **slots: str) -> str: ...
     # The words for `key` in the table in use, gaps filled. A key the table
     # in use lacks takes ENGLISH's words. A key ENGLISH lacks, or a gap left
@@ -105,8 +107,9 @@ each f-string does today. A literal brace in an entry is written `{{`.
 - **Two families come from their own sources.** `ENGLISH` builds
   `country.<code>` from `_flag_data.NAMES`, which `scripts/make_flags.py`
   goes on generating, and `mark.<name>` and `mark.<name>.example` from
-  `marks.MARKS`, whose `example` stays the parse fixture. `words.py`
-  imports only the standard library and those two modules.
+  `marks.MARKS`, whose `example` stays the parse fixture. `english_words.py`
+  imports only those two modules; `words.py`, only the standard library and
+  `english_words`.
 - **An entry holds words, never a page's template.** `starter.py` keeps its
   `{{SITE_NAME}}`-style placeholders, and its `data-nav` names, which the
   Builder matches on, and puts looked-up words between them.

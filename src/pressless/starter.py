@@ -223,8 +223,8 @@ def _with_missing_words(text: str, *, counting: bool, votes: bool, recaptcha: bo
     with no sections area gets plain paragraphs: section marks outside one are
     marks that do not pair."""
     # Each product's name, as starter.privacy.counting, starter.privacy.votes
-    # and starter.privacy.recaptcha in words.py spell it: a rewording that
-    # drops the name adds the paragraph again at every run.
+    # and starter.privacy.recaptcha in english_words.py spell it: a rewording
+    # that drops the name adds the paragraph again at every run.
     lower = text.lower()
     words = ((_counting_words(code) if counting and "google analytics" not in lower else ())
              + (_votes_words(code) if votes and "firebase" not in lower else ())

@@ -10,3 +10,4 @@
 | amend | 2026-11-17 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0413: § 4.1 adds `say_count`, the one choice between a key's one and many forms. |
 | amend | 2026-11-20 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0241: § 4.1 points at its `choose`, `say_in`, `number`, date functions and `say_count`'s `code`; decision 3's Builder words are its. |
 | amend | 2026-11-24 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0469: § 4.1 — `use` reaches threads holding no language of their own. |
+| amend | 2026-11-24 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0467: the English table moves to `english_words.py`; `words.ENGLISH` stays its name. |

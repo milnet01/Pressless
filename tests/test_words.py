@@ -233,14 +233,15 @@ def _strings(tree: ast.Module, skip: set[int]) -> list[ast.Constant]:
 
 @functools.cache
 def _asked() -> dict[str, str]:
-    """Every literal key the source names, outside words.py, with where: a
+    """Every literal key the source names, outside words.py and
+    english_words.py, with where: a
     string that is a key, or a quoted key inside a script. Worked out once;
     callers only read it."""
     prefixes = {key.split(".", 1)[0] for key in words.ENGLISH}
     asked: dict[str, str] = {}
     # pressless_import words its Report too (PRESS-0210 § 4.12).
     for path in sorted((*SOURCE.glob("*.py"), *SOURCE.parent.glob("pressless_import/*.py"))):
-        if path.name == "words.py":     # the table names every key itself
+        if path.name in ("words.py", "english_words.py"):   # the table names every key itself
             continue
         if path.name == "_public_suffixes.py":     # domain names, such as date.hokkaido.jp
             continue
@@ -275,7 +276,7 @@ def test_no_key_is_written_twice() -> None:
     added in one place can replace another's English unseen. The planted
     source shows the check can fail."""
     assert _repeated_keys('t = {"a.b": "x", "c": "y", "a.b": "z"}') == ["a.b"]
-    assert _repeated_keys((SOURCE / "words.py").read_text(encoding="utf-8")) == []
+    assert _repeated_keys((SOURCE / "english_words.py").read_text(encoding="utf-8")) == []
 
 
 def test_every_key_is_in_the_table() -> None:
