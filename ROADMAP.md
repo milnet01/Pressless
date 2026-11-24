@@ -9777,11 +9777,16 @@ Every valid finding of the review of the code changed since 1.0.0-4: review-code
   Source: review-2026-11-23.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0476] **The editors' shared scripts move out of editor.py into their own module.**
+- ✅ [PRESS-0476] **The editors' shared scripts move out of editor.py into their own module.**
   Review type: Codebase. Queued by PRESS-0441 from review-readability
   (editor.py holds scripts shared with the page editor). Done after the
   subjects merge: it renames symbols PRESS-0346, 0353, 0195 and 0242 name,
   so those specs are amended in the same change.
+  Shipped 2026-11-24, 7f89a06. The scripts both editors use (undo,
+  leaving, saving, upload, publish, typing) are in editor_scripts.py;
+  each editor keeps its own. Served pages byte-identical (cmp, 13 dumps).
+  PRESS-0346 § 4.4 and PRESS-0235 amended. Full suite 2955 passed.
+  Ledger: local-archive/reviews/2026-11-23/close-findings/0476.json.
   **Layman:** The browser scripts both editors share get their own file.
   Kind: refactor.
   Source: review-2026-11-23.
