@@ -1983,7 +1983,7 @@ _VISUAL_SCRIPT = r"""
   };
 
   // ---- § 4.4: the words, read from the element's nodes ----------------
-  // editor.TYPING_SCRIPT's, shared with the entry editor (PRESS-0346 § 4.4):
+  // editor_scripts.TYPING_SCRIPT's, shared with the entry editor (PRESS-0346 § 4.4):
   // the reading, the paste, Bold, Italic, Link and the keys.
   const typing = window.presslessTyping;
   const {text, allowed, inline, paste} = typing;
