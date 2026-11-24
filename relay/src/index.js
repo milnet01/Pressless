@@ -59,12 +59,41 @@ function shaped(sent) {
     && typeof sent.log === "string" && typeof sent.old === "string";
 }
 
-function base64(bytes) {
-  let text = "";
-  for (let at = 0; at < bytes.length; at += 0x8000) {
-    text += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+const DIGITS = new TextEncoder().encode(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
+const PAD = 61;                               // "="
+
+function base64Length(bytes) {
+  return Math.ceil(bytes.length / 3) * 4;
+}
+
+// Writes the base64 of `bytes` into `out` from `to`. Done in a byte array, not
+// through btoa, whose string building cost most of a near-limit send's CPU
+// (PRESS-0493).
+function base64Into(bytes, out, to) {
+  const whole = bytes.length - bytes.length % 3;
+  let at = 0;
+  for (; at < whole; at += 3) {
+    const n = (bytes[at] << 16) | (bytes[at + 1] << 8) | bytes[at + 2];
+    out[to++] = DIGITS[n >> 18];
+    out[to++] = DIGITS[(n >> 12) & 63];
+    out[to++] = DIGITS[(n >> 6) & 63];
+    out[to++] = DIGITS[n & 63];
   }
-  return btoa(text);
+  const left = bytes.length - whole;
+  if (left) {
+    const n = (bytes[at] << 16) | (left === 2 ? bytes[at + 1] << 8 : 0);
+    out[to++] = DIGITS[n >> 18];
+    out[to++] = DIGITS[(n >> 12) & 63];
+    out[to++] = left === 2 ? DIGITS[(n >> 6) & 63] : PAD;
+    out[to++] = PAD;
+  }
+}
+
+export function base64(bytes) {
+  const out = new Uint8Array(base64Length(bytes));
+  base64Into(bytes, out, 0);
+  return new TextDecoder().decode(out);
 }
 
 function base64url(bytes) {
@@ -87,6 +116,7 @@ async function appToken(env, now) {
   return `${unsigned}.${base64url(new Uint8Array(signature))}`;
 }
 
+// `body` is a value to send as JSON, or bytes already JSON.
 async function github(step, method, path, token, body) {
   const reply = await fetch(GITHUB + path, {
     method,
@@ -97,7 +127,7 @@ async function github(step, method, path, token, body) {
       "User-Agent": "pressless-logs",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: body instanceof Uint8Array ? body : JSON.stringify(body),
   });
   if (!reply.ok) throw new GitHubFailed(step, reply.status);
   return reply.json();
@@ -144,8 +174,16 @@ function excerpt(log) {
 
 async function putFile(env, token, named, name, text) {
   const path = `logs/${named}/${name}`;
-  const reply = await github("file", "PUT", `/repos/${env.REPOSITORY}/contents/${path}`, token,
-    {message: `Log ${named}: ${name}`, content: base64(new TextEncoder().encode(text))});
+  // The JSON is built as bytes, so the content is never a string to copy.
+  const encoder = new TextEncoder();
+  const head = encoder.encode(`{"message":${JSON.stringify(`Log ${named}: ${name}`)},"content":"`);
+  const tail = encoder.encode('"}');
+  const bytes = encoder.encode(text);
+  const body = new Uint8Array(head.length + base64Length(bytes) + tail.length);
+  body.set(head);
+  base64Into(bytes, body, head.length);
+  body.set(tail, body.length - tail.length);
+  const reply = await github("file", "PUT", `/repos/${env.REPOSITORY}/contents/${path}`, token, body);
   return {path, sha: reply.content && reply.content.sha};
 }
 

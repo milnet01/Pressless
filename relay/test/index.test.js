@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import {beforeEach, test} from "node:test";
 
-import relay, {LARGEST} from "../src/index.js";
+import relay, {LARGEST, base64} from "../src/index.js";
 
 const pair = await crypto.subtle.generateKey(
   {name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]),
@@ -44,7 +44,8 @@ beforeEach(() => {
   allowed = true;
   keys = [];
   globalThis.fetch = async (url, options) => {
-    asked.push({url, ...options, body: JSON.parse(options.body)});
+    asked.push({url, ...options, body: JSON.parse(
+      typeof options.body === "string" ? options.body : new TextDecoder().decode(options.body))});
     if (throwing && url.includes(throwing)) throw new TypeError("network down");
     if (options.method === "PUT" && collisions > 0) {
       collisions -= 1;
@@ -349,4 +350,14 @@ test("a collision on the second file is not retried", async () => {
   failStatus = 422;
   assert.equal((await relay.fetch(post(JSON.stringify(good)), env())).status, 502);
   assert.equal(asked.filter((request) => request.method === "PUT").length, 2);
+});
+
+// PRESS-0493: the relay's own base64 matches Node's for every tail length and
+// every byte value, since GitHub stores whatever it decodes.
+test("base64 matches Node's for every length's remainder", () => {
+  const every = Uint8Array.from({length: 256}, (_, at) => at);
+  for (let length = 0; length <= 258; length++) {
+    const bytes = new Uint8Array(length).map((_, at) => every[(at * 7) % 256]);
+    assert.equal(base64(bytes), Buffer.from(bytes).toString("base64"), `length ${length}`);
+  }
 });
