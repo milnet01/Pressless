@@ -37,6 +37,7 @@ from pressless import (
     credentials,
     editor,
     face,
+    face_scripts,
     insights,
     look,
     overview,
@@ -1048,7 +1049,7 @@ def test_a_dark_look_dims_the_preview_until_he_asks_for_true_colours(
     assert "filter: var(--preview-dim)" in _rule(style, ".face iframe#preview")
     assert "filter: none" in _rule(style, ".face iframe#preview.undimmed")
     assert "display: var(--preview-switch)" in _rule(style, ".face .true-colours")
-    assert "data-true-colours" in face._SCRIPT
+    assert "data-true-colours" in face_scripts.SCRIPT
 
 
 def test_a_round_button_or_tick_box_sits_left_of_its_words(tmp_path: Path) -> None:
@@ -1883,7 +1884,7 @@ def test_the_page_script_runs_again_on_a_page_written_over_it(tmp_path):
     fetch around the first run's wrapper, so one press is counted twice."""
     harness = tmp_path / "rerun.js"
     harness.write_text(_RERUN_HARNESS, encoding="utf-8")
-    run = subprocess.run([_NODE, str(harness), face._SCRIPT], capture_output=True,  # noqa: S603
+    run = subprocess.run([_NODE, str(harness), face_scripts.SCRIPT], capture_output=True,  # noqa: S603
                          check=True, timeout=30)
     said = json.loads(run.stdout)
     assert said["failed"] is None, said["failed"]

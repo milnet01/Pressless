@@ -35,6 +35,7 @@ from pressless import (
     credentials,
     editor,
     face,
+    face_style,
     menu,
     page_editor,
     settings,
@@ -166,7 +167,7 @@ def test_the_refusal_moves_nothing():
     # the hint's spot above them was empty, so it took no room until it was
     # written. Three lines are held for it, as the press row's status line is
     # held, so no control moves when status text appears.
-    held = re.search(r"\.face #save-hint \{ min-height: ([\d.]+)em; \}", face._STYLE)
+    held = re.search(r"\.face #save-hint \{ min-height: ([\d.]+)em; \}", face_style.STYLE)
     assert held, "the hint's spot is not held open"
     assert float(held.group(1)) >= 4.65, held.group(0)  # three lines at 1.55
 
