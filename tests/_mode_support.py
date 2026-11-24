@@ -124,6 +124,23 @@ def _require_symlinks(folder) -> None:
         )
 
 
+def folds_case(folder) -> bool:
+    """Whether `folder`'s filesystem holds two names one case apart as one
+    file, measured as _require_distinct_case says."""
+    lower = Path(folder) / ".caseprobe"
+    upper = Path(folder) / ".CASEPROBE"
+    try:
+        lower.write_text("lower", encoding="utf-8")
+        upper.write_text("upper", encoding="utf-8")
+        return lower.read_text(encoding="utf-8") != "lower"
+    finally:
+        for probe in (lower, upper):
+            try:
+                probe.unlink()
+            except OSError:
+                pass
+
+
 def _require_distinct_case(folder) -> None:
     """Skip unless `folder` can hold two names differing only in case.
 
@@ -137,19 +154,7 @@ def _require_distinct_case(folder) -> None:
     returns the second file's text, because the second write landed on the
     same file.
     """
-    lower = Path(folder) / ".caseprobe"
-    upper = Path(folder) / ".CASEPROBE"
-    try:
-        lower.write_text("lower", encoding="utf-8")
-        upper.write_text("upper", encoding="utf-8")
-        folded = lower.read_text(encoding="utf-8") != "lower"
-    finally:
-        for probe in (lower, upper):
-            try:
-                probe.unlink()
-            except OSError:
-                pass
-    if folded:
+    if folds_case(folder):
         pytest.skip(
             "this filesystem folds case, so one folder cannot hold two names "
             "differing only in case -- the fixture cannot be built and the "

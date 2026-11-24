@@ -18,7 +18,7 @@ from urllib.parse import unquote, urlsplit
 
 import pytest
 from _face_session import Browser
-from _mode_support import TOO_DEEP
+from _mode_support import TOO_DEEP, _require_distinct_case
 from PIL import Image
 from test_builder import _settings
 
@@ -248,6 +248,7 @@ def test_a_folder_twin_by_capitals_is_left(tmp_path):
 def test_a_folder_read_whole_also_leaves_a_twin_by_capitals(tmp_path):
     """§ 4.3 makes § 4.1's tests again for a folder already laid out, as a
     repository's is: each path kept is taken, so its twin is left."""
+    _require_distinct_case(tmp_path)
     folder = _laid_out(tmp_path, {"index.html": _page("<p>H</p>"),
                                   "A/c.html": _page("<p>C</p>"), "a/b.html": _page("<p>B</p>")})
     assert dict(pressless_import.read_folder(folder).left).keys() == {"a/b.html"}
@@ -738,12 +739,15 @@ def test_an_import_s_media_joins_a_list_query_by_query(tmp_path):
 
 def test_a_name_joined_from_deep_folders_is_cut_to_fit(tmp_path):
     """§ 4.4: a page's name joins its folders, as does a renamed file's. Each
-    folder's name fits, but the whole may not, which stopped the bring."""
-    deep = "/".join([f"folder-{n}-" + "x" * 50 for n in range(6)])
+    folder's name fits, but the whole may not, which stopped the bring.
+    Two folders, so the fixture fits the 260 characters a Windows path holds
+    where long paths are off."""
+    longest = pressless_import._folder._JOINED_LONGEST
+    deep = "/".join([f"folder-{n}-" + "x" * 55 for n in range(2)])
+    assert len(deep) > longest
     into, brought = _brought(tmp_path, {
         "index.html": _page("<p>Home</p>"), f"{deep}/page.html": _page("<p>Deep</p>"),
         "pic.png": _png(), f"{deep}/pic.png": _png()})
-    longest = pressless_import._folder._JOINED_LONGEST
     assert all(len(name) <= longest for name in brought.report.pages if name != "index")
     (_path, renamed), = brought.report.renamed_photographs
     assert len(renamed.removesuffix(".png")) <= longest

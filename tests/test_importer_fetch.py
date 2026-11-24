@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 import pytest
-from _mode_support import TOO_DEEP
+from _mode_support import TOO_DEEP, folds_case
 
 from pressless import __version__, builder, words
 from pressless.words import say
@@ -871,8 +871,9 @@ def test_a_landing_that_could_not_be_made_does_not_take_its_name(tmp_path):
     """A path is taken only once it lands, so a failed one never refuses
     another as its twin. Breaks when `_why_not_kept` records what it asks."""
     into = tmp_path / "folder"
-    into.mkdir()
-    (into / "Dir").write_text("in the way", encoding="utf-8")
+    # A folder where the page would go: it blocks Dir/a.html alone, on a
+    # case-folding drive too.
+    (into / "Dir" / "a.html").mkdir(parents=True)
     network = _live({"sites.example.org": [GLOBAL]}, {
         "sites.example.org/": _html('<a href="Dir/a.html">A</a> <a href="dir/b.html">B</a>'),
         "sites.example.org/Dir/a.html": _html("<p>A</p>"),
@@ -880,7 +881,9 @@ def test_a_landing_that_could_not_be_made_does_not_take_its_name(tmp_path):
     })
     crawled = _download(network, "https://sites.example.org/", into)
     assert "Dir/a.html" in dict(crawled.left)
-    assert "dir/b.html" in _landed(into), crawled.left
+    assert "dir/b.html" not in dict(crawled.left), crawled.left
+    # Windows writes it into the folder already there, as `Dir/b.html`.
+    assert "dir/b.html" in {path.casefold() for path in _landed(into)}, crawled.left
 
 
 # ----------------------------------------------------------- PRESS-0461 ----
@@ -943,7 +946,9 @@ def test_attachments_are_fetched_a_few_at_once(tmp_path):
 def test_places_one_case_apart_are_fetched_in_turn(tmp_path):
     """PRESS-0461: two places one case apart are one file on Windows, so
     they go to one fetcher, in export order. Breaks when they are fetched at
-    once, writing one part file from two."""
+    once, writing one part file from two. A case-folding drive holds the
+    second as the first's file, so it is never asked; the import then lists
+    it as differing only in case (§ 4.4)."""
     from test_importer import _export, _item
 
     import pressless_import
@@ -960,8 +965,10 @@ def test_places_one_case_apart_are_fetched_in_turn(tmp_path):
     fetch.fetch_all(pressless_import.read(export), tmp_path / "media", lambda: 10**12,
                     resolve=network.resolve, connect=network.connect)
     assert network.most == 1
-    assert [path for _m, path, _h in network.requests] == [
-        "/wp-content/uploads/2012/05/Same.jpg", "/wp-content/uploads/2012/05/same.jpg"]
+    asked = ["/wp-content/uploads/2012/05/Same.jpg", "/wp-content/uploads/2012/05/same.jpg"]
+    if folds_case(tmp_path):
+        asked = asked[:1]
+    assert [path for _m, path, _h in network.requests] == asked
 
 
 def _a_site_of_many_pages() -> dict:
