@@ -310,12 +310,12 @@ def test_the_patterns_never_reach_a_command_line(tmp_path):
 
 def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str],
                                   keys: dict[str, str] | None = None,
-                                  prepare=None) -> tuple[Path, str]:
+                                  prepare=None, args: tuple[str, ...] = ()) -> tuple[Path, str]:
     """The real gate script, run in a throwaway repository with a stand-in for
     Python that records each call, and the PRESSLESS_ variables pytest is given,
     and answers yes. `keys` are set in the repository's own config, and
     `prepare` gets the repository before the run. Returns the repository and
-    the record."""
+    the record. `args` are passed to the gate."""
     repository = tmp_path / "repository"
     (repository / "scripts").mkdir(parents=True)
     for name in ("local-ci.sh", "python.sh"):
@@ -341,7 +341,7 @@ def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str],
                        check=True, capture_output=True)
     if prepare:
         prepare(repository)
-    ran = subprocess.run([_BASH, str(repository / "scripts" / "local-ci.sh")],  # noqa: S603 -- this repository's own gate
+    ran = subprocess.run([_BASH, str(repository / "scripts" / "local-ci.sh"), *args],  # noqa: S603 -- this repository's own gate
                          env=environment, capture_output=True, text=True, timeout=120, check=False)
     assert ran.returncode == 0, ran.stdout + ran.stderr
     return repository, record.read_text(encoding="utf-8") + ran.stdout
@@ -387,6 +387,40 @@ def test_a_venv_whose_python_no_longer_runs_is_made_afresh(tmp_path):
     assert "-m venv .venv" in record
     assert "no longer runs" in record
     assert (repository / ".venv" / "bin" / "python").resolve().exists()
+
+
+def test_release_runs_from_the_lock_alone(tmp_path):
+    """--release installs what the release jobs install, the hash-checked lock
+    and nothing else, and runs ruff and pytest from that environment
+    (PRESS-0495).
+
+    Breaks when a release is checked on the newest versions, which is how
+    v1.2.1 passed the gate and failed its build."""
+    repository, record = _gate_in_a_scratch_repository(tmp_path, {}, args=("--release",))
+    assert "-m venv .venv-release" in record
+    own = next(line for line in record.splitlines() if "pip install" in line)
+    assert own.split()[0].endswith(".venv-release/bin/python")
+    assert "--require-hashes -r packaging/release-requirements.txt" in own
+    assert "-e" not in own.split()
+    for tool in ("-m ruff check src/ tests/", "-m pytest -ra"):
+        line = next(line for line in record.splitlines() if tool in line)
+        assert line.split()[0].endswith(".venv-release/bin/python"), line
+    assert not (repository / ".venv").exists()
+
+
+def test_release_makes_its_environment_afresh(tmp_path):
+    """A package an earlier lock installed would stay behind in a reused
+    environment, which the release jobs' fresh runner never has.
+
+    Breaks when --release reuses .venv-release."""
+    def stale(repository: Path) -> None:
+        (repository / ".venv-release" / "bin").mkdir(parents=True)
+        (repository / ".venv-release" / "left-behind").write_text("", encoding="utf-8")
+
+    repository, record = _gate_in_a_scratch_repository(tmp_path, {}, prepare=stale,
+                                                       args=("--release",))
+    assert "-m venv .venv-release" in record
+    assert not (repository / ".venv-release" / "left-behind").exists()
 
 
 def test_the_archive_keys_reach_the_suite(tmp_path):

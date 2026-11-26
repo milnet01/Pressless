@@ -173,6 +173,12 @@ without it (PRESS-0122 § 4.7).
 (`tests/test_sign_release.py`), so a tag nobody could sign is caught
 before it exists.
 
+**Before tagging, run `./scripts/local-ci.sh --release`** (PRESS-0495).
+It runs the gate from `.venv-release`, made afresh from
+`packaging/release-requirements.txt` alone, as the release jobs install.
+The ordinary gate runs the newest versions, so it can pass what the
+release build then fails. `.claude/bump.json` lists it.
+
 **Before tagging, run `python scripts/translations.py --report`** and
 bring each language up to date (PRESS-0241 § 4.5). The gate does not fail
 on an out-of-date translation, which shows English until it is redone.

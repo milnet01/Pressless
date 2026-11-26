@@ -10153,7 +10153,7 @@ A site can be published to a free host other than GitHub Pages.
   Source: PRESS-0493-measure-2026-11-24.
   Lanes: Tray.
 
-- 📋 [PRESS-0495] **The gate runs the suite under the release lock's versions before a tag.**
+- ✅ [PRESS-0495] **The gate runs the suite under the release lock's versions before a tag.**
   v1.2.1's release build failed on two defects the gate passed: the
   gate's .venv resolves the newest versions (pytest 9.2.0, no
   PyInstaller), while the release jobs install
@@ -10162,6 +10162,12 @@ A site can be published to a free host other than GitHub Pages.
   venv from the lock ran the whole suite green on 2026-11-24 in about a
   minute. Decide where it runs: a pre-tag step in .claude/bump.json, or
   a local-ci.sh mode the release path calls.
+  2026-11-26: placed as a local-ci.sh mode the release recipe calls.
+  ./scripts/local-ci.sh --release makes .venv-release afresh from the
+  lock alone and runs the whole gate from it; .claude/bump.json runs it
+  after the lock refresh, before the tag. First real run, 2026-11-26:
+  ruff 0.16.9 and pytest 9.1.1 from the lock, all checks passed, Linux
+  and the Windows box.
   **Layman:** A release build can no longer fail on a test that passed every check before it.
   Kind: test.
   Source: v1.2.1-release-failure-2026-11-24.

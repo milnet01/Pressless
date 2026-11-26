@@ -12,6 +12,15 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Every release is checked on the exact versions its build installs, before it is tagged** (PRESS-0495)
+  `./scripts/local-ci.sh --release` runs the whole gate from a fresh
+  environment built from `packaging/release-requirements.txt` alone. The
+  release recipe runs it before each tag, so a test that passes on the
+  newest versions but fails on the locked ones stops the release here,
+  as v1.2.1's did not.
+
 ## [1.2.2] - 2026-11-24
 
 **Theme:** the 2026-11-23 review's fixes

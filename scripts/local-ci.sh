@@ -13,6 +13,11 @@
 # name leaks through prose more easily than through code. That sweep is never
 # skipped.
 #
+# --release runs the whole gate from .venv-release, made afresh from
+# packaging/release-requirements.txt alone, as the release jobs install. The
+# newest versions can pass what the locked ones fail, as v1.2.1 did
+# (PRESS-0495). The recipe in .claude/bump.json runs it before every tag.
+#
 # --sweep FILE... runs the same pattern over the files named, and nothing
 # else. A review packet sits outside the tree, so no surface below reads it
 # (PRESS-0277).
@@ -25,9 +30,11 @@ fail() {
 }
 
 DOCS_ONLY=0
+RELEASE=0
 SWEEP=()
 case ${1-} in
 --docs) DOCS_ONLY=1 ;;
+--release) RELEASE=1 ;;
 --sweep)
     shift
     (($#)) || fail "--sweep needs one or more files"
@@ -37,7 +44,7 @@ case ${1-} in
     done
     ;;
 "") ;;
-*) fail "unknown option $1; use --docs, --sweep FILE..., or nothing" ;;
+*) fail "unknown option $1; use --docs, --release, --sweep FILE..., or nothing" ;;
 esac
 cd "$(dirname "$0")/.."
 
@@ -166,25 +173,36 @@ fi
 # sets CI and has just installed, so it skips this.
 if [[ -z ${CI-} ]]; then
     step "gate environment"
+    venv=.venv
+    ((RELEASE)) && venv=.venv-release
     own_python() {
-        if [[ -x .venv/Scripts/python.exe ]]; then
-            echo .venv/Scripts/python.exe
+        if [[ -x $venv/Scripts/python.exe ]]; then
+            echo "$venv/Scripts/python.exe"
         else
-            echo .venv/bin/python
+            echo "$venv/bin/python"
         fi
     }
     # A system Python upgrade can leave .venv's interpreter a dangling link,
     # and every tool would then fail with an error naming neither cause.
-    if [[ -d .venv ]] && ! "$(own_python)" -c 'import sys' 2>/dev/null; then
-        printf 'note: .venv'"'"'s Python no longer runs -- making .venv afresh\n'
-        rm -rf .venv
+    if [[ -d $venv ]] && ! "$(own_python)" -c 'import sys' 2>/dev/null; then
+        printf 'note: %s'"'"'s Python no longer runs -- making it afresh\n' "$venv"
+        rm -rf "$venv"
     fi
-    [[ -d .venv ]] || "$PY" -m venv .venv || fail "could not make .venv"
+    # The release runner starts empty, so a package an older lock left here
+    # would be a difference it does not have.
+    ((RELEASE)) && rm -rf "$venv"
+    [[ -d $venv ]] || "$PY" -m venv "$venv" || fail "could not make $venv"
     PY=$(own_python)
-    # Offline, the versions already there still run, and the note says so.
-    "$PY" -m pip install --quiet --disable-pip-version-check \
-        --upgrade --upgrade-strategy eager -e '.[dev]' \
-        || printf 'WARNING: .venv could not be updated -- these may not be the versions GitHub runs\n' >&2
+    if ((RELEASE)); then
+        "$PY" -m pip install --quiet --disable-pip-version-check \
+            --require-hashes -r packaging/release-requirements.txt \
+            || fail "could not install packaging/release-requirements.txt"
+    else
+        # Offline, the versions already there still run, and the note says so.
+        "$PY" -m pip install --quiet --disable-pip-version-check \
+            --upgrade --upgrade-strategy eager -e '.[dev]' \
+            || printf 'WARNING: .venv could not be updated -- these may not be the versions GitHub runs\n' >&2
+    fi
 fi
 
 # ── What is about to run ────────────────────────────────────────────────────
