@@ -10137,7 +10137,7 @@ A site can be published to a free host other than GitHub Pages.
   Source: review-2026-11-23.
   Lanes: Import.
 
-- 📋 [PRESS-0494] **A near-limit log is filed within the relay's free CPU allowance.**
+- ✅ [PRESS-0494] **A near-limit log is filed on the relay's free plan.**
   From PRESS-0493: after c2f59aa a 2,289,551-byte send took 44 ms of
   deployed CPU (wrangler tail, 2026-11-24), against the free plan's
   10 ms. Accepted for now by the user, who asked for improvements.
@@ -10170,6 +10170,9 @@ A site can be published to a free host other than GitHub Pages.
   tail: realistic 12 ms (was 15-21), barely compressing 25 and 33 (was
   33 and 81). Every send was filed, the 81 ms one too. Still over 10
   ms; what remains is the user's call. Thirteen test issues closed.
+  2026-11-26: the user accepted 12 ms as it is: sends are rare, every
+  test send was filed, and a refused one shows "not sent". Headline
+  reworded from "within the relay's free CPU allowance" to match.
   **Layman:** A very big log sent with Send my log costs the relay little enough to stay within its free plan.
   Kind: perf.
   Source: PRESS-0493-measure-2026-11-24.

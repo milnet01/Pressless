@@ -20,6 +20,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   release recipe runs it before each tag, so a test that passes on the
   newest versions but fails on the locked ones stops the release here,
   as v1.2.1's did not.
+- **Send my log sends the logs compressed** (PRESS-0494)
+  Each log is gzipped before it leaves the app, so a big log uploads a
+  fraction of the bytes, and the log relay files it as sent, as
+  `pressless.log.gz` and `pressless.log.1.gz`. The relay still takes a
+  send from Pressless 1.2.
 
 ## [1.2.2] - 2026-11-24
 
