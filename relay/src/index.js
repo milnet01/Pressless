@@ -16,8 +16,7 @@ export const LARGEST = 4_194_304;
 export const JSON_LARGEST = 2_306_867;
 const LINE_LONGEST = 512 * 1024;             // KIND's first line
 const TAIL_LONGEST = 120_000;                // UTF-16 units: the app's 60,000 characters
-const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
-const GZIP = "H4sI";                         // base64 of gzip's first three bytes
+const GZIP = new TextEncoder().encode("H4sI");  // base64 of gzip's first three bytes
 // The pattern _REFERENCE in src/pressless/sendlog.py must match this and the
 // six-letter length in reference(); tests/test_sendlog.py checks it.
 export const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -104,11 +103,7 @@ function fromKind(raw) {
   const at = end + 1;
   if (at + head.log + head.old !== raw.length) return null;
   const parts = [raw.subarray(at, at + head.log), raw.subarray(at + head.log)];
-  const decoder = new TextDecoder();
-  for (const part of parts) {
-    const text = decoder.decode(part);
-    if (!text.startsWith(GZIP) || !BASE64.test(text)) return null;
-  }
+  if (!parts.every(gzipBase64)) return null;
   return {version: head.version, system: head.system, quote: head.tail,
           files: [["pressless.log.gz", asSent(parts[0])], ["pressless.log.1.gz", asSent(parts[1])]]};
 }
@@ -116,6 +111,21 @@ function fromKind(raw) {
 const DIGITS = new TextEncoder().encode(
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
 const PAD = 61;                               // "="
+const DIGIT = new Uint8Array(256);            // 1 for each base64 digit's byte
+for (const byte of DIGITS) DIGIT[byte] = 1;
+
+// Whether `part` is base64 that starts as gzip does: digits, then at most two
+// "=". Read through a table, not a regex on decoded text, which cost five
+// times as much CPU (PRESS-0494).
+function gzipBase64(part) {
+  if (part.length < GZIP.length || GZIP.some((byte, at) => part[at] !== byte)) return false;
+  let end = part.length;
+  if (part[end - 1] === PAD) end--;
+  if (part[end - 1] === PAD) end--;
+  let all = 1;
+  for (let at = GZIP.length; at < end; at++) all &= DIGIT[part[at]];
+  return all === 1;
+}
 
 function base64Length(bytes) {
   return Math.ceil(bytes.length / 3) * 4;
