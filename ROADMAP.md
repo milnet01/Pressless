@@ -10160,6 +10160,16 @@ A site can be published to a free host other than GitHub Pages.
   Still over 10 ms, and the size-bound part is far dearer deployed than
   locally. Next: profile the deployed relay (Cloudflare's CPU profiler)
   before trading away the base64 check. Six test issues closed.
+  2026-11-26: profiled 9367203d (Cloudflare's CPU profiler, 1 ms
+  samples). On a realistic near-limit send about half the billed CPU
+  was in the relay's code: the base64 check was the largest share
+  (about 5 ms), then the App's RSA token (about 2 ms). The rest is
+  outside JS, moving the body in and out, so dropping the check could
+  not reach 10 ms. In ac43ebe the check reads bytes through a table, as
+  strict as before (INV-6 unchanged); deployed as f0948fcc. wrangler
+  tail: realistic 12 ms (was 15-21), barely compressing 25 and 33 (was
+  33 and 81). Every send was filed, the 81 ms one too. Still over 10
+  ms; what remains is the user's call. Thirteen test issues closed.
   **Layman:** A very big log sent with Send my log costs the relay little enough to stay within its free plan.
   Kind: perf.
   Source: PRESS-0493-measure-2026-11-24.
