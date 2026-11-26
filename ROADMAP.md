@@ -10154,6 +10154,12 @@ A site can be published to a free host other than GitHub Pages.
   near-limit log took 9-14 ms cold, about 5 warm, against 24-33 as JSON;
   one that barely compresses, 17-19 cold, mostly the base64 check. Owed:
   deploy the relay before 1.3.0 ships, and measure it with wrangler tail.
+  2026-11-26: deployed (version 9367203d). wrangler tail cpuTime:
+  realistic near-limit compressed send 25 ms cold, 23 warm; one that
+  barely compresses 30; the same log as JSON 56; a tiny send 4 and 8.
+  Still over 10 ms, and the size-bound part is far dearer deployed than
+  locally. Next: profile the deployed relay (Cloudflare's CPU profiler)
+  before trading away the base64 check. Six test issues closed.
   **Layman:** A very big log sent with Send my log costs the relay little enough to stay within its free plan.
   Kind: perf.
   Source: PRESS-0493-measure-2026-11-24.

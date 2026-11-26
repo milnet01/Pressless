@@ -266,6 +266,11 @@ GitHub App. `relay/README.md` holds the setup and the tests.
 - A send that answers 502 means the relay cannot reach GitHub. Run
   `npx wrangler tail` in `relay/` to see the failing step's status, then
   run the setup script again.
+- A log from Pressless 1.3 on is stored gzipped. Read one with
+  `gh api -H "Accept: application/vnd.github.raw"
+  repos/milnet01/pressless-logs/contents/logs/<reference>/pressless.log.gz | gunzip`.
+- `npx wrangler tail --format json` prints each send's `cpuTime`; the free
+  plan allows 10 ms.
 
 ## Windows and browser checks
 
