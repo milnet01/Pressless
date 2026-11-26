@@ -10148,6 +10148,12 @@ A site can be published to a free host other than GitHub Pages.
   the files a developer reads, so the spec changes first. Measure the
   deployed CPU again on a warm Worker; the 44 ms send was the first
   after a deploy.
+  2026-11-26: built in 018809b (spec PRESS-0436 amended: logs gzipped
+  by the app, filed by the relay as sent, as .gz; the user chose
+  compression that day; JSON kept for 1.2). Locally a realistic
+  near-limit log took 9-14 ms cold, about 5 warm, against 24-33 as JSON;
+  one that barely compresses, 17-19 cold, mostly the base64 check. Owed:
+  deploy the relay before 1.3.0 ships, and measure it with wrangler tail.
   **Layman:** A very big log sent with Send my log costs the relay little enough to stay within its free plan.
   Kind: perf.
   Source: PRESS-0493-measure-2026-11-24.
