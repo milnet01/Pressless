@@ -2,212 +2,130 @@
 
 ## Where this project is
 
-Nothing here records it, deliberately. Read it:
+Read it; nothing here records it, because a written position goes stale:
 
 - **The version being worked towards** is the lowest version heading in
   `ROADMAP.md` still carrying open items. `Done outside a version` and
-  `Milestones` are not versions, wherever they sit in the file. Every
-  open item goes into a version, never a backlog (user, 2026-11-03).
-- **What is in flight** is the un-parked 🚧 bullet — `workflow.md` § 1
-  owns what parked means, and what it means when every bullet is.
+  `Milestones` are not versions. Every open item goes into a version,
+  never a backlog (user, 2026-11-03).
+- **What is in flight** is the un-parked 🚧 bullet (`workflow.md` § 1).
 - **Where an item has got to** is whether a spec exists, whether tests
-  fail, and what `git status` says. Never a recorded step number.
+  fail, and what `git status` says.
 - **What is done** is `roadmap_query` with `status: "shipped"`.
 
-A position written down is maintained by hand, and starts lying the
-first time a session forgets it while still reading as authoritative.
-
-## How work is done here
-
-- **`~/.claude/workflow.md`** — the states, the gates, and what "done"
-  means. Read in place. This project does not have its own copy.
-- **`~/.claude/standards/`** — how to write code, tests, commits,
-  documents, releases. Also read in place.
-
-Neither is summarised here. A rule restated in two places is two rules
-that will disagree.
+`~/.claude/workflow.md` and `~/.claude/standards/` are read in place;
+this project has no copies.
 
 ## This project's own facts
 
 ### Stack
 
-Python 3, the standard library's own web server for the Face, `Pillow` for
-photographs, the operating system's keyring for the publishing key, and
-PyInstaller to package one artefact per system. `docs/design.md` § The
-stack, and what it rules out owns the choice and the reasoning.
+Python 3, the standard library's web server for the Face, `Pillow` for
+photographs, the OS keyring for the publishing key, PyInstaller for one
+artefact per system. `docs/design.md` § The stack, and what it rules out
+owns the choice.
 
 ### Build and test
 
 `keyring` is reached only by `credentials.py` (PRESS-0002), `jeepney`
 only by `_tray_linux.py`, and `Pillow` only by `builder.py` (PRESS-0008)
 and `_tray_linux.py` (PRESS-0204). That is present state, not a cap.
-The gate needs `pytest`,
-`pytest-randomly` and `ruff` on top, and PyInstaller is the `packaging`
-group beside those, never a runtime dependency (PRESS-0022).
-`pip install -e '.[dev]'` installs what CI runs. `pyproject.toml` holds
-the packaging and the pytest settings; `src/` is on the path through it,
-so there is no install step beyond that one.
+PyInstaller is the `packaging` group, never a runtime dependency
+(PRESS-0022). `pip install -e '.[dev]'` installs what CI runs; `src/` is
+on the path through `pyproject.toml`.
 
 ```bash
-./scripts/local-ci.sh      # the gate: leak sweep, lint, suite
-./scripts/local-ci.sh --docs   # documentation push: leak sweep alone
-.venv/bin/python -m pytest          # the suite alone
+./scripts/local-ci.sh             # the gate: leak sweep, lint, suite
+./scripts/local-ci.sh --docs      # documentation push: leak sweep alone
+./scripts/local-ci.sh --release   # the gate on the release lock's versions
+.venv/bin/python -m pytest        # the suite alone
 .venv/bin/python -m ruff check src/ tests/   # lint alone
 ```
 
-**A local gate run brings the gitignored `.venv` up to what a fresh install
-resolves, and runs from it**, as GitHub's fresh install does. So use `.venv`
-for a suite or lint run alone. It leaves the machine's shared tools alone.
+**A gate run brings the gitignored `.venv` up to what a fresh install
+resolves**, so use `.venv` for a suite or lint run alone.
+`.github/workflows/ci.yml` calls `scripts/local-ci.sh` and holds no
+checks of its own.
 
-**`scripts/local-ci.sh` is the gate, and `.github/workflows/ci.yml` calls
-that same file** — it holds no checks of its own, so the two cannot
-drift. The machine-wide hook discovers the script by name and runs it
-over the commits being pushed. Whether anything is gated at all needs
-`core.hooksPath` set, and `$ANTS_GLOBAL_HOOKS/pre-push` — defaulting to
-`~/.claude/githooks/pre-push` — present and executable.
-`ants.gate.docsGlob` only decides which checks run.
+**A fresh clone runs `./scripts/setup-hooks.sh` once**, to set
+`core.hooksPath`; without it no hook fires and nothing says so.
+`.githooks/pre-push` delegates to the machine-wide gate, and prints
+`NOTHING WAS CHECKED` where that is absent.
 
-**A fresh clone runs `./scripts/setup-hooks.sh` once.** It sets
-`core.hooksPath`, which git keeps in `.git/config` and no clone
-inherits. `ants.gate.docsGlob` travels committed, in `.ants/gate.conf`;
-a key in the clone's own config wins. The other keys are machine-local,
-in `docs/working-here.md`, listed at the end of this section.
-
-**`core.hooksPath` is what makes any hook fire at all.** Unset here and
-machine-wide, git looks in `.git/hooks`, nothing runs, and nothing says
-so. `.githooks/pre-push` only delegates to the machine-wide gate; where
-that is absent it prints `NOTHING WAS CHECKED` and exits 0, so it warns
-rather than blocks.
-
-**`local-gate.md` § 6.2 makes an unset `docsGlob` the breach**: a
-shared hook cannot know what a given pipeline reads, so it has to be
-told, and nothing announces the omission. That is why it is committed.
-The list is
-right because `--docs` runs the leak sweep, which is the check a
-markdown edit in this repository can actually breach, and no test reads
-a file it lists. **`CHANGELOG.md` is left out**: a test reads it, so a
-push changing it runs the whole gate. Narrow the list if either stops
+**`ants.gate.docsGlob` is committed in `.ants/gate.conf`** (`local-gate.md`
+§ 6.2). It lists only files no test reads, because `--docs` runs the leak
+sweep alone. So `CHANGELOG.md` and `*.txt` stay out (a test reads
+`CHANGELOG.md` and the manual's `en.txt`; the release build reads
+`packaging/release-requirements.txt`; PRESS-0362). Narrow it if that stops
 being true.
-**`*.txt` is left out on purpose** (PRESS-0362): the pattern crosses
-folders, a test reads the manual's `en.txt`, and the release build
-reads `packaging/release-requirements.txt`.
 
-**Read `docs/working-here.md` when the task comes up**, one section at
-a time (`read_region` with `section=`). A comment or spec saying
-"CLAUDE.md records" one of these notes means that file now:
+**Read `docs/working-here.md` one section at a time** (`read_region` with
+`section=`), when its task comes up. A comment saying "CLAUDE.md records"
+one of these means that file now:
 
-- *Archive tests and a fresh clone's keys* — before running the archive
-  tests or setting up a clone. They are the most important tests, and
-  CI skips them.
-- *Writing or changing tests* — before writing, changing or
-  mutation-probing a test.
-- *Releasing* — before signing or publishing a release.
-- *Registering the Google client* — before filling
-  `google_signin.CLIENT_ID` or touching the Google sign-in's setup.
-- *Registering the GitHub App* — before filling `github_signin.CLIENT_ID`
-  or `APP_SLUG`, or touching the GitHub sign-in's setup.
-- *Registering the usage-report property* — before writing the usage
-  key or touching the usage-report property's setup.
-- *The log relay* — before touching `relay/`, `sendlog.RELAY` or the
-  log relay's GitHub App.
-- *Windows and browser checks* — before checking anything on the Windows
-  box or in a browser.
-- *Remaking the manual's pictures and videos* — before retaking a
-  picture or video after a screen changes.
-- *Editing the roadmap* — before changing a `Layman:` line or a section
-  intro.
-- *Editing documents and building reviews* — before an exact-match edit
-  to wrapped prose, or building a review packet.
+- *Archive tests and a fresh clone's keys* — running the archive tests
+  (the most important; CI skips them) or setting up a clone.
+- *Writing or changing tests* — writing, changing or mutation-probing one.
+- *Releasing* — signing or publishing a release.
+- *Registering the Google client* — `google_signin.CLIENT_ID` or its setup.
+- *Registering the GitHub App* — `github_signin.CLIENT_ID`, `APP_SLUG`.
+- *Registering the usage-report property* — the usage key or property.
+- *The log relay* — `relay/`, `sendlog.RELAY` or the relay's GitHub App.
+- *Windows and browser checks* — the Windows box or a browser.
+- *Remaking the manual's pictures and videos* — after a screen changes.
+- *Editing the roadmap* — a `Layman:` line or a section intro.
+- *Editing documents and building reviews* — an exact-match edit to
+  wrapped prose, or a review packet.
 
 ### This repository is PUBLIC, and nothing here may name the writer
 
 `milnet01/Pressless` on GitHub, MIT. The site it publishes belongs to a
-real person; **this repository is about the app, and must not identify
-him.** Write "the writer", never a name — in documents, roadmap bullets,
-commit messages and code comments alike.
+real person; this repository is about the app. **Write "the writer",
+never a name** — in documents, roadmap bullets, commits and comments.
 
-**What was removed on 2026-08-25, so it is not reintroduced:** his name,
-his band, his domain, his GitHub account, his audience size, and a
-hard-coded Google Analytics measurement id. The id belongs in Settings
-by dependency rule 8, which is where the design already put it.
+**Never reintroduce** (removed 2026-08-25): his name, his band, his
+domain, his GitHub account, his audience size, or a hard-coded Google
+Analytics measurement id (it belongs in Settings).
 
-**The sibling generator's own source names him, and so does the
-directory it sits in.** Decision 4 sends you there — `safe_slug` is the
-one place a slug is resolved — and two archive tests load that
-generator, so a session reading it is normal rather than exceptional.
-Never write the name or the path into this repository, a commit message,
-or a review packet a lane might quote back. Refer to it as the sibling
-workspace and window the function bodies you need. The leak sweep does
-not catch the directory name.
+**The sibling generator's source names him, and so does its directory.**
+Reading it is normal: Decision 4 sends you there for `safe_slug`, and two
+archive tests load it. Never write the name or path into this repository,
+a commit, or a review packet. Call it the sibling workspace. The leak
+sweep does not catch the directory name.
 
-**Publishing a document is publishing its history.** De-personalising a
-file changes nothing about what `git log` serves.
+**Publishing a document publishes its history**: `git log` still serves
+what a later edit removed.
 
-The gate sweeps what a push publishes: the tree, the files in every
-commit, binary ones included, each commit's message, author, committer
-and paths, and every ref with its message and tagger. `git grep` reads
-file contents only, so a name in a subject line passes a tree sweep. A
-hit prints where it is, never its text, because GitHub's log is public. Where no hook runs the gate, run its leak step by
-hand:
-
-```
-./scripts/local-ci.sh --docs
-```
-
-**The pattern lives in that script and nowhere else**, so a hand sweep
-cannot drift from the gate. Strings that identify the writer but cannot
-be spelled in a public repository sit in a machine-local key the script
-reads (PRESS-0119). A checkout without it says so on every run:
-
-```bash
-git config ants.pressless.leakPatterns '<more patterns, pipe-separated>'
-```
+**The gate's leak sweep covers everything a push publishes** — tree,
+every commit's files, messages, identities and paths, and every ref. It
+prints where a hit is, never its text. Where no hook runs, run
+`./scripts/local-ci.sh --docs` by hand. **The pattern lives only in that
+script**, plus strings that cannot be spelled here, in a machine-local
+key (PRESS-0119): `git config ants.pressless.leakPatterns '<patterns>'`.
 
 ### How documents get written here
 
-Standing instructions from the user.
-
-- **A fix must serve the document's stated purpose.** Ask it of the
-  *fix*, not just of the finding that prompted it: if the edit changes
-  nothing anyone builds, it does not belong, however true it is.
-- **Avoid counts and line numbers.** They go stale fast, and a stale
-  number is worse than none because a reader edits *toward* it. Where a
-  number is genuinely evidence, ship a test that prints it and cite the
-  test.
-- **Shorter prose.** Length is surface area: a reviewer finds defects in
-  explanation that directs nothing. Rationale belongs in a sentence.
-- **A review loop-log row is permanent the moment it is committed** —
-  the global rule forbids editing a landed row, so a long one can never
-  be shortened afterwards. Write it short the first time.
-- **Everything truthful, factual, verifiable.** Run the case that would
-  refute a claim, not the one that confirms it.
+**A number that is evidence is printed by a test, and the test is cited**;
+a number in prose goes stale, and a reader edits toward it. **Ask of each fix, not only each finding, whether it serves the
+document's stated purpose**; an edit that changes nothing anyone builds
+does not belong. **A committed review loop-log row is permanent**, so
+write it short the first time.
 
 ### Roadmap IDs
 
-`PRESS-NNNN`, per `roadmap-format.md` § 3.5.1. **The roadmap is served
-from the Ants roadmap store, not from `ROADMAP.md`** — the file is a
-generated render and a hand edit to it is discarded by the next write.
-Read it with `roadmap_query`, write it with `roadmap_log`. Commit
-subjects are `<ID>: <description>`, per `commits.md`.
-
-### Review history
-
-This file is read in full by every session on every turn, so its
-`review-contract` loop log is kept in
-`docs/claude-md-review-2026-08-27.md` rather than here.
+`PRESS-NNNN` (`roadmap-format.md` § 3.5.1). **The roadmap is the Ants
+store; `ROADMAP.md` is a render**, and a hand edit is discarded. Read
+with `roadmap_query`, write with `roadmap_log`. Commit subjects are
+`<ID>: <description>`.
 
 ### Overrides
 
-Any place this project deliberately departs from a global standard goes
-in `docs/standards/`, with the reason. **`versioning-overrides.md` is
-mostly not one of those** — it holds the answers `versioning.md` §§ 3
-and 4 ask every project for. It also carries one departure: a release
-takes the number of the milestone it completes, not § 4's PATCH. That
-directory's own `README.md` sorts the kinds.
+Departures from a global standard go in `docs/standards/`, with the
+reason; its `README.md` sorts the kinds. `versioning-overrides.md`
+mostly answers `versioning.md` §§ 3 and 4; its one departure is that a
+release takes the number of the milestone it completes.
 
 ---
 
-**How these rules came to say what they say is
-[`docs/history/claude-md.md`](docs/history/claude-md.md)** — dated
-corrections, superseded wording, and the argument that settled a rule.
-Nothing there instructs anything; this file governs.
+This file's review loop log is `docs/claude-md-review-2026-08-27.md`;
+how its rules came to say what they say is `docs/history/claude-md.md`.
