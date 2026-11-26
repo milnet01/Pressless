@@ -4,10 +4,20 @@
 // app is no key. Abuse is held off by the rate limit and the size limit, and
 // every refusal comes before GitHub is asked for anything (INV-6).
 
-// 2.2 MiB. The app's own cap (LARGEST in src/pressless/sendlog.py,
-// 2 * log.MAX_BYTES + 65,536) must stay at or below this;
-// tests/test_sendlog.py checks it.
-export const LARGEST = 2_306_867;
+// Two kinds of body (PRESS-0436 § 4.3). KIND is what Pressless 1.3 sends: a
+// line of JSON, then each log gzipped and base64-encoded, which the relay
+// files as sent, so a near-limit send stays within the free plan's 10 ms of
+// CPU (PRESS-0494). JSON is what Pressless 1.2 sends, kept while it is in use.
+const KIND = "application/x-pressless-log";
+// 4 MiB. The app's own cap (LARGEST in src/pressless/sendlog.py) must stay at
+// or below this; tests/test_sendlog.py checks it.
+export const LARGEST = 4_194_304;
+// 2.2 MiB: Pressless 1.2's cap, 2 * log.MAX_BYTES + 65,536, is below it.
+export const JSON_LARGEST = 2_306_867;
+const LINE_LONGEST = 512 * 1024;             // KIND's first line
+const TAIL_LONGEST = 120_000;                // UTF-16 units: the app's 60,000 characters
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+const GZIP = "H4sI";                         // base64 of gzip's first three bytes
 // The pattern _REFERENCE in src/pressless/sendlog.py must match this and the
 // six-letter length in reference(); tests/test_sendlog.py checks it.
 export const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -52,11 +62,55 @@ async function readCapped(stream, largest) {
   return whole;
 }
 
-function shaped(sent) {
+function named(sent) {
   return sent !== null && typeof sent === "object" && !Array.isArray(sent)
     && typeof sent.version === "string" && VERSION.test(sent.version)
-    && typeof sent.system === "string" && [...sent.system].length <= SYSTEM_LONGEST
-    && typeof sent.log === "string" && typeof sent.old === "string";
+    && typeof sent.system === "string" && [...sent.system].length <= SYSTEM_LONGEST;
+}
+
+// A negative length needs no check of its own: it leaves a part that is not gzip.
+const length = (value) => Number.isSafeInteger(value) && value % 4 === 0;
+
+// What a file's upload carries: its base64, as a length and a writer, so it
+// is written once, straight into the upload.
+function encoded(text) {
+  const bytes = new TextEncoder().encode(text);
+  return {length: base64Length(bytes), into: (out, at) => base64Into(bytes, out, at)};
+}
+
+function asSent(part) {
+  return {length: part.length, into: (out, at) => out.set(part, at)};
+}
+
+// A JSON body from Pressless 1.2, as the files and words to file; null where
+// it has the wrong shape.
+function fromJson(raw) {
+  let sent = null;
+  try { sent = JSON.parse(new TextDecoder().decode(raw)); } catch { return null; }
+  if (!named(sent) || typeof sent.log !== "string" || typeof sent.old !== "string") return null;
+  return {...sent, quote: sent.log,
+          files: [["pressless.log", encoded(sent.log)], ["pressless.log.1", encoded(sent.old)]]};
+}
+
+// A KIND body, likewise. Its parts are checked as base64 of gzip and never
+// decoded: decoding is what the kind exists to avoid.
+function fromKind(raw) {
+  const end = raw.subarray(0, LINE_LONGEST).indexOf(10);
+  if (end < 0) return null;
+  let head = null;
+  try { head = JSON.parse(new TextDecoder().decode(raw.subarray(0, end))); } catch { return null; }
+  if (!named(head) || typeof head.tail !== "string" || head.tail.length > TAIL_LONGEST
+      || !length(head.log) || !length(head.old)) return null;
+  const at = end + 1;
+  if (at + head.log + head.old !== raw.length) return null;
+  const parts = [raw.subarray(at, at + head.log), raw.subarray(at + head.log)];
+  const decoder = new TextDecoder();
+  for (const part of parts) {
+    const text = decoder.decode(part);
+    if (!text.startsWith(GZIP) || !BASE64.test(text)) return null;
+  }
+  return {version: head.version, system: head.system, quote: head.tail,
+          files: [["pressless.log.gz", asSent(parts[0])], ["pressless.log.1.gz", asSent(parts[1])]]};
 }
 
 const DIGITS = new TextEncoder().encode(
@@ -172,16 +226,15 @@ function excerpt(log) {
   return `${fence}text\n${cut}\n${fence}`;
 }
 
-async function putFile(env, token, named, name, text) {
+async function putFile(env, token, named, name, content) {
   const path = `logs/${named}/${name}`;
   // The JSON is built as bytes, so the content is never a string to copy.
   const encoder = new TextEncoder();
   const head = encoder.encode(`{"message":${JSON.stringify(`Log ${named}: ${name}`)},"content":"`);
   const tail = encoder.encode('"}');
-  const bytes = encoder.encode(text);
-  const body = new Uint8Array(head.length + base64Length(bytes) + tail.length);
+  const body = new Uint8Array(head.length + content.length + tail.length);
   body.set(head);
-  base64Into(bytes, body, head.length);
+  content.into(body, head.length);
   body.set(tail, body.length - tail.length);
   const reply = await github("file", "PUT", `/repos/${env.REPOSITORY}/contents/${path}`, token, body);
   return {path, sha: reply.content && reply.content.sha};
@@ -209,21 +262,22 @@ async function file(env, sent) {
      permissions: {contents: "write", issues: "write"}});
   let named = reference();
   const written = [];
+  const [[first, log], [second, old]] = sent.files;
   try {
     try {
-      written.push(await putFile(env, minted.token, named, "pressless.log", sent.log));
+      written.push(await putFile(env, minted.token, named, first, log));
     } catch (error) {
       // 422: the path exists. One new reference, once.
       if (!(error instanceof GitHubFailed) || error.status !== 422) throw error;
       named = reference();
-      written.push(await putFile(env, minted.token, named, "pressless.log", sent.log));
+      written.push(await putFile(env, minted.token, named, first, log));
     }
-    written.push(await putFile(env, minted.token, named, "pressless.log.1", sent.old));
+    written.push(await putFile(env, minted.token, named, second, old));
     const folder = `logs/${named}`;
     await github("issue", "POST", `/repos/${repository}/issues`, minted.token, {
       title: `Log ${named}: Pressless ${sent.version} on ${sent.system}`,
-      body: `Files: \`${folder}/pressless.log\`, \`${folder}/pressless.log.1\`\n\n`
-        + `The last lines of \`pressless.log\`:\n\n${excerpt(sent.log)}\n`,
+      body: `Files: \`${folder}/${first}\`, \`${folder}/${second}\`\n\n`
+        + `The last lines of \`pressless.log\`:\n\n${excerpt(sent.quote)}\n`,
     });
   } catch (error) {
     if (await withdraw(env, minted.token, named, written)) error.leftBehind = `logs/${named}`;
@@ -240,19 +294,20 @@ export default {
     // Before the limit, so a refused request uses no visitor's slot. A page on
     // another site can post text/plain with no preflight; it cannot post this.
     const type = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
-    if (type !== "application/json") return answer(415, {error: "not json"});
+    const json = type === "application/json";
+    if (!json && type !== KIND) return answer(415, {error: "not a log"});
     const address = request.headers.get("CF-Connecting-IP") || "unknown";
     if (!(await env.SENDS.limit({key: limitKey(address)})).success) {
       return answer(429, {error: "too many sends; try again in a minute"});
     }
-    if (Number(request.headers.get("Content-Length") || 0) > LARGEST) {
+    const largest = json ? JSON_LARGEST : LARGEST;
+    if (Number(request.headers.get("Content-Length") || 0) > largest) {
       return answer(413, {error: "too large"});
     }
-    const raw = await readCapped(request.body, LARGEST);
+    const raw = await readCapped(request.body, largest);
     if (raw === null) return answer(413, {error: "too large"});
-    let sent = null;
-    try { sent = JSON.parse(new TextDecoder().decode(raw)); } catch { /* refused below */ }
-    if (!shaped(sent)) return answer(400, {error: "not a log"});
+    const sent = json ? fromJson(raw) : fromKind(raw);
+    if (!sent) return answer(400, {error: "not a log"});
     try {
       return answer(200, {reference: await file(env, sent)});
     } catch (error) {

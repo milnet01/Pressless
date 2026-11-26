@@ -71,7 +71,8 @@ fragment. **Not now** closes the box; nothing is sent.
 
 ```python
 RELAY = "https://pressless-logs.pressless-logs.workers.dev/log"  # public, not a secret
-LARGEST = 2 * log.MAX_BYTES + 65_536
+TEXT_LARGEST = 2 * log.MAX_BYTES + 65_536   # the two files' text, in bytes
+LARGEST = 4 * 1024 * 1024                   # the body; the relay's own cap
 
 def send(folder: Path, client: https.Client | None = None) -> str:
     """Post both logs; the reference the relay answers. Raises
@@ -83,18 +84,28 @@ def register(face: Face, folder: Path, *, client: Transport | None = None) -> No
     # POST /log/send, sending the logs in `folder`
 ```
 
-The request: `POST RELAY`, `Content-Type: application/json`, body
+The request: `POST RELAY`, `Content-Type: application/x-pressless-log`. The
+body is one line of JSON, a newline, then each file's text gzipped and
+base64-encoded, `pressless.log`'s first:
 
-```json
-{"version": "1.1.1", "system": "Linux", "log": "<text>", "old": "<text>"}
+```text
+{"version": "1.3.0", "system": "Linux", "tail": "<text>", "log": 41236, "old": 38820}
+H4sIAAAAAAAC/+y9a3PbRrIw/D2/Ah...H4sIAAAAAAAC/+y9W3Pc...
 ```
 
-`log` and `old` are each file read as UTF-8 with `errors="replace"`, "" where
+Each file's text is the file read as UTF-8 with `errors="replace"`, "" where
 absent, with known secret shapes (GitHub and Google tokens, bearer
 tokens, private-key blocks) replaced by `[removed]`: a guard behind
 PRESS-0003 § 10, which keeps them out of the log in the first place.
-`system` is `usage.system()`, cut to 128 characters. A body over `LARGEST` sends the newest
-part of each file that fits. The answer `200 {"reference": "K7Q2MX"}` gives
+It is encoded as UTF-8, gzipped with no time stamp and base64-encoded; an
+absent file is the gzip of nothing. The line's `log` and `old` are the
+lengths of the two base64 parts. `tail` is the last 100 lines of
+`pressless.log`'s text, cut to their last 60,000 characters: the relay quotes
+it in the issue, so it never decodes a log. `system` is `usage.system()`,
+cut to 128 characters. Where the two texts pass `TEXT_LARGEST` bytes, each
+sends its newest part that fits, `pressless.log.1` losing its oldest part
+first. The body is then never over `LARGEST`, however poorly the text
+compresses. The answer `200 {"reference": "K7Q2MX"}` gives
 the reference; any other answer, or none, raises `LogNotSent`. Its words
 say the log was not sent and to try again later. The press is logged with
 the reference and never the log text.
@@ -107,8 +118,19 @@ repository: `APP_KEY` (the App's private key as PKCS#8 PEM; GitHub issues
 PKCS#1, which Web Crypto refuses). Plain variables:
 `APP_ID`, `INSTALLATION_ID`, `REPOSITORY`.
 
-`POST /log` only; anything else answers 404. A `Content-Type` other than
-`application/json` answers 415, before the rate limit: a page on another
+`POST /log` only; anything else answers 404. It takes two kinds of body: the
+compressed one § 4.2 describes, `application/x-pressless-log`, and the
+JSON one Pressless 1.2 sends, `application/json`:
+
+```json
+{"version": "1.2.2", "system": "Linux", "log": "<text>", "old": "<text>"}
+```
+
+The JSON kind stays for as long as 1.2 installs send it. It costs the relay
+several times the CPU of the compressed kind, which exists to keep a
+near-limit send within the free plan's 10 ms (PRESS-0494).
+
+Any other `Content-Type` answers 415, before the rate limit: a page on another
 site can post `text/plain` with no preflight, and a refusal then uses no
 visitor's send. In order:
 
@@ -116,21 +138,31 @@ visitor's send. In order:
    `CF-Connecting-IP` header, an IPv6 address by its /64, one send per 60 seconds. The binding's period
    is 10 or 60 seconds, and its counts are approximate and per Cloudflare
    location. Over → 429.
-2. **Size**: a body over 2.2 MiB → 413, read no further.
-3. **Shape**: JSON with string `version` (at most 32 characters, digits,
-   dots, letters and `-`), string `system` (at most 128 code points, as
-   Python counts them), strings `log` and
-   `old` → else 400.
+2. **Size**: a compressed body over 4 MiB, or a JSON one over 2.2 MiB → 413,
+   read no further.
+3. **Shape**, else 400. Both kinds: string `version` (at most 32
+   characters, digits, dots, letters and `-`) and string `system` (at most
+   128 code points, as Python counts them). The JSON kind: strings `log` and
+   `old`. The compressed kind: its first line, ended within its first
+   512 KiB, is a JSON object holding string `tail`, at most 120,000 UTF-16
+   units (60,000 characters), and whole numbers `log` and `old`, each a
+   multiple of 4, which with the line fill the body exactly. Each part is
+   base64 (`A`–`Z`, `a`–`z`, `0`–`9`, `+`, `/`, with `=` only at its end)
+   beginning `H4sI`, gzip's first bytes. The relay neither decodes nor
+   unzips a part.
 4. **Token**: a JWT signed RS256 with `APP_KEY` (Web Crypto), exchanged at
    `POST /app/installations/{INSTALLATION_ID}/access_tokens` for a token
    limited to `contents: write, issues: write`.
 5. **Files**: the reference is six characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
-   `PUT /repos/{REPOSITORY}/contents/logs/{reference}/pressless.log` and
-   `.../pressless.log.1`, each base64. A 422 on the first means the path
-   exists: one new reference, once.
+   The compressed kind: `PUT /repos/{REPOSITORY}/contents/logs/{reference}/pressless.log.gz`
+   and `.../pressless.log.1.gz`, each its part exactly as sent. The JSON
+   kind: `.../pressless.log` and `.../pressless.log.1`, each the text
+   base64-encoded. A 422 on the first means the path exists: one new
+   reference, once.
 6. **Issue**: `POST /repos/{REPOSITORY}/issues`, title
    `Log {reference}: Pressless {version} on {system}`, body naming both
-   files' paths and the last 100 lines of `log`, cut to their last 60,000
+   files' paths and the last 100 lines of `tail`, or of `log` for the JSON
+   kind, cut to their last 60,000
    characters, in a fenced block. Where the fences would push it past
    60,000, it keeps its newest half until it fits.
 7. Answer `200 {"reference"}`. A GitHub failure at 4 to 6 → 502, logging
@@ -162,16 +194,18 @@ script can:
   route, timer or start of Pressless reaches `sendlog.send`.
   *Test:* `tests/test_sendlog.py::test_only_the_send_route_sends`.
   *Breaks when:* any caller besides the route calls `send`.
-- **INV-2** — The body `send` posts holds exactly the keys `version`,
-  `system`, `log`, `old`, with the two files' text and nothing added: no
-  site address, settings or folder path beyond what the files hold.
+- **INV-2** — The body `send` posts is the first line, holding exactly the
+  keys `version`, `system`, `tail`, `log`, `old`, then the two files' text,
+  gzipped, and nothing added: no site address, settings or folder path
+  beyond what the files hold.
   *Test:* `tests/test_sendlog.py::test_the_body_is_the_logs_and_nothing_else`.
   *Breaks when:* a key is added, or the folder's path is put in.
 - **INV-3** — A log over the limit sends its newest part, and the body is
-  never over `LARGEST` bytes.
-  *Test:* `tests/test_sendlog.py::test_a_large_log_sends_its_newest_part`.
-  *Breaks when:* the oldest part is kept, or the cut is by characters, not
-  bytes.
+  never over `LARGEST` bytes, even for text that does not compress.
+  *Test:* `tests/test_sendlog.py::test_a_large_log_sends_its_newest_part`
+  and `::test_text_that_does_not_compress_still_fits`.
+  *Breaks when:* the oldest part is kept, the cut is by characters, not
+  bytes, or `TEXT_LARGEST` is raised past what `LARGEST` holds.
 - **INV-4** — Any answer but `200` with a reference, and no answer, raise
   `LogNotSent`, and the box shows the failure fragment saying the log
   was not sent.
@@ -180,9 +214,9 @@ script can:
 - **INV-5** — The log never records the log text it sent.
   *Test:* `tests/test_sendlog.py::test_the_send_is_logged_without_the_text`.
   *Breaks when:* the note logs the body.
-- **INV-6** — The relay refuses a body over the size limit, a wrong shape
-  and a method or path other than `POST /log`, before it asks GitHub for a
-  token.
+- **INV-6** — The relay refuses a body over its kind's size limit, a wrong
+  shape of either kind, and a method or path other than `POST /log`, before
+  it asks GitHub for a token.
   *Test:* `node --test 'relay/test/*.test.js'` → every test passes.
   *Breaks when:* a check moves after step 4.
 - **INV-7** — No file in this repository holds the App's key, and the app
@@ -195,6 +229,16 @@ script can:
   nothing.
   *Test:* `scripts/by-hand-browser-checks.py`'s `send_log` rows, by hand.
   *Breaks when:* Send my log posts at once.
+- **INV-9** — The relay still files a JSON send from Pressless 1.2, as
+  `pressless.log` and `pressless.log.1`.
+  *Test:* `node --test 'relay/test/*.test.js'`, its JSON-kind tests.
+  *Breaks when:* the JSON kind is refused or filed under the `.gz` names.
+- **INV-10** — The relay files each part of a compressed send byte for byte
+  as the app sent it, and the app's part unzips to the file's text.
+  *Test:* `relay/test/index.test.js`'s `a compressed send is filed as sent, under .gz names`,
+  and `tests/test_sendlog.py::test_the_body_is_the_logs_and_nothing_else`.
+  *Breaks when:* the relay re-encodes a part, or the app gzips something
+  other than the text it read.
 
 ## 6. Failure modes
 
@@ -204,14 +248,15 @@ script can:
   502; `LogNotSent` as above. The setup script run again restores it.
 - **Someone floods the relay.** About one per address per minute; GitHub's
   own limits behind that. The worst case is junk issues in a private repository.
-- **The log files are unreadable or absent.** Sent as "" each; the issue
+- **The log files are unreadable or absent.** Sent as empty text each; the issue
   still records version and system.
 
 ## 7. Tests
 
-`tests/test_sendlog.py`, new, in CI: INV-1 to INV-5, through the Face's own
-server with a recording `https.Client` double. `relay/test/index.test.js`,
-`node --test`, with GitHub faked by a replaced `fetch`: INV-6.
+`tests/test_sendlog.py`, new, in CI: INV-1 to INV-5 and INV-10's app half,
+through the Face's own server with a recording `https.Client` double.
+`relay/test/index.test.js`, `node --test`, with GitHub faked by a replaced
+`fetch`: INV-6, INV-9 and INV-10's relay half.
 `local-ci.sh` runs it where `node` is on the path. INV-7 is the pre-push hook's `gitleaks` scan.
 INV-8 is a browser row. Each test is seen to fail before its code exists.
 
@@ -224,6 +269,15 @@ INV-8 is a browser row. Each test is seen to fail before its code exists.
   characters; a log is up to 1 MiB.
 - **A public issue with the log attached.** Logs name the user's pages and
   files.
+- **Each log as JSON text, or as uncompressed base64** (PRESS-0494). The
+  relay's work grows with the bytes it reads. A near-limit JSON send took
+  44 ms of deployed CPU (2026-11-24). Base64 from the app about halved it
+  locally (2026-11-26); compressed, the relay reads a fraction of the bytes.
+  The cost: the stored files are `.gz`, which GitHub's page does not show.
+  The user chose compression, 2026-11-26.
+- **The relay decoding the log's end for the issue.** Decoding the last
+  part of a log took more CPU locally than all the rest of the relay's work
+  (2026-11-26), so the app sends `tail` instead.
 
 ## 9. Out of scope
 
@@ -236,12 +290,15 @@ INV-8 is a browser row. Each test is seen to fail before its code exists.
 |------|----------------------|
 | INV-1 | `tests/test_sendlog.py::test_only_the_send_route_sends` |
 | INV-2 | `tests/test_sendlog.py::test_the_body_is_the_logs_and_nothing_else` |
-| INV-3 | `tests/test_sendlog.py::test_a_large_log_sends_its_newest_part` |
+| INV-3 | `tests/test_sendlog.py::test_a_large_log_sends_its_newest_part`, `::test_text_that_does_not_compress_still_fits` |
 | INV-4 | `tests/test_sendlog.py::test_a_refused_send_says_so` |
 | INV-5 | `tests/test_sendlog.py::test_the_send_is_logged_without_the_text` |
 | INV-6 | `relay/test/index.test.js`, where `node` is present |
 | INV-7 | `gitleaks` in the machine-wide pre-push hook; nothing in CI |
 | INV-8 | **Partial:** `scripts/by-hand-browser-checks.py`, by hand; nothing in CI |
+| INV-9 | `relay/test/index.test.js`, where `node` is present |
+| INV-10 | `relay/test/index.test.js` and `tests/test_sendlog.py::test_the_body_is_the_logs_and_nothing_else` |
+| A near-limit send within the free plan's 10 ms of CPU | **nothing** in CI — `npx wrangler tail` on the deployed relay, by hand |
 | § 4.3 step 1's rate limit | **nothing** — Cloudflare's binding; checked once after deploy |
 | § 4.3 steps 5 and 6 against real GitHub | **nothing** in CI — the setup script's test send |
 
@@ -253,6 +310,7 @@ INV-8 is a browser row. Each test is seen to fail before its code exists.
 - `report.py`'s docstring: it no longer says no log is ever sent.
 - CHANGELOG, under the release.
 - `docs/working-here.md`: a section on the log relay.
+- `relay/README.md`: the refusals and limits of both kinds of body.
 - Words in all five languages.
 
 ## 12. Cold-eyes loop log

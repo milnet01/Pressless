@@ -5,10 +5,14 @@ files it as an issue in the private repository `milnet01/pressless-logs`.
 It reaches GitHub as a GitHub App installed on that repository alone.
 `docs/specs/PRESS-0436-send-my-log.md` § 4.3 owns what it does.
 
+Pressless 1.3 sends each log gzipped, and the relay files it as sent:
+`logs/<reference>/pressless.log.gz` and `pressless.log.1.gz`. Pressless 1.2
+sends JSON, filed as `pressless.log` and `pressless.log.1`.
+
 Pressless holds no key the relay checks. The relay refuses a wrong method or
-path, a body that is not JSON, a second send within a minute from one
-address (an IPv6 sender by its /64), a body over 2.2 MiB and a body of the
-wrong shape, all before it asks GitHub for anything.
+path, a body of another type, a second send within a minute from one
+address (an IPv6 sender by its /64), a body over 4 MiB (2.2 MiB for JSON)
+and a body of the wrong shape, all before it asks GitHub for anything.
 
 ## Setting it up
 

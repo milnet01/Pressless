@@ -5,8 +5,9 @@
 
 import assert from "node:assert/strict";
 import {beforeEach, test} from "node:test";
+import {gzipSync} from "node:zlib";
 
-import relay, {LARGEST, base64} from "../src/index.js";
+import relay, {JSON_LARGEST, LARGEST, base64} from "../src/index.js";
 
 const pair = await crypto.subtle.generateKey(
   {name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]),
@@ -95,7 +96,7 @@ test("a body not sent as JSON is refused before the limiter, and GitHub is not a
     const headers = {"Content-Type": type};
     const reply = await relay.fetch(post(JSON.stringify(good), {headers}), env());
     assert.equal(reply.status, 415, type);
-    assert.deepEqual(await reply.json(), {error: "not json"});
+    assert.deepEqual(await reply.json(), {error: "not a log"});
   }
   assert.deepEqual(keys, []);
   assert.deepEqual(asked, []);
@@ -146,7 +147,7 @@ test("an IPv6 sender is keyed on its /64, and an odd value whole", async () => {
 });
 
 test("a body over the size limit is refused, and GitHub is not asked", async () => {
-  assert.equal(LARGEST, 2_306_867);
+  assert.equal(JSON_LARGEST, 2_306_867);
   const big = JSON.stringify({...good, log: "x".repeat(2_306_867)});
   assert.equal((await relay.fetch(post(big), env())).status, 413);
   // A body with no declared length is measured as it is read.
@@ -360,4 +361,85 @@ test("base64 matches Node's for every length's remainder", () => {
     const bytes = new Uint8Array(length).map((_, at) => every[(at * 7) % 256]);
     assert.equal(base64(bytes), Buffer.from(bytes).toString("base64"), `length ${length}`);
   }
+});
+
+// PRESS-0494: the compressed kind Pressless 1.3 sends (PRESS-0436 § 4.2).
+const KIND = "application/x-pressless-log";
+const packedText = (text) => gzipSync(Buffer.from(text, "utf8")).toString("base64");
+
+function packed({version = "1.3.0", system = "Linux", tail = "first\nsecond ``` fence",
+                 log = "whole log\n", old = "older\n", head = {}, parts = null} = {}) {
+  const [one, two] = parts || [packedText(log), packedText(old)];
+  const line = JSON.stringify({version, system, tail, log: one.length, old: two.length, ...head});
+  return `${line}\n${one}${two}`;
+}
+
+function postPacked(body, headers = {}) {
+  return post(body, {headers: {"Content-Type": KIND, ...headers}});
+}
+
+test("a compressed send is filed as sent, under .gz names", async () => {
+  const body = packed();
+  const reply = await relay.fetch(postPacked(body), env());
+  assert.equal(reply.status, 200);
+  const {reference} = await reply.json();
+  const [, log, old, issue] = asked;
+  assert.equal(asked.length, 4);
+  assert.equal(log.url, `https://api.github.com/repos/owner/logs/contents/logs/${reference}/pressless.log.gz`);
+  assert.equal(old.url, `https://api.github.com/repos/owner/logs/contents/logs/${reference}/pressless.log.1.gz`);
+  assert.equal(log.body.content, packedText("whole log\n"));
+  assert.equal(old.body.content, packedText("older\n"));
+  assert.equal(issue.body.title, `Log ${reference}: Pressless 1.3.0 on Linux`);
+  assert.match(issue.body.body, /pressless\.log\.gz`, `logs\/[A-Z2-9]{6}\/pressless\.log\.1\.gz/);
+  assert.match(issue.body.body, /````text\nfirst\nsecond ``` fence\n````/);
+});
+
+test("a compressed send near its limit is filed; one over it is refused", async () => {
+  const big = "A".repeat(3_500_000);
+  const near = packed({parts: [`H4sI${big}`, packedText("")]});
+  assert.ok(near.length > JSON_LARGEST && near.length <= LARGEST);
+  assert.equal((await relay.fetch(postPacked(near), env())).status, 200);
+  asked = [];
+  assert.equal(LARGEST, 4 * 1024 * 1024);
+  const over = packed({parts: [`H4sI${"A".repeat(LARGEST)}`, packedText("")]});
+  assert.equal((await relay.fetch(postPacked(over), env())).status, 413);
+  const declared = {"Content-Length": String(LARGEST + 1)};
+  assert.equal((await relay.fetch(postPacked(packed(), declared), env())).status, 413);
+  assert.deepEqual(asked, []);
+});
+
+test("a compressed send of the wrong shape is refused, and GitHub is not asked", async () => {
+  const one = packedText("whole log\n");
+  const two = packedText("older\n");
+  const wrong = {
+    "no line": `${one}${two}`,
+    "line not JSON": `not json\n${one}${two}`,
+    "line a list": `[]\n${one}${two}`,
+    "bad version": packed({version: "1.3.0 <b>"}),
+    "long system": packed({system: "x".repeat(129)}),
+    "no tail": packed({head: {tail: undefined}}),
+    "tail not text": packed({head: {tail: 5}}),
+    "long tail": packed({tail: "t".repeat(120_001)}),
+    "length not a number": packed({head: {log: String(one.length)}}),
+    "length not whole": packed({head: {log: one.length + 0.5}}),
+    "length negative": packed({head: {log: -4}}),
+    "length not by 4": packed({parts: [`${one}A`, two]}),
+    "parts too short": packed({head: {old: two.length + 4}}),
+    "parts too long": `${packed()}AAAA`,
+    "not base64": packed({parts: [`H4sI${"A".repeat(4)}"}},${"A".repeat(4)}`.slice(0, 16), two]}),
+    "padding inside": packed({parts: [`H4sI==AA${one.slice(8)}`, two]}),
+    "not gzip": packed({parts: [Buffer.from("plain text!!").toString("base64"), two]}),
+    "old not gzip": packed({parts: [one, "AAAA"]}),
+    "line too late": `${" ".repeat(512 * 1024)}${packed()}`,
+  };
+  for (const [name, body] of Object.entries(wrong)) {
+    assert.equal((await relay.fetch(postPacked(body), env())).status, 400, name);
+  }
+  assert.deepEqual(asked, []);
+});
+
+test("the longest tail is accepted, and its excerpt fits an issue body", async () => {
+  const tail = "\u{1F600}".repeat(60_000);
+  assert.equal((await relay.fetch(postPacked(packed({tail})), env())).status, 200);
+  assert.ok(asked[3].body.body.length < 65_536);
 });

@@ -8,6 +8,8 @@ key (§ 3 decision 6). Nothing here runs until POST /log/send is pressed.
 """
 from __future__ import annotations
 
+import base64
+import gzip
 import html
 import json
 import re
@@ -24,9 +26,17 @@ if TYPE_CHECKING:
 ADDRESS = "/log/send"
 # Public, not a secret: anyone may post a log to it, within its limits.
 RELAY = "https://pressless-logs.pressless-logs.workers.dev/log"
+# The two files' text, in bytes. Gzipped and base64-encoded it stays within
+# LARGEST however poorly it compresses; tests/test_sendlog.py checks the bound.
+TEXT_LARGEST = 2 * log.MAX_BYTES + 65_536
 # Never above the relay's own LARGEST (relay/src/index.js), or every large
 # log is refused; tests/test_sendlog.py reads that file to check it.
-LARGEST = 2 * log.MAX_BYTES + 65_536
+LARGEST = 4 * 1024 * 1024
+# Gzipped, so the relay reads a fraction of the bytes and never decodes them:
+# a near-limit send as JSON cost it over its free 10 ms of CPU (PRESS-0494).
+KIND = "application/x-pressless-log"
+_TAIL_LINES = 100                   # the relay quotes these in the issue
+_TAIL_CHARACTERS = 60_000
 TIMEOUT_SECONDS = 60.0
 _SYSTEM_LONGEST = 128               # the relay refuses a longer one
 # The relay's ALPHABET and length; tests/test_sendlog.py checks they agree.
@@ -69,20 +79,32 @@ def _newest(text: str, drop: int) -> str:
     return text.encode("utf-8")[drop:].decode("utf-8", errors="ignore")
 
 
+def _tail(text: str) -> str:
+    """The last lines of `text`, as the relay's issue quotes them."""
+    lines = text.removesuffix("\n").split("\n")[-_TAIL_LINES:]
+    return "\n".join(lines)[-_TAIL_CHARACTERS:]
+
+
+def _packed(text: str) -> bytes:
+    return base64.b64encode(gzip.compress(text.encode("utf-8"), mtime=0))
+
+
 def _body(folder: Path) -> bytes:
-    """The request body, at most LARGEST bytes. Over that, the old file loses
-    its oldest part first, then the current one."""
-    fields = {"version": __version__, "system": usage.system()[:_SYSTEM_LONGEST],
-              "log": _read(folder / log.FILE_NAME), "old": _read(folder / log.OLD_NAME)}
-    while True:
-        body = json.dumps(fields, ensure_ascii=False).encode("utf-8")
-        over = len(body) - LARGEST
-        if over <= 0:
-            return body
-        # JSON never writes a byte shorter than the text holds it, so each
-        # cut removes at least `over`; it ends within three rounds.
-        fields["old" if fields["old"] else "log"] = _newest(
-            fields["old"] or fields["log"], over)
+    """The request body (§ 4.2): a line of JSON, then each file's text
+    gzipped and base64-encoded. Over TEXT_LARGEST, the old file loses its
+    oldest part first, then the current one."""
+    text, old = _read(folder / log.FILE_NAME), _read(folder / log.OLD_NAME)
+    over = len(text.encode("utf-8")) + len(old.encode("utf-8")) - TEXT_LARGEST
+    if over > 0:
+        kept = _newest(old, over)
+        over -= len(old.encode("utf-8")) - len(kept.encode("utf-8"))
+        old = kept
+        if over > 0:
+            text = _newest(text, over)
+    parts = _packed(text), _packed(old)
+    head = {"version": __version__, "system": usage.system()[:_SYSTEM_LONGEST],
+            "tail": _tail(text), "log": len(parts[0]), "old": len(parts[1])}
+    return json.dumps(head, ensure_ascii=False).encode("utf-8") + b"\n" + b"".join(parts)
 
 
 def send(folder: Path, client: Transport | None = None) -> str:
@@ -92,7 +114,7 @@ def send(folder: Path, client: Transport | None = None) -> str:
     try:
         status, _, answer = client.request(
             "POST", RELAY, _body(folder),
-            {"Content-Type": "application/json", "User-Agent": f"Pressless/{__version__}"})
+            {"Content-Type": KIND, "User-Agent": f"Pressless/{__version__}"})
     except OSError as error:
         raise LogNotSent(str(error)) from None
     if status != 200:

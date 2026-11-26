@@ -7,6 +7,9 @@ imported, so a module posting elsewhere, or sending other files, fails.
 from __future__ import annotations
 
 import ast
+import base64
+import gzip
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -44,6 +47,16 @@ def _logs(folder: Path, new: str, old: str | None) -> None:
     (folder / "pressless.log").write_text(new, encoding="utf-8")
     if old is not None:
         (folder / "pressless.log.1").write_text(old, encoding="utf-8")
+
+
+def _opened(body: bytes) -> tuple[dict, str, str]:
+    """The body's first line, and the two files' text it carries."""
+    line, _, parts = body.partition(b"\n")
+    head = json.loads(line)
+    texts = [gzip.decompress(base64.b64decode(part, validate=True)).decode("utf-8")
+             for part in (parts[:head["log"]], parts[head["log"]:])]
+    assert head["log"] + head["old"] == len(parts)
+    return head, texts[0], texts[1]
 
 
 def _press(tmp_path: Path, relay: _Relay) -> tuple[int, str, Path]:
@@ -127,11 +140,28 @@ def test_the_body_is_the_logs_and_nothing_else(tmp_path):
     assert sendlog.send(folder, relay) == "K7Q2MX"
     [(method, url, body, headers)] = relay.sent
     assert (method, url) == ("POST", RELAY)
-    assert headers["Content-Type"] == "application/json"
-    sent = json.loads(body)
-    assert sent == {"version": __version__, "system": usage.system()[:128],
-                    "log": f"{NEWEST}\n", "old": f"{OLDEST}\n"}
-    assert str(tmp_path) not in body.decode("utf-8")
+    assert headers["Content-Type"] == "application/x-pressless-log"
+    head, text, old = _opened(body)
+    assert head == {"version": __version__, "system": usage.system()[:128],
+                    "tail": NEWEST, "log": head["log"], "old": head["old"]}
+    assert (text, old) == (f"{NEWEST}\n", f"{OLDEST}\n")
+    assert str(tmp_path).encode("utf-8") not in body
+
+
+def test_the_tail_is_the_last_100_lines_cut_to_60000_characters(tmp_path):
+    """§ 4.2's `tail`, which the relay quotes in the issue. Breaks when it
+    keeps more lines, or the first characters of an over-long line."""
+    relay = _Relay()
+    folder = tmp_path / "logs"
+    _logs(folder, "".join(f"line {number}\n" for number in range(300)), None)
+    sendlog.send(folder, relay)
+    tail = _opened(relay.sent[0][2])[0]["tail"]
+    assert tail.split("\n") == [f"line {number}" for number in range(200, 300)]
+    relay = _Relay()
+    _logs(folder, "start" + "é" * 70_000 + "end\n", None)
+    sendlog.send(folder, relay)
+    tail = _opened(relay.sent[0][2])[0]["tail"]
+    assert len(tail) == 60_000 and tail.endswith("éend")
 
 
 def test_known_secret_shapes_are_removed_before_sending(tmp_path):
@@ -147,11 +177,12 @@ def test_known_secret_shapes_are_removed_before_sending(tmp_path):
     lines = "".join(f"{NEWEST} {shape} kept\n" for shape in shapes)
     _logs(folder, lines + "Authorization: Bearer " + "fake" * 4 + "\n", lines)
     sendlog.send(folder, relay)
-    sent = json.loads(relay.sent[0][2])
-    for field in ("log", "old"):
-        assert "fake" not in sent[field]
-        assert sent[field].count(f"{NEWEST} [removed] kept\n") == len(shapes)
-    assert sent["log"].endswith("Authorization: Bearer [removed]\n")
+    head, text, old = _opened(relay.sent[0][2])
+    for sent in (text, old):
+        assert "fake" not in sent
+        assert sent.count(f"{NEWEST} [removed] kept\n") == len(shapes)
+    assert text.endswith("Authorization: Bearer [removed]\n")
+    assert "fake" not in head["tail"]
 
 
 def test_the_relay_takes_what_the_app_sends():
@@ -159,7 +190,7 @@ def test_the_relay_takes_what_the_app_sends():
     Breaks when one side changes and the other does not."""
     relay_source = (Path(__file__).parents[1] / "relay" / "src" / "index.js").read_text(
         encoding="utf-8")
-    largest = int(re.search(r"LARGEST = ([0-9_]+);", relay_source)[1].replace("_", ""))
+    largest = int(re.search(r"\bLARGEST = ([0-9_]+);", relay_source)[1].replace("_", ""))
     alphabet = re.search(r'ALPHABET = "([A-Z0-9]+)";', relay_source)[1]
     length = int(re.search(r"function reference\(\) \{.*?Uint8Array\((\d+)\)",
                            relay_source, re.DOTALL)[1])
@@ -179,7 +210,7 @@ def test_an_absent_old_log_is_sent_empty(tmp_path):
     folder = tmp_path / "logs"
     _logs(folder, "only\n", None)
     sendlog.send(folder, relay)
-    assert json.loads(relay.sent[0][2])["old"] == ""
+    assert _opened(relay.sent[0][2])[2] == ""
 
 
 def test_a_large_log_sends_its_newest_part(tmp_path):
@@ -191,12 +222,35 @@ def test_a_large_log_sends_its_newest_part(tmp_path):
     _logs(folder, f"{OLDEST}\n{filler}\n{NEWEST}\n", f"{OLDEST}\n{filler}\n{NEWEST}\n")
     sendlog.send(folder, relay)
     body = relay.sent[0][2]
-    assert len(body) <= 2 * 1_048_576 + 65_536
-    sent = json.loads(body)
-    assert sent["log"].endswith(f"{NEWEST}\n")
-    assert sent["old"].endswith(f"{NEWEST}\n")
-    assert OLDEST not in sent["old"]
-    assert len(body) > 2 * 1_048_576       # only what had to go went
+    assert len(body) <= sendlog.LARGEST
+    _, text, old = _opened(body)
+    assert text.endswith(f"{NEWEST}\n")
+    assert old.endswith(f"{NEWEST}\n")
+    assert OLDEST not in old
+    sent = len(text.encode("utf-8")) + len(old.encode("utf-8"))
+    assert 2 * 1_048_576 < sent <= 2 * 1_048_576 + 65_536   # only what had to go went
+
+
+def test_text_that_does_not_compress_still_fits(tmp_path):
+    """INV-3. Breaks when TEXT_LARGEST is raised past what LARGEST holds.
+    Hashed bytes as base64 barely compress, and a tail of control characters is
+    written six bytes each in JSON; the bound covers text that cannot
+    compress at all."""
+    relay = _Relay()
+    folder = tmp_path / "logs"
+    noise = base64.b64encode(hashlib.shake_256(b"PRESS-0494").digest(975_000)).decode()
+    _logs(folder, noise + "\x01" * 60_000, noise)
+    sendlog.send(folder, relay)
+    body = relay.sent[0][2]
+    print(f"body {len(body):,} bytes of LARGEST {sendlog.LARGEST:,}")
+    assert len(body) <= sendlog.LARGEST
+    # Text that does not compress at all: zlib's compressBound, plus gzip's
+    # 18 bytes of frame, per file; base64's 4 for 3; the tail as JSON.
+    text = sendlog.TEXT_LARGEST
+    zipped = text + (text >> 12) + (text >> 14) + (text >> 25) + 2 * (13 + 18)
+    worst = 4 * (zipped // 3 + 2) + 6 * 60_000 + 1024
+    print(f"worst {worst:,} bytes")
+    assert worst <= sendlog.LARGEST
 
 
 @pytest.mark.parametrize("relay", [
